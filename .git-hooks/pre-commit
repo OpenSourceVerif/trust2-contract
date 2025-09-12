@@ -1,0 +1,8 @@
+#!/bin/sh
+
+set -e
+
+cd $(git rev-parse --show-toplevel)
+
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
