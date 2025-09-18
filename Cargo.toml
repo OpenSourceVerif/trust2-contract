@@ -1,0 +1,10 @@
+[workspace]
+members = ["trust2-contract-macros"]
+
+[package]
+name = "trust2-contract"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+trust2-contract-macros = { path = "trust2-contract-macros" }

@@ -1,5 +1,5 @@
-# rs-contract
-Contracts-based design for Rust
+# trust2-contract
+Contract-based design for Rust
 
 ---
 
