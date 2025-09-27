@@ -6,5 +6,8 @@ name = "trust2-contract"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+verify = ["trust2-contract-macros/verify"]
+
 [dependencies]
 trust2-contract-macros = { path = "trust2-contract-macros" }
