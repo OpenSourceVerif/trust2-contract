@@ -1,6 +1,9 @@
-use proc_macro2::TokenStream;
+use proc_macro_crate::FoundCrate;
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{Expr, ItemFn, parse_quote, parse2 as parse, ReturnType, spanned::Spanned};
+
+use std::sync::LazyLock;
 
 macro_rules! parse_macro_input {
     ($tokenstream:ident as $ty:ty) => {
@@ -14,11 +17,13 @@ macro_rules! parse_macro_input {
 pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
+
+    let crate_name = Ident::new(&CRATE_NAME, Span::call_site());
     let stmt = parse_quote! {
-        ::trust2_contract::internal::precondition(|| #expr);
+        ::#crate_name::internal::precondition(|| #expr);
     };
     item.block.stmts.insert(0, stmt);
-    quote_spanned! {item.span()=>
+    quote! {
         #item
     }
 }
@@ -26,7 +31,9 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
-    let t = match item.sig.output {
+
+    let crate_name = Ident::new(&CRATE_NAME, Span::call_site());
+    let ty: TokenStream = match item.sig.output {
         ReturnType::Default => quote! {
             ()
         },
@@ -35,13 +42,21 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
         },
     };
     let stmt = parse_quote! {
-        ::trust2_contract::internal::postcondition::<#t, _>(#expr);
+        ::#crate_name::internal::postcondition::<#ty, _>(#expr);
     };
     item.block.stmts.insert(0, stmt);
-    quote_spanned! {item.span()=>
+    quote! {
         #item
     }
 }
+
+static CRATE_NAME: LazyLock<String> = LazyLock::new(|| {
+    match proc_macro_crate::crate_name("trust2-contract") {
+        Ok(FoundCrate::Name(name)) => name,
+        Ok(_) => unreachable!(),
+        Err(_) => "trust2_contract".into(),
+    }
+});
 
 #[cfg(test)]
 mod tests {
