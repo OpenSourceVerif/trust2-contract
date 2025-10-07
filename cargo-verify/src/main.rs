@@ -1,6 +1,8 @@
-use std::env;
-use std::path::Path;
-use std::process::{Command, ExitCode};
+use std::{
+    env,
+    path::Path,
+    process::{Command, ExitCode},
+};
 
 fn main() -> ExitCode {
     let mut args = env::args_os();
