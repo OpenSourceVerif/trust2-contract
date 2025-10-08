@@ -33,17 +33,14 @@ and statement_of_json (ctx : of_json_ctx) (js : json) :
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc
-        [
-          ("span", span);
-          ("content", content);
-          ("comments_before", comments_before);
-        ] ->
+        [ ("span", span); ("kind", kind); ("comments_before", comments_before) ]
+      ->
         let* span = span_of_json ctx span in
-        let* content = statement_kind_of_json ctx content in
+        let* kind = statement_kind_of_json ctx kind in
         let* comments_before =
           list_of_json string_of_json ctx comments_before
         in
-        Ok ({ span; content; comments_before } : statement)
+        Ok ({ span; kind; comments_before } : statement)
     | _ -> Error "")
 
 and statement_kind_of_json (ctx : of_json_ctx) (js : json) :
@@ -90,11 +87,9 @@ and switch_of_json (ctx : of_json_ctx) (js : json) : (switch, string) result =
         let* x_1 = block_id_of_json ctx x_1 in
         Ok (If (x_0, x_1))
     | `Assoc [ ("SwitchInt", `List [ x_0; x_1; x_2 ]) ] ->
-        let* x_0 = integer_type_of_json ctx x_0 in
+        let* x_0 = literal_type_of_json ctx x_0 in
         let* x_1 =
-          list_of_json
-            (pair_of_json scalar_value_of_json block_id_of_json)
-            ctx x_1
+          list_of_json (pair_of_json literal_of_json block_id_of_json) ctx x_1
         in
         let* x_2 = block_id_of_json ctx x_2 in
         Ok (SwitchInt (x_0, x_1, x_2))
@@ -105,17 +100,14 @@ and terminator_of_json (ctx : of_json_ctx) (js : json) :
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc
-        [
-          ("span", span);
-          ("content", content);
-          ("comments_before", comments_before);
-        ] ->
+        [ ("span", span); ("kind", kind); ("comments_before", comments_before) ]
+      ->
         let* span = span_of_json ctx span in
-        let* content = terminator_kind_of_json ctx content in
+        let* kind = terminator_kind_of_json ctx kind in
         let* comments_before =
           list_of_json string_of_json ctx comments_before
         in
-        Ok ({ span; content; comments_before } : terminator)
+        Ok ({ span; kind; comments_before } : terminator)
     | _ -> Error "")
 
 and terminator_kind_of_json (ctx : of_json_ctx) (js : json) :

@@ -1,5 +1,15 @@
 # Final LLBC before serialization:
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::slice_pattern_end
 fn slice_pattern_end<'_0>(@1: &'_0 (Slice<()>))
 {
@@ -17,6 +27,7 @@ fn slice_pattern_end<'_0>(@1: &'_0 (Slice<()>))
     storage_live(@2)
     storage_live(@3)
     storage_live(@4)
+    @0 := ()
     @2 := len(*(x@1))
     @3 := const (1 : usize)
     @4 := move (@2) >= move (@3)
@@ -24,12 +35,11 @@ fn slice_pattern_end<'_0>(@1: &'_0 (Slice<()>))
     }
     else {
         @0 := ()
-        @0 := ()
         return
     }
     storage_live(_named@5)
     storage_live(@6)
-    @6 := &*(x@1)
+    @6 := &*(x@1) with_metadata(copy (x@1.metadata))
     storage_live(@7)
     @7 := len(*(x@1))
     storage_live(@8)
@@ -40,7 +50,6 @@ fn slice_pattern_end<'_0>(@1: &'_0 (Slice<()>))
     _named@5 := &*(@9)
     @0 := ()
     storage_dead(_named@5)
-    @0 := ()
     return
 }
 

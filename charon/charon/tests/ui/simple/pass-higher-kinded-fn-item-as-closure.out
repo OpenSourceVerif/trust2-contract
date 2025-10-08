@@ -84,6 +84,16 @@ pub fn call_once<Self, Args, Clause0_Output>(@1: Self, @2: Args) -> Clause0_Outp
 where
     [@TraitClause0]: FnOnce<Self, Args, Clause0_Output>,
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::flabada
 pub fn flabada<'a>(@1: &'a (())) -> &'a (())
 {
@@ -103,8 +113,8 @@ where
     let @1: F; // arg #1
 
     @0 := ()
-    drop[Drop<F>] @1
     @0 := ()
+    drop[Drop<F>] @1
     return
 }
 
@@ -114,10 +124,10 @@ pub fn flibidi()
     let @0: (); // return
     let @1: (); // anonymous local
 
+    @0 := ()
     storage_live(@1)
     @1 := test_crate::call<'_, for<'a> flabada<'a>>[Sized<for<'a> flabada<'a>>, Fn<for<'a> flabada<'a>, (&'_ (())), &'_ (())>](const (flabada<'_>))
     storage_dead(@1)
-    @0 := ()
     @0 := ()
     return
 }

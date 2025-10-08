@@ -25,6 +25,16 @@ pub opaque type String
 #[lang_item("string_new")]
 pub fn new() -> String
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::use_string
 fn use_string(@1: String)
 {
@@ -32,8 +42,8 @@ fn use_string(@1: String)
     let @1: String; // arg #1
 
     @0 := ()
-    drop[{impl#0}] @1
     @0 := ()
+    drop[{impl#0}] @1
     return
 }
 
@@ -43,12 +53,12 @@ fn main()
     let @0: (); // return
     let _s@1: String; // local
 
+    @0 := ()
     storage_live(_s@1)
     _s@1 := new()
     @0 := ()
     drop[{impl#0}] _s@1
     storage_dead(_s@1)
-    @0 := ()
     return
 }
 

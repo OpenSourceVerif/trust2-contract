@@ -69,17 +69,19 @@ module PatternTest = struct
 
   type env = {
     ctx : LlbcAst.block ctx;
+    file_name : string;
     match_config : match_config;
     fmt_env : PrintLlbcAst.fmt_env;
     print_config : print_config;
     to_pat_config : to_pat_config;
   }
 
-  let mk_env (ctx : LlbcAst.block ctx) : env =
+  let mk_env (ctx : LlbcAst.block ctx) file_name : env =
     let tgt = TkPattern in
     let match_with_trait_decl_refs = true in
     {
       ctx;
+      file_name;
       match_config = { map_vars_to_vars = false; match_with_trait_decl_refs };
       print_config = { tgt };
       fmt_env = ctx_to_fmt_env ctx;
@@ -122,11 +124,11 @@ module PatternTest = struct
             TypesUtils.generic_args_of_params decl.item_meta.span
               decl.signature.generics
           in
-          Types.{ func = FunId (FRegular decl.def_id); generics }
+          Types.{ kind = FunId (FRegular decl.def_id); generics }
       | Some idx ->
           (* Find the nth function call in the function body. *)
           let rec list_stmt_calls (statement : statement) : call list =
-            match statement.content with
+            match statement.kind with
             | Call call -> [ call ]
             | Switch (If (_, st1, st2)) ->
                 list_block_calls st1 @ list_block_calls st2
@@ -156,11 +158,12 @@ module PatternTest = struct
       match_fn_ptr env.ctx env.match_config test.pattern fn_ptr
     in
     if test.success && not match_success then (
-      log#error "Pattern %s failed to match function %s\n"
+      log#error "Pattern %s failed to match function %s (in `%s`)\n"
         (pattern_to_string env.print_config test.pattern)
         (pattern_to_string env.print_config
            (fn_ptr_to_pattern env.ctx env.to_pat_config decl.signature.generics
-              fn_ptr));
+              fn_ptr))
+        env.file_name;
       false)
     else if (not test.success) && match_success then (
       log#error "Pattern %s matches function %s but shouldn't\n"
@@ -188,7 +191,7 @@ let annotated_rust_tests test_file =
 
   (* We look through all declarations for our special attributes and check each case. *)
   let ctx = ctx_from_crate crate in
-  let env = PatternTest.mk_env ctx in
+  let env = PatternTest.mk_env ctx test_file in
   let all_pass =
     T.FunDeclId.Map.for_all
       (fun _ (decl : fun_decl) ->

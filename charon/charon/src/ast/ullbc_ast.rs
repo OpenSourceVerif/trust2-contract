@@ -50,7 +50,7 @@ pub enum StatementKind {
 #[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
 pub struct Statement {
     pub span: Span,
-    pub content: StatementKind,
+    pub kind: StatementKind,
     /// Comments that precede this statement.
     // This is filled in a late pass after all the control-flow manipulation.
     #[drive(skip)]
@@ -76,7 +76,7 @@ pub enum SwitchTargets {
     /// Gives the integer type, a map linking values to switch branches, and the
     /// otherwise block. Note that matches over enumerations are performed by
     /// switching over the discriminant, which is an integer.
-    SwitchInt(IntegerTy, Vec<(ScalarValue, BlockId)>, BlockId),
+    SwitchInt(LiteralTy, Vec<(Literal, BlockId)>, BlockId),
 }
 
 /// A raw terminator: a terminator without meta data.
@@ -103,7 +103,7 @@ pub enum TerminatorKind {
 #[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
 pub struct Terminator {
     pub span: Span,
-    pub content: TerminatorKind,
+    pub kind: TerminatorKind,
     /// Comments that precede this terminator.
     // This is filled in a late pass after all the control-flow manipulation.
     #[drive(skip)]

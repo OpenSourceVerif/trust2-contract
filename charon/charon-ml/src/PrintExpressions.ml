@@ -58,6 +58,7 @@ let rec projection_elem_to_string (env : 'a fmt_env) (sub : string)
       | Some variant_id ->
           let variant_name = adt_variant_to_string env adt_id variant_id in
           "(" ^ sub ^ " as " ^ variant_name ^ ")." ^ field_name)
+  | PtrMetadata -> sub ^ ".metadata"
 
 and place_to_string (env : 'a fmt_env) (p : place) : string =
   match p.kind with
@@ -78,6 +79,8 @@ and cast_kind_to_string (env : 'a fmt_env) (cast : cast_kind) : string =
       "cast<" ^ ty_to_string env src ^ "," ^ ty_to_string env tgt ^ ">"
   | CastUnsize (src, tgt, _) ->
       "unsize<" ^ ty_to_string env src ^ "," ^ ty_to_string env tgt ^ ">"
+  | CastConcretize (src, tgt) ->
+      "concretize<" ^ ty_to_string env src ^ "," ^ ty_to_string env tgt ^ ">"
 
 and nullop_to_string (env : 'a fmt_env) (op : nullop) : string =
   match op with
@@ -90,7 +93,6 @@ and unop_to_string (env : 'a fmt_env) (unop : unop) : string =
   match unop with
   | Not -> "¬"
   | Neg om -> overflow_mode_to_string om ^ ".-"
-  | PtrMetadata -> "ptr_metadata"
   | Cast cast_kind -> cast_kind_to_string env cast_kind
 
 and overflow_mode_to_string (mode : overflow_mode) : string =
@@ -124,7 +126,7 @@ and binop_to_string (binop : binop) : string =
   | Offset -> "offset"
 
 and constant_expr_to_string (env : 'a fmt_env) (cv : constant_expr) : string =
-  match cv.value with
+  match cv.kind with
   | CLiteral lit ->
       "(" ^ literal_to_string lit ^ " : " ^ ty_to_string env cv.ty ^ ")"
   | CVar var -> const_generic_db_var_to_string env var
@@ -145,20 +147,22 @@ and operand_to_string (env : 'a fmt_env) (op : operand) : string =
 and rvalue_to_string (env : 'a fmt_env) (rv : rvalue) : string =
   match rv with
   | Use op -> operand_to_string env op
-  | RvRef (p, bk) -> begin
+  | RvRef (p, bk, op) -> begin
+      let op = operand_to_string env op in
       let p = place_to_string env p in
       match bk with
-      | BShared -> "&" ^ p
-      | BMut -> "&mut " ^ p
-      | BTwoPhaseMut -> "&two-phase " ^ p
-      | BUniqueImmutable -> "&uniq " ^ p
-      | BShallow -> "&shallow " ^ p
+      | BShared -> "&(" ^ p ^ ", " ^ op ^ ")"
+      | BMut -> "&mut (" ^ p ^ ", " ^ op ^ ")"
+      | BTwoPhaseMut -> "&two-phase (" ^ p ^ ", " ^ op ^ ")"
+      | BUniqueImmutable -> "&uniq (" ^ p ^ ", " ^ op ^ ")"
+      | BShallow -> "&shallow (" ^ p ^ ", " ^ op ^ ")"
     end
-  | RawPtr (p, pk) -> begin
+  | RawPtr (p, pk, op) -> begin
+      let op = operand_to_string env op in
       let p = place_to_string env p in
       match pk with
-      | RShared -> "&raw const " ^ p
-      | RMut -> "&raw mut " ^ p
+      | RShared -> "&raw const (" ^ p ^ ", " ^ op ^ ")"
+      | RMut -> "&raw mut (" ^ p ^ ", " ^ op ^ ")"
     end
   | NullaryOp (op, ty) ->
       nullop_to_string env op ^ "<" ^ ty_to_string env ty ^ ">"

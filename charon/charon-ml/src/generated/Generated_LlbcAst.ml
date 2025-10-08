@@ -14,7 +14,7 @@ and statement = {
       (** Integer uniquely identifying this statement among the statmeents in
           the current body. To simplify things we generate globally-fresh ids
           when creating a new [Statement]. *)
-  content : statement_kind;
+  kind : statement_kind;
   comments_before : string list;  (** Comments that precede this statement. *)
 }
 
@@ -80,8 +80,7 @@ and switch =
             v@2 := move v@3 == 0; // Represented as [Assign(v@2, BinOp(BinOp::Eq, Move(y), Const(0)))]
             if (move v@2) { // Represented as [If(Move(v@2), <then branch>, <else branch>)]
           ]} *)
-  | SwitchInt of
-      operand * integer_type * (scalar_value list * block) list * block
+  | SwitchInt of operand * literal_type * (literal list * block) list * block
       (** Gives the integer type, a map linking values to switch branches, and
           the otherwise block. Note that matches over enumerations are performed
           by switching over the discriminant, which is an integer. Also, we use
@@ -99,7 +98,7 @@ and switch =
       (** A match over an ADT.
 
           The match statement is introduced in
-          [crate::transform::remove_read_discriminant] (whenever we find a
+          [crate::transform::resugar::reconstruct_matches] (whenever we find a
           discriminant read, we merge it with the subsequent switch into a
           match). *)
 [@@deriving

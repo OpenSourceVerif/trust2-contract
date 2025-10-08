@@ -26,6 +26,16 @@ pub fn drop<'_0, Self>(@1: &'_0 mut (Self))
 where
     [@TraitClause0]: Drop<Self>,
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::OtherTrait
 trait OtherTrait<Self>
 {
@@ -89,6 +99,7 @@ where
     let @2: (); // anonymous local
     let @3: &'_ (T); // anonymous local
 
+    @0 := ()
     storage_live(@2)
     storage_live(@3)
     @3 := &x@1
@@ -97,7 +108,6 @@ where
     storage_dead(@2)
     @0 := ()
     drop[Drop<T>] x@1
-    @0 := ()
     return
 }
 

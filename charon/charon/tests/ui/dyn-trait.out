@@ -105,9 +105,9 @@ struct core::ops::function::Fn::{vtable}<Args, Ty0> {
   size: usize,
   align: usize,
   drop: fn(*mut (dyn exists<_dyn> [@TraitClause0]: Fn<_dyn, Args> + _dyn : '_ + @TraitClause1_0::parent_clause1::parent_clause1::Output = Ty0)),
-  method_call: fn<'_0>(&'_0_0 ((dyn exists<_dyn> [@TraitClause0]: Fn<_dyn, Args> + _dyn : '_ + @TraitClause1_0::parent_clause1::parent_clause1::Output = Ty0)), Args) -> Fn<(dyn exists<_dyn> [@TraitClause0]: Fn<_dyn, Args> + _dyn : '_ + @TraitClause1_0::parent_clause1::parent_clause1::Output = Ty0), Args>::parent_clause1::parent_clause1::Output,
+  method_call: fn<'_0>(&'_0_0 ((dyn exists<_dyn> [@TraitClause0]: Fn<_dyn, Args> + _dyn : '_ + @TraitClause1_0::parent_clause1::parent_clause1::Output = Ty0)), Args) -> Ty0,
   super_trait_0: &'static (core::marker::MetaSized::{vtable}),
-  super_trait_1: &'static (core::ops::function::FnMut::{vtable}<Args, Fn<(dyn exists<_dyn> [@TraitClause0]: Fn<_dyn, Args> + _dyn : '_ + @TraitClause1_0::parent_clause1::parent_clause1::Output = Ty0), Args>::parent_clause1::parent_clause1::Output>),
+  super_trait_1: &'static (core::ops::function::FnMut::{vtable}<Args, Ty0>),
 }
 
 // Full name: core::ops::function::Fn
@@ -186,6 +186,16 @@ where
     vtable: {impl ToString for T}::{vtable}<T>[@TraitClause0, @TraitClause1]
 }
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::construct
 fn construct<T>(@1: T) -> alloc::boxed::Box<(dyn exists<_dyn> [@TraitClause0]: Display<_dyn> + _dyn : 'static)>[MetaSized<(dyn exists<_dyn> [@TraitClause0]: Display<_dyn> + _dyn : '_)>, Sized<Global>]
 where
@@ -201,7 +211,7 @@ fn destruct<'_0>(@1: &'_0 ((dyn exists<_dyn> [@TraitClause0]: Display<_dyn> + _d
     let @2: &'_ ((dyn exists<_dyn> [@TraitClause0]: Display<_dyn> + _dyn : '_)); // anonymous local
 
     storage_live(@2)
-    @2 := &*(x@1)
+    @2 := &*(x@1) with_metadata(copy (x@1.metadata))
     @0 := {impl ToString for T}::to_string<'_, (dyn exists<_dyn> [@TraitClause0]: Display<_dyn> + _dyn : '_)>[MetaSized<(dyn exists<_dyn> [@TraitClause0]: Display<_dyn> + _dyn : '_)>, Display<(dyn exists<_dyn> [@TraitClause0]: Display<_dyn> + _dyn : '_)>](move (@2))
     storage_dead(@2)
     return

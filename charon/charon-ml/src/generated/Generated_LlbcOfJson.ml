@@ -22,16 +22,16 @@ and statement_of_json (ctx : of_json_ctx) (js : json) :
         [
           ("span", span);
           ("id", id);
-          ("content", content);
+          ("kind", kind);
           ("comments_before", comments_before);
         ] ->
         let* span = span_of_json ctx span in
         let* statement_id = statement_id_of_json ctx id in
-        let* content = statement_kind_of_json ctx content in
+        let* kind = statement_kind_of_json ctx kind in
         let* comments_before =
           list_of_json string_of_json ctx comments_before
         in
-        Ok ({ span; statement_id; content; comments_before } : statement)
+        Ok ({ span; statement_id; kind; comments_before } : statement)
     | _ -> Error "")
 
 and statement_id_of_json (ctx : of_json_ctx) (js : json) :
@@ -109,10 +109,10 @@ and switch_of_json (ctx : of_json_ctx) (js : json) : (switch, string) result =
         Ok (If (x_0, x_1, x_2))
     | `Assoc [ ("SwitchInt", `List [ x_0; x_1; x_2; x_3 ]) ] ->
         let* x_0 = operand_of_json ctx x_0 in
-        let* x_1 = integer_type_of_json ctx x_1 in
+        let* x_1 = literal_type_of_json ctx x_1 in
         let* x_2 =
           list_of_json
-            (pair_of_json (list_of_json scalar_value_of_json) block_of_json)
+            (pair_of_json (list_of_json literal_of_json) block_of_json)
             ctx x_2
         in
         let* x_3 = block_of_json ctx x_3 in

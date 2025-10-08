@@ -30,6 +30,16 @@ pub fn drop<'_0, Self>(@1: &'_0 mut (Self))
 where
     [@TraitClause0]: Drop<Self>,
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::foo
 fn foo<M>(@1: M)
 where
@@ -40,8 +50,8 @@ where
     let _msg@1: M; // arg #1
 
     @0 := ()
-    drop[Drop<M>] _msg@1
     @0 := ()
+    drop[Drop<M>] _msg@1
     return
 }
 
@@ -52,13 +62,13 @@ fn main()
     let @1: (); // anonymous local
     let @2: (); // anonymous local
 
+    @0 := ()
     storage_live(@1)
     storage_live(@2)
     @2 := ()
     @1 := foo<()>[Sized<()>, Send<()>](move (@2))
     storage_dead(@2)
     storage_dead(@1)
-    @0 := ()
     @0 := ()
     return
 }

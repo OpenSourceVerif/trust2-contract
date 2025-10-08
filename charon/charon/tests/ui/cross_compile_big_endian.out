@@ -9,6 +9,16 @@ pub const MAX: usize = MAX()
 // Full name: core::num::{u128}::to_ne_bytes
 pub fn to_ne_bytes(@1: u128) -> Array<u8, 16 : usize>
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::S
 fn S() -> Array<u8, 16 : usize>
 {
@@ -41,6 +51,7 @@ fn main()
     let b@8: HasBEDiscr; // local
 
     storage_live(@6)
+    @0 := ()
     storage_live(x@1)
     x@1 := const (52 : usize)
     storage_live(y@2)
@@ -64,7 +75,6 @@ fn main()
     storage_dead(z@3)
     storage_dead(y@2)
     storage_dead(x@1)
-    @0 := ()
     return
 }
 

@@ -83,6 +83,16 @@ pub fn core::ops::function::FnOnce::call_once<Self, Args>(@1: Self, @2: Args) ->
 where
     [@TraitClause0]: FnOnce<Self, Args>,
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::foo::closure
 struct closure {}
 
@@ -96,11 +106,11 @@ pub fn foo() -> &'static (closure)
     let @4: &'_ (closure); // anonymous local
     let @5: closure; // anonymous local
 
-    storage_live(@3)
     storage_live(@4)
     storage_live(@5)
     @5 := closure {  }
     @4 := &@5
+    storage_live(@3)
     storage_live(@1)
     storage_live(@2)
     @3 := move (@4)

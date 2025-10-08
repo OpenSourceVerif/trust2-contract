@@ -111,6 +111,16 @@ where
     return
 }
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::foo
 fn foo()
 {
@@ -124,6 +134,7 @@ fn foo()
     let @7: &'_ (i32); // anonymous local
     let @8: i32; // anonymous local
 
+    @0 := ()
     storage_live(@1)
     storage_live(@2)
     storage_live(@3)
@@ -148,7 +159,6 @@ fn foo()
     storage_dead(@8)
     storage_dead(@7)
     storage_dead(@5)
-    @0 := ()
     @0 := ()
     return
 }

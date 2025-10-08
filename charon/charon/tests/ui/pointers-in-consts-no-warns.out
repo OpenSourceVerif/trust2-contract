@@ -1,5 +1,15 @@
 # Final LLBC before serialization:
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::DISGUISED_INT
 fn DISGUISED_INT() -> *const ()
 {
@@ -24,6 +34,7 @@ pub fn bar()
     let @2: bool; // anonymous local
 
     storage_live(@2)
+    @0 := ()
     storage_live(@1)
     @1 := cast<usize, *const ()>(const (43 : usize))
     @2 := const (Opaque(`ConstantExprKind::Cast {{..}}`)) == copy (@1)
@@ -34,7 +45,6 @@ pub fn bar()
         @0 := ()
     }
     storage_dead(@1)
-    @0 := ()
     return
 }
 

@@ -69,13 +69,34 @@ fn foo() {
 #[pattern::pass(call[1], "test_crate::funs_with_disambiguator::f#1")]
 #[pattern::fail(call[1], "test_crate::funs_with_disambiguator::f#0")]
 #[pattern::fail(call[1], "test_crate::funs_with_disambiguator::f")]
-fn funs_with_disambiguator(b : bool) ->u32 {
+fn funs_with_disambiguator(b: bool) -> u32 {
     if b {
-        fn f() -> u32 { 0 }
+        fn f() -> u32 {
+            0
+        }
+        f()
+    } else {
+        fn f() -> u32 {
+            1
+        }
         f()
     }
-    else {
-        fn f() -> u32 { 1 }
-        f()
+}
+
+struct MonoContainer<T> {
+    item: T,
+}
+
+impl<T> MonoContainer<T> {
+    #[pattern::pass("test_crate::{test_crate::MonoContainer<@T>}::create")]
+    #[pattern::pass("test_crate::_::create")]
+    fn create(item: T) -> Self {
+        Self { item }
     }
+}
+
+#[pattern::pass("test_crate::mono_usage")]
+fn mono_usage() {
+    let _container1 = MonoContainer::create(42i32);
+    let _container2 = MonoContainer::create("test");
 }

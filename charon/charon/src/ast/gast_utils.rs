@@ -4,7 +4,7 @@ use crate::ast::*;
 use crate::llbc_ast;
 use crate::ullbc_ast;
 
-impl FunIdOrTraitMethodRef {
+impl FnPtrKind {
     pub fn mk_builtin(aid: BuiltinFunId) -> Self {
         Self::Fun(FunId::Builtin(aid))
     }
@@ -40,10 +40,25 @@ impl Body {
             None
         }
     }
+
+    pub fn locals(&self) -> &Locals {
+        match self {
+            Body::Structured(body) => &body.locals,
+            Body::Unstructured(body) => &body.locals,
+        }
+    }
 }
 
 impl Locals {
+    pub fn new(arg_count: usize) -> Self {
+        Self {
+            arg_count,
+            locals: Default::default(),
+        }
+    }
+
     /// Creates a new variable and returns a place pointing to it.
+    /// Warning: don't forget to `StorageLive` it before using it.
     pub fn new_var(&mut self, name: Option<String>, ty: Ty) -> Place {
         let local_id = self.locals.push_with(|index| Local {
             index,

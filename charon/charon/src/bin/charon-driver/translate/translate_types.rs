@@ -214,7 +214,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 TyKind::FnPtr(sig)
             }
             hax::TyKind::FnDef { item, .. } => {
-                let fnref = self.translate_fn_ptr(span, item)?;
+                let fnref = self.translate_fn_ptr(span, item, TransItemSourceKind::Fun)?;
                 TyKind::FnDef(fnref)
             }
             hax::TyKind::Closure(args) => {
@@ -223,14 +223,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             }
 
             hax::TyKind::Dynamic(self_ty, preds, region) => {
-                if self.monomorphize() {
-                    raise_error!(
-                        self,
-                        span,
-                        "`dyn Trait` is not yet supported with `--monomorphize`; \
-                        use `--monomorphize-conservative` instead"
-                    )
-                }
+                self.check_no_monomorphize(span)?;
                 let pred = self.translate_existential_predicates(span, self_ty, preds, region)?;
                 if let hax::ClauseKind::Trait(trait_predicate) =
                     preds.predicates[0].0.kind.hax_skip_binder_ref()
@@ -361,7 +354,11 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     /// Translate a Dynamically Sized Type metadata kind.
     ///
     /// Returns `None` if the type is generic, or if it is not a DST.
-    pub fn translate_ptr_metadata(&self, item: &hax::ItemRef) -> Option<PtrMetadata> {
+    pub fn translate_ptr_metadata(
+        &mut self,
+        span: Span,
+        item: &hax::ItemRef,
+    ) -> Result<PtrMetadata, Error> {
         // prepare the call to the method
         use rustc_middle::ty;
         let tcx = self.t_ctx.tcx;
@@ -372,24 +369,49 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             .type_of(rdefid)
             .instantiate(tcx, item.rustc_args(hax_state));
 
-        // call the key method
-        match tcx
-            .struct_tail_raw(
-                ty,
-                |ty| tcx.try_normalize_erasing_regions(ty_env, ty).unwrap_or(ty),
-                || {},
-            )
-            .kind()
-        {
-            ty::Foreign(..) => Some(PtrMetadata::None),
-            ty::Str | ty::Slice(..) => Some(PtrMetadata::Length),
-            ty::Dynamic(..) => Some(PtrMetadata::VTable(VTable)),
-            // This is NOT accurate -- if there is no generic clause that states `?Sized`
-            // Then it will be safe to return `Some(PtrMetadata::None)`.
-            // TODO: inquire the generic clause to get the accurate info.
-            ty::Placeholder(..) | ty::Infer(..) | ty::Param(..) | ty::Bound(..) => None,
-            _ => Some(PtrMetadata::None),
-        }
+        // Get the tail type, which determines the metadata of `ty`.
+        let tail_ty = tcx.struct_tail_raw(
+            ty,
+            |ty| tcx.try_normalize_erasing_regions(ty_env, ty).unwrap_or(ty),
+            || {},
+        );
+        let hax_ty: hax::Ty = self.t_ctx.catch_sinto(hax_state, span, &tail_ty)?;
+
+        // If we're hiding `Sized`, let's consider everything to be sized.
+        let everything_is_sized = self.t_ctx.options.hide_marker_traits;
+        let ret = match tail_ty.kind() {
+            _ if everything_is_sized || tail_ty.is_sized(tcx, ty_env) => PtrMetadata::None,
+            ty::Str | ty::Slice(..) => PtrMetadata::Length,
+            ty::Dynamic(..) => match hax_ty.kind() {
+                hax::TyKind::Dynamic(_, preds, _) => {
+                    let vtable = self
+                        .translate_region_binder(
+                            span,
+                            &preds.predicates[0].0.kind,
+                            |ctx, kind: &hax::ClauseKind| {
+                                let hax::ClauseKind::Trait(trait_predicate) = kind else {
+                                    unreachable!()
+                                };
+                                Ok(ctx
+                                    .translate_vtable_struct_ref(span, &trait_predicate.trait_ref)?
+                                    .unwrap())
+                            },
+                        )?
+                        .erase();
+                    PtrMetadata::VTable(vtable)
+                }
+                _ => unreachable!("Unexpected hax type {hax_ty:?} for dynamic type: {ty:?}"),
+            },
+            ty::Param(..) => PtrMetadata::InheritFrom(self.translate_ty(span, &hax_ty)?),
+            ty::Placeholder(..) | ty::Infer(..) | ty::Bound(..) => {
+                panic!(
+                    "We should never encounter a placeholder, infer, or bound type from ptr_metadata translation. Got: {tail_ty:?}"
+                )
+            }
+            _ => PtrMetadata::None,
+        };
+
+        Ok(ret)
     }
 
     /// Translate a type layout.
@@ -399,26 +421,22 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     #[tracing::instrument(skip(self))]
     pub fn translate_layout(&self, item: &hax::ItemRef) -> Option<Layout> {
         use rustc_abi as r_abi;
-        // Panics if the fields layout is not `Arbitrary`.
+
         fn translate_variant_layout(
             variant_layout: &r_abi::LayoutData<r_abi::FieldIdx, r_abi::VariantIdx>,
             tag: Option<ScalarValue>,
         ) -> VariantLayout {
-            match &variant_layout.fields {
+            let field_offsets = match &variant_layout.fields {
                 r_abi::FieldsShape::Arbitrary { offsets, .. } => {
-                    let mut v = Vector::with_capacity(offsets.len());
-                    for o in offsets.iter() {
-                        v.push(o.bytes());
-                    }
-                    VariantLayout {
-                        field_offsets: v,
-                        uninhabited: variant_layout.is_uninhabited(),
-                        tag,
-                    }
+                    offsets.iter().map(|o| o.bytes()).collect()
                 }
-                r_abi::FieldsShape::Primitive
-                | r_abi::FieldsShape::Union(_)
-                | r_abi::FieldsShape::Array { .. } => panic!("Unexpected layout shape"),
+                r_abi::FieldsShape::Primitive | r_abi::FieldsShape::Union(_) => Vector::default(),
+                r_abi::FieldsShape::Array { .. } => panic!("Unexpected layout shape"),
+            };
+            VariantLayout {
+                field_offsets,
+                uninhabited: variant_layout.is_uninhabited(),
+                tag,
             }
         }
 
@@ -505,7 +523,8 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             r_abi::Variants::Single { .. } | r_abi::Variants::Empty => None,
         };
 
-        let mut variant_layouts = Vector::new();
+        let mut variant_layouts: Vector<VariantId, VariantLayout> = Vector::new();
+
         match layout.variants() {
             r_abi::Variants::Multiple { variants, .. } => {
                 let tag_ty = discriminant_layout
@@ -535,11 +554,20 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 }
             }
             r_abi::Variants::Single { index } => {
-                assert!(*index == r_abi::VariantIdx::ZERO);
-                // For structs we add a single variant that has the field offsets. Unions don't
-                // have field offsets.
                 if let r_abi::FieldsShape::Arbitrary { .. } = layout.fields() {
-                    variant_layouts.push(translate_variant_layout(&layout, None));
+                    let n_variants = match ty.kind() {
+                        _ if let Some(range) = ty.variant_range(tcx) => range.end.index(),
+                        _ => 1,
+                    };
+                    // All the variants not initialized below are uninhabited.
+                    variant_layouts = (0..n_variants)
+                        .map(|_| VariantLayout {
+                            field_offsets: Vector::default(),
+                            uninhabited: true,
+                            tag: None,
+                        })
+                        .collect();
+                    variant_layouts[index.index()] = translate_variant_layout(&layout, None);
                 }
             }
             r_abi::Variants::Empty => {}
@@ -743,9 +771,35 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         &mut self,
         def_span: Span,
         discr: &hax::DiscriminantValue,
-    ) -> Result<ScalarValue, Error> {
+    ) -> Result<Literal, Error> {
         let ty = self.translate_ty(def_span, &discr.ty)?;
-        let int_ty = ty.kind().as_literal().unwrap().to_integer_ty().unwrap();
-        Ok(ScalarValue::from_bits(int_ty, discr.val))
+        let lit_ty = ty.kind().as_literal().unwrap();
+        match Literal::from_bits(lit_ty, discr.val) {
+            Some(lit) => Ok(lit),
+            None => raise_error!(self, def_span, "unexpected discriminant type: {ty:?}",),
+        }
+    }
+
+    pub fn translate_repr_options(&mut self, hax_repr_options: &hax::ReprOptions) -> ReprOptions {
+        let repr_algo = if hax_repr_options.flags.is_c {
+            ReprAlgorithm::C
+        } else {
+            ReprAlgorithm::Rust
+        };
+
+        let align_mod = if let Some(align) = &hax_repr_options.align {
+            Some(AlignmentModifier::Align(align.bytes))
+        } else if let Some(pack) = &hax_repr_options.pack {
+            Some(AlignmentModifier::Pack(pack.bytes))
+        } else {
+            None
+        };
+
+        ReprOptions {
+            transparent: hax_repr_options.flags.is_transparent,
+            explicit_discr_type: hax_repr_options.int_specified,
+            repr_algo,
+            align_modif: align_mod,
+        }
     }
 }

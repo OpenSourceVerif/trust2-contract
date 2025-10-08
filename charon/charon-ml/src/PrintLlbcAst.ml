@@ -14,7 +14,7 @@ module Ast = struct
 
   let rec statement_to_string (env : fmt_env) (indent : string)
       (indent_incr : string) (st : statement) : string =
-    statement_kind_to_string env indent indent_incr st.content
+    statement_kind_to_string env indent indent_incr st.kind
 
   and statement_kind_to_string (env : fmt_env) (indent : string)
       (indent_incr : string) (st : statement_kind) : string =
@@ -67,7 +67,7 @@ module Ast = struct
               List.map
                 (fun (svl, be) ->
                   let svl =
-                    List.map (fun sv -> "| " ^ scalar_value_to_string sv) svl
+                    List.map (fun sv -> "| " ^ literal_to_string sv) svl
                   in
                   let svl = String.concat " " svl in
                   indent ^ svl ^ " => {\n" ^ inner_to_string2 be ^ "\n"
@@ -142,7 +142,7 @@ module Ast = struct
     (* Type *)
     let ty = ty_to_string env def.ty in
 
-    let body_id = fun_decl_id_to_string env def.body in
+    let body_id = fun_decl_id_to_string env def.init in
     indent ^ "global " ^ name ^ params ^ clauses ^ " : " ^ ty ^ " = " ^ body_id
 end
 
