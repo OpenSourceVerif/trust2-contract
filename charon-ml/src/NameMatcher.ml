@@ -123,6 +123,7 @@ and pattern_elem_to_string (c : print_config) (e : pattern_elem) : string =
       match c.tgt with
       | TkPattern | TkPretty -> "{" ^ ty ^ "}"
       | TkName -> ty)
+  | PWild -> "_"
 
 and expr_to_string (c : print_config) (e : expr) : string =
   match e with
@@ -436,13 +437,34 @@ let match_literal (pl : literal) (l : Values.literal) : bool =
 let rec match_name_with_generics (ctx : 'fun_body ctx) (c : match_config)
     ?(m : maps = mk_empty_maps ()) (p : pattern) (n : T.name)
     (g : T.generic_args) : bool =
+  (* Handle monomorphized matching: if the name ends with a PeMonomorphized
+     element, use the monomorphized args and continue matching without that
+     element *)
+  let n, g =
+    match List.rev n with
+    | PeMonomorphized mono_args :: rest_rev ->
+        (* In this case, we may still have some late-bound generics in `g`, this could ONLY happen for regions *)
+        let regions_count, types_count, const_generics_count, trait_refs_count =
+          TypesUtils.generic_args_lengths g
+        in
+        assert (
+          types_count = 0 && const_generics_count = 0 && trait_refs_count = 0);
+        (* We additionally append the regions from `g` to the monomorphized args, so that we can match against them. *)
+        let merged_args =
+          if regions_count > 0 then begin
+            (* Late-bound regions are appended after the monomorphized ones. *)
+            { mono_args with regions = mono_args.regions @ g.regions }
+          end
+          else mono_args
+        in
+        (List.rev rest_rev, merged_args)
+    | _ -> (n, g)
+  in
   match (p, n) with
   | [], [] ->
-      raise
-        (Failure
-           "match_name_with_generics: attempt to match empty names and patterns")
+      failwith
+        "match_name_with_generics: attempt to match empty names and patterns"
       (* We shouldn't get there: the names/patterns should be non empty *)
-  | [], [ PeMonomorphized _ ] -> true (* We ignored monomorphizeds *)
   | [ PIdent (pid, pd, pg) ], [ PeIdent (id, d) ] ->
       log#ldebug
         (lazy
@@ -466,6 +488,7 @@ let rec match_name_with_generics (ctx : 'fun_body ctx) (c : match_config)
       | ImplElemTrait impl_id ->
           match_expr_with_trait_impl_id ctx c pty impl_id
           && g = TypesUtils.empty_generic_args)
+  | [ PWild ], [ _ ] -> true
   | PIdent (pid, pd, pg) :: p, PeIdent (id, d) :: n ->
       (* This is not the end: check that the generics are empty *)
       pid = id
@@ -484,6 +507,9 @@ let rec match_name_with_generics (ctx : 'fun_body ctx) (c : match_config)
       | ImplElemTrait impl_id ->
           match_expr_with_trait_impl_id ctx c pty impl_id
           && match_name_with_generics ctx c p n g)
+  | PWild :: p, _ :: n ->
+      (* Wildcard: skip this element in the name *)
+      match_name_with_generics ctx c p n g
   | _ -> false
 
 and match_name (ctx : 'fun_body ctx) (c : match_config) (p : pattern)
@@ -517,6 +543,7 @@ and match_pattern_with_literal_type (pty : pattern) (ty : T.literal_type) : bool
   let ty = literal_type_to_string ty in
   match pty with
   | [ PIdent (ty', _, []) ] when ty = ty' -> true
+  | [ PWild ] -> true
   | _ -> false
 
 and match_primitive_adt (pid : primitive_adt) (id : T.type_id) : bool =
@@ -596,6 +623,7 @@ and match_trait_decl_ref_item (ctx : 'fun_body ctx) (c : match_config)
     | PIdent (pitem_name, pd, pgenerics) ->
         pitem_name = item_name && pd = 0
         && match_generic_args ctx c (mk_empty_maps ()) pgenerics generics
+    | PWild -> true
     | _ -> false
   else raise (Failure "Unimplemented")
 
@@ -684,7 +712,7 @@ let builtin_fun_id_to_string (fid : T.builtin_fun_id) : string =
 
 let match_fn_ptr (ctx : 'fun_body ctx) (c : match_config) (p : pattern)
     (func : T.fn_ptr) : bool =
-  match func.func with
+  match func.kind with
   | FunId (FBuiltin fid) -> (
       let to_name (s : string list) : T.name =
         List.map (fun s -> T.PeIdent (s, T.Disambiguator.of_int 0)) s
@@ -719,14 +747,18 @@ let match_fn_ptr (ctx : 'fun_body ctx) (c : match_config) (p : pattern)
           let name = builtin_fun_id_to_string fid in
           match_name_with_generics ctx c p (to_name [ name ]) func.generics)
   | FunId (FRegular fid) ->
+      (* Lookup the function decl *)
       let d = Types.FunDeclId.Map.find fid ctx.crate.fun_decls in
       (* Match the pattern on the name of the function. *)
       let match_function_name =
-        match_name_with_generics ctx c p d.item_meta.name func.generics
+        let ret =
+          match_name_with_generics ctx c p d.item_meta.name func.generics
+        in
+        ret
       in
       (* Match the pattern on the trait implementation and method name, if applicable. *)
       let match_trait_ref =
-        match d.kind with
+        match d.src with
         | TraitImplItem (_, trait_ref, method_name, _)
           when c.match_with_trait_decl_refs ->
             (* FIXME: this is a hack to circumvent the fact that sometimes
@@ -836,7 +868,7 @@ let const_generic_var_to_pattern (m : constraints)
     (fun varid map -> T.ConstGenericVarId.Map.find_opt varid map.cmap)
     var
 
-let constraints_map_compute_regions_map (regions : T.region_var list) :
+let constraints_map_compute_regions_map (regions : T.region_param list) :
     var option T.RegionId.Map.t =
   let fresh_id (gen : int ref) : int =
     let id = !gen in
@@ -846,7 +878,7 @@ let constraints_map_compute_regions_map (regions : T.region_var list) :
   let rid_gen = ref 0 in
   T.RegionId.Map.of_list
     (List.map
-       (fun (r : T.region_var) ->
+       (fun (r : T.region_param) ->
          let v =
            match r.name with
            | None -> VarIndex (fresh_id rid_gen)
@@ -860,26 +892,26 @@ let compute_constraints_map (generics : T.generic_params) : constraints =
   let tmap =
     T.TypeVarId.Map.of_list
       (List.map
-         (fun (x : T.type_var) -> (x.index, Some (VarName x.name)))
+         (fun (x : T.type_param) -> (x.index, Some (VarName x.name)))
          generics.types)
   in
   let cmap =
     T.ConstGenericVarId.Map.of_list
       (List.map
-         (fun (x : T.const_generic_var) -> (x.index, Some (VarName x.name)))
+         (fun (x : T.const_generic_param) -> (x.index, Some (VarName x.name)))
          generics.const_generics)
   in
   [ { rmap; tmap; cmap } ]
 
 let constraints_map_push_regions_map (m : constraints)
-    (regions : T.region_var list) : constraints =
+    (regions : T.region_param list) : constraints =
   let rmap = constraints_map_compute_regions_map regions in
   { empty_vars_map with rmap } :: m
 
 (** Push a regions map to the constraints map, if the group of regions is
     non-empty - TODO: do something more precise *)
 let constraints_map_push_regions_map_if_nonempty (m : constraints)
-    (regions : T.region_var list) : constraints =
+    (regions : T.region_param list) : constraints =
   match regions with
   | [] -> m
   | _ -> constraints_map_push_regions_map m regions
@@ -934,7 +966,10 @@ and path_elem_with_generic_args_to_pattern (ctx : 'fun_body ctx)
       | Some args -> [ PIdent (s, d, args) ]
     end
   | PeImpl impl -> [ impl_elem_to_pattern ctx c impl ]
-  | PeMonomorphized _ -> []
+  | PeMonomorphized _ ->
+      (* In pattern generation, we skip monomorphized elements since patterns
+         are meant to match the logical structure, not the instantiation details *)
+      []
 
 and impl_elem_to_pattern (ctx : 'fun_body ctx) (c : to_pat_config)
     (impl : T.impl_elem) : pattern_elem =
@@ -1113,7 +1148,7 @@ let fn_ptr_to_pattern (ctx : 'fun_body ctx) (c : to_pat_config)
   let m = compute_constraints_map params in
   let args = generic_args_to_pattern ctx c m func.generics in
   let pat =
-    match func.func with
+    match func.kind with
     | FunId (FBuiltin fid) -> (
         match fid with
         | BoxNew ->
@@ -1249,6 +1284,7 @@ let rec pattern_common_prefix_aux (c : conv_config) (m : conv_map option)
 and pattern_elem_convertible_aux (c : conv_config) (m : conv_map option)
     (p0 : pattern_elem) (p1 : pattern_elem) : (conv_map option, unit) result =
   match (p0, p1) with
+  | PWild, _ | _, PWild -> Ok m
   | PIdent (s0, d0, g0), PIdent (s1, d1, g1) ->
       if s0 = s1 && d0 = d1 then
         match m with
@@ -1441,6 +1477,9 @@ module NameMatcherMap = struct
     (* Check if we reached the destination *)
     match name with
     | [] | [ PeMonomorphized _ ] ->
+        (* For tree search, we also consider monomorphized elements as terminal
+           since they represent instantiation details, not logical structure.
+           The monomorphized matching is always handled by the calling context. *)
         if g = TypesUtils.empty_generic_args then node_v else None
     | _ ->
         (* Explore the children *)

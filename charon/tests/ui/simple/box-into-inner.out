@@ -68,6 +68,16 @@ impl Drop for String {
     non-dyn-compatible
 }
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::into_inner
 fn into_inner(@1: alloc::boxed::Box<String>[MetaSized<String>, Sized<Global>])
 {
@@ -97,6 +107,7 @@ fn into_inner(@1: alloc::boxed::Box<String>[MetaSized<String>, Sized<Global>])
     storage_live(@11)
     storage_live(@12)
     storage_live(@13)
+    @0 := ()
     storage_live(_x@2)
     @6 := transmute<NonNull<String>, *const String>(copy ((*(b@1)).0))
     @7 := cast<*const String, *const ()>(copy (@6))
@@ -114,7 +125,6 @@ fn into_inner(@1: alloc::boxed::Box<String>[MetaSized<String>, Sized<Global>])
     @5 := transmute<NonNull<String>, *const String>(copy ((*(b@1)).0))
     @3 := &mut b@1
     @4 := {impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop<'_, String, Global>[MetaSized<String>, Sized<Global>](move (@3))
-    @0 := ()
     return
 }
 

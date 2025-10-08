@@ -25,6 +25,16 @@ pub fn core::ops::drop::Drop::drop<'_0, Self>(@1: &'_0 mut (Self))
 where
     [@TraitClause0]: Drop<Self>,
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::Trait
 pub trait Trait<Self, Self_Type>
 {
@@ -75,9 +85,9 @@ where
     let _k@2: Q; // arg #2
 
     @0 := ()
+    @0 := ()
     drop[Drop<Q>] _k@2
     drop[{impl Drop for HashMap<S>[@TraitClause0]}<S>[@TraitClause0]] _x@1
-    @0 := ()
     return
 }
 
@@ -93,9 +103,9 @@ where
     let _k@2: Q; // arg #2
 
     @0 := ()
+    @0 := ()
     drop[Drop<Q>] _k@2
     drop[{impl Drop for HashMap<S>[@TraitClause0]}<S>[@TraitClause0]] _x@1
-    @0 := ()
     return
 }
 
@@ -108,6 +118,7 @@ pub fn test1(@1: HashMap<()>[Sized<()>])
     let @3: HashMap<()>[Sized<()>]; // anonymous local
     let @4: (); // anonymous local
 
+    @0 := ()
     storage_live(@2)
     storage_live(@3)
     @3 := move (map@1)
@@ -117,7 +128,6 @@ pub fn test1(@1: HashMap<()>[Sized<()>])
     storage_dead(@4)
     storage_dead(@3)
     storage_dead(@2)
-    @0 := ()
     @0 := ()
     return
 }
@@ -131,6 +141,7 @@ pub fn test2(@1: HashMap<()>[Sized<()>])
     let @3: HashMap<()>[Sized<()>]; // anonymous local
     let @4: (); // anonymous local
 
+    @0 := ()
     storage_live(@2)
     storage_live(@3)
     @3 := move (map@1)
@@ -140,7 +151,6 @@ pub fn test2(@1: HashMap<()>[Sized<()>])
     storage_dead(@4)
     storage_dead(@3)
     storage_dead(@2)
-    @0 := ()
     @0 := ()
     return
 }

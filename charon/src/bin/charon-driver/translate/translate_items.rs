@@ -55,7 +55,7 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
     pub(crate) fn translate_item_aux(
         &mut self,
         item_src: &TransItemSource,
-        trans_id: Option<AnyTransId>,
+        trans_id: Option<ItemId>,
     ) -> Result<(), Error> {
         // Translate the meta information
         let name = self.translate_name(item_src)?;
@@ -77,35 +77,35 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                 bt_ctx.register_module(item_meta, &def);
             }
             TransItemSourceKind::Type => {
-                let Some(AnyTransId::Type(id)) = trans_id else {
+                let Some(ItemId::Type(id)) = trans_id else {
                     unreachable!()
                 };
                 let ty = bt_ctx.translate_type_decl(id, item_meta, &def)?;
                 self.translated.type_decls.set_slot(id, ty);
             }
             TransItemSourceKind::Fun => {
-                let Some(AnyTransId::Fun(id)) = trans_id else {
+                let Some(ItemId::Fun(id)) = trans_id else {
                     unreachable!()
                 };
                 let fun_decl = bt_ctx.translate_function(id, item_meta, &def)?;
                 self.translated.fun_decls.set_slot(id, fun_decl);
             }
             TransItemSourceKind::Global => {
-                let Some(AnyTransId::Global(id)) = trans_id else {
+                let Some(ItemId::Global(id)) = trans_id else {
                     unreachable!()
                 };
                 let global_decl = bt_ctx.translate_global(id, item_meta, &def)?;
                 self.translated.global_decls.set_slot(id, global_decl);
             }
             TransItemSourceKind::TraitDecl => {
-                let Some(AnyTransId::TraitDecl(id)) = trans_id else {
+                let Some(ItemId::TraitDecl(id)) = trans_id else {
                     unreachable!()
                 };
                 let trait_decl = bt_ctx.translate_trait_decl(id, item_meta, &def)?;
                 self.translated.trait_decls.set_slot(id, trait_decl);
             }
             TransItemSourceKind::TraitImpl(kind) => {
-                let Some(AnyTransId::TraitImpl(id)) = trans_id else {
+                let Some(ItemId::TraitImpl(id)) = trans_id else {
                     unreachable!()
                 };
                 let trait_impl = match kind {
@@ -121,35 +121,35 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                 self.translated.trait_impls.set_slot(id, trait_impl);
             }
             &TransItemSourceKind::ClosureMethod(kind) => {
-                let Some(AnyTransId::Fun(id)) = trans_id else {
+                let Some(ItemId::Fun(id)) = trans_id else {
                     unreachable!()
                 };
                 let fun_decl = bt_ctx.translate_closure_method(id, item_meta, &def, kind)?;
                 self.translated.fun_decls.set_slot(id, fun_decl);
             }
             TransItemSourceKind::ClosureAsFnCast => {
-                let Some(AnyTransId::Fun(id)) = trans_id else {
+                let Some(ItemId::Fun(id)) = trans_id else {
                     unreachable!()
                 };
                 let fun_decl = bt_ctx.translate_stateless_closure_as_fn(id, item_meta, &def)?;
                 self.translated.fun_decls.set_slot(id, fun_decl);
             }
             TransItemSourceKind::DropGlueMethod => {
-                let Some(AnyTransId::Fun(id)) = trans_id else {
+                let Some(ItemId::Fun(id)) = trans_id else {
                     unreachable!()
                 };
                 let fun_decl = bt_ctx.translate_drop_method(id, item_meta, &def)?;
                 self.translated.fun_decls.set_slot(id, fun_decl);
             }
             TransItemSourceKind::VTable => {
-                let Some(AnyTransId::Type(id)) = trans_id else {
+                let Some(ItemId::Type(id)) = trans_id else {
                     unreachable!()
                 };
                 let ty_decl = bt_ctx.translate_vtable_struct(id, item_meta, &def)?;
                 self.translated.type_decls.set_slot(id, ty_decl);
             }
             TransItemSourceKind::VTableInstance(impl_kind) => {
-                let Some(AnyTransId::Global(id)) = trans_id else {
+                let Some(ItemId::Global(id)) = trans_id else {
                     unreachable!()
                 };
                 let global_decl =
@@ -157,7 +157,7 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                 self.translated.global_decls.set_slot(id, global_decl);
             }
             TransItemSourceKind::VTableInstanceInitializer(impl_kind) => {
-                let Some(AnyTransId::Fun(id)) = trans_id else {
+                let Some(ItemId::Fun(id)) = trans_id else {
                     unreachable!()
                 };
                 let fun_decl =
@@ -165,11 +165,11 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                 self.translated.fun_decls.set_slot(id, fun_decl);
             }
             TransItemSourceKind::VTableMethod => {
-                // let Some(AnyTransId::Fun(id)) = trans_id else {
-                //     unreachable!()
-                // };
-                // let fun_decl = bt_ctx.translate_vtable_shim(id, item_meta, &def)?;
-                // self.translated.fun_decls.set_slot(id, fun_decl);
+                let Some(ItemId::Fun(id)) = trans_id else {
+                    unreachable!()
+                };
+                let fun_decl = bt_ctx.translate_vtable_shim(id, item_meta, &def)?;
+                self.translated.fun_decls.set_slot(id, fun_decl);
             }
         }
         Ok(())
@@ -177,7 +177,7 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
 
     /// While translating an item you may need the contents of another. Use this to retreive the
     /// translated version of this item. Use with care as this could create cycles.
-    pub(crate) fn get_or_translate(&mut self, id: AnyTransId) -> Result<AnyTransItem<'_>, Error> {
+    pub(crate) fn get_or_translate(&mut self, id: ItemId) -> Result<krate::ItemRef<'_>, Error> {
         // We have to call `get_item` a few times because we're running into the classic `Polonius`
         // problem case.
         if self.translated.get_item(id).is_none() {
@@ -190,6 +190,67 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
         }
         let item = self.translated.get_item(id);
         Ok(item.unwrap())
+    }
+
+    /// Add a `const UNIT: () = ();` const, used as metadata for thin pointers/references.
+    pub fn translate_unit_metadata_const(&mut self) {
+        use charon_lib::ullbc_ast::*;
+        let name = Name::from_path(&["UNIT_METADATA"]);
+        let item_meta = ItemMeta {
+            name,
+            span: Span::dummy(),
+            source_text: None,
+            attr_info: AttrInfo::default(),
+            is_local: false,
+            opacity: ItemOpacity::Foreign,
+            lang_item: None,
+        };
+
+        let body = {
+            let mut body = GExprBody {
+                span: Span::dummy(),
+                locals: Locals::new(0),
+                comments: Default::default(),
+                body: Vector::default(),
+            };
+            let _ = body.locals.new_var(None, Ty::mk_unit());
+            body.body.push(BlockData {
+                statements: Default::default(),
+                terminator: Terminator::new(Span::dummy(), TerminatorKind::Return),
+            });
+            body
+        };
+
+        let global_id = self.translated.global_decls.reserve_slot();
+        let initializer = self.translated.fun_decls.push_with(|def_id| FunDecl {
+            def_id,
+            item_meta: item_meta.clone(),
+            src: ItemSource::TopLevel,
+            is_global_initializer: Some(global_id),
+            signature: FunSig {
+                is_unsafe: false,
+                generics: Default::default(),
+                inputs: vec![],
+                output: Ty::mk_unit(),
+            },
+            body: Ok(Body::Unstructured(body)),
+        });
+        self.translated.global_decls.set_slot(
+            global_id,
+            GlobalDecl {
+                def_id: global_id,
+                item_meta,
+                generics: Default::default(),
+                ty: Ty::mk_unit(),
+                src: ItemSource::TopLevel,
+                global_kind: GlobalKind::NamedConst,
+                init: initializer,
+            },
+        );
+        self.translated.unit_metadata = Some(GlobalDeclRef {
+            id: global_id,
+            generics: Box::new(GenericArgs::empty()),
+        });
     }
 }
 
@@ -222,11 +283,11 @@ impl ItemTransCtx<'_, '_> {
         }
     }
 
-    pub(crate) fn get_item_kind(
+    pub(crate) fn get_item_source(
         &mut self,
         span: Span,
         def: &hax::FullDef,
-    ) -> Result<ItemKind, Error> {
+    ) -> Result<ItemSource, Error> {
         let assoc = match def.kind() {
             hax::FullDefKind::AssocTy {
                 associated_item, ..
@@ -239,9 +300,9 @@ impl ItemTransCtx<'_, '_> {
             } => associated_item,
             hax::FullDefKind::Closure { args, .. } => {
                 let info = self.translate_closure_info(span, args)?;
-                return Ok(ItemKind::Closure { info });
+                return Ok(ItemSource::Closure { info });
             }
-            _ => return Ok(ItemKind::TopLevel),
+            _ => return Ok(ItemSource::TopLevel),
         };
         Ok(match &assoc.container {
             // E.g.:
@@ -250,7 +311,7 @@ impl ItemTransCtx<'_, '_> {
             //   fn new() -> Self { ... } <- inherent method
             // }
             // ```
-            hax::AssocItemContainer::InherentImplContainer { .. } => ItemKind::TopLevel,
+            hax::AssocItemContainer::InherentImplContainer { .. } => ItemSource::TopLevel,
             // E.g.:
             // ```
             // impl Foo for Bar {
@@ -275,7 +336,7 @@ impl ItemTransCtx<'_, '_> {
                         self.register_item(span, implemented_trait_item, TransItemSourceKind::Fun);
                 }
                 let item_name = self.t_ctx.translate_trait_item_name(def.def_id())?;
-                ItemKind::TraitImpl {
+                ItemSource::TraitImpl {
                     impl_ref,
                     trait_ref,
                     item_name,
@@ -294,7 +355,7 @@ impl ItemTransCtx<'_, '_> {
                 // don't have associated items.
                 let trait_ref = self.translate_trait_ref(span, trait_ref)?;
                 let item_name = self.t_ctx.translate_trait_item_name(def.def_id())?;
-                ItemKind::TraitDecl {
+                ItemSource::TraitDecl {
                     trait_ref,
                     item_name,
                     has_default: assoc.has_value,
@@ -321,7 +382,9 @@ impl ItemTransCtx<'_, '_> {
         self.translate_def_generics(span, def)?;
 
         // Get the kind of the type decl -- is it a closure?
-        let src = self.get_item_kind(span, def)?;
+        let src = self.get_item_source(span, def)?;
+
+        let mut repr: Option<ReprOptions> = None;
 
         // Translate type body
         let kind = match &def.kind {
@@ -332,7 +395,10 @@ impl ItemTransCtx<'_, '_> {
                 self.error_on_impl_expr_error = false;
                 self.translate_ty(span, ty).map(TypeDeclKind::Alias)
             }
-            hax::FullDefKind::Adt { .. } => self.translate_adt_def(trans_id, span, &item_meta, def),
+            hax::FullDefKind::Adt { repr: hax_repr, .. } => {
+                repr = Some(self.translate_repr_options(hax_repr));
+                self.translate_adt_def(trans_id, span, &item_meta, def)
+            }
             hax::FullDefKind::Closure { args, .. } => {
                 self.translate_closure_adt(trans_id, span, &args)
             }
@@ -344,7 +410,7 @@ impl ItemTransCtx<'_, '_> {
             Err(err) => TypeDeclKind::Error(err.msg),
         };
         let layout = self.translate_layout(def.this());
-        let ptr_metadata = self.translate_ptr_metadata(def.this());
+        let ptr_metadata = self.translate_ptr_metadata(span, def.this())?;
         let type_def = TypeDecl {
             def_id: trans_id,
             item_meta,
@@ -353,6 +419,7 @@ impl ItemTransCtx<'_, '_> {
             src,
             layout,
             ptr_metadata,
+            repr,
         };
 
         Ok(type_def)
@@ -375,9 +442,9 @@ impl ItemTransCtx<'_, '_> {
 
         // Check whether this function is a method declaration for a trait definition.
         // If this is the case, it shouldn't contain a body.
-        let kind = self.get_item_kind(span, def)?;
-        let is_trait_method_decl_without_default = match &kind {
-            ItemKind::TraitDecl { has_default, .. } => !has_default,
+        let src = self.get_item_source(span, def)?;
+        let is_trait_method_decl_without_default = match &src {
+            ItemSource::TraitDecl { has_default, .. } => !has_default,
             _ => false,
         };
 
@@ -430,7 +497,7 @@ impl ItemTransCtx<'_, '_> {
             def_id,
             item_meta,
             signature,
-            kind,
+            src,
             is_global_initializer,
             body,
         })
@@ -457,7 +524,7 @@ impl ItemTransCtx<'_, '_> {
         self.translate_def_generics(span, def)?;
 
         // Retrieve the kind
-        let item_kind = self.get_item_kind(span, def)?;
+        let item_source = self.get_item_source(span, def)?;
 
         trace!("Translating global type");
         let ty = match &def.kind {
@@ -486,7 +553,7 @@ impl ItemTransCtx<'_, '_> {
             item_meta,
             generics: self.into_generics(),
             ty,
-            kind: item_kind,
+            src: item_source,
             global_kind,
             init: initializer,
         })
@@ -523,7 +590,7 @@ impl ItemTransCtx<'_, '_> {
         // Register implied predicates.
         let mut preds =
             self.translate_predicates(implied_predicates, PredicateOrigin::WhereClauseOnTrait)?;
-        let parent_clauses = mem::take(&mut preds.trait_clauses);
+        let implied_clauses = mem::take(&mut preds.trait_clauses);
         // Consider the other predicates as required since the distinction doesn't matter for
         // non-trait-clauses.
         self.innermost_generics_mut().take_predicates_from(preds);
@@ -535,7 +602,7 @@ impl ItemTransCtx<'_, '_> {
             return Ok(TraitDecl {
                 def_id,
                 item_meta,
-                parent_clauses,
+                implied_clauses,
                 generics: self.into_generics(),
                 consts: Default::default(),
                 types: Default::default(),
@@ -584,7 +651,7 @@ impl ItemTransCtx<'_, '_> {
             };
             let poly_item_def = self.poly_hax_def(item_def_id)?;
             let (item_src, item_def) = if self.monomorphize() {
-                if poly_item_def.has_own_generics() {
+                if poly_item_def.has_own_generics_or_predicates() {
                     // Skip items that have generics of their own (as rustc defines these). This
                     // skips GAT and generic methods. This does not skip methods with late-bound
                     // lifetimes as these aren't considered generic arguments to the method itself
@@ -743,7 +810,7 @@ impl ItemTransCtx<'_, '_> {
         Ok(TraitDecl {
             def_id,
             item_meta,
-            parent_clauses,
+            implied_clauses,
             generics: self.into_generics(),
             consts,
             types,
@@ -791,17 +858,17 @@ impl ItemTransCtx<'_, '_> {
         let vtable = self.translate_vtable_instance_ref(span, &trait_pred.trait_ref, def.this())?;
 
         // The trait refs which implement the parent clauses of the implemented trait decl.
-        let parent_trait_refs = self.translate_trait_impl_exprs(span, &implied_impl_exprs)?;
+        let implied_trait_refs = self.translate_trait_impl_exprs(span, &implied_impl_exprs)?;
 
         {
             // Debugging
             let ctx = self.into_fmt();
-            let refs = parent_trait_refs
+            let refs = implied_trait_refs
                 .iter()
                 .map(|c| c.with_ctx(&ctx))
                 .format("\n");
             trace!(
-                "Trait impl: {:?}\n- parent_trait_refs:\n{}",
+                "Trait impl: {:?}\n- implied_trait_refs:\n{}",
                 def.def_id(),
                 refs
             );
@@ -830,7 +897,7 @@ impl ItemTransCtx<'_, '_> {
                 _ => unreachable!(),
             };
             let (item_src, item_def) = if self.monomorphize() {
-                if poly_item_def.has_own_generics() {
+                if poly_item_def.has_own_generics_or_predicates() {
                     continue;
                 } else {
                     let item = match &impl_item.value {
@@ -951,7 +1018,7 @@ impl ItemTransCtx<'_, '_> {
             item_meta,
             impl_trait: implemented_trait,
             generics: self.into_generics(),
-            parent_trait_refs,
+            implied_trait_refs,
             consts,
             types,
             methods,
@@ -994,7 +1061,7 @@ impl ItemTransCtx<'_, '_> {
 
         let mut generics = self.the_only_binder().params.identity_args();
         // Do the inverse operation: the trait considers the clauses as implied.
-        let parent_trait_refs = mem::take(&mut generics.trait_refs);
+        let implied_trait_refs = mem::take(&mut generics.trait_refs);
         let implemented_trait = TraitDeclRef {
             id: trait_id,
             generics: Box::new(generics),
@@ -1005,7 +1072,7 @@ impl ItemTransCtx<'_, '_> {
             item_meta,
             impl_trait: implemented_trait,
             generics: self.the_only_binder().params.clone(),
-            parent_trait_refs,
+            implied_trait_refs,
             consts: Default::default(),
             types: Default::default(),
             methods: Default::default(),
@@ -1087,7 +1154,8 @@ impl ItemTransCtx<'_, '_> {
         };
 
         let implemented_trait = self.translate_trait_predicate(span, &vimpl.trait_pred)?;
-        let parent_trait_refs = self.translate_trait_impl_exprs(span, &vimpl.implied_impl_exprs)?;
+        let implied_trait_refs =
+            self.translate_trait_impl_exprs(span, &vimpl.implied_impl_exprs)?;
 
         let mut types = vec![];
         // Monomorphic traits have no associated types.
@@ -1113,7 +1181,7 @@ impl ItemTransCtx<'_, '_> {
             item_meta,
             impl_trait: implemented_trait,
             generics,
-            parent_trait_refs,
+            implied_trait_refs,
             consts: vec![],
             types,
             methods: vec![],

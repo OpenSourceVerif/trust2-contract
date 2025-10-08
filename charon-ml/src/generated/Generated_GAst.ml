@@ -19,10 +19,7 @@ module TraitClauseId = Types.TraitClauseId
 (* Imports *)
 type builtin_fun_id = Types.builtin_fun_id [@@deriving show, ord]
 type fun_id = Types.fun_id [@@deriving show, ord]
-
-type fun_id_or_trait_method_ref = Types.fun_id_or_trait_method_ref
-[@@deriving show, ord]
-
+type fn_ptr_kind = Types.fn_ptr_kind [@@deriving show, ord]
 type fun_decl_id = Types.fun_decl_id [@@deriving show, ord]
 
 (** Check the value of an operand and abort if the value is not expected. This
@@ -30,9 +27,10 @@ type fun_decl_id = Types.fun_decl_id [@@deriving show, ord]
 
     We translate MIR asserts (introduced for out-of-bounds accesses or divisions
     by zero for instance) to this. We then eliminate them in
-    [crate::transform::remove_dynamic_checks], because they're implicit in the
-    semantics of our array accesses etc. Finally we introduce new asserts in
-    [crate::transform::reconstruct_asserts]. *)
+    [crate::transform::resugar::reconstruct_fallible_operations], because
+    they're implicit in the semantics of our array accesses etc. Finally we
+    introduce new asserts in [crate::transform::resugar::reconstruct_asserts].
+*)
 type assertion = {
   cond : operand;
   expected : bool;
@@ -67,7 +65,7 @@ and local = {
   name : string option;
       (** Variable name - may be [None] if the variable was introduced by Rust
           through desugaring. *)
-  var_ty : ty;  (** The variable type *)
+  local_ty : ty;  (** The variable type *)
 }
 
 (** The local variables of a body. *)
@@ -107,11 +105,11 @@ type global_decl = {
   item_meta : item_meta;  (** The meta data associated with the declaration. *)
   generics : generic_params;
   ty : ty;
-  kind : item_kind;
+  src : item_source;
       (** The context of the global: distinguishes top-level items from
           trait-associated items. *)
   global_kind : global_kind;  (** The kind of global (static or const). *)
-  body : fun_decl_id;
+  init : fun_decl_id;
       (** The initializer function used to compute the initial value for this
           constant/static. It uses the same generic parameters as the global. *)
 }
@@ -158,7 +156,7 @@ type trait_assoc_const = {
 and trait_assoc_ty = {
   name : trait_item_name;
   default : ty option;
-  implied_clauses : trait_clause list;
+  implied_clauses : trait_param list;
       (** List of trait clauses that apply to this type. *)
 }
 
@@ -197,7 +195,7 @@ and trait_decl = {
   def_id : trait_decl_id;
   item_meta : item_meta;
   generics : generic_params;
-  parent_clauses : trait_clause list;
+  implied_clauses : trait_param list;
       (** The "parent" clauses: the supertraits.
 
           Supertraits are actually regular where clauses, but we decided to have
@@ -279,7 +277,7 @@ type trait_impl = {
       (** The information about the implemented trait. Note that this contains
           the instantiation of the "parent" clauses. *)
   generics : generic_params;
-  parent_trait_refs : trait_ref list;
+  implied_trait_refs : trait_ref list;
       (** The trait references for the parent clauses (see [TraitDecl]). *)
   consts : (trait_item_name * global_decl_ref) list;
       (** The implemented associated constants. *)
@@ -421,7 +419,7 @@ and declaration_group =
       (** A global declaration group *)
   | TraitDeclGroup of trait_decl_id g_declaration_group
   | TraitImplGroup of trait_impl_id g_declaration_group
-  | MixedGroup of any_decl_id g_declaration_group
+  | MixedGroup of item_id g_declaration_group
       (** Anything that doesn't fit into these categories. *)
 
 (** A (group of) top-level declaration(s), properly reordered. "G" stands for

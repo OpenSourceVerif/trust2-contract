@@ -1,5 +1,15 @@
 # Final LLBC before serialization:
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::two
 fn two() -> &'static (u32)
 {
@@ -13,11 +23,11 @@ fn two() -> &'static (u32)
 
     storage_live(@2)
     storage_live(@3)
+    storage_live(@1)
+    @2 := const (1 : u32) panic.+ const (1 : u32)
     storage_live(@4)
     storage_live(@5)
     storage_live(@6)
-    storage_live(@1)
-    @2 := const (1 : u32) panic.+ const (1 : u32)
     @6 := const (1 : u32) wrap.+ const (1 : u32)
     @5 := move (@6)
     @4 := &@5

@@ -41,7 +41,6 @@ pub enum Region {
 /// to a *trait instance*, which is why the [`TraitRefKind::Clause`] variant may seem redundant
 /// with some of the other variants.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Drive, DriveMut)]
-#[charon::rename("TraitInstanceId")]
 pub enum TraitRefKind {
     /// A specific top-level implementation item.
     TraitImpl(TraitImplRef),
@@ -128,7 +127,6 @@ pub enum TraitRefKind {
 /// A reference to a trait
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Drive, DriveMut)]
 pub struct TraitRef {
-    #[charon::rename("trait_id")]
     pub kind: TraitRefKind,
     /// Not necessary, but useful
     pub trait_decl_ref: PolyTraitDeclRef,
@@ -197,7 +195,7 @@ pub type BoxedArgs = Box<GenericArgs>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Drive, DriveMut)]
 pub struct RegionBinder<T> {
     #[charon::rename("binder_regions")]
-    pub regions: Vector<RegionId, RegionVar>,
+    pub regions: Vector<RegionId, RegionParam>,
     /// Named this way to highlight accesses to the inner value that might be handling parameters
     /// incorrectly. Prefer using helper methods.
     #[charon::rename("binder_value")]
@@ -246,11 +244,11 @@ pub struct Binder<T> {
 /// be filled with witnesses/instances.
 #[derive(Default, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Drive, DriveMut)]
 pub struct GenericParams {
-    pub regions: Vector<RegionId, RegionVar>,
-    pub types: Vector<TypeVarId, TypeVar>,
-    pub const_generics: Vector<ConstGenericVarId, ConstGenericVar>,
+    pub regions: Vector<RegionId, RegionParam>,
+    pub types: Vector<TypeVarId, TypeParam>,
+    pub const_generics: Vector<ConstGenericVarId, ConstGenericParam>,
     // TODO: rename to match [GenericArgs]?
-    pub trait_clauses: Vector<TraitClauseId, TraitClause>,
+    pub trait_clauses: Vector<TraitClauseId, TraitParam>,
     /// The first region in the pair outlives the second region
     pub regions_outlive: Vec<RegionBinder<RegionOutlives>>,
     /// The type outlives the region
@@ -368,7 +366,6 @@ pub struct Layout {
     #[drive(skip)]
     pub align: Option<ByteCount>,
     /// The discriminant's layout, if any. Only relevant for types with multiple variants.
-    ///
     #[drive(skip)]
     pub discriminant_layout: Option<DiscriminantLayout>,
     /// Whether the type is uninhabited, i.e. has any valid value at all.
@@ -381,11 +378,6 @@ pub struct Layout {
     pub variant_layouts: Vector<VariantId, VariantLayout>,
 }
 
-/// A placeholder for the vtable of a trait object.
-/// To be implemented in the future when `dyn Trait` is fully supported.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Drive, DriveMut)]
-pub struct VTable;
-
 /// The metadata stored in a pointer. That's the information stored in pointers alongside
 /// their address. It's empty for `Sized` types, and interesting for unsized
 /// aka dynamically-sized types.
@@ -394,12 +386,52 @@ pub enum PtrMetadata {
     /// Types that need no metadata, namely `T: Sized` types.
     #[charon::rename("NoMetadata")]
     None,
-    /// Metadata for `[T]`, `str`, and user-defined types
-    /// that directly or indirectly contain one of these two.
+    /// Metadata for `[T]` and `str`, and user-defined types
+    /// that directly or indirectly contain one of the two.
+    /// Of type `usize`.
+    /// Notably, length for `[T]` denotes the number of elements in the slice.
+    /// While for `str` it denotes the number of bytes in the string.
     Length,
-    /// Metadata for `dyn Trait` and user-defined types
-    /// that directly or indirectly contain a `dyn Trait`.
-    VTable(VTable),
+    /// Metadata for `dyn Trait`, referring to the vtable struct,
+    /// also for user-defined types that directly or indirectly contain a `dyn Trait`.
+    /// Of type `&'static vtable`
+    VTable(TypeDeclRef),
+    /// Unknown due to generics, but will inherit from the given type.
+    /// This is consistent with `<Ty as Pointee>::Metadata`.
+    /// Of type `TyKind::Metadata(Ty)`.
+    InheritFrom(Ty),
+}
+
+/// Describes which layout algorithm is used for representing the corresponding type.
+/// Depends on the `#[repr(...)]` used.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReprAlgorithm {
+    /// The default layout algorithm. Used without an explicit `ŗepr` or for `repr(Rust)`.
+    Rust,
+    /// The C layout algorithm as enforced by `repr(C)`.
+    C,
+}
+
+/// Describes modifiers to the alignment and packing of the corresponding type.
+/// Represents `repr(align(n))` and `repr(packed(n))`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AlignmentModifier {
+    Align(ByteCount),
+    Pack(ByteCount),
+}
+
+/// The representation options as annotated by the user.
+///
+/// NOTE: This does not include less common/unstable representations such as `#[repr(simd)]`
+/// or the compiler internal `#[repr(linear)]`. Similarly, enum discriminant representations
+/// are encoded in [`Variant::discriminant`] and [`DiscriminantLayout`] instead.
+/// This only stores whether the discriminant type was derived from an explicit annotation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ReprOptions {
+    pub repr_algo: ReprAlgorithm,
+    pub align_modif: Option<AlignmentModifier>,
+    pub transparent: bool,
+    pub explicit_discr_type: bool,
 }
 
 /// A type declaration.
@@ -423,19 +455,18 @@ pub struct TypeDecl {
     pub item_meta: ItemMeta,
     pub generics: GenericParams,
     /// The context of the type: distinguishes top-level items from closure-related items.
-    pub src: ItemKind,
+    pub src: ItemSource,
     /// The type kind: enum, struct, or opaque.
     pub kind: TypeDeclKind,
     /// The layout of the type. Information may be partial because of generics or dynamically-
     /// sized types. If rustc cannot compute a layout, it is `None`.
     pub layout: Option<Layout>,
     /// The metadata associated with a pointer to the type.
-    /// This is `None` if we could not compute it because of generics.
-    /// The information is *accurate* if it is `Some`
-    ///     while if it is `None`, it may still be theoretically computable
-    ///     but due to some limitation to be fixed, we are unable to obtain the info.
-    /// See `translate_types::{impl ItemTransCtx}::translate_ptr_metadata` for more details.
-    pub ptr_metadata: Option<PtrMetadata>,
+    pub ptr_metadata: PtrMetadata,
+    /// The representation options of this type declaration as annotated by the user.
+    /// Is `None` for foreign type declarations.
+    #[drive(skip)]
+    pub repr: Option<ReprOptions>,
 }
 
 generate_index_type!(VariantId, "Variant");
@@ -469,10 +500,10 @@ pub struct Variant {
     #[drive(skip)]
     pub name: String,
     pub fields: Vector<FieldId, Field>,
-    /// The discriminant value outputted by `std::mem::discriminant` for this variant. This is
-    /// different than the discriminant stored in memory (the one controlled by `repr`).
+    /// The discriminant value outputted by `std::mem::discriminant` for this variant.
+    /// This can be different than the discriminant stored in memory (called `tag`).
     /// That one is described by [`DiscriminantLayout`] and [`TagEncoding`].
-    pub discriminant: ScalarValue,
+    pub discriminant: Literal,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
@@ -822,6 +853,9 @@ pub enum TyKind {
     /// variables (those that could appear in a function pointer type like `for<'a> fn(&'a u32)`),
     /// we need to bind them here.
     FnDef(RegionBinder<FnPtr>),
+    /// As a marker of taking out metadata from a given type
+    /// The internal type is assumed to be a type variable
+    PtrMetadata(Ty),
     /// A type that could not be computed or was incorrect.
     #[drive(skip)]
     Error(String),

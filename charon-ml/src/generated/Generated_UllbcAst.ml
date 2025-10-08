@@ -10,7 +10,7 @@ type block_id = (BlockId.id[@visitors.opaque])
 
 and statement = {
   span : span;
-  content : statement_kind;
+  kind : statement_kind;
   comments_before : string list;  (** Comments that precede this statement. *)
 }
 
@@ -44,7 +44,7 @@ and statement_kind =
 
 and switch =
   | If of block_id * block_id  (** Gives the [if] block and the [else] block *)
-  | SwitchInt of integer_type * (scalar_value * block_id) list * block_id
+  | SwitchInt of literal_type * (literal * block_id) list * block_id
       (** Gives the integer type, a map linking values to switch branches, and
           the otherwise block. Note that matches over enumerations are performed
           by switching over the discriminant, which is an integer. *)
@@ -74,7 +74,7 @@ and blocks = block list
 
 and terminator = {
   span : span;
-  content : terminator_kind;
+  kind : terminator_kind;
   comments_before : string list;  (** Comments that precede this terminator. *)
 }
 

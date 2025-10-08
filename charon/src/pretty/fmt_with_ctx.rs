@@ -4,7 +4,6 @@ use crate::{
     formatter::*,
     gast,
     llbc_ast::{self as llbc, *},
-    reorder_decls::*,
     transform::utils::GenericsSource,
     ullbc_ast::{self as ullbc, *},
 };
@@ -83,7 +82,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for AbortKind {
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for AnyTransId {
+impl<C: AstFormatter> FmtWithCtx<C> for ItemId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match ctx
             .get_crate()
@@ -95,27 +94,27 @@ impl<C: AstFormatter> FmtWithCtx<C> for AnyTransId {
     }
 }
 
-impl Display for AnyTransId {
+impl Display for ItemId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::result::Result<(), fmt::Error> {
         let s = match self {
-            AnyTransId::Type(x) => x.to_pretty_string(),
-            AnyTransId::Fun(x) => x.to_pretty_string(),
-            AnyTransId::Global(x) => x.to_pretty_string(),
-            AnyTransId::TraitDecl(x) => x.to_pretty_string(),
-            AnyTransId::TraitImpl(x) => x.to_pretty_string(),
+            ItemId::Type(x) => x.to_pretty_string(),
+            ItemId::Fun(x) => x.to_pretty_string(),
+            ItemId::Global(x) => x.to_pretty_string(),
+            ItemId::TraitDecl(x) => x.to_pretty_string(),
+            ItemId::TraitImpl(x) => x.to_pretty_string(),
         };
         f.write_str(&s)
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for AnyTransItem<'_> {
+impl<C: AstFormatter> FmtWithCtx<C> for ItemRef<'_> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AnyTransItem::Type(d) => write!(f, "{}", d.with_ctx(ctx)),
-            AnyTransItem::Fun(d) => write!(f, "{}", d.with_ctx(ctx)),
-            AnyTransItem::Global(d) => write!(f, "{}", d.with_ctx(ctx)),
-            AnyTransItem::TraitDecl(d) => write!(f, "{}", d.with_ctx(ctx)),
-            AnyTransItem::TraitImpl(d) => write!(f, "{}", d.with_ctx(ctx)),
+            ItemRef::Type(d) => write!(f, "{}", d.with_ctx(ctx)),
+            ItemRef::Fun(d) => write!(f, "{}", d.with_ctx(ctx)),
+            ItemRef::Global(d) => write!(f, "{}", d.with_ctx(ctx)),
+            ItemRef::TraitDecl(d) => write!(f, "{}", d.with_ctx(ctx)),
+            ItemRef::TraitImpl(d) => write!(f, "{}", d.with_ctx(ctx)),
         }
     }
 }
@@ -289,6 +288,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for CastKind {
             CastKind::Transmute(src, tgt) => {
                 write!(f, "transmute<{}, {}>", src.with_ctx(ctx), tgt.with_ctx(ctx))
             }
+            CastKind::Concretize(ty, ty1) => {
+                write!(f, "concretize<{}, {}>", ty.with_ctx(ctx), ty1.with_ctx(ctx))
+            }
         }
     }
 }
@@ -302,7 +304,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for ClauseDbVar {
 impl_display_via_ctx!(ConstantExpr);
 impl<C: AstFormatter> FmtWithCtx<C> for ConstantExpr {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.value.with_ctx(ctx))
+        write!(f, "{}", self.kind.with_ctx(ctx))
     }
 }
 
@@ -322,8 +324,8 @@ impl<C: AstFormatter> FmtWithCtx<C> for ConstGenericDbVar {
     }
 }
 
-impl_display_via_ctx!(ConstGenericVar);
-impl<C: AstFormatter> FmtWithCtx<C> for ConstGenericVar {
+impl_display_via_ctx!(ConstGenericParam);
+impl<C: AstFormatter> FmtWithCtx<C> for ConstGenericParam {
     fn fmt_with_ctx(&self, _ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "const {} : {}", self.name, self.ty)
     }
@@ -422,12 +424,10 @@ impl<C: AstFormatter> FmtWithCtx<C> for FnOperand {
 
 impl<C: AstFormatter> FmtWithCtx<C> for FnPtr {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.func.as_ref() {
-            FunIdOrTraitMethodRef::Fun(FunId::Regular(def_id)) => {
-                write!(f, "{}", def_id.with_ctx(ctx))?
-            }
-            FunIdOrTraitMethodRef::Fun(FunId::Builtin(builtin)) => write!(f, "@{}", builtin)?,
-            FunIdOrTraitMethodRef::Trait(trait_ref, method_id, _) => {
+        match self.kind.as_ref() {
+            FnPtrKind::Fun(FunId::Regular(def_id)) => write!(f, "{}", def_id.with_ctx(ctx))?,
+            FnPtrKind::Fun(FunId::Builtin(builtin)) => write!(f, "@{}", builtin)?,
+            FnPtrKind::Trait(trait_ref, method_id, _) => {
                 write!(f, "{}::{}", trait_ref.with_ctx(ctx), &method_id.0)?
             }
         };
@@ -485,7 +485,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDecl {
 
 impl<C: AstFormatter> FmtWithCtx<C> for FunDeclId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        AnyTransId::from(*self).fmt_with_ctx(ctx, f)
+        ItemId::from(*self).fmt_with_ctx(ctx, f)
     }
 }
 
@@ -793,7 +793,7 @@ where
 
 impl<C: AstFormatter> FmtWithCtx<C> for GlobalDeclId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        AnyTransId::from(*self).fmt_with_ctx(ctx, f)
+        ItemId::from(*self).fmt_with_ctx(ctx, f)
     }
 }
 
@@ -888,7 +888,7 @@ impl ItemMeta {
         f: &mut fmt::Formatter<'_>,
         ctx: &C,
         keyword: &str,
-        id: impl Into<AnyTransId>,
+        id: impl Into<ItemId>,
     ) -> fmt::Result {
         let tab = ctx.indent();
         let full_name = self.name.with_ctx(ctx);
@@ -1047,6 +1047,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for Place {
                             write!(f, "({sub}).{field_id}")
                         }
                     },
+                    ProjectionElem::PtrMetadata => {
+                        write!(f, "{sub}.metadata")
+                    }
                     ProjectionElem::Index {
                         offset,
                         from_end: true,
@@ -1186,8 +1189,8 @@ impl<C: AstFormatter> FmtWithCtx<C> for RegionDbVar {
     }
 }
 
-impl_display_via_ctx!(RegionVar);
-impl<C: AstFormatter> FmtWithCtx<C> for RegionVar {
+impl_display_via_ctx!(RegionParam);
+impl<C: AstFormatter> FmtWithCtx<C> for RegionParam {
     fn fmt_with_ctx(&self, _ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.name {
             Some(name) => write!(f, "{name}"),
@@ -1201,7 +1204,11 @@ impl<C: AstFormatter> FmtWithCtx<C> for Rvalue {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Rvalue::Use(x) => write!(f, "{}", x.with_ctx(ctx)),
-            Rvalue::Ref(place, borrow_kind) => {
+            Rvalue::Ref {
+                place,
+                kind: borrow_kind,
+                ptr_metadata,
+            } => {
                 let borrow_kind = match borrow_kind {
                     BorrowKind::Shared => "&",
                     BorrowKind::Mut => "&mut ",
@@ -1209,14 +1216,40 @@ impl<C: AstFormatter> FmtWithCtx<C> for Rvalue {
                     BorrowKind::UniqueImmutable => "&uniq ",
                     BorrowKind::Shallow => "&shallow ",
                 };
-                write!(f, "{borrow_kind}{}", place.with_ctx(ctx))
+                if ptr_metadata.ty().is_unit() {
+                    // Hide unit metadata
+                    write!(f, "{borrow_kind}{}", place.with_ctx(ctx))?;
+                } else {
+                    write!(
+                        f,
+                        "{borrow_kind}{} with_metadata({})",
+                        place.with_ctx(ctx),
+                        ptr_metadata.with_ctx(ctx)
+                    )?;
+                }
+                Ok(())
             }
-            Rvalue::RawPtr(place, mutability) => {
+            Rvalue::RawPtr {
+                place,
+                kind: mutability,
+                ptr_metadata,
+            } => {
                 let ptr_kind = match mutability {
                     RefKind::Shared => "&raw const ",
                     RefKind::Mut => "&raw mut ",
                 };
-                write!(f, "{ptr_kind}{}", place.with_ctx(ctx))
+                if ptr_metadata.ty().is_unit() {
+                    // Hide unit metadata
+                    write!(f, "{ptr_kind}{}", place.with_ctx(ctx))?;
+                } else {
+                    write!(
+                        f,
+                        "{ptr_kind}{} with_metadata({})",
+                        place.with_ctx(ctx),
+                        ptr_metadata.with_ctx(ctx)
+                    )?;
+                }
+                Ok(())
             }
 
             Rvalue::BinaryOp(binop, x, y) => {
@@ -1308,7 +1341,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
         for line in &self.comments_before {
             writeln!(f, "{tab}// {line}")?;
         }
-        match &self.content {
+        match &self.kind {
             StatementKind::Assign(place, rvalue) => write!(
                 f,
                 "{tab}{} := {}",
@@ -1363,7 +1396,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
             writeln!(f, "{tab}// {line}")?;
         }
         write!(f, "{tab}")?;
-        match &self.content {
+        match &self.kind {
             StatementKind::Assign(place, rvalue) => {
                 write!(f, "{} := {}", place.with_ctx(ctx), rvalue.with_ctx(ctx),)
             }
@@ -1489,7 +1522,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
             writeln!(f, "{tab}// {line}")?;
         }
         write!(f, "{tab}")?;
-        match &self.content {
+        match &self.kind {
             TerminatorKind::Goto { target } => write!(f, "goto bb{target}"),
             TerminatorKind::Switch { discr, targets } => match targets {
                 SwitchTargets::If(true_block, false_block) => write!(
@@ -1523,7 +1556,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for TraitClause {
+impl<C: AstFormatter> FmtWithCtx<C> for TraitParam {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let clause_id = self.clause_id.to_pretty_string();
         let trait_ = self.trait_.with_ctx(ctx);
@@ -1542,13 +1575,13 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitDecl {
         let (generics, clauses) = self.generics.fmt_with_ctx_with_trait_clauses(ctx);
         write!(f, "{generics}{clauses}")?;
 
-        let any_item = !self.parent_clauses.is_empty()
+        let any_item = !self.implied_clauses.is_empty()
             || !self.consts.is_empty()
             || !self.types.is_empty()
             || !self.methods.is_empty();
         if any_item {
             write!(f, "\n{{\n")?;
-            for c in &self.parent_clauses {
+            for c in &self.implied_clauses {
                 writeln!(
                     f,
                     "{TAB_INCR}parent_clause{} : {}",
@@ -1600,7 +1633,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitDecl {
 
 impl<C: AstFormatter> FmtWithCtx<C> for TraitDeclId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        AnyTransId::from(*self).fmt_with_ctx(ctx, f)
+        ItemId::from(*self).fmt_with_ctx(ctx, f)
     }
 }
 
@@ -1648,13 +1681,13 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitImpl {
         };
         write!(f, "{newline}{{")?;
 
-        let any_item = !self.parent_trait_refs.is_empty()
+        let any_item = !self.implied_trait_refs.is_empty()
             || !self.consts.is_empty()
             || !self.types.is_empty()
             || !self.methods.is_empty();
         if any_item {
             writeln!(f)?;
-            for (i, c) in self.parent_trait_refs.iter().enumerate() {
+            for (i, c) in self.implied_trait_refs.iter().enumerate() {
                 let i = TraitClauseId::new(i);
                 writeln!(f, "{TAB_INCR}parent_clause{i} = {}", c.with_ctx(ctx))?;
             }
@@ -1684,7 +1717,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitImpl {
 
 impl<C: AstFormatter> FmtWithCtx<C> for TraitImplId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        AnyTransId::from(*self).fmt_with_ctx(ctx, f)
+        ItemId::from(*self).fmt_with_ctx(ctx, f)
     }
 }
 
@@ -1819,6 +1852,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
                 };
                 write!(f, "{value}",)
             }
+            TyKind::PtrMetadata(ty) => {
+                write!(f, "PtrMetadata<{}>", ty.with_ctx(ctx))
+            }
             TyKind::Error(msg) => write!(f, "type_error(\"{msg}\")"),
         }
     }
@@ -1887,7 +1923,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeDecl {
 
 impl<C: AstFormatter> FmtWithCtx<C> for TypeDeclId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        AnyTransId::from(*self).fmt_with_ctx(ctx, f)
+        ItemId::from(*self).fmt_with_ctx(ctx, f)
     }
 }
 
@@ -1909,8 +1945,8 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeId {
     }
 }
 
-impl_display_via_ctx!(TypeVar);
-impl<C: AstFormatter> FmtWithCtx<C> for TypeVar {
+impl_display_via_ctx!(TypeParam);
+impl<C: AstFormatter> FmtWithCtx<C> for TypeParam {
     fn fmt_with_ctx(&self, _ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
     }
@@ -1921,7 +1957,6 @@ impl<C: AstFormatter> FmtWithCtx<C> for UnOp {
         match self {
             UnOp::Not => write!(f, "~"),
             UnOp::Neg(mode) => write!(f, "{}.-", mode),
-            UnOp::PtrMetadata => write!(f, "ptr_metadata"),
             UnOp::Cast(kind) => write!(f, "{}", kind.with_ctx(ctx)),
         }
     }

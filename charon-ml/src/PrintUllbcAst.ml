@@ -14,7 +14,7 @@ module Ast = struct
 
   let rec statement_to_string (env : fmt_env) (indent : string) (st : statement)
       : string =
-    statement_kind_to_string env indent st.content
+    statement_kind_to_string env indent st.kind
 
   and statement_kind_to_string (env : fmt_env) (indent : string)
       (st : statement_kind) : string =
@@ -51,7 +51,7 @@ module Ast = struct
         let branches =
           List.map
             (fun (sv, bid) ->
-              scalar_value_to_string sv ^ " -> " ^ block_id_to_string bid ^ "; ")
+              literal_to_string sv ^ " -> " ^ block_id_to_string bid ^ "; ")
             branches
         in
         let branches = String.concat "" branches in
@@ -60,7 +60,7 @@ module Ast = struct
 
   let rec terminator_to_string (env : fmt_env) (indent : string)
       (st : terminator) : string =
-    terminator_kind_to_string env indent st.content
+    terminator_kind_to_string env indent st.kind
 
   and terminator_kind_to_string (env : fmt_env) (indent : string)
       (st : terminator_kind) : string =
@@ -113,7 +113,7 @@ module Ast = struct
     let name = name_to_string env def.item_meta.name in
     let ty = ty_to_string env def.ty in
 
-    let body_id = fun_decl_id_to_string env def.body in
+    let body_id = fun_decl_id_to_string env def.init in
     indent ^ "global " ^ name ^ params ^ clauses ^ " : " ^ ty ^ " = " ^ body_id
 end
 

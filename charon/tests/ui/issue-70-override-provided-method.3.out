@@ -98,6 +98,16 @@ where
     non-dyn-compatible
 }
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::GenericTrait
 trait GenericTrait<Self, T>
 {
@@ -126,6 +136,7 @@ where
     let @4: &'_ (U); // anonymous local
     let @5: &'_ (T); // anonymous local
 
+    @0 := ()
     storage_live(@3)
     storage_live(@4)
     @4 := &y@2
@@ -145,7 +156,6 @@ where
     storage_dead(@3)
     drop[Drop<U>] y@2
     drop[Drop<T>] x@1
-    @0 := ()
     return
 }
 
@@ -185,6 +195,7 @@ where
     let @4: &'_ (U); // anonymous local
     let @5: &'_ (Option<T>[@TraitClause0]); // anonymous local
 
+    @0 := ()
     storage_live(@3)
     storage_live(@4)
     @4 := &y@2
@@ -203,7 +214,6 @@ where
     }
     storage_dead(@3)
     drop[Drop<U>] y@2
-    @0 := ()
     return
 }
 
@@ -256,6 +266,7 @@ where
     let @4: &'_ (U); // anonymous local
     let @5: &'_ (Option<T>[@TraitClause0]); // anonymous local
 
+    @0 := ()
     storage_live(@3)
     storage_live(@4)
     @4 := &y@2
@@ -275,7 +286,6 @@ where
     storage_dead(@3)
     drop[Drop<U>] y@2
     drop[Drop<Option<T>[@TraitClause0]>] x@1
-    @0 := ()
     return
 }
 

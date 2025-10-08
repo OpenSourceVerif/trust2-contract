@@ -380,7 +380,7 @@ impl BodyTransCtx<'_, '_, '_> {
                     // A promoted constant that could not be evaluated.
                     let global_ref = self.translate_global_decl_ref(span, item)?;
                     let constant = ConstantExpr {
-                        value: ConstantExprKind::Global(global_ref),
+                        kind: ConstantExprKind::Global(global_ref),
                         ty: ty.clone(),
                     };
                     Ok((Operand::Const(Box::new(constant)), ty))
@@ -396,7 +396,12 @@ impl BodyTransCtx<'_, '_, '_> {
     }
 
     /// Translate an rvalue
-    fn translate_rvalue(&mut self, span: Span, rvalue: &hax::Rvalue) -> Result<Rvalue, Error> {
+    fn translate_rvalue(
+        &mut self,
+        span: Span,
+        rvalue: &hax::Rvalue,
+        tgt_ty: &Ty,
+    ) -> Result<Rvalue, Error> {
         match rvalue {
             hax::Rvalue::Use(operand) => Ok(Rvalue::Use(self.translate_operand(span, operand)?)),
             hax::Rvalue::CopyForDeref(place) => {
@@ -414,7 +419,13 @@ impl BodyTransCtx<'_, '_, '_> {
             hax::Rvalue::Ref(_region, borrow_kind, place) => {
                 let place = self.translate_place(span, place)?;
                 let borrow_kind = translate_borrow_kind(*borrow_kind);
-                Ok(Rvalue::Ref(place, borrow_kind))
+                Ok(Rvalue::Ref {
+                    place,
+                    kind: borrow_kind,
+                    // Use `()` as a placeholder now.
+                    // Will be fixed by the cleanup pass `insert_ptr_metadata`.
+                    ptr_metadata: Operand::mk_const_unit(),
+                })
             }
             hax::Rvalue::RawPtr(mtbl, place) => {
                 let mtbl = match mtbl {
@@ -423,7 +434,13 @@ impl BodyTransCtx<'_, '_, '_> {
                     hax::RawPtrKind::FakeForPtrMetadata => RefKind::Shared,
                 };
                 let place = self.translate_place(span, place)?;
-                Ok(Rvalue::RawPtr(place, mtbl))
+                Ok(Rvalue::RawPtr {
+                    place,
+                    kind: mtbl,
+                    // Use `()` as a placeholder now.
+                    // Will be fixed by the cleanup pass `insert_ptr_metadata`.
+                    ptr_metadata: Operand::mk_const_unit(),
+                })
             }
             hax::Rvalue::Len(place) => {
                 let place = self.translate_place(span, place)?;
@@ -481,7 +498,7 @@ impl BodyTransCtx<'_, '_, '_> {
                         let fn_ptr: FnPtr = fn_ptr_bound.clone().erase();
                         let src_ty = TyKind::FnDef(fn_ptr_bound).into_ty();
                         operand = Operand::Const(Box::new(ConstantExpr {
-                            value: ConstantExprKind::FnPtr(fn_ptr),
+                            kind: ConstantExprKind::FnPtr(fn_ptr),
                             ty: src_ty.clone(),
                         }));
                         CastKind::FnPtr(src_ty, tgt_ty)
@@ -556,15 +573,20 @@ impl BodyTransCtx<'_, '_, '_> {
                 Ok(Rvalue::NullaryOp(op, ty))
             }
             hax::Rvalue::UnaryOp(unop, operand) => {
+                let operand = self.translate_operand(span, operand)?;
                 let unop = match unop {
                     hax::UnOp::Not => UnOp::Not,
                     hax::UnOp::Neg => UnOp::Neg(OverflowMode::Wrap),
-                    hax::UnOp::PtrMetadata => UnOp::PtrMetadata,
+                    hax::UnOp::PtrMetadata => match operand {
+                        Operand::Copy(p) | Operand::Move(p) => {
+                            return Ok(Rvalue::Use(Operand::Copy(
+                                p.project(ProjectionElem::PtrMetadata, tgt_ty.clone()),
+                            )));
+                        }
+                        Operand::Const(_) => panic!("const metadata"),
+                    },
                 };
-                Ok(Rvalue::UnaryOp(
-                    unop,
-                    self.translate_operand(span, operand)?,
-                ))
+                Ok(Rvalue::UnaryOp(unop, operand))
             }
             hax::Rvalue::Discriminant(place) => {
                 let place = self.translate_place(span, place)?;
@@ -718,7 +740,7 @@ impl BodyTransCtx<'_, '_, '_> {
         let t_statement: Option<StatementKind> = match &*statement.kind {
             hax::StatementKind::Assign((place, rvalue)) => {
                 let t_place = self.translate_place(span, place)?;
-                let t_rvalue = self.translate_rvalue(span, rvalue)?;
+                let t_rvalue = self.translate_rvalue(span, rvalue, t_place.ty())?;
                 Some(StatementKind::Assign(t_place, t_rvalue))
             }
             hax::StatementKind::SetDiscriminant {
@@ -927,38 +949,53 @@ impl BodyTransCtx<'_, '_, '_> {
                 let then_block = self.translate_basic_block_id(*target);
                 Ok(SwitchTargets::If(if_block, then_block))
             }
-            LiteralTy::Int(int_ty) => {
-                let targets: Vec<(ScalarValue, BlockId)> = targets
+            LiteralTy::Char => {
+                let targets: Vec<(Literal, BlockId)> = targets
                     .iter()
                     .map(|(v, tgt)| {
-                        let v =
-                            ScalarValue::from_le_bytes(IntegerTy::Signed(int_ty), v.data_le_bytes);
+                        let b: u128 = u128::from_le_bytes(v.data_le_bytes);
+                        let v = Literal::char_from_le_bytes(b);
                         let tgt = self.translate_basic_block_id(*tgt);
                         (v, tgt)
                     })
                     .collect();
                 let otherwise = self.translate_basic_block_id(*otherwise);
                 Ok(SwitchTargets::SwitchInt(
-                    IntegerTy::Signed(int_ty),
+                    LiteralTy::Char,
                     targets,
                     otherwise,
                 ))
             }
-            LiteralTy::UInt(int_ty) => {
-                let targets: Vec<(ScalarValue, BlockId)> = targets
+            LiteralTy::Int(int_ty) => {
+                let targets: Vec<(Literal, BlockId)> = targets
                     .iter()
                     .map(|(v, tgt)| {
-                        let v = ScalarValue::from_le_bytes(
-                            IntegerTy::Unsigned(int_ty),
+                        let v = Literal::Scalar(ScalarValue::from_le_bytes(
+                            IntegerTy::Signed(int_ty),
                             v.data_le_bytes,
-                        );
+                        ));
+                        let tgt = self.translate_basic_block_id(*tgt);
+                        (v, tgt)
+                    })
+                    .collect();
+                let otherwise = self.translate_basic_block_id(*otherwise);
+                Ok(SwitchTargets::SwitchInt(switch_ty, targets, otherwise))
+            }
+            LiteralTy::UInt(uint_ty) => {
+                let targets: Vec<(Literal, BlockId)> = targets
+                    .iter()
+                    .map(|(v, tgt)| {
+                        let v = Literal::Scalar(ScalarValue::from_le_bytes(
+                            IntegerTy::Unsigned(uint_ty),
+                            v.data_le_bytes,
+                        ));
                         let tgt = self.translate_basic_block_id(*tgt);
                         (v, tgt)
                     })
                     .collect();
                 let otherwise = self.translate_basic_block_id(*otherwise);
                 Ok(SwitchTargets::SwitchInt(
-                    IntegerTy::Unsigned(int_ty),
+                    LiteralTy::UInt(uint_ty),
                     targets,
                     otherwise,
                 ))
@@ -1010,7 +1047,9 @@ impl BodyTransCtx<'_, '_, '_> {
                     // We ignore the arguments
                     return Ok(TerminatorKind::Abort(AbortKind::Panic(Some(name))));
                 } else {
-                    let fn_ptr = self.translate_fn_ptr(span, item)?.erase();
+                    let fn_ptr = self
+                        .translate_fn_ptr(span, item, TransItemSourceKind::Fun)?
+                        .erase();
                     FnOperand::Regular(fn_ptr)
                 }
             }
@@ -1095,7 +1134,7 @@ impl BodyTransCtx<'_, '_, '_> {
                 .rev()
                 .enumerate()
                 // Compute the absolute line number
-                .map(|(i, line)| (charon_span.span.end.line - i, line))
+                .map(|(i, line)| (charon_span.data.end.line - i, line))
                 // Extract the comment if this line starts with `//`
                 .map(|(line_nbr, line)| (line_nbr, line.trim_start().strip_prefix("//")))
                 .peekable()

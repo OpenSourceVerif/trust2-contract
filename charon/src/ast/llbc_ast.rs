@@ -79,7 +79,7 @@ pub struct Statement {
     /// simplify things we generate globally-fresh ids when creating a new `Statement`.
     #[charon::rename("statement_id")]
     pub id: StatementId,
-    pub content: StatementKind,
+    pub kind: StatementKind,
     /// Comments that precede this statement.
     // This is filled in a late pass after all the control-flow manipulation.
     #[drive(skip)]
@@ -127,10 +127,10 @@ pub enum Switch {
     ///   E::V3 => ...
     /// }
     /// ```
-    SwitchInt(Operand, IntegerTy, Vec<(Vec<ScalarValue>, Block)>, Block),
+    SwitchInt(Operand, LiteralTy, Vec<(Vec<Literal>, Block)>, Block),
     /// A match over an ADT.
     ///
-    /// The match statement is introduced in [crate::transform::remove_read_discriminant]
+    /// The match statement is introduced in [crate::transform::resugar::reconstruct_matches]
     /// (whenever we find a discriminant read, we merge it with the subsequent
     /// switch into a match).
     Match(Place, Vec<(Vec<VariantId>, Block)>, Option<Block>),

@@ -1,6 +1,7 @@
 open Collections
 open Types
 open Utils
+open ValuesUtils
 
 module RegionOrderedType : OrderedType with type t = region = struct
   type t = region
@@ -172,7 +173,7 @@ let const_generic_as_literal (cg : const_generic) : Values.literal =
   | CgValue v -> v
   | _ -> raise (Failure "Unreachable")
 
-let trait_instance_id_as_trait_impl (id : trait_instance_id) :
+let trait_instance_id_as_trait_impl (id : trait_ref_kind) :
     trait_impl_id * generic_args =
   match id with
   | TraitImpl impl_ref -> (impl_ref.id, impl_ref.generics)
@@ -218,20 +219,20 @@ let empty_generic_params : generic_params =
 
 let generic_args_of_params span (generics : generic_params) : generic_args =
   let regions =
-    List.map (fun (v : region_var) -> RVar (Free v.index)) generics.regions
+    List.map (fun (v : region_param) -> RVar (Free v.index)) generics.regions
   in
   let types =
-    List.map (fun (v : type_var) -> TVar (Free v.index)) generics.types
+    List.map (fun (v : type_param) -> TVar (Free v.index)) generics.types
   in
   let const_generics =
     List.map
-      (fun (v : const_generic_var) -> CgVar (Free v.index))
+      (fun (v : const_generic_param) -> CgVar (Free v.index))
       generics.const_generics
   in
   let trait_refs =
     List.map
-      (fun (c : trait_clause) ->
-        { trait_id = Clause (Free c.clause_id); trait_decl_ref = c.trait })
+      (fun (c : trait_param) ->
+        { kind = Clause (Free c.clause_id); trait_decl_ref = c.trait })
       generics.trait_clauses
   in
   { regions; types; const_generics; trait_refs }
@@ -386,7 +387,7 @@ let get_variant_from_tag ptr_size ty_decl (tag : Values.scalar_value) =
       match variants with
       | [] -> None
       | hd_variant :: _ -> (
-          let discr_ty = Scalars.get_ty hd_variant.discriminant in
+          let discr = hd_variant.discriminant in
           let rec find_mapi f i = function
             | [] -> None
             | v :: tl ->
@@ -398,11 +399,15 @@ let get_variant_from_tag ptr_size ty_decl (tag : Values.scalar_value) =
           | Direct -> begin
               assert (discr_layout.tag_ty = Scalars.get_ty tag);
               let discr =
-                match
-                  Scalars.mk_scalar ptr_size discr_ty (Scalars.get_val tag)
-                with
-                | Ok sv -> Some sv
-                | Error _ -> None
+                match integer_type_of_literal discr with
+                | Some intty -> begin
+                    match
+                      Scalars.mk_scalar ptr_size intty (Scalars.get_val tag)
+                    with
+                    | Ok sv -> Some (Values.VScalar sv)
+                    | Error _ -> None
+                  end
+                | None -> None
               in
               find_mapi (fun i v -> Some v.discriminant = discr) 0 variants
             end

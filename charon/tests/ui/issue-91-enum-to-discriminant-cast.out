@@ -43,6 +43,16 @@ pub trait Destruct<Self>
     vtable: core::marker::Destruct::{vtable}
 }
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::Foo
 enum Foo {
   A,
@@ -115,6 +125,7 @@ fn main()
     storage_live(@17)
     storage_live(@18)
     storage_live(@19)
+    @0 := ()
     storage_live(x@1)
     x@1 := Foo::A {  }
     storage_live(@2)
@@ -154,7 +165,6 @@ fn main()
     @0 := ()
     storage_dead(x@12)
     storage_dead(x@1)
-    @0 := ()
     return
 }
 

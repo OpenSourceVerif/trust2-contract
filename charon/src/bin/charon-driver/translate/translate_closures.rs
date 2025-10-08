@@ -310,7 +310,7 @@ impl ItemTransCtx<'_, '_> {
                 let rid = self
                     .innermost_generics_mut()
                     .regions
-                    .push_with(|index| RegionVar { index, name: None });
+                    .push_with(|index| RegionParam { index, name: None });
                 let r = Region::Var(DeBruijnVar::new_at_zero(rid));
                 let mutability = if target_kind == ClosureKind::Fn {
                     RefKind::Shared
@@ -460,17 +460,14 @@ impl ItemTransCtx<'_, '_> {
                 // TODO: make a trait call to avoid needing to concatenate things ourselves.
                 // TODO: can we ask hax for the trait ref?
                 let fn_op = FnOperand::Regular(FnPtr {
-                    func: Box::new(fun_id.into()),
+                    kind: Box::new(fun_id.into()),
                     generics: Box::new(impl_ref.generics.concat(&GenericArgs {
                         regions: vec![Region::Erased].into(),
                         ..GenericArgs::empty()
                     })),
                 });
 
-                let mut locals = Locals {
-                    arg_count: 2,
-                    locals: Vector::new(),
-                };
+                let mut locals = Locals::new(2);
                 let mut statements = vec![];
                 let mut blocks = Vector::default();
 
@@ -484,7 +481,12 @@ impl ItemTransCtx<'_, '_> {
 
                 statements.push(mk_stt(StatementKind::Assign(
                     reborrow.clone(),
-                    Rvalue::Ref(deref_state, BorrowKind::Shared),
+                    // the state must be Sized, hence `()` as ptr-metadata
+                    Rvalue::Ref {
+                        place: deref_state,
+                        kind: BorrowKind::Shared,
+                        ptr_metadata: Operand::mk_const_unit(),
+                    },
                 )));
 
                 let start_block = blocks.reserve_slot();
@@ -557,7 +559,7 @@ impl ItemTransCtx<'_, '_> {
         let implemented_trait = self.translate_trait_predicate(span, &vimpl.trait_pred)?;
 
         let impl_ref = self.translate_closure_impl_ref(span, args, target_kind)?;
-        let kind = ItemKind::TraitImpl {
+        let src = ItemSource::TraitImpl {
             impl_ref,
             trait_ref: implemented_trait,
             item_name: TraitItemName(target_kind.method_name().to_owned()),
@@ -577,7 +579,7 @@ impl ItemTransCtx<'_, '_> {
             def_id,
             item_meta,
             signature,
-            kind,
+            src,
             is_global_initializer: None,
             body,
         })
@@ -631,7 +633,7 @@ impl ItemTransCtx<'_, '_> {
                 ClosureKind::FnMut | ClosureKind::Fn => {
                     method_params
                         .regions
-                        .push_with(|index| RegionVar { index, name: None });
+                        .push_with(|index| RegionParam { index, name: None });
                 }
             };
 
@@ -712,14 +714,11 @@ impl ItemTransCtx<'_, '_> {
             );
             let impl_ref = self.translate_closure_impl_ref(span, closure, ClosureKind::FnOnce)?;
             let fn_op = FnOperand::Regular(FnPtr {
-                func: Box::new(fun_id.into()),
+                kind: Box::new(fun_id.into()),
                 generics: impl_ref.generics.clone(),
             });
 
-            let mut locals = Locals {
-                arg_count: signature.inputs.len(),
-                locals: Vector::new(),
-            };
+            let mut locals = Locals::new(signature.inputs.len());
             let mut statements = vec![];
             let mut blocks = Vector::default();
 
@@ -774,7 +773,7 @@ impl ItemTransCtx<'_, '_> {
             def_id,
             item_meta,
             signature,
-            kind: ItemKind::TopLevel,
+            src: ItemSource::TopLevel,
             is_global_initializer: None,
             body,
         })

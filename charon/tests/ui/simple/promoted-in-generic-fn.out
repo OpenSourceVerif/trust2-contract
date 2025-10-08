@@ -18,6 +18,16 @@ pub fn size_of<T>() -> usize
 where
     [@TraitClause0]: Sized<T>,
 
+fn UNIT_METADATA()
+{
+    let @0: (); // return
+
+    @0 := ()
+    return
+}
+
+const UNIT_METADATA: () = @Fun0()
+
 // Full name: test_crate::f
 fn f<T>()
 where
@@ -29,17 +39,17 @@ where
     let @3: &'_ (usize); // anonymous local
     let @4: usize; // anonymous local
 
-    storage_live(@2)
     storage_live(@3)
     storage_live(@4)
     // This can't be evaluated generically.
     @4 := size_of<T>[@TraitClause0]()
     @3 := &@4
+    storage_live(@2)
+    @0 := ()
     storage_live(@1)
     @2 := move (@3)
     @1 := &*(@2)
     storage_dead(@1)
-    @0 := ()
     @0 := ()
     return
 }
