@@ -4,5 +4,10 @@ set -e
 
 cd $(git rev-parse --show-toplevel)
 
-cargo clippy --workspace --all-targets --all-features -- -D warnings
-cargo fmt --all -- --check
+# cargo clippy --exclude is not respected
+# https://github.com/rust-lang/rust-clippy/issues/9555
+cargo clippy -p cargo-verify -p trust2-contract -p trust2-contract-macros --no-deps --all-targets --all-features -- -D warnings
+
+# cargo fmt does not support --workspace or --exclude
+cargo fmt -p cargo-verify -p trust2-contract -p trust2-contract-macros -- --check
+rustfmt main.rs --edition 2024 --check
