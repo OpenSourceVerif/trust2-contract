@@ -42,7 +42,7 @@ use charon_lib::{
 };
 use clap::Parser;
 use cli::{Charon, Cli};
-use std::{env, process::ExitStatus};
+use std::{env, ffi::OsString, process::ExitStatus};
 use toolchain::toolchain_path;
 
 #[macro_use]
@@ -55,11 +55,19 @@ mod toml_config;
 mod toolchain;
 
 pub fn main() -> Result<()> {
+    main_(env::args_os())
+}
+
+pub fn main_<I, T>(itr: I) -> Result<()>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<OsString> + Clone,
+{
     // Initialize the logger
     logger::initialize_logger();
 
     // Parse the command-line
-    let cli = Cli::parse();
+    let cli = Cli::parse_from(itr);
     if let Some(subcommand) = &cli.command
         && cli.opts != CliOpts::default()
     {
