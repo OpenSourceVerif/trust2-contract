@@ -13,4 +13,5 @@ updates:
       interval: "cron"
       cronjob: "0 5 * * *"
       timezone: "Asia/Shanghai"
-    versioning-strategy: "increase" # security
+    # The property '#/updates/0/versioning-strategy' value "increase" did not match one of the following values: lockfile-only, auto
+    # versioning-strategy: "increase" # security
