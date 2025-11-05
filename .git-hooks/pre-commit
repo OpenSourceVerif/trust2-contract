@@ -9,3 +9,4 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 # cargo fmt does not support --workspace
 cargo fmt -p cargo-verify -p trust2-contract -p trust2-contract-macros --check
 rustfmt charon/charon/src/bin/charon/main.rs --edition 2024 --check
+# rustfmt proc-macro-crate/src/lib.rs --edition 2024 --check

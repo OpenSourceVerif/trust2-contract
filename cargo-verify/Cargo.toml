@@ -6,3 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.81"
 charon-bin-interface = { path = "../charon-bin-interface" }
+clap = { version = "4.5.50", features = ["derive"] }
+clap-cargo = "0.18.3"
+proc-macro-crate = { path = "../proc-macro-crate" }
+utils = { path = "../utils" }

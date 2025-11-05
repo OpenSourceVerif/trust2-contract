@@ -183,6 +183,10 @@ type CrateNames = BTreeMap<String, FoundCrate>;
 /// it is ready to be used in `extern crate` as identifier.
 pub fn crate_name(orig_name: &str) -> Result<FoundCrate, Error> {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").map_err(|_| Error::CargoManifestDirNotSet)?;
+    crate_name_(orig_name, manifest_dir)
+}
+
+pub fn crate_name_(orig_name: &str, manifest_dir: String) -> Result<FoundCrate, Error> {
     let manifest_path = Path::new(&manifest_dir).join("Cargo.toml");
 
     let manifest_ts = cargo_toml_timestamp(&manifest_path)?;
