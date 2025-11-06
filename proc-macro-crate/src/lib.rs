@@ -183,10 +183,16 @@ type CrateNames = BTreeMap<String, FoundCrate>;
 /// it is ready to be used in `extern crate` as identifier.
 pub fn crate_name(orig_name: &str) -> Result<FoundCrate, Error> {
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").map_err(|_| Error::CargoManifestDirNotSet)?;
-    crate_name_(orig_name, manifest_dir)
+    package_name(orig_name, manifest_dir).map(|package| {
+        if let FoundCrate::Name(name) = package {
+            FoundCrate::Name(sanitize_crate_name(name))
+        } else {
+            package
+        }
+    })
 }
 
-pub fn crate_name_(orig_name: &str, manifest_dir: String) -> Result<FoundCrate, Error> {
+pub fn package_name(orig_name: &str, manifest_dir: String) -> Result<FoundCrate, Error> {
     let manifest_path = Path::new(&manifest_dir).join("Cargo.toml");
 
     let manifest_ts = cargo_toml_timestamp(&manifest_path)?;
@@ -353,7 +359,7 @@ fn extract_crate_names(
             // We're running for a library/binary crate
             None => FoundCrate::Itself,
             // We're running for an integration test
-            Some(_) => FoundCrate::Name(sanitize_crate_name(name)),
+            Some(_) => FoundCrate::Name((*name).into()),
         };
 
         (name.to_string(), cr)
@@ -378,7 +384,7 @@ fn extract_crate_names(
                 .flatten()
                 .unwrap_or(pkg_name);
 
-            let cr = FoundCrate::Name(sanitize_crate_name(dep_name));
+            let cr = FoundCrate::Name((*dep_name).into());
 
             Some((pkg_name.to_owned(), cr))
         });

@@ -1,8 +1,5 @@
-use serde::Deserialize;
-
 use std::{
-    env,
-    error,
+    env, error,
     fmt::{self, Display, Formatter},
     io,
     path::PathBuf,
@@ -34,18 +31,13 @@ impl From<io::Error> for Error {
 
 pub fn cargo_manifest_path() -> Result<PathBuf, Error> {
     let output = Command::new(env::var_os("CARGO").unwrap_or("cargo".into()))
-        .arg("locate-project")
+        .args(["locate-project", "--message-format", "plain"])
         .stderr(Stdio::inherit())
         .output()?;
     if output.status.success() {
-        // When success, guaranteed to be valid UTF-8.
-        #[derive(Deserialize)]
-        pub struct ProjectLocation {
-            root: String,
-        }
-
-        let project_location: ProjectLocation = serde_json::from_slice(&output.stdout).unwrap();
-        Ok(project_location.root.into())
+        // When success, guaranteed to be UTF-8.
+        let project_location = String::from_utf8(output.stdout).unwrap();
+        Ok(project_location.into())
     } else {
         Err(Error::CargoLocateProjectFailed(output.status))
     }
@@ -59,5 +51,4 @@ pub fn cargo_manifest_dir() -> Result<PathBuf, Error> {
 }
 
 #[cfg(test)]
-mod tests {
-}
+mod tests {}

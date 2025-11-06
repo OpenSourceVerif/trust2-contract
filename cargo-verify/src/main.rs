@@ -23,7 +23,7 @@ fn main() -> Result<()> {
     let cargo_manifest_dir = utils::cargo_manifest_dir()?;
     let cargo_manifest_dir = cargo_manifest_dir.into_os_string().into_string().unwrap();
     let feature_args: Box<dyn Iterator<Item = OsString>> =
-        match proc_macro_crate::crate_name_("trust2-contract", cargo_manifest_dir) {
+        match proc_macro_crate::package_name("trust2-contract", cargo_manifest_dir) {
             Ok(FoundCrate::Name(name)) => {
                 Box::new(["-F".into(), format!("{name}/verify").into()].into_iter())
             }
