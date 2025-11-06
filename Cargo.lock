@@ -144,6 +144,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "charon-bin-interface",
+ "charon-driver-bin-interface",
  "clap",
  "clap-cargo",
  "proc-macro-crate 3.4.0",
@@ -210,6 +211,49 @@ dependencies = [
 
 [[package]]
 name = "charon-bin-interface"
+version = "0.1.127"
+dependencies = [
+ "annotate-snippets",
+ "anstream",
+ "anyhow",
+ "assert_cmd",
+ "charon",
+ "clap",
+ "colored",
+ "convert_case",
+ "derive_generic_visitor",
+ "either",
+ "env_logger",
+ "hax-frontend-exporter",
+ "index_vec",
+ "indexmap",
+ "indoc",
+ "itertools 0.13.0",
+ "lazy_static",
+ "log",
+ "macros",
+ "nom",
+ "nom-supreme",
+ "num-bigint",
+ "num-rational",
+ "petgraph",
+ "rustc_version",
+ "serde",
+ "serde-map-to-array",
+ "serde_json",
+ "serde_stacker",
+ "stacker",
+ "strip-ansi-escapes",
+ "take_mut",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+ "tracing-tree",
+ "which",
+]
+
+[[package]]
+name = "charon-driver-bin-interface"
 version = "0.1.127"
 dependencies = [
  "annotate-snippets",
