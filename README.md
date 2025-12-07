@@ -5,4 +5,10 @@ Contract-based design for Rust
 
 ```bash
 git config set core.hooksPath .git-hooks
+
+git remote add charon https://github.com/AeneasVerif/charon.git
+git remote set-url charon --push no-push
+
+git remote add proc-macro-crate https://github.com/bkchr/proc-macro-crate.git
+git remote set-url proc-macro-crate --push no-push
 ```
