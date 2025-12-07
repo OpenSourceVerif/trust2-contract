@@ -35,7 +35,7 @@ pub fn cargo_manifest_path() -> Result<PathBuf, Error> {
         .stderr(Stdio::inherit())
         .output()?;
     if output.status.success() {
-        // When success, guaranteed to be UTF-8.
+        // When success, guaranteed to be UTF-8
         let project_location = String::from_utf8(output.stdout).unwrap();
         Ok(project_location.into())
     } else {
