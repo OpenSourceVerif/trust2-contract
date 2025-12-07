@@ -4,11 +4,13 @@ use crate::ids::Vector;
 use crate::llbc_ast;
 use crate::ullbc_ast;
 use derive_generic_visitor::{Drive, DriveMut};
+use macros::EnumAsGetters;
 use macros::{EnumIsA, EnumToGetters};
-use serde::{Deserialize, Serialize};
+use serde_state::DeserializeState;
+use serde_state::SerializeState;
 
 /// A variable
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Local {
     /// Unique index identifying the variable
     pub index: LocalId,
@@ -25,12 +27,8 @@ pub type Var = Local;
 #[deprecated(note = "use `LocalId` intead")]
 pub type VarId = LocalId;
 
-/// Marker to indicate that a declaration is opaque (i.e. we don't inspect its body).
-#[derive(Debug, Copy, Clone, Serialize, Deserialize, Drive, DriveMut)]
-pub struct Opaque;
-
 /// The local variables of a body.
-#[derive(Debug, Default, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Default, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Locals {
     /// The number of local variables used for the input arguments.
     #[drive(skip)]
@@ -46,7 +44,7 @@ pub struct Locals {
 /// An expression body.
 /// TODO: arg_count should be stored in GFunDecl below. But then,
 ///       the print is obfuscated and Aeneas may need some refactoring.
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 #[charon::rename("GexprBody")]
 pub struct GExprBody<T> {
     pub span: Span,
@@ -60,14 +58,38 @@ pub struct GExprBody<T> {
     pub body: T,
 }
 
-/// The body of a function or a constant.
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut, EnumIsA, EnumToGetters)]
+/// The body of a function.
+#[derive(
+    Debug,
+    Clone,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+    EnumIsA,
+    EnumAsGetters,
+    EnumToGetters,
+)]
 pub enum Body {
     /// Body represented as a CFG. This is what ullbc is made of, and what we get after translating MIR.
     Unstructured(ullbc_ast::ExprBody),
     /// Body represented with structured control flow. This is what llbc is made of. We restructure
-    /// the control flow in `ullbc_to_llbc`.
+    /// the control flow in the `ullbc_to_llbc` pass.
     Structured(llbc_ast::ExprBody),
+    /// The body of the function item we add for each trait method declaration, if the trait
+    /// doesn't provide a default for that method.
+    TraitMethodWithoutDefault,
+    /// A body that the user chose not to translate, based on opacity settings like
+    /// `--include`/`--opaque`.
+    Opaque,
+    /// A body that was not available. Typically that's function bodies for non-generic and
+    /// non-inlineable std functions, as these are not present in the compiled standard library
+    /// `.rmeta` file shipped with a rust toolchain.
+    Missing,
+    /// We encountered an error while translating this body.
+    #[drive(skip)]
+    #[serde_state(stateless)]
+    Error(Error),
 }
 
 /// Item kind: whether this function/const is part of a trait declaration, trait implementation, or
@@ -91,7 +113,7 @@ pub enum Body {
 ///     fn test(...) { ... } // regular
 /// }
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut, PartialEq, Eq)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut, PartialEq, Eq)]
 #[charon::variants_suffix("Item")]
 pub enum ItemSource {
     /// This item stands on its own.
@@ -140,7 +162,7 @@ pub enum ItemSource {
 }
 
 /// A function definition
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct FunDecl {
     #[drive(skip)]
     pub def_id: FunDeclId,
@@ -157,18 +179,18 @@ pub struct FunDecl {
     /// The function body, unless the function is opaque.
     /// Opaque functions are: external functions, or local functions tagged
     /// as opaque.
-    pub body: Result<Body, Opaque>,
+    pub body: Body,
 }
 
 /// Reference to a function declaration.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
 pub struct FunDeclRef {
     pub id: FunDeclId,
     /// Generic arguments passed to the function.
     pub generics: BoxedArgs,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub enum GlobalKind {
     /// A static.
     Static,
@@ -182,7 +204,7 @@ pub enum GlobalKind {
 }
 
 /// A global variable definition (constant or static).
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct GlobalDecl {
     #[drive(skip)]
     pub def_id: GlobalDeclId,
@@ -201,17 +223,29 @@ pub struct GlobalDecl {
 }
 
 /// Reference to a global declaration.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
 pub struct GlobalDeclRef {
     pub id: GlobalDeclId,
     pub generics: BoxedArgs,
 }
 
 #[derive(
-    Debug, Clone, Serialize, Deserialize, Drive, DriveMut, PartialEq, Eq, Hash, PartialOrd, Ord,
+    Debug,
+    Clone,
+    Copy,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+    PartialEq,
+    Eq,
+    Hash,
+    PartialOrd,
+    Ord,
 )]
 #[drive(skip)]
-pub struct TraitItemName(pub String);
+#[serde_state(stateless)]
+pub struct TraitItemName(pub ustr::Ustr);
 
 /// A trait **declaration**.
 ///
@@ -246,7 +280,7 @@ pub struct TraitItemName(pub String);
 /// Of course, this forbids other useful use cases such as visitors implemented
 /// by means of traits.
 #[allow(clippy::type_complexity)]
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitDecl {
     #[drive(skip)]
     pub def_id: TraitDeclId,
@@ -286,7 +320,7 @@ pub struct TraitDecl {
 }
 
 /// An associated constant in a trait.
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitAssocConst {
     pub name: TraitItemName,
     pub ty: Ty,
@@ -294,7 +328,7 @@ pub struct TraitAssocConst {
 }
 
 /// An associated type in a trait.
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitAssocTy {
     pub name: TraitItemName,
     pub default: Option<Ty>,
@@ -303,7 +337,7 @@ pub struct TraitAssocTy {
 }
 
 /// A trait method.
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitMethod {
     pub name: TraitItemName,
     /// Each method declaration is represented by a function item. That function contains the
@@ -322,7 +356,7 @@ pub struct TraitMethod {
 ///   fn baz(...) { ... }
 /// }
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitImpl {
     #[drive(skip)]
     pub def_id: TraitImplId,
@@ -346,7 +380,7 @@ pub struct TraitImpl {
 }
 
 /// The value of a trait associated type.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitAssocTyImpl {
     pub value: Ty,
     /// The `Vec` corresponds to the same `Vector` in `TraitAssocTy`. In the same way, this is
@@ -358,23 +392,23 @@ pub struct TraitAssocTyImpl {
 /// A function operand is used in function calls.
 /// It either designates a top-level function, or a place in case
 /// we are using function pointers stored in local variables.
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 #[charon::variants_prefix("FnOp")]
 pub enum FnOperand {
     /// Regular case: call to a top-level function, trait method, etc.
     Regular(FnPtr),
-    /// Use of a function pointer stored in a local variable
-    Move(Place),
+    /// Use of a function pointer.
+    Dynamic(Operand),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Call {
     pub func: FnOperand,
     pub args: Vec<Operand>,
     pub dest: Place,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct CopyNonOverlapping {
     pub src: Operand,
     pub dst: Operand,
@@ -385,7 +419,7 @@ pub struct CopyNonOverlapping {
 /// control-flow. The two kinds of abort are:
 /// - Panic (may unwind or not depending on compilation setting);
 /// - Undefined behavior:
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub enum AbortKind {
     /// A built-in panicking function.
     Panic(Option<Name>),
@@ -395,6 +429,35 @@ pub enum AbortKind {
     UnwindTerminate,
 }
 
+/// A `Drop` statement/terminator can mean two things, depending on what MIR phase we retrieved
+/// from rustc: it could be a real drop, or it could be a "conditional drop", which is where drop
+/// may happen depending on whether the borrow-checker determines a drop is needed.
+#[derive(Debug, Clone, Copy, SerializeState, DeserializeState, Drive, DriveMut)]
+pub enum DropKind {
+    /// A real drop. This calls `<T as Destruct>::drop_in_place(&raw mut place)` and marks the
+    /// place as moved-out-of. Use `--desugar-drops` to transform all such drops to an actual
+    /// function call.
+    ///
+    /// The `drop_in_place` method is added by Charon to the `Destruct` trait to make it possible
+    /// to track drop code in polymorphic code. It contains the same code as the
+    /// `core::ptr::drop_in_place<T>` builtin would.
+    ///
+    /// Drop are precise in MIR `elaborated` and `optimized`.
+    Precise,
+    /// A conditional drop, which may or may not end up running drop code depending on the code
+    /// path that led to it. A conditional drop may also become a partial drop (dropping only the
+    /// subplaces that haven't been moved out of), may be conditional on the code path that led to
+    /// it, or become an async drop. The exact semantics are left intentionally unspecified by
+    /// rustc developers. To elaborate such drops into precise drops, pass `--precise-drops` to
+    /// Charon.
+    ///
+    /// A conditional drop may also be passed an unaligned place when dropping fields of packed
+    /// structs. Such a thing is UB for a precise drop.
+    ///
+    /// Drop are conditional in MIR `built` and `promoted`.
+    Conditional,
+}
+
 /// Check the value of an operand and abort if the value is not expected. This is introduced to
 /// avoid a lot of small branches.
 ///
@@ -402,7 +465,7 @@ pub enum AbortKind {
 /// instance) to this. We then eliminate them in [crate::transform::resugar::reconstruct_fallible_operations],
 /// because they're implicit in the semantics of our array accesses etc. Finally we introduce new asserts in
 /// [crate::transform::resugar::reconstruct_asserts].
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 #[charon::rename("Assertion")]
 pub struct Assert {
     pub cond: Operand,
@@ -411,4 +474,79 @@ pub struct Assert {
     pub expected: bool,
     /// What kind of abort happens on assert failure.
     pub on_failure: AbortKind,
+}
+
+/// A generic `*DeclRef`-shaped struct, used when we're generic over the type of item.
+pub struct DeclRef<Id> {
+    pub id: Id,
+    pub generics: BoxedArgs,
+    /// If the item is a trait associated item, `generics` are only those of the item, and this
+    /// contains a reference to the trait.
+    pub trait_ref: Option<TraitRef>,
+}
+
+impl DeclRef<ItemId> {
+    pub fn try_convert_id<Id>(self) -> Result<DeclRef<Id>, <ItemId as TryInto<Id>>::Error>
+    where
+        ItemId: TryInto<Id>,
+    {
+        Ok(DeclRef {
+            id: self.id.try_into()?,
+            generics: self.generics,
+            trait_ref: self.trait_ref,
+        })
+    }
+}
+
+// Implement `DeclRef<_>` -> `FooDeclRef` conversions.
+macro_rules! convert_item_ref {
+    ($item_ref_ty:ident($id:ident)) => {
+        impl TryFrom<DeclRef<ItemId>> for $item_ref_ty {
+            type Error = ();
+            fn try_from(item: DeclRef<ItemId>) -> Result<Self, ()> {
+                assert!(item.trait_ref.is_none());
+                Ok($item_ref_ty {
+                    id: item.id.try_into()?,
+                    generics: item.generics,
+                })
+            }
+        }
+        impl From<DeclRef<$id>> for $item_ref_ty {
+            fn from(item: DeclRef<$id>) -> Self {
+                assert!(item.trait_ref.is_none());
+                $item_ref_ty {
+                    id: item.id,
+                    generics: item.generics,
+                }
+            }
+        }
+    };
+}
+convert_item_ref!(TypeDeclRef(TypeId));
+convert_item_ref!(FunDeclRef(FunDeclId));
+convert_item_ref!(GlobalDeclRef(GlobalDeclId));
+convert_item_ref!(TraitDeclRef(TraitDeclId));
+convert_item_ref!(TraitImplRef(TraitImplId));
+impl TryFrom<DeclRef<ItemId>> for FnPtr {
+    type Error = ();
+    fn try_from(item: DeclRef<ItemId>) -> Result<Self, ()> {
+        let id: FunId = item.id.try_into()?;
+        Ok(FnPtr::new(id.into(), item.generics))
+    }
+}
+
+impl TryFrom<DeclRef<ItemId>> for MaybeBuiltinFunDeclRef {
+    type Error = ();
+    fn try_from(item: DeclRef<ItemId>) -> Result<Self, ()> {
+        Ok(item.try_convert_id::<FunId>()?.into())
+    }
+}
+impl From<DeclRef<FunId>> for MaybeBuiltinFunDeclRef {
+    fn from(item: DeclRef<FunId>) -> Self {
+        MaybeBuiltinFunDeclRef {
+            id: item.id,
+            generics: item.generics,
+            trait_ref: item.trait_ref,
+        }
+    }
 }

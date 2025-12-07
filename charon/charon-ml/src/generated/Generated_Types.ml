@@ -258,6 +258,26 @@ and builtin_fun_id =
 
           Converted from [AggregateKind::RawPtr] *)
 
+(** Describes a built-in impl. Mostly lists the implemented trait, sometimes
+    with more details about the contents of the implementation. *)
+and builtin_impl_data =
+  | BuiltinSized
+  | BuiltinMetaSized
+  | BuiltinTuple
+  | BuiltinPointee
+  | BuiltinDiscriminantKind
+  | BuiltinAuto
+  | BuiltinNoopDestruct
+      (** An impl of [Destruct] for a type with no drop glue. *)
+  | BuiltinUntrackedDestruct
+      (** An impl of [Destruct] for a type parameter, which we could not resolve
+          because [--add-drop-bounds] was not set. *)
+  | BuiltinFn
+  | BuiltinFnMut
+  | BuiltinFnOnce
+  | BuiltinCopy
+  | BuiltinClone
+
 (** One of 8 built-in indexing operations. *)
 and builtin_index_op = {
   is_array : bool;  (** Whether this is a slice or array. *)
@@ -361,6 +381,11 @@ and generic_params = {
 (** Reference to a global declaration. *)
 and global_decl_ref = { id : global_decl_id; generics : generic_args }
 
+(** Hash-consed data structure: a reference-counted wrapper that guarantees that
+    two equal value will be stored at the same address. This makes it possible
+    to use the pointer address as a hash value. *)
+and 'a0 hash_consed = 'a0 (* Not actually hash-consed on the OCaml side *)
+
 (** .0 outlives .1 *)
 and ('a0, 'a1) outlives_pred = 'a0 * 'a1
 
@@ -416,8 +441,12 @@ and trait_param = {
   trait : trait_decl_ref region_binder;  (** The trait that is implemented. *)
 }
 
-(** A reference to a trait *)
-and trait_ref = {
+(** A reference to a trait.
+
+    This type is hash-consed, [TraitRefContents] contains the actual data. *)
+and trait_ref = trait_ref_contents hash_consed
+
+and trait_ref_contents = {
   kind : trait_ref_kind;
   trait_decl_ref : trait_decl_ref region_binder;
       (** Not necessary, but useful *)
@@ -488,12 +517,15 @@ and trait_ref_kind =
           including trait method declarations. Not present in trait
           implementations as we can use [TraitImpl] intead. *)
   | BuiltinOrAuto of
-      trait_ref list * (trait_item_name * trait_assoc_ty_impl) list
+      builtin_impl_data
+      * trait_ref list
+      * (trait_item_name * trait_assoc_ty_impl) list
       (** A trait implementation that is computed by the compiler, such as for
           built-in trait [Sized]. This morally points to an invisible [impl]
           block; as such it contains the information we may need from one.
 
           Fields:
+          - [builtin_data]
           - [parent_trait_refs]: Exactly like the same field on [TraitImpl]: the
             [TraitRef]s required to satisfy the implied predicates on the trait
             declaration. E.g. since [FnMut: FnOnce], a built-in [T: FnMut] impl
@@ -515,7 +547,14 @@ and trait_type_constraint = {
   ty : ty;
 }
 
-and ty =
+(** A type.
+
+    Warning: the [DriveMut] impls of [Ty] needs to clone and re-hash the
+    modified type to maintain the hash-consing invariant. This is expensive,
+    avoid visiting types mutably when not needed. *)
+and ty = ty_kind hash_consed
+
+and ty_kind =
   | TAdt of type_decl_ref
       (** An ADT. Note that here ADTs are very general. They can be:
           - user-defined ADTs
@@ -635,20 +674,9 @@ class ['self] map_type_decl_base =
     method visit_attr_info : 'env -> attr_info -> attr_info = fun _ x -> x
   end
 
-(** (U)LLBC is a language with side-effects: a statement may abort in a way that
-    isn't tracked by control-flow. The two kinds of abort are:
-    - Panic (may unwind or not depending on compilation setting);
-    - Undefined behavior: *)
-type abort_kind =
-  | Panic of name option  (** A built-in panicking function. *)
-  | UndefinedBehavior  (** Undefined behavior in the rust abstract machine. *)
-  | UnwindTerminate
-      (** Unwind had to stop for Abi reasons or because cleanup code panicked
-          again. *)
-
 (** Describes modifiers to the alignment and packing of the corresponding type.
     Represents [repr(align(n))] and [repr(packed(n))]. *)
-and alignment_modifier = Align of int | Pack of int
+type alignment_modifier = Align of int | Pack of int
 
 (** Additional information for closures. *)
 and closure_info = {
@@ -842,9 +870,10 @@ and name = (path_elem list[@visitors.opaque])
 and path_elem =
   | PeIdent of string * disambiguator
   | PeImpl of impl_elem
-  | PeMonomorphized of generic_args
-      (** This item was obtained by monomorphizing its parent with the given
-          args. *)
+  | PeInstantiated of generic_args binder
+      (** This item was obtained by instantiating its parent with the given
+          args. The binder binds the parameters of the new items. If the binder
+          binds nothing then this is a monomorphization. *)
 
 (** The metadata stored in a pointer. That's the information stored in pointers
     alongside their address. It's empty for [Sized] types, and interesting for
@@ -953,8 +982,8 @@ and variant = {
   fields : field list;
   discriminant : literal;
       (** The discriminant value outputted by [std::mem::discriminant] for this
-          variant. This can be different than the discriminant stored in memory
-          (called [tag]). That one is described by [[DiscriminantLayout]] and
+          variant. This can be different than the value stored in memory (called
+          [tag]). That one is described by [[DiscriminantLayout]] and
           [[TagEncoding]]. *)
 }
 

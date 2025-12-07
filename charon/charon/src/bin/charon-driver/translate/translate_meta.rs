@@ -53,7 +53,23 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                                 rewritten_path
                             }
                         } else {
-                            path.clone()
+                            // Find the cargo home directory: according to cargo docs and having a
+                            // look at the cargo source, it's either the `$CARGO_HOME` var or
+                            // `$HOME/.cargo`
+                            let cargo_home = std::env::var("CARGO_HOME")
+                                .map(PathBuf::from)
+                                .ok()
+                                .or_else(|| std::env::home_dir().map(|p| p.join(".cargo")));
+                            if let Some(cargo_home) = cargo_home
+                                && let Ok(path) = path.strip_prefix(cargo_home)
+                            {
+                                // Avoid some more machine-dependent paths in the llbc output.
+                                let mut rewritten_path: PathBuf = "/cargo".into();
+                                rewritten_path.extend(path);
+                                rewritten_path
+                            } else {
+                                path.clone()
+                            }
                         };
                         FileName::Local(path)
                     }
@@ -332,9 +348,18 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
             self.name_for_item(&src.item)?
         };
         match &src.kind {
+            // Nothing to do for the real items.
+            TransItemSourceKind::Type
+            | TransItemSourceKind::Fun
+            | TransItemSourceKind::Global
+            | TransItemSourceKind::TraitImpl(TraitImplSource::Normal)
+            | TransItemSourceKind::TraitDecl
+            | TransItemSourceKind::InherentImpl
+            | TransItemSourceKind::Module => {}
+
             TransItemSourceKind::TraitImpl(
                 kind @ (TraitImplSource::Closure(..)
-                | TraitImplSource::DropGlue
+                | TraitImplSource::ImplicitDestruct
                 | TraitImplSource::TraitAlias),
             ) => {
                 if let TraitImplSource::Closure(..) = kind {
@@ -343,14 +368,22 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                 let impl_id = self.register_and_enqueue(&None, src.clone()).unwrap();
                 name.name.push(PathElem::Impl(ImplElem::Trait(impl_id)));
             }
+            TransItemSourceKind::DefaultedMethod(_, method_name) => {
+                name.name.push(PathElem::Ident(
+                    method_name.to_string(),
+                    Disambiguator::ZERO,
+                ));
+            }
             TransItemSourceKind::ClosureMethod(kind) => {
                 let fn_name = kind.method_name().to_string();
                 name.name
                     .push(PathElem::Ident(fn_name, Disambiguator::ZERO));
             }
-            TransItemSourceKind::DropGlueMethod => {
-                name.name
-                    .push(PathElem::Ident("drop".to_string(), Disambiguator::ZERO));
+            TransItemSourceKind::DropInPlaceMethod(..) => {
+                name.name.push(PathElem::Ident(
+                    "drop_in_place".to_string(),
+                    Disambiguator::ZERO,
+                ));
             }
             TransItemSourceKind::ClosureAsFnCast => {
                 name.name
@@ -368,7 +401,12 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                     Disambiguator::ZERO,
                 ));
             }
-            _ => {}
+            TransItemSourceKind::VTableDropShim => {
+                name.name.push(PathElem::Ident(
+                    "{vtable_drop_shim}".into(),
+                    Disambiguator::ZERO,
+                ));
+            }
         }
         Ok(name)
     }
@@ -389,7 +427,11 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
                 &item_ref.generic_args,
                 &item_ref.impl_exprs,
             )?;
-            name.name.push(PathElem::Monomorphized(Box::new(args)));
+            name.name.push(PathElem::Instantiated(Box::new(Binder {
+                params: GenericParams::empty(),
+                skip_binder: args,
+                kind: BinderKind::Other,
+            })));
         }
         Ok(name)
     }
@@ -412,7 +454,9 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
             } => associated_item,
             _ => panic!("Unexpected def for associated item: {def:?}"),
         };
-        Ok(TraitItemName(assoc.name.clone().unwrap_or_default()))
+        Ok(TraitItemName(
+            assoc.name.as_ref().map(|n| n.into()).unwrap_or_default(),
+        ))
     }
 
     pub(crate) fn opacity_for_name(&self, name: &Name) -> ItemOpacity {
@@ -460,15 +504,15 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
 
     pub(crate) fn translate_inline(&self, def: &hax::FullDef) -> Option<InlineAttr> {
         match def.kind() {
-            hax::FullDefKind::Fn { inline, .. } | hax::FullDefKind::AssocFn { inline, .. } => {
-                match inline {
-                    hax::InlineAttr::None => None,
-                    hax::InlineAttr::Hint => Some(InlineAttr::Hint),
-                    hax::InlineAttr::Never => Some(InlineAttr::Never),
-                    hax::InlineAttr::Always => Some(InlineAttr::Always),
-                    hax::InlineAttr::Force { .. } => Some(InlineAttr::Always),
-                }
-            }
+            hax::FullDefKind::Fn { inline, .. }
+            | hax::FullDefKind::AssocFn { inline, .. }
+            | hax::FullDefKind::Closure { inline, .. } => match inline {
+                hax::InlineAttr::None => None,
+                hax::InlineAttr::Hint => Some(InlineAttr::Hint),
+                hax::InlineAttr::Never => Some(InlineAttr::Never),
+                hax::InlineAttr::Always => Some(InlineAttr::Always),
+                hax::InlineAttr::Force { .. } => Some(InlineAttr::Always),
+            },
             _ => None,
         }
     }
@@ -531,15 +575,17 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
         let span = def.source_span.as_ref().unwrap_or(&def.span);
         let span = self.translate_span_from_hax(span);
         let is_local = def.def_id().is_local;
-        let (attr_info, lang_item) = if item_src.is_derived_item() {
-            (AttrInfo::default(), None)
-        } else {
+        let (attr_info, lang_item) = if !item_src.is_derived_item()
+            || matches!(item_src.kind, TransItemSourceKind::ClosureMethod(..))
+        {
             let attr_info = self.translate_attr_info(def);
             let lang_item = def
                 .lang_item
                 .clone()
                 .or_else(|| def.diagnostic_item.clone());
             (attr_info, lang_item)
+        } else {
+            (AttrInfo::default(), None)
         };
 
         let opacity = if self.is_extern_item(def)

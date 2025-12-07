@@ -9,6 +9,7 @@
 
 use index_vec::{Idx, IdxSliceIndex, IndexVec};
 use serde::{Deserialize, Serialize, Serializer};
+use serde_state::{DeserializeState, SerializeState};
 use std::{
     iter::{FromIterator, IntoIterator},
     mem,
@@ -175,6 +176,16 @@ where
         self.vector[id].get_or_insert_with(f)
     }
 
+    /// Get a mutable reference into the ith element. If the vector is too short, extend it until
+    /// it has enough elements. If the element doesn't exist, use the provided function to
+    /// initialize it.
+    pub fn get_or_extend_and_insert_default(&mut self, id: I) -> &mut T
+    where
+        T: Default,
+    {
+        self.get_or_extend_and_insert(id, Default::default)
+    }
+
     /// Map each entry to a new one, keeping the same ids.
     pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> Vector<I, U> {
         Vector {
@@ -206,6 +217,18 @@ where
                 .vector
                 .iter_mut()
                 .map(|x_opt| x_opt.as_mut().map(&mut f))
+                .collect(),
+            elem_count: self.elem_count,
+        }
+    }
+
+    /// Map each entry to a new one, keeping the same ids.
+    pub fn map_indexed<U>(self, mut f: impl FnMut(I, T) -> U) -> Vector<I, U> {
+        Vector {
+            vector: self
+                .vector
+                .into_iter_enumerated()
+                .map(|(i, x_opt)| x_opt.map(|x| f(i, x)))
                 .collect(),
             elem_count: self.elem_count,
         }
@@ -322,6 +345,16 @@ where
         self.extract(|x| !f(x)).for_each(drop);
     }
 
+    /// Like `Vec::clear`.
+    pub fn clear(&mut self) {
+        self.vector.clear();
+        self.elem_count = 0;
+    }
+    /// Like `Vec::truncate`.
+    pub fn truncate(&mut self, at: usize) {
+        self.vector.truncate(at);
+        self.elem_count = self.iter().count();
+    }
     /// Like `Vec::split_off`.
     pub fn split_off(&mut self, at: usize) -> Self {
         let mut ret = Self {
@@ -446,6 +479,15 @@ impl<I: Idx, T: Serialize> Serialize for Vector<I, T> {
     }
 }
 
+impl<I: Idx, State, T: SerializeState<State>> SerializeState<State> for Vector<I, T> {
+    fn serialize_state<S>(&self, state: &State, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.vector.as_vec().serialize_state(state, serializer)
+    }
+}
+
 impl<'de, I: Idx, T: Deserialize<'de>> Deserialize<'de> for Vector<I, T> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -453,6 +495,23 @@ impl<'de, I: Idx, T: Deserialize<'de>> Deserialize<'de> for Vector<I, T> {
     {
         let mut ret = Self {
             vector: Deserialize::deserialize(deserializer)?,
+            elem_count: 0,
+        };
+        ret.elem_count = ret.iter().count();
+        Ok(ret)
+    }
+}
+
+impl<'de, I: Idx, State, T: DeserializeState<'de, State>> DeserializeState<'de, State>
+    for Vector<I, T>
+{
+    fn deserialize_state<D>(state: &State, deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let vec: Vec<Option<_>> = DeserializeState::deserialize_state(state, deserializer)?;
+        let mut ret = Self {
+            vector: IndexVec::from(vec),
             elem_count: 0,
         };
         ret.elem_count = ret.iter().count();

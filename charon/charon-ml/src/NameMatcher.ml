@@ -437,12 +437,13 @@ let match_literal (pl : literal) (l : Values.literal) : bool =
 let rec match_name_with_generics (ctx : 'fun_body ctx) (c : match_config)
     ?(m : maps = mk_empty_maps ()) (p : pattern) (n : T.name)
     (g : T.generic_args) : bool =
-  (* Handle monomorphized matching: if the name ends with a PeMonomorphized
+  (* Handle monomorphized matching: if the name ends with a PeInstantiated
      element, use the monomorphized args and continue matching without that
      element *)
   let n, g =
     match List.rev n with
-    | PeMonomorphized mono_args :: rest_rev ->
+    | PeInstantiated binder :: rest_rev ->
+        let mono_args = binder.binder_value in
         (* In this case, we may still have some late-bound generics in `g`, this could ONLY happen for regions *)
         let regions_count, types_count, const_generics_count, trait_refs_count =
           TypesUtils.generic_args_lengths g
@@ -761,28 +762,18 @@ let match_fn_ptr (ctx : 'fun_body ctx) (c : match_config) (p : pattern)
         match d.src with
         | TraitImplItem (_, trait_ref, method_name, _)
           when c.match_with_trait_decl_refs ->
-            (* FIXME: this is a hack to circumvent the fact that sometimes
-               Charon does not retrieve the proper number of parameters:
-               before doing the substitution, check that the number of generic
-               arguments matches the number of generic parameters.
-            *)
-            if
-              TypesUtils.generic_params_lengths d.signature.generics
-              = TypesUtils.generic_args_lengths func.generics
-            then
-              let subst =
-                Substitute.make_subst_from_generics d.signature.generics
-                  func.generics
-              in
-              let trait_ref =
-                Substitute.trait_decl_ref_substitute subst trait_ref
-              in
-              (* TODO: recover the method generics somehow *)
-              let method_generics = TypesUtils.empty_generic_args in
-              match_trait_decl_ref_item ctx c (mk_empty_maps ()) p
-                { binder_value = trait_ref; binder_regions = [] }
-                method_name method_generics
-            else false
+            let subst =
+              Substitute.make_subst_from_generics d.signature.generics
+                func.generics
+            in
+            let trait_ref =
+              Substitute.trait_decl_ref_substitute subst trait_ref
+            in
+            (* TODO: recover the method generics somehow *)
+            let method_generics = TypesUtils.empty_generic_args in
+            match_trait_decl_ref_item ctx c (mk_empty_maps ()) p
+              { binder_value = trait_ref; binder_regions = [] }
+              method_name method_generics
         | _ -> false
       in
       match_function_name || match_trait_ref
@@ -966,7 +957,7 @@ and path_elem_with_generic_args_to_pattern (ctx : 'fun_body ctx)
       | Some args -> [ PIdent (s, d, args) ]
     end
   | PeImpl impl -> [ impl_elem_to_pattern ctx c impl ]
-  | PeMonomorphized _ ->
+  | PeInstantiated _ ->
       (* In pattern generation, we skip monomorphized elements since patterns
          are meant to match the logical structure, not the instantiation details *)
       []
@@ -1476,7 +1467,7 @@ module NameMatcherMap = struct
     let (Node (node_v, children)) = m in
     (* Check if we reached the destination *)
     match name with
-    | [] | [ PeMonomorphized _ ] ->
+    | [] | [ PeInstantiated _ ] ->
         (* For tree search, we also consider monomorphized elements as terminal
            since they represent instantiation details, not logical structure.
            The monomorphized matching is always handled by the calling context. *)

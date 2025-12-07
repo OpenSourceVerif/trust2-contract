@@ -3,7 +3,6 @@
 use charon_lib::llbc_ast::*;
 use itertools::Itertools;
 use std::collections::HashMap;
-use std::error::Error;
 
 mod util;
 use util::*;
@@ -97,8 +96,7 @@ fn spans() -> anyhow::Result<()> {
     // Span of the whole function.
     assert_eq!(repr_span(function.item_meta.span), "2:8-10:9");
 
-    let body = function.body.as_ref().unwrap();
-    let body = &body.as_structured().unwrap().body;
+    let body = &function.body.as_structured().unwrap().body;
     // Span of the function body
     assert_eq!(repr_span(body.span), "3:16-10:9");
 
@@ -179,8 +177,8 @@ fn predicate_origins() -> anyhow::Result<()> {
                 (WhereClauseOnTrait, "Sized"),
                 (WhereClauseOnTrait, "Copy"),
                 (WhereClauseOnTrait, "Default"),
-                (TraitItem(TraitItemName("AssocType".to_owned())), "Sized"),
-                (TraitItem(TraitItemName("AssocType".to_owned())), "Default"),
+                (TraitItem(TraitItemName("AssocType".into())), "Sized"),
+                (TraitItem(TraitItemName("AssocType".into())), "Default"),
             ],
         ),
         // Interesting note: the method definition does not mention the clauses on the trait.
@@ -253,6 +251,8 @@ fn attributes() -> anyhow::Result<()> {
     };
     let crate_data = translate(
         r#"
+        #![feature(stmt_expr_attributes)]
+
         #[clippy::foo]
         #[clippy::foo(arg)]
         #[clippy::foo = "arg"]
@@ -275,7 +275,10 @@ fn attributes() -> anyhow::Result<()> {
 
         #[inline(never)]
         /// This is a doc comment.
-        fn main() {}
+        fn main() {
+            // Attribute on a closure.
+            let _f = #[inline(always)] || 42;
+        }
         "#,
     )?;
     assert_eq!(
@@ -313,6 +316,12 @@ fn attributes() -> anyhow::Result<()> {
             .unwrap(),
         &Attribute::DocComment(" This is a doc comment.".to_owned())
     );
+    // Check that the `inline` attribute on closures gets picked up.
+    let any_inline_always = crate_data
+        .fun_decls
+        .iter()
+        .any(|decl| matches!(decl.item_meta.attr_info.inline, Some(InlineAttr::Always)));
+    assert!(any_inline_always);
     Ok(())
 }
 
@@ -490,6 +499,15 @@ fn rename_attribute() -> anyhow::Result<()> {
             .attr_info
             .rename
             .as_deref(),
+        Some("retTest")
+    );
+
+    assert_eq!(
+        crate_data.fun_decls[6]
+            .item_meta
+            .attr_info
+            .rename
+            .as_deref(),
         Some("Const_Test")
     );
 
@@ -629,7 +647,7 @@ fn source_text() -> anyhow::Result<()> {
 }
 
 #[test]
-fn known_trait_method_call() -> Result<(), Box<dyn Error>> {
+fn known_trait_method_call() -> anyhow::Result<()> {
     let crate_data = translate(
         r#"
         #[derive(Default)]
@@ -644,8 +662,7 @@ fn known_trait_method_call() -> Result<(), Box<dyn Error>> {
         repr_name(&crate_data, &function.item_meta.name),
         "test_crate::use_default"
     );
-    let body = function.body.as_ref().unwrap();
-    let body = &body.as_structured().unwrap().body;
+    let body = &function.body.as_structured().unwrap().body;
     let [first_stmt, ..] = body.statements.as_slice() else {
         panic!()
     };
@@ -668,5 +685,39 @@ fn known_trait_method_call() -> Result<(), Box<dyn Error>> {
     let ItemSource::TraitImpl { .. } = &function.src else {
         panic!()
     };
+    Ok(())
+}
+
+#[test]
+fn multiple_deserialize() -> anyhow::Result<()> {
+    // Test that deserializing deduplicated values from two different invocations of Charon works
+    // correctly. This is non-obvious because `HashConsId`s will overlap between two invocations,
+    // yet the deserialization side-table is not reset between deserializations. It's however ok
+    // because the second deserialization simply overrides the `HashConsId -> HashCons<T>` mapping
+    // from the first one. This all breaks down if someone tries to deserialize a sub-value of the
+    // whole crate of course.
+    let krate1 = translate(
+        "
+        fn foo(_: bool) {}
+        fn bar(_: bool) {}
+        ",
+    )?;
+    let krate2 = translate(
+        "
+        fn foo(_: u32) {}
+        fn bar(_: u32) {}
+        ",
+    )?;
+    let ty1_1 = krate1.fun_decls[1].signature.inputs[0].clone();
+    let ty1_2 = krate1.fun_decls[2].signature.inputs[0].clone();
+    let ty2_1 = krate2.fun_decls[1].signature.inputs[0].clone();
+    let ty2_2 = krate2.fun_decls[2].signature.inputs[0].clone();
+    assert_eq!(ty1_1.kind().as_literal(), Some(&LiteralTy::Bool));
+    assert_eq!(ty1_2, ty1_1);
+    assert_eq!(
+        ty2_1.kind().as_literal(),
+        Some(&LiteralTy::UInt(UIntTy::U32))
+    );
+    assert_eq!(ty2_2, ty2_1);
     Ok(())
 }

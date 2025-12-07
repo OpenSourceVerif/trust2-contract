@@ -120,6 +120,17 @@ and borrow_kind =
           <https://doc.rust-lang.org/beta/nightly-rustc/rustc_middle/mir/enum.MutBorrowKind.html#variant.ClosureCapture>.
       *)
 
+(** A byte, in the MiniRust sense: it can either be uninitialized, a concrete u8
+    value, or part of a pointer with provenance (e.g. to a global or a function)
+*)
+and byte =
+  | Uninit  (** An uninitialized byte *)
+  | Value of int  (** A concrete byte value *)
+  | Provenance of provenance * int
+      (** A byte that is part of a pointer with provenance. The u8 is the offset
+          within the pointer. Note that we do not have an actual value for this
+          pointer byte, unlike MiniRust, as that is non-deterministic. *)
+
 (** For all the variants: the first type gives the source type, the second one
     gives the destination type. *)
 and cast_kind =
@@ -198,8 +209,8 @@ and constant_expr_kind =
           Remark: trait constants can not be used in types, they are necessarily
           values. *)
   | CVar of const_generic_var_id de_bruijn_var  (** A const generic var *)
-  | CFnPtr of fn_ptr  (** Function pointer *)
-  | CRawMemory of int list
+  | CFnDef of fn_ptr  (** Function definition -- this is a ZST constant *)
+  | CRawMemory of byte list
       (** Raw memory value obtained from constant evaluation. Used when a more
           structured representation isn't possible (e.g. for unions) or just
           isn't implemented yet. *)
@@ -216,7 +227,13 @@ and field_proj_kind =
 and local_id = (LocalId.id[@visitors.opaque])
 
 (** Nullary operation *)
-and nullop = SizeOf | AlignOf | OffsetOf of (int * field_id) list | UbChecks
+and nullop =
+  | SizeOf
+  | AlignOf
+  | OffsetOf of type_decl_ref * variant_id option * field_id
+  | UbChecks
+  | OverflowChecks
+  | ContractChecks
 
 and operand =
   | Copy of place
@@ -286,6 +303,11 @@ and projection_elem =
           - [to]
           - [from_end] *)
 
+and provenance =
+  | Global of global_decl_ref
+  | Function of fun_decl_ref
+  | Unknown
+
 (** TODO: we could factor out [Rvalue] and function calls (for LLBC, not ULLBC).
     We can also factor out the unops, binops with the function calls. TODO: move
     the aggregate kind to operands TODO: we should prefix the type variants with
@@ -317,10 +339,10 @@ and rvalue =
   | NullaryOp of nullop * ty  (** Nullary operation (e.g. [size_of]) *)
   | Discriminant of place
       (** Discriminant read. Reads the discriminant value of an enum. The place
-          must have the type of an enum.
-
-          This case is filtered in
-          [crate::transform::resugar::reconstruct_matches] *)
+          must have the type of an enum. The discriminant in question is the one
+          in the [discriminant] field of the corresponding [Variant]. This can
+          be different than the value stored in memory (called [tag]). That one
+          is described by [[DiscriminantLayout]] and [[TagEncoding]]. *)
   | Aggregate of aggregate_kind * operand list
       (** Creates an aggregate value, like a tuple, a struct or an enum:
           {@rust[
