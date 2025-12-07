@@ -25,13 +25,15 @@ pub trait Default<Self>
 pub fn core::default::Default::default<Self>() -> Self
 where
     [@TraitClause0]: Default<Self>,
+= <opaque>
 
 // Full name: core::default::{impl Default for bool}::default
 pub fn {impl Default for bool}::default() -> bool
+= <opaque>
 
 // Full name: core::default::{impl Default for bool}
 impl Default for bool {
-    parent_clause0 = Sized<bool>
+    parent_clause0 = {built_in impl Sized for bool}
     fn default = {impl Default for bool}::default
     non-dyn-compatible
 }
@@ -42,8 +44,14 @@ pub struct Error {}
 // Full name: core::fmt::Arguments
 #[lang_item("format_arguments")]
 pub opaque type Arguments<'a>
-where
-    'a : 'a,
+
+// Full name: core::fmt::rt::Argument
+#[lang_item("format_argument")]
+pub opaque type Argument<'a>
+
+// Full name: core::fmt::{Arguments<'a>}::new
+pub unsafe fn new<'a, const N : usize, const M : usize>(@1: &'a (Array<u8, N>), @2: &'a (Array<Argument<'a>, M>)) -> Arguments<'a>
+= <opaque>
 
 // Full name: core::result::Result
 #[lang_item("Result")]
@@ -60,52 +68,47 @@ where
 #[lang_item("Debug")]
 pub trait Debug<Self>
 {
-    fn fmt<'_0, '_1, '_2> = core::fmt::Debug::fmt<'_0_0, '_0_1, '_0_2, Self>[Self]
+    fn fmt<'_0_1, '_1_1, '_2_1> = core::fmt::Debug::fmt<'_0_1, '_1_1, '_2_1, Self>[Self]
     vtable: core::fmt::Debug::{vtable}
 }
 
-pub fn core::fmt::Debug::fmt<'_0, '_1, '_2, Self>(@1: &'_0 (Self), @2: &'_1 mut (Formatter<'_2>)) -> Result<(), Error>[Sized<()>, Sized<Error>]
+pub fn core::fmt::Debug::fmt<'_0, '_1, '_2, Self>(@1: &'_0 (Self), @2: &'_1 mut (Formatter<'_2>)) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
 where
     [@TraitClause0]: Debug<Self>,
+= <opaque>
 
 // Full name: core::fmt::{impl Debug for bool}::fmt
-pub fn {impl Debug for bool}::fmt<'_0, '_1, '_2>(@1: &'_0 (bool), @2: &'_1 mut (Formatter<'_2>)) -> Result<(), Error>[Sized<()>, Sized<Error>]
+pub fn {impl Debug for bool}::fmt<'_0, '_1, '_2>(@1: &'_0 (bool), @2: &'_1 mut (Formatter<'_2>)) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
+= <opaque>
 
 // Full name: core::fmt::{impl Debug for bool}
 impl Debug for bool {
-    fn fmt<'_0, '_1, '_2> = {impl Debug for bool}::fmt<'_0_0, '_0_1, '_0_2>
+    fn fmt<'_0_1, '_1_1, '_2_1> = {impl Debug for bool}::fmt<'_0_1, '_1_1, '_2_1>
     vtable: {impl Debug for bool}::{vtable}
 }
-
-// Full name: core::fmt::rt::Argument
-#[lang_item("format_argument")]
-pub opaque type Argument<'a>
 
 // Full name: core::fmt::rt::{Argument<'_0>}::new_debug
 pub fn new_debug<'_0, '_1, T>(@1: &'_1 (T)) -> Argument<'_1>
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Debug<T>,
+= <opaque>
 
-// Full name: core::fmt::rt::{Arguments<'a>}::new_v1
-pub fn new_v1<'a, const P : usize, const A : usize>(@1: &'a (Array<&'static (Str), const P : usize>), @2: &'a (Array<Argument<'a>, const A : usize>)) -> Arguments<'a>
-
-// Full name: core::ops::drop::Drop
-#[lang_item("drop")]
-pub trait Drop<Self>
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn drop<'_0> = drop<'_0_0, Self>[Self]
-    vtable: core::ops::drop::Drop::{vtable}
+    fn drop_in_place = drop_in_place<Self>
+    vtable: core::marker::Destruct::{vtable}
 }
 
-// Full name: core::ops::drop::Drop::drop
-pub fn drop<'_0, Self>(@1: &'_0 mut (Self))
-where
-    [@TraitClause0]: Drop<Self>,
+// Full name: core::marker::Destruct::drop_in_place
+fn drop_in_place<Self>(@1: *mut Self)
+= <opaque>
 
 // Full name: std::io::stdio::_print
 pub fn _print<'_0>(@1: Arguments<'_0>)
+= <opaque>
 
 fn UNIT_METADATA()
 {
@@ -145,6 +148,7 @@ trait Join<Self, U>
 fn test_crate::Join::test<Self, U>()
 where
     [@TraitClause0]: Join<Self, U>,
+= <method_without_default_body>
 
 // Full name: test_crate::{impl Join<U> for T}::test
 fn {impl Join<U> for T}::test<T, U>()
@@ -159,16 +163,18 @@ where
     let @0: (); // return
     let @1: (); // anonymous local
     let @2: Arguments<'_>; // anonymous local
-    let args@3: Array<Argument<'_>, 1 : usize>; // local
-    let @4: Argument<'_>; // anonymous local
-    let @5: &'_ (U); // anonymous local
-    let @6: &'_ (U); // anonymous local
-    let @7: U; // anonymous local
-    let @8: &'_ (Array<&'_ (Str), 2 : usize>); // anonymous local
-    let @9: &'_ (Array<&'_ (Str), 2 : usize>); // anonymous local
-    let @10: Array<&'_ (Str), 2 : usize>; // anonymous local
+    let args@3: (&'_ (U)); // local
+    let @4: &'_ (U); // anonymous local
+    let @5: U; // anonymous local
+    let args@6: Array<Argument<'_>, 1 : usize>; // local
+    let @7: Argument<'_>; // anonymous local
+    let @8: &'_ (U); // anonymous local
+    let @9: &'_ (Array<u8, 4 : usize>); // anonymous local
+    let @10: &'_ (Array<u8, 4 : usize>); // anonymous local
     let @11: &'_ (Array<Argument<'_>, 1 : usize>); // anonymous local
     let @12: &'_ (Array<Argument<'_>, 1 : usize>); // anonymous local
+    let @13: Array<u8, 4 : usize>; // anonymous local
+    let @14: &'_ (Array<u8, 4 : usize>); // anonymous local
 
     @0 := ()
     storage_live(@1)
@@ -176,36 +182,40 @@ where
     storage_live(args@3)
     storage_live(@4)
     storage_live(@5)
-    storage_live(@6)
-    storage_live(@7)
-    @7 := @TraitClause4::default()
-    @6 := &@7
-    @5 := &*(@6)
-    @4 := new_debug<'_, '_, U>[@TraitClause1, @TraitClause5](move (@5))
-    storage_dead(@5)
-    args@3 := [move (@4)]
+    @5 := @TraitClause4::default()
+    @4 := &@5
+    args@3 := (move (@4))
     storage_dead(@4)
+    storage_live(args@6)
+    storage_live(@7)
     storage_live(@8)
+    @8 := &*((args@3).0)
+    @7 := new_debug<'_, '_, U>[@TraitClause1, @TraitClause5](move (@8))
+    storage_dead(@8)
+    args@6 := [move (@7)]
+    storage_dead(@7)
     storage_live(@9)
     storage_live(@10)
-    @10 := [const (""), const ("\n")]
-    @9 := &@10
-    @8 := &*(@9)
+    storage_live(@13)
+    @13 := [const (192 : u8), const (1 : u8), const (10 : u8), const (0 : u8)]
+    storage_live(@14)
+    @14 := &@13
+    @10 := move (@14)
+    @9 := &*(@10)
     storage_live(@11)
     storage_live(@12)
-    @12 := &args@3
+    @12 := &args@6
     @11 := &*(@12)
-    @2 := new_v1<'_, 2 : usize, 1 : usize>(move (@8), move (@11))
+    @2 := new<'_, 4 : usize, 1 : usize>(move (@9), move (@11))
     storage_dead(@12)
     storage_dead(@11)
     storage_dead(@10)
     storage_dead(@9)
-    storage_dead(@8)
     @1 := _print<'_>(move (@2))
     storage_dead(@2)
-    drop[Drop<U>] @7
-    storage_dead(@7)
-    storage_dead(@6)
+    storage_dead(args@6)
+    conditional_drop[{built_in impl Destruct for U}] @5
+    storage_dead(@5)
     storage_dead(args@3)
     storage_dead(@1)
     @0 := ()
@@ -266,7 +276,7 @@ where
     let @0: (); // return
 
     @0 := ()
-    @0 := {impl Join<U> for T}::test<T, bool>[@TraitClause0, Sized<bool>, @TraitClause3, {impl Right<U> for T}<T, bool>[@TraitClause0, Sized<bool>, {impl Default for bool}, {impl Debug for bool}], {impl Default for bool}, {impl Debug for bool}]()
+    @0 := {impl Join<U> for T}::test<T, bool>[@TraitClause0, {built_in impl Sized for bool}, @TraitClause3, {impl Right<U> for T}<T, bool>[@TraitClause0, {built_in impl Sized for bool}, {impl Default for bool}, {impl Debug for bool}], {impl Default for bool}, {impl Debug for bool}]()
     return
 }
 

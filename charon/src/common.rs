@@ -95,6 +95,22 @@ pub mod type_map {
                 .insert(TypeId::of::<T>(), Box::new(val))
                 .and_then(|val: Box<dyn Mappable>| (val as Box<dyn Any>).downcast().ok())
         }
+
+        pub fn or_insert_with<T: Mappable>(
+            &mut self,
+            f: impl FnOnce() -> M::Value<T>,
+        ) -> &mut M::Value<T> {
+            if self.get::<T>().is_none() {
+                self.insert(f());
+            }
+            self.get_mut::<T>().unwrap()
+        }
+        pub fn or_default<T: Mappable>(&mut self) -> &mut M::Value<T>
+        where
+            M::Value<T>: Default,
+        {
+            self.or_insert_with(|| Default::default())
+        }
     }
 
     impl<M> Default for TypeMap<M> {
@@ -107,109 +123,8 @@ pub mod type_map {
     }
 }
 
-pub mod hash_consing {
-    use derive_generic_visitor::{Drive, DriveMut, Visit, VisitMut};
-
-    use super::type_map::{Mappable, Mapper, TypeMap};
-    use itertools::Either;
-    use serde::{Deserialize, Serialize};
-    use std::collections::HashMap;
-    use std::hash::Hash;
-    use std::ops::ControlFlow;
-    use std::sync::{Arc, LazyLock, RwLock};
-
-    /// Hash-consed data structure: a reference-counted wrapper that guarantees that two equal
-    /// value will be stored at the same address. This makes it possible to use the pointer address
-    /// as a hash value.
-    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-    pub struct HashConsed<T>(Arc<T>);
-
-    impl<T> HashConsed<T> {
-        pub fn inner(&self) -> &T {
-            self.0.as_ref()
-        }
-    }
-
-    impl<T> HashConsed<T>
-    where
-        T: Hash + PartialEq + Eq + Clone + Mappable,
-    {
-        pub fn new(inner: T) -> Self {
-            Self::intern(Either::Left(inner))
-        }
-
-        /// Clones if needed to get mutable access to the inner value.
-        pub fn with_inner_mut<R>(&mut self, f: impl FnOnce(&mut T) -> R) -> R {
-            let kind = Arc::make_mut(&mut self.0);
-            let ret = f(kind);
-            // Re-establish sharing, crucial for the hashing function to be correct.
-            *self = Self::intern(Either::Right(self.0.clone()));
-            ret
-        }
-
-        /// Deduplicate the valuess by hashing them. This deduplication is crucial for the hashing
-        /// function to be correct. This is the only function allowed to create `Self` values.
-        fn intern(inner: Either<T, Arc<T>>) -> Self {
-            struct InternMapper;
-            impl Mapper for InternMapper {
-                type Value<T: Mappable> = HashMap<T, Arc<T>>;
-            }
-            static INTERNED: LazyLock<RwLock<TypeMap<InternMapper>>> =
-                LazyLock::new(|| Default::default());
-
-            if INTERNED.read().unwrap().get::<T>().is_none() {
-                INTERNED.write().unwrap().insert::<T>(Default::default());
-            }
-            let read_guard = INTERNED.read().unwrap();
-            if let Some(inner) = (*read_guard)
-                .get::<T>()
-                .unwrap()
-                .get(inner.as_ref().either(|x| x, |x| x.as_ref()))
-            {
-                Self(inner.clone())
-            } else {
-                drop(read_guard);
-                // We clone the value here in the slow path, which makes it possible to avoid an
-                // allocation in the fast path.
-                let raw_val: T = inner.as_ref().either(T::clone, |x| x.as_ref().clone());
-                let arc: Arc<T> = inner.either(Arc::new, |x| x);
-                INTERNED
-                    .write()
-                    .unwrap()
-                    .get_mut::<T>()
-                    .unwrap()
-                    .insert(raw_val, arc.clone());
-                Self(arc)
-            }
-        }
-    }
-
-    /// Hash the pointer; this is only correct if two identical values of `Self` are guaranteed to
-    /// point to the same memory location, which we carefully enforce above.
-    impl<T> std::hash::Hash for HashConsed<T> {
-        fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-            Arc::as_ptr(&self.0).hash(state);
-        }
-    }
-
-    impl<'s, T, V: Visit<'s, T>> Drive<'s, V> for HashConsed<T> {
-        fn drive_inner(&'s self, v: &mut V) -> ControlFlow<V::Break> {
-            v.visit(self.inner())
-        }
-    }
-    /// Note: this explores the inner value mutably by cloning and re-hashing afterwards.
-    impl<'s, T, V> DriveMut<'s, V> for HashConsed<T>
-    where
-        T: Hash + PartialEq + Eq + Clone + Mappable,
-        V: for<'a> VisitMut<'a, T>,
-    {
-        fn drive_inner_mut(&'s mut self, v: &mut V) -> ControlFlow<V::Break> {
-            self.with_inner_mut(|inner| v.visit(inner))
-        }
-    }
-}
-
 pub mod hash_by_addr {
+    use serde::{Deserialize, Serialize};
     use std::{
         hash::{Hash, Hasher},
         ops::Deref,
@@ -217,7 +132,7 @@ pub mod hash_by_addr {
 
     /// A wrapper around a smart pointer that hashes and compares the contents by the address of
     /// the pointee.
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Serialize, Deserialize)]
     pub struct HashByAddr<T>(pub T);
 
     impl<T: Deref> HashByAddr<T> {
@@ -237,6 +152,136 @@ pub mod hash_by_addr {
     impl<T: Hash + Deref> Hash for HashByAddr<T> {
         fn hash<H: Hasher>(&self, state: &mut H) {
             self.addr().hash(state);
+        }
+    }
+}
+
+pub mod serialize_map_to_array {
+    use core::{fmt, marker::PhantomData};
+    use std::{
+        collections::hash_map::RandomState,
+        hash::{BuildHasher, Hash},
+    };
+
+    use indexmap::IndexMap;
+    use serde::{
+        Deserialize, Deserializer, Serialize,
+        de::{SeqAccess, Visitor},
+        ser::Serializer,
+    };
+    use serde_state::{DeserializeState, SerializeState};
+
+    #[derive(Serialize, Deserialize, SerializeState, DeserializeState)]
+    struct KeyValue<K, V> {
+        key: K,
+        value: V,
+    }
+
+    /// A converter between an `IndexMap` and a sequence of named key-value pairs.
+    pub struct IndexMapToArray<K, V, U = RandomState>(PhantomData<(K, V, U)>);
+
+    impl<K, V, U> IndexMapToArray<K, V, U> {
+        /// Serializes the given `map` to an array of named key-values.
+        pub fn serialize<'a, S>(
+            map: &'a IndexMap<K, V, U>,
+            serializer: S,
+        ) -> Result<S::Ok, S::Error>
+        where
+            K: Serialize,
+            V: Serialize,
+            S: Serializer,
+        {
+            serializer.collect_seq(map.into_iter().map(|(key, value)| KeyValue { key, value }))
+        }
+        pub fn serialize_state<'a, S, State: ?Sized>(
+            map: &'a IndexMap<K, V, U>,
+            state: &State,
+            serializer: S,
+        ) -> Result<S::Ok, S::Error>
+        where
+            K: SerializeState<State>,
+            V: SerializeState<State>,
+            S: Serializer,
+        {
+            serializer.collect_seq(
+                map.into_iter().map(|(key, value)| {
+                    serde_state::WithState::new(KeyValue { key, value }, state)
+                }),
+            )
+        }
+
+        /// Deserializes from an array of named key-values.
+        pub fn deserialize<'de, D>(deserializer: D) -> Result<IndexMap<K, V, U>, D::Error>
+        where
+            K: Deserialize<'de> + Eq + Hash,
+            V: Deserialize<'de>,
+            U: BuildHasher + Default,
+            D: Deserializer<'de>,
+        {
+            struct IndexMapToArrayVisitor<K, V, U>(PhantomData<(K, V, U)>);
+
+            impl<'de, K, V, U> Visitor<'de> for IndexMapToArrayVisitor<K, V, U>
+            where
+                K: Deserialize<'de> + Eq + Hash,
+                V: Deserialize<'de>,
+                U: BuildHasher + Default,
+            {
+                type Value = IndexMap<K, V, U>;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("a list of key-value objects")
+                }
+
+                fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                    let mut map = IndexMap::<K, V, U>::default();
+                    while let Some(entry) = seq.next_element::<KeyValue<K, V>>()? {
+                        map.insert(entry.key, entry.value);
+                    }
+                    Ok(map)
+                }
+            }
+            let map =
+                deserializer.deserialize_seq(IndexMapToArrayVisitor::<K, V, U>(PhantomData))?;
+            Ok(map.into())
+        }
+        /// Deserializes from an array of named key-values.
+        pub fn deserialize_state<'de, D, State>(
+            state: &State,
+            deserializer: D,
+        ) -> Result<IndexMap<K, V, U>, D::Error>
+        where
+            K: DeserializeState<'de, State> + Eq + Hash,
+            V: DeserializeState<'de, State>,
+            U: BuildHasher + Default,
+            D: Deserializer<'de>,
+        {
+            struct IndexMapToArrayVisitor<'a, State, K, V, U>(&'a State, PhantomData<(K, V, U)>);
+
+            impl<'de, State, K, V, U> Visitor<'de> for IndexMapToArrayVisitor<'_, State, K, V, U>
+            where
+                K: DeserializeState<'de, State> + Eq + Hash,
+                V: DeserializeState<'de, State>,
+                U: BuildHasher + Default,
+            {
+                type Value = IndexMap<K, V, U>;
+
+                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                    formatter.write_str("a list of key-value objects")
+                }
+
+                fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+                    let mut map = IndexMap::default();
+                    let seed =
+                        serde_state::__private::wrap_deserialize_seed::<KeyValue<K, V>, _>(self.0);
+                    while let Some(entry) = seq.next_element_seed(seed)? {
+                        map.insert(entry.key, entry.value);
+                    }
+                    Ok(map)
+                }
+            }
+            let map = deserializer
+                .deserialize_seq(IndexMapToArrayVisitor::<_, K, V, U>(state, PhantomData))?;
+            Ok(map.into())
         }
     }
 }

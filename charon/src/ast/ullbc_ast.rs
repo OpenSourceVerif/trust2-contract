@@ -3,7 +3,7 @@
 pub use crate::ast::*;
 use derive_generic_visitor::{Drive, DriveMut};
 use macros::{EnumAsGetters, EnumIsA, VariantIndexArity, VariantName};
-use serde::{Deserialize, Serialize};
+use serde_state::{DeserializeState, SerializeState};
 
 // Block identifier. Similar to rust's `BasicBlock`.
 generate_index_type!(BlockId, "Block");
@@ -17,7 +17,15 @@ pub type ExprBody = GExprBody<BodyContents>;
 
 /// A raw statement: a statement without meta data.
 #[derive(
-    Debug, Clone, EnumIsA, EnumAsGetters, VariantName, Serialize, Deserialize, Drive, DriveMut,
+    Debug,
+    Clone,
+    EnumIsA,
+    EnumAsGetters,
+    VariantName,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
 )]
 pub enum StatementKind {
     Assign(Place, Rvalue),
@@ -36,7 +44,6 @@ pub enum StatementKind {
     /// is implicitly deallocated at the end of the function.
     StorageDead(LocalId),
     Deinit(Place),
-    Drop(Place, TraitRef),
     /// A built-in assert, which corresponds to runtime checks that we remove, namely: bounds
     /// checks, over/underflow checks, div/rem by zero checks, pointer alignement check.
     Assert(Assert),
@@ -47,7 +54,7 @@ pub enum StatementKind {
     Error(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Statement {
     pub span: Span,
     pub kind: StatementKind,
@@ -64,8 +71,8 @@ pub struct Statement {
     EnumAsGetters,
     VariantName,
     VariantIndexArity,
-    Serialize,
-    Deserialize,
+    SerializeState,
+    DeserializeState,
     Drive,
     DriveMut,
 )]
@@ -80,7 +87,9 @@ pub enum SwitchTargets {
 }
 
 /// A raw terminator: a terminator without meta data.
-#[derive(Debug, Clone, EnumIsA, EnumAsGetters, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(
+    Debug, Clone, EnumIsA, EnumAsGetters, SerializeState, DeserializeState, Drive, DriveMut,
+)]
 pub enum TerminatorKind {
     Goto {
         target: BlockId,
@@ -94,13 +103,26 @@ pub enum TerminatorKind {
         target: BlockId,
         on_unwind: BlockId,
     },
+    /// Drop the value at the given place.
+    ///
+    /// Depending on `DropKind`, this may be a real call to `drop_in_place`, or a conditional call
+    /// that should only happen if the place has not been moved out of. See the docs of `DropKind`
+    /// for more details; to get precise drops use `--precise-drops`.
+    Drop {
+        #[drive(skip)]
+        kind: DropKind,
+        place: Place,
+        tref: TraitRef,
+        target: BlockId,
+        on_unwind: BlockId,
+    },
     /// Handles panics and impossible cases.
     Abort(AbortKind),
     Return,
     UnwindResume,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Terminator {
     pub span: Span,
     pub kind: TerminatorKind,
@@ -110,7 +132,7 @@ pub struct Terminator {
     pub comments_before: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 #[charon::rename("Block")]
 pub struct BlockData {
     pub statements: Vec<Statement>,

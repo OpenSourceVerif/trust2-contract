@@ -10,13 +10,21 @@ pub use super::llbc_ast_utils::*;
 pub use crate::ast::*;
 use derive_generic_visitor::{Drive, DriveMut};
 use macros::{EnumAsGetters, EnumIsA, EnumToGetters, VariantIndexArity, VariantName};
-use serde::{Deserialize, Serialize};
+use serde_state::{DeserializeState, SerializeState};
 
 generate_index_type!(StatementId);
 
 /// A raw statement: a statement without meta data.
 #[derive(
-    Debug, Clone, EnumIsA, EnumToGetters, EnumAsGetters, Serialize, Deserialize, Drive, DriveMut,
+    Debug,
+    Clone,
+    EnumIsA,
+    EnumToGetters,
+    EnumAsGetters,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
 )]
 pub enum StatementKind {
     /// Assigns an `Rvalue` to a `Place`. e.g. `let y = x;` could become
@@ -39,11 +47,10 @@ pub enum StatementKind {
     Deinit(Place),
     /// Drop the value at the given place.
     ///
-    /// For MIR built and promoted, this is a conditional drop: the value will only be dropped if
-    /// it has not already been moved out. For MIR elaborated and optimized, this is a real drop.
-    ///
-    /// This drop is then equivalent to a call to `std::ptr::drop_in_place(&raw mut place)`.
-    Drop(Place, TraitRef),
+    /// Depending on `DropKind`, this may be a real call to `drop_in_place`, or a conditional call
+    /// that should only happen if the place has not been moved out of. See the docs of `DropKind`
+    /// for more details; to get precise drops use `--precise-drops`.
+    Drop(Place, TraitRef, #[drive(skip)] DropKind),
     Assert(Assert),
     Call(Call),
     /// Panic also handles "unreachable". We keep the name of the panicking function that was
@@ -72,7 +79,7 @@ pub enum StatementKind {
     Error(String),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Statement {
     pub span: Span,
     /// Integer uniquely identifying this statement among the statmeents in the current body. To
@@ -86,7 +93,8 @@ pub struct Statement {
     pub comments_before: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[serde_state(state_implements = HashConsSerializerState)] // Avoid corecursive impls due to perfect derive
 pub struct Block {
     pub span: Span,
     pub statements: Vec<Statement>,
@@ -98,8 +106,8 @@ pub struct Block {
     EnumIsA,
     EnumToGetters,
     EnumAsGetters,
-    Serialize,
-    Deserialize,
+    SerializeState,
+    DeserializeState,
     Drive,
     DriveMut,
     VariantName,

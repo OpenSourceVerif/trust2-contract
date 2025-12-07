@@ -12,6 +12,17 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
+    vtable: core::marker::Destruct::{vtable}
+}
+
+fn core::marker::Destruct::drop_in_place<Self>(@1: *mut Self)
+= <opaque>
+
 // Full name: core::marker::Tuple
 #[lang_item("tuple_trait")]
 pub trait Tuple<Self>
@@ -20,19 +31,7 @@ pub trait Tuple<Self>
     vtable: core::marker::Tuple::{vtable}
 }
 
-// Full name: core::ops::drop::Drop
-#[lang_item("drop")]
-pub trait Drop<Self>
-{
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn drop<'_0> = drop<'_0_0, Self>[Self]
-    vtable: core::ops::drop::Drop::{vtable}
-}
-
-// Full name: core::ops::drop::Drop::drop
-pub fn drop<'_0, Self>(@1: &'_0 mut (Self))
-where
-    [@TraitClause0]: Drop<Self>,
+opaque type core::ops::function::Fn::{vtable}<Args, Ty0>
 
 // Full name: core::ops::function::FnOnce
 #[lang_item("fn_once")]
@@ -55,17 +54,8 @@ pub trait FnMut<Self, Args>
     parent_clause1 : [@TraitClause1]: FnOnce<Self, Args>
     parent_clause2 : [@TraitClause2]: Sized<Args>
     parent_clause3 : [@TraitClause3]: Tuple<Args>
-    fn call_mut<'_0> = core::ops::function::FnMut::call_mut<'_0_0, Self, Args>[Self]
+    fn call_mut<'_0_1> = core::ops::function::FnMut::call_mut<'_0_1, Self, Args>[Self]
     vtable: core::ops::function::FnMut::{vtable}<Args, Self::parent_clause1::Output>
-}
-
-struct core::ops::function::Fn::{vtable}<Args, Ty0> {
-  size: usize,
-  align: usize,
-  drop: fn(*mut (dyn exists<_dyn> [@TraitClause0]: Fn<_dyn, Args> + _dyn : '_ + @TraitClause1_0::parent_clause1::parent_clause1::Output = Ty0)),
-  method_call: fn<'_0>(&'_0_0 ((dyn exists<_dyn> [@TraitClause0]: Fn<_dyn, Args> + _dyn : '_ + @TraitClause1_0::parent_clause1::parent_clause1::Output = Ty0)), Args) -> Ty0,
-  super_trait_0: &'static (core::marker::MetaSized::{vtable}),
-  super_trait_1: &'static (core::ops::function::FnMut::{vtable}<Args, Ty0>),
 }
 
 // Full name: core::ops::function::Fn
@@ -76,21 +66,24 @@ pub trait Fn<Self, Args>
     parent_clause1 : [@TraitClause1]: FnMut<Self, Args>
     parent_clause2 : [@TraitClause2]: Sized<Args>
     parent_clause3 : [@TraitClause3]: Tuple<Args>
-    fn call<'_0> = core::ops::function::Fn::call<'_0_0, Self, Args>[Self]
+    fn call<'_0_1> = core::ops::function::Fn::call<'_0_1, Self, Args>[Self]
     vtable: core::ops::function::Fn::{vtable}<Args, Self::parent_clause1::parent_clause1::Output>
 }
 
 pub fn core::ops::function::Fn::call<'_0, Self, Args>(@1: &'_0 (Self), @2: Args) -> @TraitClause0::parent_clause1::parent_clause1::Output
 where
     [@TraitClause0]: Fn<Self, Args>,
+= <opaque>
 
 pub fn core::ops::function::FnMut::call_mut<'_0, Self, Args>(@1: &'_0 mut (Self), @2: Args) -> @TraitClause0::parent_clause1::Output
 where
     [@TraitClause0]: FnMut<Self, Args>,
+= <opaque>
 
 pub fn core::ops::function::FnOnce::call_once<Self, Args>(@1: Self, @2: Args) -> @TraitClause0::Output
 where
     [@TraitClause0]: FnOnce<Self, Args>,
+= <opaque>
 
 fn UNIT_METADATA()
 {
@@ -103,13 +96,13 @@ fn UNIT_METADATA()
 const UNIT_METADATA: () = @Fun0()
 
 // Full name: test_crate::takes_fn
-fn takes_fn<'_0>(@1: &'_0 ((dyn exists<_dyn> [@TraitClause0]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_0 + for<'a> @TraitClause1_0::parent_clause1::parent_clause1::Output = bool)))
+fn takes_fn<'_0>(@1: &'_0 ((dyn exists<_dyn> [@TraitClause0_1]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_0 + for<'a> @TraitClause0_1::parent_clause1::parent_clause1::Output = bool)))
 {
     let @0: (); // return
-    let f@1: &'_ ((dyn exists<_dyn> [@TraitClause0]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause1_0::parent_clause1::parent_clause1::Output = bool)); // arg #1
+    let f@1: &'_ ((dyn exists<_dyn> [@TraitClause0_1]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause0_1::parent_clause1::parent_clause1::Output = bool)); // arg #1
     let counter@2: u32; // local
     let @3: bool; // anonymous local
-    let @4: &'_ ((dyn exists<_dyn> [@TraitClause0]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause1_0::parent_clause1::parent_clause1::Output = bool)); // anonymous local
+    let @4: &'_ ((dyn exists<_dyn> [@TraitClause0_1]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause0_1::parent_clause1::parent_clause1::Output = bool)); // anonymous local
     let @5: (&'_ mut (u32)); // anonymous local
     let @6: &'_ mut (u32); // anonymous local
     let @7: &'_ mut (u32); // anonymous local
@@ -126,15 +119,14 @@ fn takes_fn<'_0>(@1: &'_0 ((dyn exists<_dyn> [@TraitClause0]: for<'a> Fn<_dyn, (
     @7 := &mut counter@2
     @6 := &two-phase-mut *(@7)
     @5 := (move (@6))
-    @3 := (move (*(@4.metadata)).method_call)(move (@4), move (@5))
+    @3 := Fn<(dyn exists<_dyn> [@TraitClause0_2]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause0_2::parent_clause1::parent_clause1::Output = bool), (&'_ mut (u32))>::call<'_>(move (@4), move (@5))
     if move (@3) {
         storage_dead(@7)
         storage_dead(@6)
         storage_dead(@5)
         storage_dead(@4)
         @0 := ()
-    }
-    else {
+    } else {
         storage_dead(@7)
         storage_dead(@6)
         storage_dead(@5)
@@ -181,6 +173,16 @@ fn {impl FnMut<(&'_ mut (u32))> for closure}::call_mut<'_0, '_1>(@1: &'_1 mut (c
     return
 }
 
+// Full name: test_crate::gives_fn::closure::{impl Destruct for closure}::drop_in_place
+fn {impl Destruct for closure}::drop_in_place(@1: *mut closure)
+= <missing>
+
+// Full name: test_crate::gives_fn::closure::{impl Destruct for closure}
+impl Destruct for closure {
+    fn drop_in_place = {impl Destruct for closure}::drop_in_place
+    non-dyn-compatible
+}
+
 // Full name: test_crate::gives_fn::{impl FnOnce<(&'_ mut (u32))> for closure}::call_once
 fn {impl FnOnce<(&'_ mut (u32))> for closure}::call_once<'_0>(@1: closure, @2: (&'_0 mut (u32))) -> bool
 {
@@ -192,16 +194,16 @@ fn {impl FnOnce<(&'_ mut (u32))> for closure}::call_once<'_0>(@1: closure, @2: (
     storage_live(@3)
     @3 := &mut @1
     @0 := {impl FnMut<(&'_ mut (u32))> for closure}::call_mut<'_0, '_>(move (@3), move (@2))
-    drop[Drop<closure>] @1
+    drop[{impl Destruct for closure}] @1
     return
 }
 
 // Full name: test_crate::gives_fn::{impl FnOnce<(&'_ mut (u32))> for closure}
 impl<'_0> FnOnce<(&'_ mut (u32))> for closure {
-    parent_clause0 = MetaSized<closure>
-    parent_clause1 = Sized<(&'_ mut (u32))>
-    parent_clause2 = Tuple<(&'_ mut (u32))>
-    parent_clause3 = Sized<bool>
+    parent_clause0 = {built_in impl MetaSized for closure}
+    parent_clause1 = {built_in impl Sized for (&'_ mut (u32))}
+    parent_clause2 = {built_in impl Tuple for (&'_ mut (u32))}
+    parent_clause3 = {built_in impl Sized for bool}
     type Output = bool
     fn call_once = {impl FnOnce<(&'_ mut (u32))> for closure}::call_once<'_0>
     non-dyn-compatible
@@ -209,21 +211,21 @@ impl<'_0> FnOnce<(&'_ mut (u32))> for closure {
 
 // Full name: test_crate::gives_fn::{impl FnMut<(&'_ mut (u32))> for closure}
 impl<'_0> FnMut<(&'_ mut (u32))> for closure {
-    parent_clause0 = MetaSized<closure>
+    parent_clause0 = {built_in impl MetaSized for closure}
     parent_clause1 = {impl FnOnce<(&'_ mut (u32))> for closure}<'_0>
-    parent_clause2 = Sized<(&'_ mut (u32))>
-    parent_clause3 = Tuple<(&'_ mut (u32))>
-    fn call_mut<'_0> = {impl FnMut<(&'_ mut (u32))> for closure}::call_mut<'_0, '_0_0>
+    parent_clause2 = {built_in impl Sized for (&'_ mut (u32))}
+    parent_clause3 = {built_in impl Tuple for (&'_ mut (u32))}
+    fn call_mut<'_0_1> = {impl FnMut<(&'_ mut (u32))> for closure}::call_mut<'_0, '_0_1>
     non-dyn-compatible
 }
 
 // Full name: test_crate::gives_fn::{impl Fn<(&'_ mut (u32))> for closure}
 impl<'_0> Fn<(&'_ mut (u32))> for closure {
-    parent_clause0 = MetaSized<closure>
+    parent_clause0 = {built_in impl MetaSized for closure}
     parent_clause1 = {impl FnMut<(&'_ mut (u32))> for closure}<'_0>
-    parent_clause2 = Sized<(&'_ mut (u32))>
-    parent_clause3 = Tuple<(&'_ mut (u32))>
-    fn call<'_0> = {impl Fn<(&'_ mut (u32))> for closure}::call<'_0, '_0_0>
+    parent_clause2 = {built_in impl Sized for (&'_ mut (u32))}
+    parent_clause3 = {built_in impl Tuple for (&'_ mut (u32))}
+    fn call<'_0_1> = {impl Fn<(&'_ mut (u32))> for closure}::call<'_0, '_0_1>
     non-dyn-compatible
 }
 
@@ -231,24 +233,29 @@ impl<'_0> Fn<(&'_ mut (u32))> for closure {
 fn gives_fn()
 {
     let @0: (); // return
-    let @1: &'_ ((dyn exists<_dyn> [@TraitClause0]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause1_0::parent_clause1::parent_clause1::Output = bool)); // anonymous local
+    let @1: &'_ ((dyn exists<_dyn> [@TraitClause0_1]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause0_1::parent_clause1::parent_clause1::Output = bool)); // anonymous local
     let @2: &'_ (closure); // anonymous local
     let @3: &'_ (closure); // anonymous local
-    let @4: closure; // anonymous local
+    let @4: &'_ (closure); // anonymous local
+    let @5: &'_ (closure); // anonymous local
+    let @6: closure; // anonymous local
 
+    storage_live(@5)
+    storage_live(@6)
+    @6 := closure {  }
+    @5 := &@6
+    storage_live(@4)
     @0 := ()
     storage_live(@1)
     storage_live(@2)
     storage_live(@3)
-    storage_live(@4)
-    @4 := closure {  }
-    @3 := &@4
+    @4 := move (@5)
+    @3 := &*(@4)
     @2 := &*(@3)
-    @1 := unsize_cast<&'_ (closure), &'_ ((dyn exists<_dyn> [@TraitClause0]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause1_0::parent_clause1::parent_clause1::Output = bool)), {impl Fn<(&'_ mut (u32))> for closure}<'_>>(move (@2))
+    @1 := unsize_cast<&'_ (closure), &'_ ((dyn exists<_dyn> [@TraitClause0_1]: for<'a> Fn<_dyn, (&'a mut (u32))> + _dyn : '_ + for<'a> @TraitClause0_1::parent_clause1::parent_clause1::Output = bool)), {impl Fn<(&'_ mut (u32))> for closure}<'_>>(move (@2))
     storage_dead(@2)
     @0 := takes_fn<'_>(move (@1))
     storage_dead(@1)
-    storage_dead(@4)
     storage_dead(@3)
     return
 }

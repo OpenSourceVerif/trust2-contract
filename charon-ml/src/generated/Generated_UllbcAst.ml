@@ -35,7 +35,6 @@ and statement_kind =
           the function's body, in which case it is implicitly deallocated at the
           end of the function. *)
   | Deinit of place
-  | Drop of place * trait_ref
   | Assert of assertion
       (** A built-in assert, which corresponds to runtime checks that we remove,
           namely: bounds checks, over/underflow checks, div/rem by zero checks,
@@ -90,6 +89,20 @@ and terminator_kind =
   | Call of call * block_id * block_id
       (** Fields:
           - [call]
+          - [target]
+          - [on_unwind] *)
+  | Drop of drop_kind * place * trait_ref * block_id * block_id
+      (** Drop the value at the given place.
+
+          Depending on [DropKind], this may be a real call to [drop_in_place],
+          or a conditional call that should only happen if the place has not
+          been moved out of. See the docs of [DropKind] for more details; to get
+          precise drops use [--precise-drops].
+
+          Fields:
+          - [kind]
+          - [place]
+          - [tref]
           - [target]
           - [on_unwind] *)
   | Abort of abort_kind  (** Handles panics and impossible cases. *)

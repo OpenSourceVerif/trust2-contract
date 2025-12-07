@@ -88,6 +88,8 @@ and nullop_to_string (env : 'a fmt_env) (op : nullop) : string =
   | AlignOf -> "align_of"
   | OffsetOf _ -> "offset_of(?)"
   | UbChecks -> "ub_checks"
+  | ContractChecks -> "contract_checks"
+  | OverflowChecks -> "overflow_checks"
 
 and unop_to_string (env : 'a fmt_env) (unop : unop) : string =
   match unop with
@@ -125,6 +127,19 @@ and binop_to_string (binop : binop) : string =
   | Cmp -> "cmp"
   | Offset -> "offset"
 
+and provenance_to_string (env : 'a fmt_env) (pv : provenance) : string =
+  match pv with
+  | Global gref -> "prov_global(" ^ global_decl_ref_to_string env gref ^ ")"
+  | Function fn_ref -> "prov_fn(" ^ fun_decl_ref_to_string env fn_ref ^ ")"
+  | Unknown -> "prov_unknown"
+
+and byte_to_string (env : 'a fmt_env) (cv : byte) : string =
+  match cv with
+  | Uninit -> "uninit"
+  | Value b -> string_of_int b
+  | Provenance (p, i) ->
+      provenance_to_string env p ^ "[" ^ string_of_int i ^ "]"
+
 and constant_expr_to_string (env : 'a fmt_env) (cv : constant_expr) : string =
   match cv.kind with
   | CLiteral lit ->
@@ -133,9 +148,11 @@ and constant_expr_to_string (env : 'a fmt_env) (cv : constant_expr) : string =
   | CTraitConst (trait_ref, const_name) ->
       let trait_ref = trait_ref_to_string env trait_ref in
       trait_ref ^ const_name
-  | CFnPtr fn_ptr -> fn_ptr_to_string env fn_ptr
+  | CFnDef fn_ptr -> fn_ptr_to_string env fn_ptr
   | CRawMemory bytes ->
-      "RawMemory([" ^ String.concat ", " (List.map string_of_int bytes) ^ "])"
+      "RawMemory(["
+      ^ String.concat ", " (List.map (byte_to_string env) bytes)
+      ^ "])"
   | COpaque reason -> "Opaque(" ^ reason ^ ")"
 
 and operand_to_string (env : 'a fmt_env) (op : operand) : string =

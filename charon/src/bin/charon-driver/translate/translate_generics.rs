@@ -1,9 +1,7 @@
 use super::translate_ctx::ItemTransCtx;
 use charon_lib::ast::*;
-use charon_lib::common::hash_by_addr::HashByAddr;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::sync::Arc;
 
 /// A level of binding for type-level variables. Each item has a top-level binding level
 /// corresponding to the parameters and clauses to the items. We may then encounter inner binding
@@ -39,10 +37,10 @@ pub(crate) struct BindingLevel {
     pub type_vars_map: HashMap<u32, TypeVarId>,
     /// The map from rust const generic variables to translate const generic variable indices.
     pub const_generic_vars_map: HashMap<u32, ConstGenericVarId>,
-    /// Cache the translation of types. This harnesses the deduplication of `TyKind` that hax does.
+    /// Cache the translation of types. This harnesses the deduplication of `Ty` that hax does.
     // Important: we can't reuse type caches from earlier binders as the new binder may change what
     // a given variable resolves to.
-    pub type_trans_cache: HashMap<HashByAddr<Arc<hax::TyKind>>, Ty>,
+    pub type_trans_cache: HashMap<hax::Ty, Ty>,
 }
 
 /// Small helper: we ignore some region names (when they are equal to "'_")
@@ -168,7 +166,6 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         self.binding_levels.innermost_mut()
     }
 
-    #[expect(dead_code)]
     pub(crate) fn outermost_generics(&self) -> &GenericParams {
         &self.outermost_binder().params
     }
@@ -176,7 +173,6 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     pub(crate) fn outermost_generics_mut(&mut self) -> &mut GenericParams {
         &mut self.outermost_binder_mut().params
     }
-    #[expect(dead_code)]
     pub(crate) fn innermost_generics(&self) -> &GenericParams {
         &self.innermost_binder().params
     }
@@ -372,6 +368,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 | FullDefKind::AssocTy { .. } => PredicateOrigin::WhereClauseOnType,
                 FullDefKind::Fn { .. }
                 | FullDefKind::AssocFn { .. }
+                | FullDefKind::Closure { .. }
                 | FullDefKind::Const { .. }
                 | FullDefKind::AssocConst { .. }
                 | FullDefKind::Static { .. } => PredicateOrigin::WhereClauseOnFn,
@@ -381,7 +378,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 FullDefKind::Trait { .. } | FullDefKind::TraitAlias { .. } => {
                     PredicateOrigin::WhereClauseOnTrait
                 }
-                _ => panic!("Unexpected def: {def:?}"),
+                _ => panic!("Unexpected def: {:?}", def.def_id().kind),
             };
             self.register_predicates(&param_env.predicates, origin.clone())?;
         }
@@ -390,18 +387,8 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             && include_late_bound
         {
             // Add the lifetime generics coming from the by-ref upvars.
-            args.upvar_tys.iter().for_each(|ty| {
-                if matches!(
-                    ty.kind(),
-                    hax::TyKind::Ref(
-                        hax::Region {
-                            kind: hax::RegionKind::ReErased
-                        },
-                        ..
-                    )
-                ) {
-                    self.the_only_binder_mut().push_upvar_region();
-                }
+            args.iter_upvar_borrows().for_each(|_| {
+                self.the_only_binder_mut().push_upvar_region();
             });
         }
 

@@ -1,8 +1,6 @@
 //! This file groups everything which is linked to implementations about [crate::types]
 use crate::ast::*;
-use crate::formatter::IntoFormatter;
 use crate::ids::Vector;
-use crate::pretty::FmtWithCtx;
 use derive_generic_visitor::*;
 use itertools::Itertools;
 use std::collections::HashSet;
@@ -19,10 +17,10 @@ impl TraitParam {
 
     /// Like `identity_tref` but uses variables bound at the given depth.
     pub fn identity_tref_at_depth(&self, depth: DeBruijnId) -> TraitRef {
-        TraitRef {
-            kind: TraitRefKind::Clause(DeBruijnVar::bound(depth, self.clause_id)),
-            trait_decl_ref: self.trait_.clone().move_under_binders(depth),
-        }
+        TraitRef::new(
+            TraitRefKind::Clause(DeBruijnVar::bound(depth, self.clause_id)),
+            self.trait_.clone().move_under_binders(depth),
+        )
     }
 }
 
@@ -118,9 +116,11 @@ impl GenericParams {
         }
     }
 
-    /// Take the predicates from the another `GenericParams`.
+    /// Take the predicates from the another `GenericParams`. This assumes the clause ids etc are
+    /// already consistent.
     pub fn take_predicates_from(&mut self, other: GenericParams) {
         assert!(!other.has_explicits());
+        let num_clauses = self.trait_clauses.slot_count();
         let GenericParams {
             regions: _,
             types: _,
@@ -130,7 +130,6 @@ impl GenericParams {
             types_outlive,
             trait_type_constraints,
         } = other;
-        let num_clauses = self.trait_clauses.slot_count();
         self.trait_clauses
             .extend(trait_clauses.into_iter().update(|clause| {
                 clause.clause_id += num_clauses;
@@ -138,6 +137,34 @@ impl GenericParams {
         self.regions_outlive.extend(regions_outlive);
         self.types_outlive.extend(types_outlive);
         self.trait_type_constraints.extend(trait_type_constraints);
+    }
+
+    /// Take the predicates from the another `GenericParams`. This assumes that the two
+    /// `GenericParams` are independent, hence will shift clause ids if `other` has any
+    /// trait refs that reference its own clauses.
+    pub fn merge_predicates_from(&mut self, mut other: GenericParams) {
+        // Drop the explicits params.
+        other.types.clear();
+        other.regions.clear();
+        other.const_generics.clear();
+        // The contents of `other` may refer to its own trait clauses, so we must shift clause ids.
+        struct ShiftClausesVisitor(usize);
+        impl VarsVisitor for ShiftClausesVisitor {
+            fn visit_clause_var(&mut self, v: ClauseDbVar) -> Option<TraitRefKind> {
+                if let DeBruijnVar::Bound(DeBruijnId::ZERO, clause_id) = v {
+                    // Replace clause 0 and decrement the others.
+                    Some(TraitRefKind::Clause(DeBruijnVar::Bound(
+                        DeBruijnId::ZERO,
+                        clause_id + self.0,
+                    )))
+                } else {
+                    None
+                }
+            }
+        }
+        let num_clauses = self.trait_clauses.slot_count();
+        other.visit_vars(&mut ShiftClausesVisitor(num_clauses));
+        self.take_predicates_from(other);
     }
 }
 
@@ -563,6 +590,12 @@ impl LiteralTy {
     }
 }
 
+impl From<LiteralTy> for Ty {
+    fn from(value: LiteralTy) -> Self {
+        TyKind::Literal(value).into_ty()
+    }
+}
+
 /// A value of type `T` bound by the generic parameters of item
 /// `item`. Used when dealing with multiple items at a time, to
 /// ensure we don't mix up generics.
@@ -637,6 +670,18 @@ impl<T> ItemBinder<CurrentItem, T> {
 }
 
 impl Ty {
+    pub fn new(kind: TyKind) -> Self {
+        Ty(HashConsed::new(kind))
+    }
+
+    pub fn kind(&self) -> &TyKind {
+        self.0.inner()
+    }
+
+    pub fn with_kind_mut<R>(&mut self, f: impl FnOnce(&mut TyKind) -> R) -> R {
+        self.0.with_inner_mut(f)
+    }
+
     /// Return the unit type
     pub fn mk_unit() -> Ty {
         Self::mk_tuple(vec![])
@@ -650,6 +695,19 @@ impl Ty {
         TyKind::Adt(TypeDeclRef {
             id: TypeId::Tuple,
             generics: Box::new(GenericArgs::new_for_builtin(tys.into())),
+        })
+        .into_ty()
+    }
+
+    pub fn mk_array(ty: Ty, len: ConstGeneric) -> Ty {
+        TyKind::Adt(TypeDeclRef {
+            id: TypeId::Builtin(BuiltinTy::Array),
+            generics: Box::new(GenericArgs::new(
+                vec![].into(),
+                vec![ty].into(),
+                vec![len].into(),
+                vec![].into(),
+            )),
         })
         .into_ty()
     }
@@ -685,6 +743,20 @@ impl Ty {
         matches!(self.kind(), TyKind::Literal(LiteralTy::Int(_)))
     }
 
+    pub fn is_str(&self) -> bool {
+        match self.kind() {
+            TyKind::Adt(ty_ref) if let TypeId::Builtin(BuiltinTy::Str) = ty_ref.id => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_slice(&self) -> bool {
+        match self.kind() {
+            TyKind::Adt(ty_ref) if let TypeId::Builtin(BuiltinTy::Slice) = ty_ref.id => true,
+            _ => false,
+        }
+    }
+
     /// Return true if the type is Box
     pub fn is_box(&self) -> bool {
         match self.kind() {
@@ -712,18 +784,13 @@ impl Ty {
                 match ty_ref.id {
                     TypeId::Adt(type_decl_id) => {
                         let Some(decl) = ty_decls.get(type_decl_id) else {
-                            return PtrMetadata::InheritFrom(Ty::new(TyKind::Error(format!(
-                                "Internal Error: type decl id not found during getting metadata: {type_decl_id}"
-                            ))));
+                            return PtrMetadata::InheritFrom(self.clone());
                         };
-                        match &decl.ptr_metadata {
+                        match decl.ptr_metadata.clone().substitute(&ty_ref.generics) {
                             // if it depends on some type, recursion with the binding env
-                            PtrMetadata::InheritFrom(ty) => {
-                                let ty = ty.clone().substitute(&ty_ref.generics);
-                                ty.get_ptr_metadata(translated)
-                            }
-                            // otherwise, simply returns it
-                            meta => meta.clone().substitute(&ty_ref.generics),
+                            PtrMetadata::InheritFrom(ty) => ty.get_ptr_metadata(translated),
+                            // otherwise, simply return it
+                            meta => meta,
                         }
                     }
                     // the metadata of a tuple is simply the last field
@@ -746,13 +813,7 @@ impl Ty {
             }
             TyKind::DynTrait(pred) => match pred.vtable_ref(translated) {
                 Some(vtable) => PtrMetadata::VTable(vtable),
-                None => PtrMetadata::InheritFrom(
-                    TyKind::Error(format!(
-                        "Vtable for dyn trait {} not found",
-                        pred.with_ctx(&translated.into_fmt())
-                    ))
-                    .into(),
-                ),
+                None => PtrMetadata::InheritFrom(self.clone()),
             },
             TyKind::TraitType(..) | TyKind::TypeVar(_) => PtrMetadata::InheritFrom(self.clone()),
             TyKind::Literal(_)
@@ -837,21 +898,60 @@ impl TraitDeclRef {
 }
 
 impl TraitRef {
+    pub fn new(kind: TraitRefKind, trait_decl_ref: PolyTraitDeclRef) -> Self {
+        TraitRefContents {
+            kind,
+            trait_decl_ref,
+        }
+        .intern()
+    }
+
     pub fn new_builtin(
         trait_id: TraitDeclId,
         ty: Ty,
         parents: Vector<TraitClauseId, TraitRef>,
+        builtin_data: BuiltinImplData,
     ) -> Self {
         let trait_decl_ref = RegionBinder::empty(TraitDeclRef {
             id: trait_id,
             generics: Box::new(GenericArgs::new_types([ty].into())),
         });
-        TraitRef {
-            kind: TraitRefKind::BuiltinOrAuto {
+        Self::new(
+            TraitRefKind::BuiltinOrAuto {
+                builtin_data,
                 parent_trait_refs: parents,
                 types: Default::default(),
             },
             trait_decl_ref,
+        )
+    }
+
+    /// Get mutable access to the contents. This cloned the value and will re-intern the modified
+    /// value at the end of the function.
+    pub fn with_contents_mut<R>(&mut self, f: impl FnOnce(&mut TraitRefContents) -> R) -> R {
+        self.0.with_inner_mut(f)
+    }
+}
+impl TraitRefContents {
+    pub fn intern(self) -> TraitRef {
+        TraitRef(HashConsed::new(self))
+    }
+}
+
+impl std::ops::Deref for TraitRef {
+    type Target = TraitRefContents;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl BuiltinImplData {
+    pub fn as_closure_kind(&self) -> Option<ClosureKind> {
+        match self {
+            BuiltinImplData::FnOnce => Some(ClosureKind::FnOnce),
+            BuiltinImplData::FnMut => Some(ClosureKind::FnMut),
+            BuiltinImplData::Fn => Some(ClosureKind::Fn),
+            _ => None,
         }
     }
 }
@@ -906,111 +1006,18 @@ impl Variant {
 }
 
 impl DynPredicate {
-    /// Get the vtable declaration reference with current generics applied.
-    /// Matches associated types from the vtable's generics with the dyn predicates's constraints.
-    ///
-    /// Rustc guarantees all associated types are specified in a `dyn Trait` type.
+    /// Get a reference to the vtable type that corresponds to this predicate.
     pub fn vtable_ref(&self, translated: &TranslatedCrate) -> Option<TypeDeclRef> {
-        // Get vtable_ref's ID with trait-ref's generics from dyn-self applied.
-        // Add associated types in correct order following the vtable's generics.
+        // The first clause is the one relevant for the vtable.
+        let relevant_tref = self.binder.params.trait_clauses[0].trait_.clone().erase();
 
-        // 0. Prepare trait name for debug/error messages
-        let trait_name = self.binder.params.trait_clauses[0]
-            .trait_
-            .skip_binder
-            .id
-            .with_ctx(&translated.into_fmt())
-            .to_string();
-
-        // 1. Get vtable ref from trait declaration
-        //    Provides: 1) final return ID, 2) correct order of associated types
-        // Firstly, get the trait declaration for the vtable ref it stores.
-        let Some(trait_decl) = translated
-            .trait_decls
-            .get(self.binder.params.trait_clauses[0].trait_.skip_binder.id)
-        else {
-            return None;
-        };
-
-        // Get vtable ref from definition for correct ID.
-        // Generics in vtable ref are placeholders but provide correct order of the associated types.
-        let Some(vtable_ref) = &trait_decl.vtable else {
-            panic!(
-                "Vtable for trait {} is None, meaning the trait is non-dyn-compatible!",
-                trait_name
-            );
-        };
-
-        // 2. Get correct generics for vtable ref from `dyn_self_ty`
-        //    The binder contains all target generics info.
-        let binder = &self.binder;
-
-        // 3. Prepare "basic part" of generics from trait ref (without associated types)
-        // The trait ref `dyn Trait<_dyn, Arg1, ..., ArgN>`, no associated types.
-        // First trait clause is the target one for vtable, guaranteed by `DynPredicate`.
-        let trait_ref = binder.params.trait_clauses[0].trait_.clone().erase();
-        // Type vars (except `_dyn`) are one level deeper, move out after removing `_dyn`.
-        trace!(
-            "Getting vtable ref with trait-decl-ref {}.",
-            trait_ref.with_ctx(&translated.into_fmt())
-        );
-        let mut generics = trait_ref.generics.clone();
-        // Remove the first `_dyn` type argument
-        generics.types.remove_and_shift_ids(TypeVarId::ZERO);
-        // Move out of predicate binder for `_dyn`
-        generics = generics.move_from_under_binder().unwrap();
-
-        // 4. Prepare associated types part in same order as vtable's generics
-        // Utilise the vtable ref form:
-        // `{vtable}<TraitArg1, ..., SuperTrait::Assoc1, ..., Self::AssocN>`
-        //
-        // Use trait ID + assoc name (`Trait::AssocTy`) to uniquely identify
-        let assoc_tys = vtable_ref
-            .generics
-            .types
-            .iter()
-            .filter_map(|ty| {
-                if let TyKind::TraitType(tref, name) = &ty.kind() {
-                    Some((tref.trait_decl_ref.skip_binder.id, name.clone()))
-                } else {
-                    None
-                }
-            })
-            .collect_vec();
-
-        // Find correct type argument from dyn trait's constraints for each assoc type.
-        // TODO: use proper normalization here instead of doing it by hand
-        for (trait_id, assoc_name) in assoc_tys {
-            // Find it
-            let Some(assoc_ty) = binder.params.trait_type_constraints.iter().find_map(|c| {
-                let c = c.clone().erase();
-                if c.trait_ref.trait_decl_ref.skip_binder.id == trait_id
-                    && c.type_name == assoc_name
-                {
-                    // Move potentially bounded type out of `_dyn` binder
-                    Some(c.ty.clone().move_from_under_binder().unwrap())
-                } else {
-                    None
-                }
-            }) else {
-                let dyn_self_ty = Ty::new(TyKind::DynTrait(self.clone()));
-                panic!(
-                    "Could not find associated type {}::{} for vtable of trait {} in dyn Trait type: {}",
-                    trait_id.with_ctx(&translated.into_fmt()),
-                    assoc_name,
-                    trait_name,
-                    dyn_self_ty.with_ctx(&translated.into_fmt())
-                );
-            };
-            // Push it
-            generics.types.push(assoc_ty);
-        }
-
-        // 5. Return vtable ref's ID with correct generics
-        Some(TypeDeclRef {
-            id: vtable_ref.id,
-            generics,
-        })
+        // Get the vtable ref from the trait decl
+        let trait_decl = translated.trait_decls.get(relevant_tref.id)?;
+        let vtable_ref = trait_decl
+            .vtable
+            .clone()?
+            .substitute(&relevant_tref.generics);
+        Some(vtable_ref)
     }
 }
 
@@ -1048,10 +1055,20 @@ pub trait VarsVisitor {
 pub(crate) struct SubstVisitor<'a> {
     generics: &'a GenericArgs,
     self_ref: &'a TraitRefKind,
+    /// Whether to substitute explicit variables only (types, regions, const generics).
+    explicits_only: bool,
 }
 impl<'a> SubstVisitor<'a> {
-    pub(crate) fn new(generics: &'a GenericArgs, self_ref: &'a TraitRefKind) -> Self {
-        Self { generics, self_ref }
+    pub(crate) fn new(
+        generics: &'a GenericArgs,
+        self_ref: &'a TraitRefKind,
+        explicits_only: bool,
+    ) -> Self {
+        Self {
+            generics,
+            self_ref,
+            explicits_only,
+        }
     }
 
     /// Returns the value for this variable, if any.
@@ -1085,7 +1102,11 @@ impl VarsVisitor for SubstVisitor<'_> {
         self.process_var(v, |id| &self.generics[id])
     }
     fn visit_clause_var(&mut self, v: ClauseDbVar) -> Option<TraitRefKind> {
-        self.process_var(v, |id| &self.generics[id].kind)
+        if self.explicits_only {
+            None
+        } else {
+            self.process_var(v, |id| &self.generics[id].kind)
+        }
     }
     fn visit_self_clause(&mut self) -> Option<TraitRefKind> {
         Some(self.self_ref.clone())
@@ -1173,12 +1194,24 @@ pub trait TyVisitable: Sized + AstVisitable {
         });
     }
 
+    /// Substitute the generic variables inside `self` by replacing them with the provided values.
+    /// Note: if `self` is an item that comes from a `TraitDecl`, you most likely want to use
+    /// `substitute_with_self`.
     fn substitute(self, generics: &GenericArgs) -> Self {
         self.substitute_with_self(generics, &TraitRefKind::SelfId)
     }
-
+    /// Substitute only the type, region and const generic args.
+    fn substitute_explicits(mut self, generics: &GenericArgs) -> Self {
+        let _ = self.visit_vars(&mut SubstVisitor::new(
+            generics,
+            &TraitRefKind::SelfId,
+            true,
+        ));
+        self
+    }
+    /// Substitute the generic variables as well as the `TraitRefKind::Self` trait ref.
     fn substitute_with_self(mut self, generics: &GenericArgs, self_ref: &TraitRefKind) -> Self {
-        let _ = self.visit_vars(&mut SubstVisitor::new(generics, self_ref));
+        let _ = self.visit_vars(&mut SubstVisitor::new(generics, self_ref, false));
         self
     }
 

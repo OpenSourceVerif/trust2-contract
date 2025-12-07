@@ -26,20 +26,15 @@ pub trait UllbcPass: Sync {
 
     /// Transform a function declaration. This forwards to `transform_body` by default.
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
-        if let Ok(body) = &mut decl.body {
-            self.transform_body(ctx, body.as_unstructured_mut().unwrap())
+        if let Some(body) = decl.body.as_unstructured_mut() {
+            self.transform_body(ctx, body)
         }
     }
 
     /// Transform the given context. This forwards to the other methods by default.
     fn transform_ctx(&self, ctx: &mut TransformCtx) {
         ctx.for_each_fun_decl(|ctx, decl| {
-            let body = decl
-                .body
-                .as_mut()
-                .map(|body| body.as_unstructured_mut().unwrap())
-                .map_err(|opaque| *opaque);
-            self.log_before_body(ctx, &decl.item_meta.name, body.as_deref());
+            self.log_before_body(ctx, &decl.item_meta.name, &decl.body);
             self.transform_function(ctx, decl);
         });
     }
@@ -51,18 +46,9 @@ pub trait UllbcPass: Sync {
     }
 
     /// Log that the pass is about to be run on this body.
-    fn log_before_body(
-        &self,
-        ctx: &TransformCtx,
-        name: &Name,
-        body: Result<&ullbc_ast::ExprBody, &Opaque>,
-    ) {
+    fn log_before_body(&self, ctx: &TransformCtx, name: &Name, body: &Body) {
         let fmt_ctx = &ctx.into_fmt();
-        let body_str = if let Ok(body) = body {
-            body.to_string_with_ctx(fmt_ctx)
-        } else {
-            "<opaque>".to_owned()
-        };
+        let body_str = body.to_string_with_ctx(fmt_ctx);
         trace!(
             "# About to run pass [{}] on `{}`:\n{}",
             self.name(),
@@ -79,20 +65,15 @@ pub trait LlbcPass: Sync {
 
     /// Transform a function declaration. This forwards to `transform_body` by default.
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
-        if let Ok(body) = &mut decl.body {
-            self.transform_body(ctx, body.as_structured_mut().unwrap())
+        if let Some(body) = decl.body.as_structured_mut() {
+            self.transform_body(ctx, body)
         }
     }
 
     /// Transform the given context. This forwards to the other methods by default.
     fn transform_ctx(&self, ctx: &mut TransformCtx) {
         ctx.for_each_fun_decl(|ctx, decl| {
-            let body = decl
-                .body
-                .as_mut()
-                .map(|body| body.as_structured_mut().unwrap())
-                .map_err(|opaque| *opaque);
-            self.log_before_body(ctx, &decl.item_meta.name, body.as_deref());
+            self.log_before_body(ctx, &decl.item_meta.name, &decl.body);
             self.transform_function(ctx, decl);
         });
     }
@@ -104,18 +85,9 @@ pub trait LlbcPass: Sync {
     }
 
     /// Log that the pass is about to be run on this body.
-    fn log_before_body(
-        &self,
-        ctx: &TransformCtx,
-        name: &Name,
-        body: Result<&llbc_ast::ExprBody, &Opaque>,
-    ) {
+    fn log_before_body(&self, ctx: &TransformCtx, name: &Name, body: &Body) {
         let fmt_ctx = &ctx.into_fmt();
-        let body_str = if let Ok(body) = body {
-            body.to_string_with_ctx(fmt_ctx)
-        } else {
-            "<opaque>".to_owned()
-        };
+        let body_str = body.to_string_with_ctx(fmt_ctx);
         trace!(
             "# About to run pass [{}] on `{}`:\n{}",
             self.name(),
@@ -179,11 +151,12 @@ impl<'ctx> TransformCtx {
         let fn_ids = self.translated.fun_decls.all_indices();
         for id in fn_ids {
             if let Some(decl) = self.translated.fun_decls.get_mut(id) {
-                if let Ok(mut body) = mem::replace(&mut decl.body, Err(Opaque)) {
+                if decl.body.has_contents() {
+                    let mut body = mem::replace(&mut decl.body, Body::Opaque);
                     let fun_decl_id = decl.def_id;
                     let is_local = decl.item_meta.is_local;
                     self.with_def_id(fun_decl_id, is_local, |ctx| f(ctx, &mut body));
-                    self.translated.fun_decls[id].body = Ok(body);
+                    self.translated.fun_decls[id].body = body;
                 }
             }
         }
@@ -204,23 +177,14 @@ impl<'ctx> TransformCtx {
     }
 
     /// Iterate mutably over all items, keeping access to `self`. To make this work, we move out
-    /// each item before iterating over it.
+    /// each item before iterating over it. Items added during traversal will not be iterated over.
     pub fn for_each_item_mut(&mut self, mut f: impl for<'a> FnMut(&'a mut Self, ItemRefMut<'a>)) {
-        macro_rules! for_each {
-            ($vector:ident, $kind:ident) => {
-                for id in self.translated.$vector.all_indices() {
-                    if let Some(mut decl) = self.translated.$vector.remove(id) {
-                        f(self, ItemRefMut::$kind(&mut decl));
-                        self.translated.$vector.set_slot(id, decl);
-                    }
-                }
-            };
+        for id in self.translated.all_ids() {
+            if let Some(mut decl) = self.translated.remove_item(id) {
+                f(self, decl.as_mut());
+                self.translated.set_item_slot(id, decl);
+            }
         }
-        for_each!(type_decls, Type);
-        for_each!(fun_decls, Fun);
-        for_each!(global_decls, Global);
-        for_each!(trait_decls, TraitDecl);
-        for_each!(trait_impls, TraitImpl);
     }
 }
 
@@ -238,9 +202,10 @@ impl fmt::Display for TransformCtx {
     }
 }
 
-/// A helper trait that captures the usual operation in body transformation.
+/// A helper trait that captures common operations in body transformation.
 pub trait BodyTransformCtx: Sized {
-    fn get_ctx(&self) -> &TransformCtx;
+    fn get_crate(&self) -> &TranslatedCrate;
+    fn get_options(&self) -> &TranslateOptions;
     fn get_params(&self) -> &GenericParams;
     fn get_locals_mut(&mut self) -> &mut Locals;
 
@@ -248,11 +213,27 @@ pub trait BodyTransformCtx: Sized {
     fn insert_storage_dead_stmt(&mut self, local: LocalId);
     fn insert_assn_stmt(&mut self, place: Place, rvalue: Rvalue);
 
+    fn into_fmt(&self) -> FmtCtx<'_> {
+        self.get_crate().into_fmt()
+    }
+
     /// Create a local & return the place pointing to it
     fn fresh_var(&mut self, name: Option<String>, ty: Ty) -> Place {
         let var = self.get_locals_mut().new_var(name, ty);
         self.insert_storage_live_stmt(var.local_id().unwrap());
         var
+    }
+
+    /// Assign an rvalue to a place, unless the rvalue is a move in which case we just use the
+    /// moved place.
+    fn rval_to_place(&mut self, rvalue: Rvalue, ty: Ty) -> Place {
+        if let Rvalue::Use(Operand::Move(place)) = rvalue {
+            place
+        } else {
+            let var = self.fresh_var(None, ty);
+            self.insert_assn_stmt(var.clone(), rvalue);
+            var
+        }
     }
 
     /// When `from_end` is true, we need to compute `len(p) - last_arg` instead of just using `last_arg`.
@@ -308,7 +289,7 @@ pub trait BodyTransformCtx: Sized {
     fn is_sized_type_var(&mut self, ty: &Ty) -> bool {
         match ty.kind() {
             TyKind::TypeVar(..) => {
-                if self.get_ctx().options.hide_marker_traits {
+                if self.get_options().hide_marker_traits {
                     // If we're hiding `Sized`, let's consider everything to be sized.
                     return true;
                 }
@@ -318,8 +299,7 @@ pub trait BodyTransformCtx: Sized {
                     // Check if it is `Sized<T>`
                     if tref.generics.types[0] == *ty
                         && self
-                            .get_ctx()
-                            .translated
+                            .get_crate()
                             .trait_decls
                             .get(tref.id)
                             .and_then(|decl| decl.item_meta.lang_item.clone())
@@ -336,11 +316,23 @@ pub trait BodyTransformCtx: Sized {
 
     /// Emit statements that compute the metadata of the given place. Returns an operand containing the
     /// metadata value.
+    ///
+    /// E.g., for:
+    /// ```ignore
+    /// let x = &(*ptr).field;
+    /// ```
+    /// if `(*ptr).field` is a DST like `[i32]`, this will get the metadata from the appropriate
+    /// pointer:
+    /// ```ignore
+    /// let len = ptr.metadata;
+    /// ```
+    /// and return `Operand::Move(len)`.
+    ///
     fn compute_place_metadata(&mut self, place: &Place) -> Operand {
         /// No metadata. We use the `unit_metadata` global to avoid having to define unit locals
         /// everywhere.
         fn no_metadata<T: BodyTransformCtx>(ctx: &T) -> Operand {
-            let unit_meta = ctx.get_ctx().translated.unit_metadata.clone().unwrap();
+            let unit_meta = ctx.get_crate().unit_metadata.clone().unwrap();
             Operand::Copy(Place::new_global(unit_meta, Ty::mk_unit()))
         }
 
@@ -381,12 +373,9 @@ pub trait BodyTransformCtx: Sized {
         }
         trace!(
             "getting ptr metadata for place: {}",
-            place.with_ctx(&self.get_ctx().into_fmt())
+            place.with_ctx(&self.into_fmt())
         );
-        let metadata_ty = place
-            .ty()
-            .get_ptr_metadata(&self.get_ctx().translated)
-            .into_type();
+        let metadata_ty = place.ty().get_ptr_metadata(&self.get_crate()).into_type();
         if metadata_ty.is_unit()
             || matches!(metadata_ty.kind(), TyKind::PtrMetadata(ty) if self.is_sized_type_var(ty))
         {
@@ -395,9 +384,50 @@ pub trait BodyTransformCtx: Sized {
         }
         trace!(
             "computed metadata type: {}",
-            metadata_ty.with_ctx(&self.get_ctx().into_fmt())
+            metadata_ty.with_ctx(&self.into_fmt())
         );
         compute_place_metadata_inner(self, place, &metadata_ty).unwrap_or_else(|| no_metadata(self))
+    }
+
+    /// Create a `&` borrow of the place.
+    fn borrow(&mut self, place: Place, kind: BorrowKind) -> Rvalue {
+        let ptr_metadata = self.compute_place_metadata(&place);
+        Rvalue::Ref {
+            place,
+            kind,
+            ptr_metadata,
+        }
+    }
+    /// Create a `&raw` borrow of the place.
+    fn raw_borrow(&mut self, place: Place, kind: RefKind) -> Rvalue {
+        let ptr_metadata = self.compute_place_metadata(&place);
+        Rvalue::RawPtr {
+            place,
+            kind,
+            ptr_metadata,
+        }
+    }
+
+    /// Store a `&` borrow of the place into a new place.
+    fn borrow_to_new_var(&mut self, place: Place, kind: BorrowKind, name: Option<String>) -> Place {
+        let ref_ty = TyKind::Ref(Region::Erased, place.ty().clone(), kind.into()).into_ty();
+        let target_place = self.fresh_var(name, ref_ty);
+        let rvalue = self.borrow(place, kind);
+        self.insert_assn_stmt(target_place.clone(), rvalue);
+        target_place
+    }
+    /// Store a `&raw` borrow of the place into a new place.
+    fn raw_borrow_to_new_var(
+        &mut self,
+        place: Place,
+        kind: RefKind,
+        name: Option<String>,
+    ) -> Place {
+        let ref_ty = TyKind::RawPtr(place.ty().clone(), kind).into_ty();
+        let target_place = self.fresh_var(name, ref_ty);
+        let rvalue = self.raw_borrow(place, kind);
+        self.insert_assn_stmt(target_place.clone(), rvalue);
+        target_place
     }
 }
 
@@ -412,8 +442,11 @@ pub struct UllbcStatementTransformCtx<'a> {
 }
 
 impl BodyTransformCtx for UllbcStatementTransformCtx<'_> {
-    fn get_ctx(&self) -> &TransformCtx {
-        self.ctx
+    fn get_crate(&self) -> &TranslatedCrate {
+        &self.ctx.translated
+    }
+    fn get_options(&self) -> &TranslateOptions {
+        &self.ctx.options
     }
     fn get_params(&self) -> &GenericParams {
         self.params
@@ -444,51 +477,135 @@ impl BodyTransformCtx for UllbcStatementTransformCtx<'_> {
     }
 }
 
-impl FunDecl {
-    pub fn transform_ullbc_terminators(
-        &mut self,
-        ctx: &mut TransformCtx,
-        mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut ullbc_ast::Terminator),
-    ) {
-        if let Ok(body) = &mut self.body {
-            let params = &self.signature.generics;
-            let body = body.as_unstructured_mut().unwrap();
-            body.body.iter_mut().for_each(|block| {
-                let span = block.terminator.span;
-                let mut ctx = UllbcStatementTransformCtx {
-                    ctx,
-                    params,
-                    locals: &mut body.locals,
-                    span,
-                    statements: std::mem::take(&mut block.statements),
-                };
-                f(&mut ctx, &mut block.terminator);
-                block.statements = ctx.statements;
-            });
-        }
+pub struct LlbcStatementTransformCtx<'a> {
+    pub ctx: &'a mut TransformCtx,
+    pub params: &'a GenericParams,
+    pub locals: &'a mut Locals,
+    /// Span of the statement being explored
+    pub span: Span,
+    /// Statements to prepend to the statement currently being explored.
+    pub statements: Vec<llbc_ast::Statement>,
+}
+
+impl BodyTransformCtx for LlbcStatementTransformCtx<'_> {
+    fn get_crate(&self) -> &TranslatedCrate {
+        &self.ctx.translated
+    }
+    fn get_options(&self) -> &TranslateOptions {
+        &self.ctx.options
+    }
+    fn get_params(&self) -> &GenericParams {
+        self.params
+    }
+    fn get_locals_mut(&mut self) -> &mut Locals {
+        self.locals
     }
 
+    fn insert_storage_live_stmt(&mut self, local: LocalId) {
+        self.statements.push(llbc_ast::Statement::new(
+            self.span,
+            llbc_ast::StatementKind::StorageLive(local),
+        ));
+    }
+
+    fn insert_assn_stmt(&mut self, place: Place, rvalue: Rvalue) {
+        self.statements.push(llbc_ast::Statement::new(
+            self.span,
+            llbc_ast::StatementKind::Assign(place, rvalue),
+        ));
+    }
+
+    fn insert_storage_dead_stmt(&mut self, local: LocalId) {
+        self.statements.push(llbc_ast::Statement::new(
+            self.span,
+            llbc_ast::StatementKind::StorageDead(local),
+        ));
+    }
+}
+
+impl FunDecl {
     pub fn transform_ullbc_statements(
         &mut self,
         ctx: &mut TransformCtx,
         mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut ullbc_ast::Statement),
     ) {
-        if let Ok(body) = &mut self.body {
-            let params = &self.signature.generics;
-            let body = body.as_unstructured_mut().unwrap();
+        if let Some(body) = self.body.as_unstructured_mut() {
+            let mut ctx = UllbcStatementTransformCtx {
+                ctx,
+                params: &self.signature.generics,
+                locals: &mut body.locals,
+                span: self.item_meta.span,
+                statements: Vec::new(),
+            };
             body.body.iter_mut().for_each(|block| {
-                block.transform(|st: &mut ullbc_ast::Statement| {
-                    let mut ctx = UllbcStatementTransformCtx {
-                        ctx,
-                        params,
-                        locals: &mut body.locals,
-                        span: st.span,
-                        statements: Vec::new(),
-                    };
-                    f(&mut ctx, st);
-                    ctx.statements
-                });
+                ctx.statements = Vec::with_capacity(block.statements.len());
+                for mut st in mem::take(&mut block.statements) {
+                    ctx.span = st.span;
+                    f(&mut ctx, &mut st);
+                    ctx.statements.push(st);
+                }
+                block.statements = mem::take(&mut ctx.statements);
             });
+        }
+    }
+
+    pub fn transform_ullbc_terminators(
+        &mut self,
+        ctx: &mut TransformCtx,
+        mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut ullbc_ast::Terminator),
+    ) {
+        if let Some(body) = self.body.as_unstructured_mut() {
+            let mut ctx = UllbcStatementTransformCtx {
+                ctx,
+                params: &self.signature.generics,
+                locals: &mut body.locals,
+                span: self.item_meta.span,
+                statements: Vec::new(),
+            };
+            body.body.iter_mut().for_each(|block| {
+                ctx.span = block.terminator.span;
+                ctx.statements = mem::take(&mut block.statements);
+                f(&mut ctx, &mut block.terminator);
+                block.statements = mem::take(&mut ctx.statements);
+            });
+        }
+    }
+
+    pub fn transform_ullbc_operands(
+        &mut self,
+        ctx: &mut TransformCtx,
+        mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut Operand),
+    ) {
+        self.transform_ullbc_statements(ctx, |ctx, st| {
+            st.kind.dyn_visit_in_body_mut(|op: &mut Operand| f(ctx, op));
+        });
+        self.transform_ullbc_terminators(ctx, |ctx, st| {
+            st.kind.dyn_visit_in_body_mut(|op: &mut Operand| f(ctx, op));
+        });
+    }
+
+    pub fn transform_llbc_statements(
+        &mut self,
+        ctx: &mut TransformCtx,
+        mut f: impl FnMut(&mut LlbcStatementTransformCtx, &mut llbc_ast::Statement),
+    ) {
+        if let Some(body) = self.body.as_structured_mut() {
+            let mut ctx = LlbcStatementTransformCtx {
+                ctx,
+                locals: &mut body.locals,
+                statements: Vec::new(),
+                span: self.item_meta.span,
+                params: &self.signature.generics,
+            };
+            body.body.visit_blocks_bwd(|block: &mut llbc_ast::Block| {
+                ctx.statements = Vec::with_capacity(block.statements.len());
+                for mut st in mem::take(&mut block.statements) {
+                    ctx.span = st.span;
+                    f(&mut ctx, &mut st);
+                    ctx.statements.push(st);
+                }
+                block.statements = mem::take(&mut ctx.statements)
+            })
         }
     }
 }

@@ -43,15 +43,13 @@ and statement_kind =
           the function's body, in which case it is implicitly deallocated at the
           end of the function. *)
   | Deinit of place
-  | Drop of place * trait_ref
+  | Drop of place * trait_ref * drop_kind
       (** Drop the value at the given place.
 
-          For MIR built and promoted, this is a conditional drop: the value will
-          only be dropped if it has not already been moved out. For MIR
-          elaborated and optimized, this is a real drop.
-
-          This drop is then equivalent to a call to
-          [std::ptr::drop_in_place(&raw mut place)]. *)
+          Depending on [DropKind], this may be a real call to [drop_in_place],
+          or a conditional call that should only happen if the place has not
+          been moved out of. See the docs of [DropKind] for more details; to get
+          precise drops use [--precise-drops]. *)
   | Assert of assertion
   | Call of call
   | Abort of abort_kind

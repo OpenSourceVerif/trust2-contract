@@ -4,12 +4,10 @@ pub mod utils;
 
 /// Passes that finish translation, i.e. required for the output to be a valid output.
 pub mod finish_translation {
-    pub mod duplicate_defaulted_methods;
     pub mod filter_invisible_trait_impls;
     pub mod insert_assign_return_unit;
     pub mod insert_ptr_metadata;
     pub mod insert_storage_lives;
-    pub mod remove_unused_methods;
 }
 
 /// Passes that compute extra info to be stored in the crate.
@@ -22,9 +20,10 @@ pub mod add_missing_info {
 
 /// Passes that effect some kind of normalization on the crate.
 pub mod normalize {
+    pub mod desugar_drops;
     pub mod expand_associated_types;
     pub mod filter_unreachable_blocks;
-    pub mod monomorphize;
+    pub mod partial_monomorphization;
     pub mod skip_trait_refs_when_known;
     pub mod transform_dyn_trait_calls;
 }
@@ -36,11 +35,13 @@ pub mod resugar {
     pub mod reconstruct_asserts;
     pub mod reconstruct_boxes;
     pub mod reconstruct_fallible_operations;
+    pub mod reconstruct_intrinsics;
     pub mod reconstruct_matches;
 }
 
 /// Passes that make the output simpler/easier to consume.
 pub mod simplify_output {
+    pub mod filter_trivial_drops;
     pub mod hide_allocator_param;
     pub mod hide_marker_traits;
     pub mod index_intermediate_assigns;
@@ -48,6 +49,7 @@ pub mod simplify_output {
     pub mod inline_promoted_consts;
     pub mod lift_associated_item_clauses;
     pub mod ops_to_function_calls;
+    pub mod remove_adt_clauses;
     pub mod remove_nops;
     pub mod remove_unit_locals;
     pub mod remove_unused_locals;
@@ -78,10 +80,6 @@ pub static INITIAL_CLEANUP_PASSES: &[Pass] = &[
     // # Micro-pass: filter the trait impls that were marked invisible since we couldn't filter
     // them out earlier.
     NonBody(&finish_translation::filter_invisible_trait_impls::Transform),
-    // Remove the trait/impl methods that were not translated (because not used).
-    NonBody(&finish_translation::remove_unused_methods::Transform),
-    // Add missing methods to trait impls by duplicating the default method.
-    NonBody(&finish_translation::duplicate_defaulted_methods::Transform),
     // Compute the metadata & insert for Rvalue
     UnstructuredBody(&finish_translation::insert_ptr_metadata::Transform),
     // # Micro-pass: add the missing assignments to the return value.
@@ -93,7 +91,7 @@ pub static INITIAL_CLEANUP_PASSES: &[Pass] = &[
     UnstructuredBody(&finish_translation::insert_assign_return_unit::Transform),
     // Insert `StorageLive` for locals that don't have one (that's allowed in MIR).
     NonBody(&finish_translation::insert_storage_lives::Transform),
-    // Move clauses on associated types to be parent clauses
+    // Move clauses on associated types to be implied clauses of the trait.
     NonBody(&simplify_output::lift_associated_item_clauses::Transform),
     // # Micro-pass: hide some overly-common traits we don't need: Sized, Sync, Allocator, etc..
     NonBody(&simplify_output::hide_marker_traits::Transform),
@@ -102,22 +100,28 @@ pub static INITIAL_CLEANUP_PASSES: &[Pass] = &[
     // # Micro-pass: remove the explicit `Self: Trait` clause of methods/assoc const declaration
     // items if they're not used. This simplifies the graph of dependencies between definitions.
     NonBody(&simplify_output::remove_unused_self_clause::Transform),
-    // # Micro-pass: whenever we call a trait method on a known type, refer to the method `FunDecl`
-    // directly instead of going via a `TraitRef`. This is done before `reorder_decls` to remove
-    // some sources of mutual recursion.
-    UnstructuredBody(&normalize::skip_trait_refs_when_known::Transform),
+    // Transform Drops into Calls to drop_in_place.
+    UnstructuredBody(&normalize::desugar_drops::Transform),
+    // # Micro-pass: whenever we reference a trait method on a known type, refer to the method
+    // `FunDecl` directly instead of going via a `TraitRef`. This is done before `reorder_decls` to
+    // remove some sources of mutual recursion.
+    NonBody(&normalize::skip_trait_refs_when_known::Transform),
     // Transform dyn trait method calls to vtable function pointer calls
     // This should be early to handle the calls before other transformations
     UnstructuredBody(&normalize::transform_dyn_trait_calls::Transform),
     // Change trait associated types to be type parameters instead. See the module for details.
     // This also normalizes any use of an associated type that we can resolve.
     NonBody(&normalize::expand_associated_types::Transform),
+    // `--remove-adt-clauses`: Remove all trait clauses from type declarations.
+    NonBody(&simplify_output::remove_adt_clauses::Transform),
 ];
 
 /// Body cleanup passes on the ullbc.
 pub static ULLBC_PASSES: &[Pass] = &[
     // Inline promoted consts into their parent bodies.
     UnstructuredBody(&simplify_output::inline_promoted_consts::Transform),
+    // Remove drop statements that are noops.
+    UnstructuredBody(&simplify_output::filter_trivial_drops::Transform),
     // # Micro-pass: merge single-origin gotos into their parent. This drastically reduces the
     // graph size of the CFG.
     // This must be done early as some resugaring passes depend on it.
@@ -130,6 +134,9 @@ pub static ULLBC_PASSES: &[Pass] = &[
     // **WARNING**: this pass relies on a precise structure of the MIR statements. Because of this,
     // it must happen before passes that insert statements like [simplify_constants].
     UnstructuredBody(&resugar::reconstruct_fallible_operations::Transform),
+    // Recognize calls to the `offset_of` intrinsics and replace them with the corresponding
+    // `NullOp`.
+    UnstructuredBody(&resugar::reconstruct_intrinsics::Transform),
     // # Micro-pass: reconstruct the special `Box::new` operations inserted e.g. in the `vec![]`
     // macro.
     // **WARNING**: this pass relies on a precise structure of the MIR statements. Because of this,
@@ -185,8 +192,9 @@ pub static SHARED_FINALIZING_PASSES: &[Pass] = &[
     // statements. This must be last after all the statement-affecting passes to avoid losing
     // comments.
     NonBody(&add_missing_info::recover_body_comments::Transform),
-    // Monomorphize the functions and types.
-    NonBody(&normalize::monomorphize::Transform),
+    // Partially monomorphize items so that no item is ever instanciated with a mutable reference
+    // or a type containing one.
+    NonBody(&normalize::partial_monomorphization::Transform),
     // # Reorder the graph of dependencies and compute the strictly connex components to:
     // - compute the order in which to extract the definitions
     // - find the recursive definitions
