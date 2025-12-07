@@ -1,4 +1,3 @@
-use proc_macro_crate::FoundCrate;
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::{Expr, ItemFn, parse_quote, parse2 as parse, ReturnType, spanned::Spanned};
@@ -20,7 +19,10 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 
     let crate_name = Ident::new(&CRATE_NAME, Span::call_site());
     let stmt = parse_quote! {
-        ::#crate_name::internal::precondition(|| #expr);
+        {
+            ::#crate_name::internal::entry();
+            ::#crate_name::internal::precondition(|| #expr);
+        }
     };
     item.block.stmts.insert(0, stmt);
     quote! {
@@ -42,7 +44,10 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
         },
     };
     let stmt = parse_quote! {
-        ::#crate_name::internal::postcondition::<#ty, _>(#expr);
+        {
+            ::#crate_name::internal::entry();
+            ::#crate_name::internal::postcondition::<#ty, _>(#expr);
+        }
     };
     item.block.stmts.insert(0, stmt);
     quote! {
@@ -50,13 +55,21 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
-static CRATE_NAME: LazyLock<String> = LazyLock::new(|| {
-    match proc_macro_crate::crate_name("trust2-contract") {
-        Ok(FoundCrate::Name(name)) => name,
-        Ok(_) => unreachable!(),
-        Err(_) => panic!(),
-    }
-});
+#[cfg(not(test))]
+static CRATE_NAME: LazyLock<String> = {
+    use proc_macro_crate::FoundCrate;
+
+    LazyLock::new(|| {
+        match proc_macro_crate::crate_name("trust2-contract") {
+            Ok(FoundCrate::Name(name)) => name,
+            Ok(_) => unreachable!(),
+            Err(_) => panic!(),
+        }
+    })
+};
+
+#[cfg(test)]
+static CRATE_NAME: LazyLock<String> = LazyLock::new(|| "trust2_contract".into());
 
 #[cfg(test)]
 mod tests {
@@ -74,7 +87,10 @@ mod tests {
         };
         let expect = quote! {
             fn square(x: u8) -> u8 {
-                ::trust2_contract::internal::precondition(|| #expr);
+                {
+                    ::trust2_contract::internal::entry();
+                    ::trust2_contract::internal::precondition(|| #expr);
+                }
                 x * x
             }
         };
