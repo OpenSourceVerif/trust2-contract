@@ -12,7 +12,7 @@
         {
             "label": "git subtree: pull charon",
             "type": "shell",
-            "command": "git subtree --prefix charon pull --squash charon main",
+            "command": "git subtree --prefix charon pull --squash charon main && Write-Host -ForegroundColor DarkYellow \"`nUpdate rust-toolchain.toml and Cargo.toml accordingly.\"",
             "problemMatcher": []
         },
         {

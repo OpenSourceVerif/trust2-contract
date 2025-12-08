@@ -9,7 +9,6 @@ rustc_private = true
 [dependencies]
 anyhow = "1.0.81"
 charon-bin-interface = { path = "../charon-bin-interface" }
-charon-driver-bin-interface = { path = "../charon-driver-bin-interface" }
 clap = { version = "4.5.50", features = ["derive"] }
 clap-cargo = "0.18.3"
 proc-macro-crate = { path = "../proc-macro-crate" }
