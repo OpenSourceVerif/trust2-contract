@@ -1514,6 +1514,34 @@ impl<'a> ReconstructCtx<'a> {
     }
 }
 
+/// `ctx` is passed only to reuse `ctx.translate_statement`.
+fn translate_spec_block(spec_block: &src::SpecBlock, ctx: &ReconstructCtx) -> tgt::SpecBlock {
+    tgt::SpecBlock {
+        statements: spec_block
+            .statements
+            .iter()
+            .map(|st| ctx.translate_statement(st).unwrap())
+            .collect(),
+        call: spec_block.call.clone(),
+    }
+}
+
+/// `ctx` is passed only to reuse `ctx.translate_statement`.
+fn translate_specs(specs: &src::Specs, ctx: &ReconstructCtx) -> tgt::Specs {
+    tgt::Specs {
+        preconditions: specs
+            .preconditions
+            .iter()
+            .map(|spec_block| translate_spec_block(spec_block, ctx))
+            .collect(),
+        postconditions: specs
+            .postconditions
+            .iter()
+            .map(|spec_block| translate_spec_block(spec_block, ctx))
+            .collect(),
+    }
+}
+
 fn translate_body(ctx: &mut TransformCtx, body: &mut gast::Body) {
     use gast::Body::{Structured, Unstructured};
     let Unstructured(src_body) = body else {
@@ -1537,11 +1565,14 @@ fn translate_body(ctx: &mut TransformCtx, body: &mut gast::Body) {
     // Translate the blocks using the computed data.
     let tgt_body = ctx.translate_block(src::BlockId::ZERO);
 
+    let tgt_specs = translate_specs(&src_body.specs, &ctx);
+
     let tgt_body = tgt::ExprBody {
         span: src_body.span,
         locals: src_body.locals.clone(),
         comments: src_body.comments.clone(),
         body: tgt_body,
+        specs: tgt_specs,
     };
     *body = Structured(tgt_body);
 }

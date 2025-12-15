@@ -245,6 +245,9 @@ impl Display for BuiltinFunId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::result::Result<(), fmt::Error> {
         let name = match *self {
             BuiltinFunId::BoxNew => "BoxNew",
+            BuiltinFunId::SpecEntry => "SpecEntry",
+            BuiltinFunId::SpecPrecondition => "SpecPrecondition",
+            BuiltinFunId::SpecPostcondition => "SpecPostcondition",
             BuiltinFunId::ArrayToSliceShared => "ArrayToSliceShared",
             BuiltinFunId::ArrayToSliceMut => "ArrayToSliceMut",
             BuiltinFunId::ArrayRepeat => "ArrayRepeat",
@@ -677,7 +680,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for GenericsSource {
     }
 }
 
-impl<T> GExprBody<T> {
+impl<T, U> GExprBody<T, U> {
     fn fmt_with_ctx_and_callback<C: AstFormatter>(
         &self,
         ctx: &C,
@@ -686,6 +689,7 @@ impl<T> GExprBody<T> {
             &mut fmt::Formatter<'_>,
             &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             &T,
+            &U,
         ) -> fmt::Result,
     ) -> fmt::Result {
         // Update the context
@@ -712,35 +716,38 @@ impl<T> GExprBody<T> {
             writeln!(f)?;
         }
 
-        fmt_body(f, ctx, &self.body)?;
+        fmt_body(f, ctx, &self.body, &self.specs)?;
 
         Ok(())
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block> {
+impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block, llbc_ast::Specs> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Inference fails when this is a closure.
         fn fmt_body<C: AstFormatter>(
             f: &mut fmt::Formatter<'_>,
             ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             body: &Block,
+            specs: &llbc_ast::Specs,
         ) -> Result<(), fmt::Error> {
-            writeln!(f)?;
+            writeln!(f, "{}", specs.with_ctx(ctx))?;
             body.fmt_with_ctx(ctx, f)?;
             Ok(())
         }
         self.fmt_with_ctx_and_callback(ctx, f, fmt_body::<C>)
     }
 }
-impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents> {
+impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents, ullbc_ast::Specs> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Inference fails when this is a closure.
         fn fmt_body<C: AstFormatter>(
             f: &mut fmt::Formatter<'_>,
             ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             body: &Vector<BlockId, BlockData>,
+            specs: &ullbc_ast::Specs,
         ) -> Result<(), fmt::Error> {
+            writeln!(f, "{}", specs.with_ctx(ctx))?;
             let tab = ctx.indent();
             let ctx = &ctx.increase_indent();
             for (bid, block) in body.iter_indexed_values() {
@@ -1387,6 +1394,80 @@ impl Display for ScalarValue {
             ScalarValue::Signed(ty, v) => write!(f, "{v} : {}", ty),
             ScalarValue::Unsigned(ty, v) => write!(f, "{v} : {}", ty),
         }
+    }
+}
+
+impl ullbc::SpecBlock {
+    fn fmt_with_ctx_and_kind<C: AstFormatter>(
+        &self,
+        ctx: &C,
+        f: &mut fmt::Formatter<'_>,
+        kind: &str,
+    ) -> fmt::Result {
+        let tab = ctx.indent();
+        let ctx = &ctx.increase_indent();
+        writeln!(
+            f,
+            "{tab}{kind}({}) {{",
+            self.call
+                .args
+                .iter()
+                .map(|arg| arg.with_ctx(ctx))
+                .format(", "),
+        )?;
+        for st in &self.statements {
+            writeln!(f, "{}", st.with_ctx(ctx))?;
+        }
+        writeln!(f, "{tab}}}")
+    }
+}
+
+impl llbc::SpecBlock {
+    fn fmt_with_ctx_and_kind<C: AstFormatter>(
+        &self,
+        ctx: &C,
+        f: &mut fmt::Formatter<'_>,
+        kind: &str,
+    ) -> fmt::Result {
+        let tab = ctx.indent();
+        let ctx = &ctx.increase_indent();
+        writeln!(
+            f,
+            "{tab}{kind}({}) {{",
+            self.call
+                .args
+                .iter()
+                .map(|arg| arg.with_ctx(ctx))
+                .format(", "),
+        )?;
+        for st in &self.statements {
+            writeln!(f, "{}", st.with_ctx(ctx))?;
+        }
+        writeln!(f, "{tab}}}")
+    }
+}
+
+impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Specs {
+    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for precondition in &self.preconditions {
+            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
+        }
+        for postcondition in &self.postconditions {
+            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
+        }
+        Ok(())
+    }
+}
+
+impl<C: AstFormatter> FmtWithCtx<C> for llbc::Specs {
+    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for precondition in &self.preconditions {
+            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
+        }
+        for postcondition in &self.postconditions {
+            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
+        }
+        Ok(())
     }
 }
 

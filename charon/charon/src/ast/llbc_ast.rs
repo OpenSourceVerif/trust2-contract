@@ -144,4 +144,16 @@ pub enum Switch {
     Match(Place, Vec<(Vec<VariantId>, Block)>, Option<Block>),
 }
 
-pub type ExprBody = GExprBody<Block>;
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+pub struct SpecBlock {
+    pub statements: Vec<Statement>,
+    pub call: SpecCall,
+}
+
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+pub struct Specs {
+    pub preconditions: Vec<SpecBlock>,
+    pub postconditions: Vec<SpecBlock>,
+}
+
+pub type ExprBody = GExprBody<Block, Specs>;

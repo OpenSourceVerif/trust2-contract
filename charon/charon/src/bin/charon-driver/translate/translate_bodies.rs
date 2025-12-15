@@ -1259,6 +1259,7 @@ impl BodyTransCtx<'_, '_, '_> {
             span,
             locals: mem::take(&mut self.locals),
             body: mem::take(&mut self.blocks),
+            specs: Specs::new(),
             comments: self.translate_body_comments(source_text, span),
         }))
     }

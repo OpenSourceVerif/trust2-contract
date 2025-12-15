@@ -186,6 +186,21 @@ impl BlockData {
     }
 }
 
+impl Specs {
+    pub fn new() -> Self {
+        Specs {
+            preconditions: Vec::new(),
+            postconditions: Vec::new(),
+        }
+    }
+}
+
+impl Default for Specs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ExprBody {
     pub fn transform_sequences_fwd<F>(&mut self, mut f: F)
     where
@@ -241,6 +256,7 @@ impl BodyBuilder {
             locals: Locals::new(arg_count),
             comments: vec![],
             body: Vector::new(),
+            specs: Specs::new(),
         };
         let current_block = body.body.push(BlockData {
             statements: Default::default(),

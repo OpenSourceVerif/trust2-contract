@@ -4,6 +4,29 @@ use crate::transform::TransformCtx;
 
 use crate::transform::ctx::TransformPass;
 
+trait IsNop {
+    fn is_nop(&self) -> bool;
+}
+
+impl IsNop for ullbc_ast::Statement {
+    fn is_nop(&self) -> bool {
+        self.kind.is_nop()
+    }
+}
+
+impl IsNop for llbc_ast::Statement {
+    fn is_nop(&self) -> bool {
+        self.kind.is_nop()
+    }
+}
+
+fn remove_nop_statements<S: IsNop>(statements: &mut Vec<S>) {
+    // Remove all the `Nop`s from this sequence.
+    if statements.iter().any(|st| st.is_nop()) {
+        statements.retain(|st| !st.is_nop());
+    }
+}
+
 pub struct Transform;
 impl TransformPass for Transform {
     fn transform_ctx(&self, ctx: &mut TransformCtx) {
@@ -11,18 +34,29 @@ impl TransformPass for Transform {
             match &mut fun.body {
                 Body::Unstructured(body) => {
                     for blk in &mut body.body {
-                        if blk.statements.iter().any(|st| st.kind.is_nop()) {
-                            blk.statements.retain(|st| !st.kind.is_nop())
-                        }
+                        remove_nop_statements(&mut blk.statements);
+                    }
+                    for blk in body
+                        .specs
+                        .preconditions
+                        .iter_mut()
+                        .chain(&mut body.specs.postconditions)
+                    {
+                        remove_nop_statements(&mut blk.statements);
                     }
                 }
                 Body::Structured(body) => {
                     body.body.visit_blocks_bwd(|blk: &mut llbc_ast::Block| {
-                        // Remove all the `Nop`s from this sequence.
-                        if blk.statements.iter().any(|st| st.kind.is_nop()) {
-                            blk.statements.retain(|st| !st.kind.is_nop())
-                        }
+                        remove_nop_statements(&mut blk.statements);
                     });
+                    for blk in body
+                        .specs
+                        .preconditions
+                        .iter_mut()
+                        .chain(&mut body.specs.postconditions)
+                    {
+                        remove_nop_statements(&mut blk.statements);
+                    }
                 }
                 _ => {}
             }

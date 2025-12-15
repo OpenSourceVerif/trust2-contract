@@ -1,4 +1,5 @@
 pub mod check_generics;
+pub mod collect_specs;
 pub mod ctx;
 pub mod utils;
 
@@ -122,6 +123,9 @@ pub static ULLBC_PASSES: &[Pass] = &[
     UnstructuredBody(&simplify_output::inline_promoted_consts::Transform),
     // Remove drop statements that are noops.
     UnstructuredBody(&simplify_output::filter_trivial_drops::Transform),
+    // # Micro-pass: Collect and move trust2-contract specifications.
+    // `merge_goto_chains` is useful to cleanup the output of this pass.
+    UnstructuredBody(&collect_specs::Transform),
     // # Micro-pass: merge single-origin gotos into their parent. This drastically reduces the
     // graph size of the CFG.
     // This must be done early as some resugaring passes depend on it.
