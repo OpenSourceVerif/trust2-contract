@@ -569,7 +569,7 @@ mod tests {
             my-crate-old = { package = "my_crate", version = "0.1" }
         "#,
         "",
-        Ok(Some(FoundCrate::Name(name))) if name == "my_crate_old"
+        Ok(Some(FoundCrate::Name(name))) if name == "my-crate-old"
     }
 
     create_test! {
