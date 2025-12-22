@@ -148,7 +148,7 @@ fn run_charon(options: CliOpts) -> Result<usize, CharonFailure> {
     Ok(error_count)
 }
 
-fn main() {
+pub fn main() {
     // Initialize the logger
     logger::initialize_logger();
 

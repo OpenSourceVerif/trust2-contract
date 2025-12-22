@@ -3,14 +3,12 @@ name = "cargo-verify"
 version = "0.1.0"
 edition = "2024"
 
-[package.metadata.rust-analyzer]
-rustc_private = true
-
 [dependencies]
-anyhow = "1.0.81"
 charon-bin-interface = { path = "../charon-bin-interface" }
 charon-driver-bin-interface = { path = "../charon-driver-bin-interface" }
-clap = { version = "4.5.50", features = ["derive"] }
-clap-cargo = "0.18.3"
 proc-macro-crate = { path = "../proc-macro-crate" }
 utils = { path = "../utils" }
+
+anyhow = "1.0.81"
+clap = { version = "4.5.50", features = ["derive"] }
+clap-cargo = "0.18.3"
