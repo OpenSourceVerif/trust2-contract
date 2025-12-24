@@ -747,7 +747,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents, ullbc
             body: &Vector<BlockId, BlockData>,
             specs: &ullbc_ast::Specs,
         ) -> Result<(), fmt::Error> {
-            writeln!(f, "{}", specs.with_ctx(ctx))?;
+            write!(f, "{}", specs.with_ctx(ctx))?;
             let tab = ctx.indent();
             let ctx = &ctx.increase_indent();
             for (bid, block) in body.iter_indexed_values() {

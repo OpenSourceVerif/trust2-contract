@@ -8,8 +8,22 @@ pub trait PartialEq::<bool, bool>
     vtable: core::cmp::PartialEq::{vtable}::<bool, bool>
 }
 
+// Full name: core::cmp::PartialEq
+#[lang_item("eq")]
+pub trait PartialEq<Self, Rhs>
+{
+    fn eq<'_0_1, '_1_1> = core::cmp::PartialEq::eq<'_0_1, '_1_1, Self, Rhs>[Self]
+    vtable: core::cmp::PartialEq::{vtable}<Rhs>
+}
+
 #[lang_item("cmp_partialeq_eq")]
 pub fn core::cmp::PartialEq::eq::<bool, bool><'_0, '_1>(@1: &'_0 (bool), @2: &'_1 (bool)) -> bool
+= <opaque>
+
+#[lang_item("cmp_partialeq_eq")]
+pub fn core::cmp::PartialEq::eq<'_0, '_1, Self, Rhs>(@1: &'_0 (Self), @2: &'_1 (Rhs)) -> bool
+where
+    [@TraitClause0]: PartialEq<Self, Rhs>,
 = <opaque>
 
 // Full name: core::cmp::Eq::<bool>
@@ -28,6 +42,16 @@ pub fn {impl PartialEq::<bool, bool>}::eq<'_0, '_1>(@1: &'_0 (bool), @2: &'_1 (b
 impl PartialEq::<bool, bool> {
     fn eq<'_0_1, '_1_1> = {impl PartialEq::<bool, bool>}::eq<'_0_1, '_1_1>
     vtable: {impl PartialEq::<bool, bool>}::{vtable}
+}
+
+// Full name: core::cmp::impls::{impl PartialEq<bool> for bool}::eq
+pub fn {impl PartialEq<bool> for bool}::eq<'_0, '_1>(@1: &'_0 (bool), @2: &'_1 (bool)) -> bool
+= <opaque>
+
+// Full name: core::cmp::impls::{impl PartialEq<bool> for bool}
+impl PartialEq<bool> for bool {
+    fn eq<'_0_1, '_1_1> = {impl PartialEq<bool> for bool}::eq<'_0_1, '_1_1>
+    vtable: {impl PartialEq<bool> for bool}::{vtable}
 }
 
 // Full name: core::cmp::impls::{impl Eq::<bool>}
