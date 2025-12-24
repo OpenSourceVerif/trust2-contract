@@ -15,7 +15,7 @@ use std::{
     error::Error,
     ffi::OsStr,
     fs::read_to_string,
-    path::{Path, PathBuf},
+    path::{MAIN_SEPARATOR, Path, PathBuf},
     process::Command,
     sync::LazyLock,
 };
@@ -134,7 +134,7 @@ fn setup_test(input_path: PathBuf) -> anyhow::Result<Trial> {
         .unwrap()
         .strip_prefix(TESTS_DIR)
         .unwrap()
-        .strip_prefix("/")
+        .strip_prefix(MAIN_SEPARATOR)
         .unwrap()
         .to_owned();
     let expected = input_path.with_extension("out");

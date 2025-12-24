@@ -139,8 +139,28 @@ impl ItemTransCtx<'_, '_> {
             if def.diagnostic_item.as_deref() == Some("box_new") && !self.t_ctx.options.raw_boxes {
                 Some(BuiltinFunId::BoxNew)
             } else {
-                None
+                let name = self.name_for_src(&TransItemSource::polymorphic(
+                    &item.def_id,
+                    TransItemSourceKind::Fun,
+                ))?;
+                recognize_spec_call(&name)
             };
         Ok(fun_id)
+    }
+}
+
+fn recognize_spec_call(name: &Name) -> Option<BuiltinFunId> {
+    if !(name.compare_with_ref_name(false, &["trust2_contract", "internal"]) && name.len() >= 3) {
+        return None;
+    }
+    let PathElem::Ident(ref ident, _) = name.name[2] else {
+        return None;
+    };
+
+    match ident {
+        "entry" => Some(BuiltinFunId::SpecEntry),
+        "precondition" => Some(BuiltinFunId::SpecPrecondition),
+        "postcondition" => Some(BuiltinFunId::SpecPostcondition),
+        _ => None,
     }
 }

@@ -12,6 +12,18 @@ pub trait Sized::<bool>
     non-dyn-compatible
 }
 
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    non-dyn-compatible
+}
+
 // Full name: core::marker::MetaSized::<u64>
 #[lang_item("meta_sized")]
 pub trait MetaSized::<u64>
@@ -33,14 +45,46 @@ trait Foo::<u64>
     non-dyn-compatible
 }
 
+// Full name: test_crate::Foo
+trait Foo<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    fn bar<T, [@TraitClause0_1]: Sized<T>> = test_crate::Foo::bar<Self, T>[Self, @TraitClause0_1]
+    non-dyn-compatible
+}
+
+fn test_crate::Foo::bar<Self, T>() -> Self
+where
+    [@TraitClause0]: Foo<Self>,
+    [@TraitClause1]: Sized<T>,
+= <method_without_default_body>
+
 // Full name: test_crate::{impl Foo::<u64>}
 impl Foo::<u64> {
     parent_clause0 = {built_in impl MetaSized::<u64>}
     non-dyn-compatible
 }
 
+// Full name: test_crate::{impl Foo for u64}::bar
+fn {impl Foo for u64}::bar<T>() -> u64
+where
+    [@TraitClause0]: Sized<T>,
+{
+    let @0: u64; // return
+
+    @0 := const (0 : u64)
+    return
+}
+
+// Full name: test_crate::{impl Foo for u64}
+impl Foo for u64 {
+    parent_clause0 = {built_in impl MetaSized for u64}
+    fn bar<T, [@TraitClause0_1]: Sized<T>> = {impl Foo for u64}::bar<T>[@TraitClause0_1]
+    non-dyn-compatible
+}
+
 // Full name: test_crate::{impl Foo::<u64>}::bar::<bool>
-fn bar::<bool>() -> u64
+fn {impl Foo::<u64>}::bar::<bool>() -> u64
 {
     let @0: u64; // return
 
@@ -56,7 +100,7 @@ fn main()
 
     @0 := ()
     storage_live(@1)
-    @1 := bar::<bool>()
+    @1 := {impl Foo::<u64>}::bar::<bool>()
     storage_dead(@1)
     @0 := ()
     return

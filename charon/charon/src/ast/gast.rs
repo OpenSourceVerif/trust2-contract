@@ -46,7 +46,7 @@ pub struct Locals {
 ///       the print is obfuscated and Aeneas may need some refactoring.
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 #[charon::rename("GexprBody")]
-pub struct GExprBody<T> {
+pub struct GExprBody<T, U> {
     pub span: Span,
     /// The local variables.
     pub locals: Locals,
@@ -56,6 +56,8 @@ pub struct GExprBody<T> {
     #[drive(skip)]
     pub comments: Vec<(usize, Vec<String>)>,
     pub body: T,
+    /// Associated trust2-contract specifications.
+    pub specs: U,
 }
 
 /// The body of a function.
@@ -474,6 +476,12 @@ pub struct Assert {
     pub expected: bool,
     /// What kind of abort happens on assert failure.
     pub on_failure: AbortKind,
+}
+
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+pub struct SpecCall {
+    pub span: Span,
+    pub args: Vec<Operand>,
 }
 
 /// A generic `*DeclRef`-shaped struct, used when we're generic over the type of item.

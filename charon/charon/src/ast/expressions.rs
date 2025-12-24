@@ -416,6 +416,12 @@ impl From<BuiltinFunId> for FunId {
 pub enum BuiltinFunId {
     /// `alloc::boxed::Box::new`
     BoxNew,
+    /// trust2-contract entry marker
+    SpecEntry,
+    /// trust2-contract precondition marker
+    SpecPrecondition,
+    /// trust2-contract postcondition marker
+    SpecPostcondition,
     /// Cast an array as a slice.
     ///
     /// Converted from `UnOp::ArrayToSlice`

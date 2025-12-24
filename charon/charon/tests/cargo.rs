@@ -127,6 +127,15 @@ fn main() -> Result<(), Box<dyn Error>> {
             ],
             Success,
         ),
+        mktest(
+            "trust2-contract-sample",
+            root.join("trust2-contract-sample"),
+            &[
+                "--".to_owned(),
+                "--features=trust2-contract/verify".to_owned(),
+            ],
+            Success,
+        ),
     ];
 
     let args = libtest_mimic::Arguments::from_args();

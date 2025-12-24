@@ -105,7 +105,7 @@ error: Item `alloc::string::{impl#25}` caused errors; ignoring.
 error: `dyn Trait` is not yet supported with `--monomorphize`
  --> /rustc/library/alloc/src/string.rs:2851:1
 
-note: the error occurred when translating `alloc::string::{impl#4}::<type_error("`dyn Trait` is not yet supported with `--monomorphize`")>`, which is (transitively) used at the following location(s):
+note: the error occurred when translating `alloc::string::{impl#5}::<type_error("`dyn Trait` is not yet supported with `--monomorphize`")>`, which is (transitively) used at the following location(s):
 error: `dyn Trait` is not yet supported with `--monomorphize`
  --> /rustc/library/alloc/src/string.rs:2826:1
 

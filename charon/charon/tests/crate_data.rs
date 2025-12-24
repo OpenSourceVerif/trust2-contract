@@ -2,7 +2,7 @@
 
 use charon_lib::llbc_ast::*;
 use itertools::Itertools;
-use std::collections::HashMap;
+use std::{collections::HashMap, path::MAIN_SEPARATOR};
 
 mod util;
 use util::*;
@@ -73,7 +73,10 @@ fn file_name() -> anyhow::Result<()> {
     );
     let file_id = crate_data.type_decls[1].item_meta.span.data.file_id;
     let file = &crate_data.files[file_id];
-    assert_eq!(file.name.to_string(), "/rustc/library/core/src/option.rs");
+    assert_eq!(
+        file.name.to_string().replace(MAIN_SEPARATOR, "/"),
+        "/rustc/library/core/src/option.rs",
+    );
     Ok(())
 }
 
