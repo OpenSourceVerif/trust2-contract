@@ -276,7 +276,10 @@ fn charon_toolchain_path() -> Result<()> {
             "`{cmd}`: toolchain path {} doesn't exist",
             path.display()
         );
+        #[cfg(not(windows))]
         let rustc_path = path.join("bin").join("rustc");
+        #[cfg(windows)]
+        let rustc_path = path.join("bin").join("rustc.exe");
         ensure!(
             rustc_path.exists(),
             "`{cmd}`: rustc path {} doesn't exist",
