@@ -23,7 +23,7 @@ pub trait Clone<Self>
 
 // Full name: core::clone::Clone::clone
 #[lang_item("clone_fn")]
-pub fn clone<'_0, Self>(@1: &'_0 (Self)) -> Self
+pub fn clone<'_0, Self>(@1: &'_0 Self) -> Self
 where
     [@TraitClause0]: Clone<Self>,
 = <opaque>
@@ -37,7 +37,7 @@ pub trait PartialEq<Self, Rhs>
 }
 
 #[lang_item("cmp_partialeq_eq")]
-pub fn core::cmp::PartialEq::eq<'_0, '_1, Self, Rhs>(@1: &'_0 (Self), @2: &'_1 (Rhs)) -> bool
+pub fn core::cmp::PartialEq::eq<'_0, '_1, Self, Rhs>(@1: &'_0 Self, @2: &'_1 Rhs) -> bool
 where
     [@TraitClause0]: PartialEq<Self, Rhs>,
 = <opaque>
@@ -88,13 +88,13 @@ pub trait Ord<Self>
 }
 
 #[lang_item("ord_cmp_method")]
-pub fn core::cmp::Ord::cmp<'_0, '_1, Self>(@1: &'_0 (Self), @2: &'_1 (Self)) -> Ordering
+pub fn core::cmp::Ord::cmp<'_0, '_1, Self>(@1: &'_0 Self, @2: &'_1 Self) -> Ordering
 where
     [@TraitClause0]: Ord<Self>,
 = <opaque>
 
 #[lang_item("cmp_partialord_cmp")]
-pub fn core::cmp::PartialOrd::partial_cmp<'_0, '_1, Self, Rhs>(@1: &'_0 (Self), @2: &'_1 (Rhs)) -> Option<Ordering>[{built_in impl Sized for Ordering}]
+pub fn core::cmp::PartialOrd::partial_cmp<'_0, '_1, Self, Rhs>(@1: &'_0 Self, @2: &'_1 Rhs) -> Option<Ordering>[{built_in impl Sized for Ordering}]
 where
     [@TraitClause0]: PartialOrd<Self, Rhs>,
 = <opaque>
@@ -127,7 +127,7 @@ pub opaque type Arguments<'a>
 pub opaque type Argument<'a>
 
 // Full name: core::fmt::{Arguments<'a>}::new
-pub unsafe fn new<'a, const N : usize, const M : usize>(@1: &'a (Array<u8, N>), @2: &'a (Array<Argument<'a>, M>)) -> Arguments<'a>
+pub unsafe fn new<'a, const N : usize, const M : usize>(@1: &'a [u8; N], @2: &'a [Argument<'a>; M]) -> Arguments<'a>
 = <opaque>
 
 // Full name: core::result::Result
@@ -149,28 +149,28 @@ pub trait Debug<Self>
     vtable: core::fmt::Debug::{vtable}
 }
 
-pub fn core::fmt::Debug::fmt<'_0, '_1, '_2, Self>(@1: &'_0 (Self), @2: &'_1 mut (Formatter<'_2>)) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
+pub fn core::fmt::Debug::fmt<'_0, '_1, '_2, Self>(@1: &'_0 Self, @2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
 where
     [@TraitClause0]: Debug<Self>,
 = <opaque>
 
-// Full name: core::fmt::{impl Debug for &'_0 (T)}::fmt
-pub fn {impl Debug for &'_0 (T)}::fmt<'_0, '_1, '_2, '_3, T>(@1: &'_1 (&'_0 (T)), @2: &'_2 mut (Formatter<'_3>)) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
+// Full name: core::fmt::{impl Debug for &'_0 T}::fmt
+pub fn {impl Debug for &'_0 T}::fmt<'_0, '_1, '_2, '_3, T>(@1: &'_1 &'_0 T, @2: &'_2 mut Formatter<'_3>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
 where
     [@TraitClause0]: Debug<T>,
 = <opaque>
 
-// Full name: core::fmt::{impl Debug for &'_0 (T)}
-impl<'_0, T> Debug for &'_0 (T)
+// Full name: core::fmt::{impl Debug for &'_0 T}
+impl<'_0, T> Debug for &'_0 T
 where
     [@TraitClause0]: Debug<T>,
 {
-    fn fmt<'_0_1, '_1_1, '_2_1> = {impl Debug for &'_0 (T)}::fmt<'_0, '_0_1, '_1_1, '_2_1, T>[@TraitClause0]
-    vtable: {impl Debug for &'_0 (T)}::{vtable}<'_0, T>[@TraitClause0]
+    fn fmt<'_0_1, '_1_1, '_2_1> = {impl Debug for &'_0 T}::fmt<'_0, '_0_1, '_1_1, '_2_1, T>[@TraitClause0]
+    vtable: {impl Debug for &'_0 T}::{vtable}<'_0, T>[@TraitClause0]
 }
 
 // Full name: core::fmt::num::{impl Debug for i32}::fmt
-pub fn {impl Debug for i32}::fmt<'_0, '_1, '_2>(@1: &'_0 (i32), @2: &'_1 mut (Formatter<'_2>)) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
+pub fn {impl Debug for i32}::fmt<'_0, '_1, '_2>(@1: &'_0 i32, @2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
 = <opaque>
 
 // Full name: core::fmt::num::{impl Debug for i32}
@@ -180,7 +180,7 @@ impl Debug for i32 {
 }
 
 // Full name: core::fmt::rt::{Argument<'_0>}::new_debug
-pub fn new_debug<'_0, '_1, T>(@1: &'_1 (T)) -> Argument<'_1>
+pub fn new_debug<'_0, '_1, T>(@1: &'_1 T) -> Argument<'_1>
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Debug<T>,
@@ -291,7 +291,7 @@ pub trait Extend<Self, A>
 }
 
 // Full name: core::iter::traits::collect::Extend::extend
-pub fn extend<'_0, Self, A, T>(@1: &'_0 mut (Self), @2: T)
+pub fn extend<'_0, Self, A, T>(@1: &'_0 mut Self, @2: T)
 where
     [@TraitClause0]: Extend<Self, A>,
     [@TraitClause1]: Sized<T>,
@@ -310,7 +310,7 @@ pub trait DoubleEndedIterator<Self>
 }
 
 // Full name: core::iter::traits::double_ended::DoubleEndedIterator::next_back
-pub fn next_back<'_0, Self>(@1: &'_0 mut (Self)) -> Option<@TraitClause0::parent_clause1::Item>[@TraitClause0::parent_clause1::parent_clause1]
+pub fn next_back<'_0, Self>(@1: &'_0 mut Self) -> Option<@TraitClause0::parent_clause1::Item>[@TraitClause0::parent_clause1::parent_clause1]
 where
     [@TraitClause0]: DoubleEndedIterator<Self>,
 = <opaque>
@@ -324,7 +324,7 @@ pub trait ExactSizeIterator<Self>
 }
 
 #[lang_item("next")]
-pub fn core::iter::traits::iterator::Iterator::next<'_0, Self>(@1: &'_0 mut (Self)) -> Option<@TraitClause0::Item>[@TraitClause0::parent_clause1]
+pub fn core::iter::traits::iterator::Iterator::next<'_0, Self>(@1: &'_0 mut Self) -> Option<@TraitClause0::Item>[@TraitClause0::parent_clause1]
 where
     [@TraitClause0]: Iterator<Self>,
 = <opaque>
@@ -347,7 +347,7 @@ pub trait Destruct<Self>
 }
 
 // Full name: core::marker::Destruct::drop_in_place
-fn drop_in_place<Self>(@1: *mut Self)
+unsafe fn drop_in_place<Self>(@1: *mut Self)
 = <opaque>
 
 // Full name: core::marker::Tuple
@@ -395,7 +395,7 @@ pub trait FnMut<Self, Args>
 }
 
 // Full name: core::ops::function::FnMut::call_mut
-pub fn call_mut<'_0, Self, Args>(@1: &'_0 mut (Self), @2: Args) -> @TraitClause0::parent_clause1::Output
+pub fn call_mut<'_0, Self, Args>(@1: &'_0 mut Self, @2: Args) -> @TraitClause0::parent_clause1::Output
 where
     [@TraitClause0]: FnMut<Self, Args>,
 = <opaque>
@@ -475,7 +475,7 @@ where
     T : 'a,
 
 // Full name: core::slice::iter::{impl Iterator for Iter<'a, T>[@TraitClause0]}::next
-pub fn {impl Iterator for Iter<'a, T>[@TraitClause0]}::next<'a, '_1, T>(@1: &'_1 mut (Iter<'a, T>[@TraitClause0])) -> Option<&'a (T)>[{built_in impl Sized for &'_ (T)}]
+pub fn {impl Iterator for Iter<'a, T>[@TraitClause0]}::next<'a, '_1, T>(@1: &'_1 mut Iter<'a, T>[@TraitClause0]) -> Option<&'a T>[{built_in impl Sized for &'_ T}]
 where
     [@TraitClause0]: Sized<T>,
 = <opaque>
@@ -486,31 +486,31 @@ where
     [@TraitClause0]: Sized<T>,
 {
     parent_clause0 = {built_in impl MetaSized for Iter<'_, T>[@TraitClause0]}
-    parent_clause1 = {built_in impl Sized for &'_ (T)}
-    type Item = &'a (T)
+    parent_clause1 = {built_in impl Sized for &'_ T}
+    type Item = &'a T
     fn next<'_0_1> = {impl Iterator for Iter<'a, T>[@TraitClause0]}::next<'a, '_0_1, T>[@TraitClause0]
     vtable: {impl Iterator for Iter<'a, T>[@TraitClause0]}::{vtable}<'a, T>[@TraitClause0]
 }
 
-// Full name: core::slice::iter::{impl IntoIterator for &'a (Slice<T>)}::into_iter
-pub fn {impl IntoIterator for &'a (Slice<T>)}::into_iter<'a, T>(@1: &'a (Slice<T>)) -> Iter<'a, T>[@TraitClause0]
+// Full name: core::slice::iter::{impl IntoIterator for &'a [T]}::into_iter
+pub fn {impl IntoIterator for &'a [T]}::into_iter<'a, T>(@1: &'a [T]) -> Iter<'a, T>[@TraitClause0]
 where
     [@TraitClause0]: Sized<T>,
 = <opaque>
 
-// Full name: core::slice::iter::{impl IntoIterator for &'a (Slice<T>)}
-impl<'a, T> IntoIterator for &'a (Slice<T>)
+// Full name: core::slice::iter::{impl IntoIterator for &'a [T]}
+impl<'a, T> IntoIterator for &'a [T]
 where
     [@TraitClause0]: Sized<T>,
 {
-    parent_clause0 = {built_in impl MetaSized for &'_ (Slice<T>)}
-    parent_clause1 = {built_in impl Sized for &'_ (T)}
+    parent_clause0 = {built_in impl MetaSized for &'_ [T]}
+    parent_clause1 = {built_in impl Sized for &'_ T}
     parent_clause2 = {built_in impl Sized for Iter<'_, T>[@TraitClause0]}
     parent_clause3 = {impl Iterator for Iter<'a, T>[@TraitClause0]}<'_, T>[@TraitClause0]
-    type Item = &'a (T)
+    type Item = &'a T
     type IntoIter = Iter<'a, T>[@TraitClause0]
-    fn into_iter = {impl IntoIterator for &'a (Slice<T>)}::into_iter<'a, T>[@TraitClause0]
-    vtable: {impl IntoIterator for &'a (Slice<T>)}::{vtable}<'a, T>[@TraitClause0]
+    fn into_iter = {impl IntoIterator for &'a [T]}::into_iter<'a, T>[@TraitClause0]
+    vtable: {impl IntoIterator for &'a [T]}::{vtable}<'a, T>[@TraitClause0]
 }
 
 // Full name: std::io::stdio::_eprint
@@ -519,150 +519,150 @@ pub fn _eprint<'_0>(@1: Arguments<'_0>)
 
 fn UNIT_METADATA()
 {
-    let @0: (); // return
+    let _0: (); // return
 
-    @0 := ()
+    _0 = ()
     return
 }
 
 const UNIT_METADATA: () = @Fun0()
 
 // Full name: test_crate::debug_slice
-fn debug_slice<'_0, T>(@1: &'_0 (Slice<T>))
+fn debug_slice<'_0, T>(@1: &'_0 [T])
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Debug<T>,
 {
-    let @0: (); // return
-    let slice@1: &'_ (Slice<T>); // arg #1
-    let @2: Iter<'_, T>[@TraitClause0]; // anonymous local
-    let @3: &'_ (Slice<T>); // anonymous local
-    let iter@4: Iter<'_, T>[@TraitClause0]; // local
-    let @5: Option<&'_ (T)>[{built_in impl Sized for &'_ (T)}]; // anonymous local
-    let @6: &'_ mut (Iter<'_, T>[@TraitClause0]); // anonymous local
-    let @7: &'_ mut (Iter<'_, T>[@TraitClause0]); // anonymous local
-    let x@8: &'_ (T); // local
-    let @9: (); // anonymous local
-    let @10: Arguments<'_>; // anonymous local
-    let args@11: (&'_ (&'_ (T))); // local
-    let @12: &'_ (&'_ (T)); // anonymous local
-    let args@13: Array<Argument<'_>, 1 : usize>; // local
-    let @14: Argument<'_>; // anonymous local
-    let @15: &'_ (&'_ (T)); // anonymous local
-    let @16: &'_ (Array<u8, 7 : usize>); // anonymous local
-    let @17: &'_ (Array<u8, 7 : usize>); // anonymous local
-    let @18: &'_ (Array<Argument<'_>, 1 : usize>); // anonymous local
-    let @19: &'_ (Array<Argument<'_>, 1 : usize>); // anonymous local
-    let @20: Array<u8, 7 : usize>; // anonymous local
-    let @21: &'_ (Array<u8, 7 : usize>); // anonymous local
+    let _0: (); // return
+    let slice_1: &'0 [T]; // arg #1
+    let _2: Iter<'1, T>[@TraitClause0]; // anonymous local
+    let _3: &'0 [T]; // anonymous local
+    let iter_4: Iter<'1, T>[@TraitClause0]; // local
+    let _5: Option<&'2 T>[{built_in impl Sized for &'2 T}]; // anonymous local
+    let _6: &'5 mut Iter<'1, T>[@TraitClause0]; // anonymous local
+    let _7: &'5 mut Iter<'1, T>[@TraitClause0]; // anonymous local
+    let x_8: &'2 T; // local
+    let _9: (); // anonymous local
+    let _10: Arguments<'6>; // anonymous local
+    let args_11: (&'7 &'2 T); // local
+    let _12: &'7 &'2 T; // anonymous local
+    let args_13: [Argument<'8>; 1 : usize]; // local
+    let _14: Argument<'8>; // anonymous local
+    let _15: &'7 &'2 T; // anonymous local
+    let _16: &'9 [u8; 7 : usize]; // anonymous local
+    let _17: &'9 [u8; 7 : usize]; // anonymous local
+    let _18: &'10 [Argument<'8>; 1 : usize]; // anonymous local
+    let _19: &'10 [Argument<'8>; 1 : usize]; // anonymous local
+    let _20: [u8; 7 : usize]; // anonymous local
+    let _21: &'9 [u8; 7 : usize]; // anonymous local
 
-    @0 := ()
-    storage_live(@2)
-    storage_live(@3)
-    @3 := copy (slice@1)
-    @2 := {impl IntoIterator for &'a (Slice<T>)}::into_iter<'_, T>[@TraitClause0](move (@3))
-    storage_dead(@3)
-    storage_live(iter@4)
-    iter@4 := move (@2)
+    _0 = ()
+    storage_live(_2)
+    storage_live(_3)
+    _3 = copy slice_1
+    _2 = {impl IntoIterator for &'a [T]}::into_iter<'11, T>[@TraitClause0](move _3)
+    storage_dead(_3)
+    storage_live(iter_4)
+    iter_4 = move _2
     loop {
-        storage_live(@5)
-        storage_live(@6)
-        storage_live(@7)
-        @7 := &mut iter@4
-        @6 := &two-phase-mut *(@7)
-        @5 := {impl Iterator for Iter<'a, T>[@TraitClause0]}::next<'_, '_, T>[@TraitClause0](move (@6))
-        storage_dead(@6)
-        match @5 {
+        storage_live(_5)
+        storage_live(_6)
+        storage_live(_7)
+        _7 = &mut iter_4
+        _6 = &two-phase-mut (*_7)
+        _5 = {impl Iterator for Iter<'a, T>[@TraitClause0]}::next<'12, '_, T>[@TraitClause0](move _6)
+        storage_dead(_6)
+        match _5 {
             Option::None => {
                 break 0
             },
             Option::Some => {
-                storage_live(x@8)
-                x@8 := copy ((@5 as variant Option::Some).0)
-                storage_live(@9)
-                storage_live(@10)
-                storage_live(args@11)
-                storage_live(@12)
-                @12 := &x@8
-                args@11 := (move (@12))
-                storage_dead(@12)
-                storage_live(args@13)
-                storage_live(@14)
-                storage_live(@15)
-                @15 := &*((args@11).0)
-                @14 := new_debug<'_, '_, &'_ (T)>[{built_in impl Sized for &'_ (T)}, {impl Debug for &'_0 (T)}<'_, T>[@TraitClause1]](move (@15))
-                storage_dead(@15)
-                args@13 := [move (@14)]
-                storage_dead(@14)
-                storage_live(@16)
-                storage_live(@17)
-                storage_live(@20)
-                @20 := [const (2 : u8), const (45 : u8), const (32 : u8), const (192 : u8), const (1 : u8), const (10 : u8), const (0 : u8)]
-                storage_live(@21)
-                @21 := &@20
-                @17 := move (@21)
-                @16 := &*(@17)
-                storage_live(@18)
-                storage_live(@19)
-                @19 := &args@13
-                @18 := &*(@19)
-                @10 := new<'_, 7 : usize, 1 : usize>(move (@16), move (@18))
-                storage_dead(@19)
-                storage_dead(@18)
-                storage_dead(@17)
-                storage_dead(@16)
-                @9 := _eprint<'_>(move (@10))
-                storage_dead(@10)
-                storage_dead(args@13)
-                storage_dead(args@11)
-                storage_dead(@9)
-                storage_dead(x@8)
-                storage_dead(@7)
-                storage_dead(@5)
+                storage_live(x_8)
+                x_8 = copy (_5 as variant Option::Some).0
+                storage_live(_9)
+                storage_live(_10)
+                storage_live(args_11)
+                storage_live(_12)
+                _12 = &x_8
+                args_11 = (move _12)
+                storage_dead(_12)
+                storage_live(args_13)
+                storage_live(_14)
+                storage_live(_15)
+                _15 = &(*args_11.0)
+                _14 = new_debug<'13, '_, &'2 T>[{built_in impl Sized for &'2 T}, {impl Debug for &'_0 T}<'2, T>[@TraitClause1]](move _15)
+                storage_dead(_15)
+                args_13 = [move _14]
+                storage_dead(_14)
+                storage_live(_16)
+                storage_live(_17)
+                storage_live(_20)
+                _20 = [const 2 : u8, const 45 : u8, const 32 : u8, const 192 : u8, const 1 : u8, const 10 : u8, const 0 : u8]
+                storage_live(_21)
+                _21 = &_20
+                _17 = move _21
+                _16 = &(*_17)
+                storage_live(_18)
+                storage_live(_19)
+                _19 = &args_13
+                _18 = &(*_19)
+                _10 = new<'18, 7 : usize, 1 : usize>(move _16, move _18)
+                storage_dead(_19)
+                storage_dead(_18)
+                storage_dead(_17)
+                storage_dead(_16)
+                _9 = _eprint<'_>(move _10)
+                storage_dead(_10)
+                storage_dead(args_13)
+                storage_dead(args_11)
+                storage_dead(_9)
+                storage_dead(x_8)
+                storage_dead(_7)
+                storage_dead(_5)
                 continue 0
             },
         }
     }
-    @0 := ()
-    storage_dead(@7)
-    storage_dead(@5)
-    storage_dead(iter@4)
-    storage_dead(@2)
+    _0 = ()
+    storage_dead(_7)
+    storage_dead(_5)
+    storage_dead(iter_4)
+    storage_dead(_2)
     return
 }
 
 // Full name: test_crate::main
 fn main()
 {
-    let @0: (); // return
-    let @1: (); // anonymous local
-    let @2: &'_ (Slice<i32>); // anonymous local
-    let @3: &'_ (Array<i32, 3 : usize>); // anonymous local
-    let @4: &'_ (Array<i32, 3 : usize>); // anonymous local
-    let @5: &'_ (Array<i32, 3 : usize>); // anonymous local
-    let @6: &'_ (Array<i32, 3 : usize>); // anonymous local
-    let @7: Array<i32, 3 : usize>; // anonymous local
+    let _0: (); // return
+    let _1: (); // anonymous local
+    let _2: &'0 [i32]; // anonymous local
+    let _3: &'1 [i32; 3 : usize]; // anonymous local
+    let _4: &'1 [i32; 3 : usize]; // anonymous local
+    let _5: &'1 [i32; 3 : usize]; // anonymous local
+    let _6: &'_ [i32; 3 : usize]; // anonymous local
+    let _7: [i32; 3 : usize]; // anonymous local
 
-    storage_live(@6)
-    storage_live(@7)
-    @7 := [const (0 : i32), const (1 : i32), const (2 : i32)]
-    @6 := &@7
-    storage_live(@5)
-    @0 := ()
-    storage_live(@1)
-    storage_live(@2)
-    storage_live(@3)
-    storage_live(@4)
-    @5 := move (@6)
-    @4 := &*(@5)
-    @3 := &*(@4)
-    @2 := @ArrayToSliceShared<'_, i32, 3 : usize>(move (@3))
-    storage_dead(@3)
-    @1 := debug_slice<'_, i32>[{built_in impl Sized for i32}, {impl Debug for i32}](move (@2))
-    storage_dead(@2)
-    storage_dead(@4)
-    storage_dead(@1)
-    @0 := ()
+    storage_live(_6)
+    storage_live(_7)
+    _7 = [const 0 : i32, const 1 : i32, const 2 : i32]
+    _6 = &_7
+    storage_live(_5)
+    _0 = ()
+    storage_live(_1)
+    storage_live(_2)
+    storage_live(_3)
+    storage_live(_4)
+    _5 = move _6
+    _4 = &(*_5)
+    _3 = &(*_4)
+    _2 = @ArrayToSliceShared<'_, i32, 3 : usize>(move _3)
+    storage_dead(_3)
+    _1 = debug_slice<'_, i32>[{built_in impl Sized for i32}, {impl Debug for i32}](move _2)
+    storage_dead(_2)
+    storage_dead(_4)
+    storage_dead(_1)
+    _0 = ()
     return
 }
 

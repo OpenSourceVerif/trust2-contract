@@ -72,9 +72,7 @@ fn transform_constant_expr(
             // return unsize::<&[T; N], &[T]>(array_ref);
             let bval = transform_constant_expr(ctx, bval);
             let bval_ty = bval.ty().clone();
-            let adt = bval_ty.as_adt().expect("Non-adt slice sub-constant");
-            assert_eq!(adt.id, TypeId::Builtin(BuiltinTy::Array));
-            let len = adt.generics.const_generics[0].clone();
+            let (_, len) = bval_ty.as_array().expect("Non-adt slice sub-constant");
 
             let array_place = ctx.rval_to_place(Rvalue::Use(bval), bval_ty.clone());
 
@@ -84,7 +82,7 @@ fn transform_constant_expr(
                 UnOp::Cast(CastKind::Unsize(
                     array_ref.ty.clone(),
                     val.ty.clone(),
-                    UnsizingMetadata::Length(len),
+                    UnsizingMetadata::Length(len.clone()),
                 )),
                 Operand::Move(array_ref),
             )
@@ -141,15 +139,14 @@ fn transform_constant_expr(
                 UIntTy::Usize,
                 fields.len() as u128,
             )));
-            let mut tref = val.ty.kind().as_adt().unwrap().clone();
-            let ty = tref.generics.types.pop().unwrap();
-            match tref.id.as_builtin().unwrap() {
-                BuiltinTy::Array => {}
-                BuiltinTy::Slice => val_ty = Ty::mk_array(ty.clone(), len.clone()),
-                _ => {
-                    unreachable!("Unpexected builtin type in array/slice constant")
+            let ty = match val.ty.kind() {
+                TyKind::Array(ty, _) => ty.clone(),
+                TyKind::Slice(ty) => {
+                    val_ty = Ty::mk_array(ty.clone(), len.clone());
+                    ty.clone()
                 }
-            }
+                _ => unreachable!("Unexpected type in array/slice constant"),
+            };
             Rvalue::Aggregate(AggregateKind::Array(ty, len), fields)
         }
         ConstantExprKind::FnPtr(fptr) => {
@@ -185,10 +182,11 @@ fn transform_operand(ctx: &mut UllbcStatementTransformCtx<'_>, op: &mut Operand)
 
 pub struct Transform;
 impl UllbcPass for Transform {
+    fn should_run(&self, options: &crate::options::TranslateOptions) -> bool {
+        !options.raw_consts
+    }
+
     fn transform_function(&self, ctx: &mut TransformCtx, fun_decl: &mut FunDecl) {
-        if ctx.options.raw_consts {
-            return;
-        }
         fun_decl.transform_ullbc_operands(ctx, transform_operand);
         if let Some(body) = fun_decl.body.as_unstructured_mut() {
             for block in body.body.iter_mut() {

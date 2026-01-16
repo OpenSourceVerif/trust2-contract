@@ -20,7 +20,7 @@ pub trait Destruct<Self>
     vtable: core::marker::Destruct::{vtable}
 }
 
-fn core::marker::Destruct::drop_in_place<Self>(@1: *mut Self)
+unsafe fn core::marker::Destruct::drop_in_place<Self>(@1: *mut Self)
 = <opaque>
 
 // Full name: core::marker::Tuple
@@ -67,12 +67,12 @@ pub trait Fn<Self, Args, Self_Clause1_Clause1_Output>
     vtable: core::ops::function::Fn::{vtable}<Args, Self_Clause1_Clause1_Output>
 }
 
-pub fn core::ops::function::Fn::call<'_0, Self, Args, Clause0_Clause1_Clause1_Output>(@1: &'_0 (Self), @2: Args) -> Clause0_Clause1_Clause1_Output
+pub fn core::ops::function::Fn::call<'_0, Self, Args, Clause0_Clause1_Clause1_Output>(@1: &'_0 Self, @2: Args) -> Clause0_Clause1_Clause1_Output
 where
     [@TraitClause0]: Fn<Self, Args, Clause0_Clause1_Clause1_Output>,
 = <opaque>
 
-pub fn core::ops::function::FnMut::call_mut<'_0, Self, Args, Clause0_Clause1_Output>(@1: &'_0 mut (Self), @2: Args) -> Clause0_Clause1_Output
+pub fn core::ops::function::FnMut::call_mut<'_0, Self, Args, Clause0_Clause1_Output>(@1: &'_0 mut Self, @2: Args) -> Clause0_Clause1_Output
 where
     [@TraitClause0]: FnMut<Self, Args, Clause0_Clause1_Output>,
 = <opaque>
@@ -84,9 +84,9 @@ where
 
 fn UNIT_METADATA()
 {
-    let @0: (); // return
+    let _0: (); // return
 
-    @0 := ()
+    _0 = ()
     return
 }
 
@@ -121,55 +121,55 @@ where
     [@TraitClause0]: Sized<F>,
     [@TraitClause1]: PrimeField<F, Clause1_Repr>,
 {
-    let @0: (); // return
-    let _closure@1: closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // local
+    let _0: (); // return
+    let _closure_1: closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // local
 
-    @0 := ()
-    storage_live(_closure@1)
-    _closure@1 := closure {  }
-    @0 := ()
-    storage_dead(_closure@1)
+    _0 = ()
+    storage_live(_closure_1)
+    _closure_1 = closure {  }
+    _0 = ()
+    storage_dead(_closure_1)
     return
 }
 
 // Full name: test_crate::{SqrtTables<F>[@TraitClause0]}::sqrt_common::{impl Fn<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call
-fn {impl Fn<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call<'_0, F, Clause1_Repr>(@1: &'_0 (closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]), @2: (()))
+fn {impl Fn<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call<'_0, F, Clause1_Repr>(@1: &'_0 closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1], @2: (()))
 where
     [@TraitClause0]: Sized<F>,
     [@TraitClause1]: PrimeField<F, Clause1_Repr>,
 {
-    let @0: (); // return
-    let @1: &'_ (closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]); // arg #1
-    let tupled_args@2: (()); // arg #2
-    let _x@3: (); // local
+    let _0: (); // return
+    let _1: &'0 closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // arg #1
+    let tupled_args_2: (()); // arg #2
+    let _x_3: (); // local
 
-    storage_live(_x@3)
-    @0 := ()
-    _x@3 := move ((tupled_args@2).0)
-    @0 := ()
+    storage_live(_x_3)
+    _0 = ()
+    _x_3 = move tupled_args_2.0
+    _0 = ()
     return
 }
 
 // Full name: test_crate::{SqrtTables<F>[@TraitClause0]}::sqrt_common::{impl FnMut<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call_mut
-fn {impl FnMut<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call_mut<'_0, F, Clause1_Repr>(@1: &'_0 mut (closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]), @2: (()))
+fn {impl FnMut<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call_mut<'_0, F, Clause1_Repr>(@1: &'_0 mut closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1], @2: (()))
 where
     [@TraitClause0]: Sized<F>,
     [@TraitClause1]: PrimeField<F, Clause1_Repr>,
 {
-    let @0: (); // return
-    let state@1: &'_0 mut (closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]); // arg #1
-    let args@2: (()); // arg #2
-    let @3: &'_ (closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]); // anonymous local
+    let _0: (); // return
+    let state_1: &'_0 mut closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // arg #1
+    let args_2: (()); // arg #2
+    let _3: &'0 closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // anonymous local
 
-    @0 := ()
-    storage_live(@3)
-    @3 := &*(state@1)
-    @0 := {impl Fn<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call<'_, F, Clause1_Repr>[@TraitClause0, @TraitClause1](move (@3), move (args@2))
+    _0 = ()
+    storage_live(_3)
+    _3 = &(*state_1)
+    _0 = {impl Fn<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call<'2, F, Clause1_Repr>[@TraitClause0, @TraitClause1](move _3, move args_2)
     return
 }
 
 // Full name: test_crate::{SqrtTables<F>[@TraitClause0]}::sqrt_common::closure::{impl Destruct for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::drop_in_place
-fn {impl Destruct for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::drop_in_place<F, Clause1_Repr>(@1: *mut closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1])
+unsafe fn {impl Destruct for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::drop_in_place<F, Clause1_Repr>(@1: *mut closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1])
 where
     [@TraitClause0]: Sized<F>,
     [@TraitClause1]: PrimeField<F, Clause1_Repr>,
@@ -191,16 +191,16 @@ where
     [@TraitClause0]: Sized<F>,
     [@TraitClause1]: PrimeField<F, Clause1_Repr>,
 {
-    let @0: (); // return
-    let @1: closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // arg #1
-    let @2: (()); // arg #2
-    let @3: &'_ mut (closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]); // anonymous local
+    let _0: (); // return
+    let _1: closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // arg #1
+    let _2: (()); // arg #2
+    let _3: &'0 mut closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]; // anonymous local
 
-    storage_live(@3)
-    @0 := ()
-    @3 := &mut @1
-    @0 := {impl FnMut<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call_mut<'_, F, Clause1_Repr>[@TraitClause0, @TraitClause1](move (@3), move (@2))
-    drop[{impl Destruct for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}<F, Clause1_Repr>[@TraitClause0, @TraitClause1]] @1
+    storage_live(_3)
+    _0 = ()
+    _3 = &mut _1
+    _0 = {impl FnMut<(()), ()> for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}::call_mut<'_, F, Clause1_Repr>[@TraitClause0, @TraitClause1](move _3, move _2)
+    drop[{impl Destruct for closure<F, Clause1_Repr>[@TraitClause0, @TraitClause1]}<F, Clause1_Repr>[@TraitClause0, @TraitClause1]] _1
     return
 }
 

@@ -190,7 +190,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "charon"
-version = "0.1.153"
+version = "0.1.162"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -221,6 +221,7 @@ dependencies = [
  "serde_json",
  "serde_stacker",
  "serde_state",
+ "smallvec",
  "stacker",
  "strip-ansi-escapes",
  "take_mut",
@@ -234,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "charon-bin-interface"
-version = "0.1.153"
+version = "0.1.162"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -266,6 +267,7 @@ dependencies = [
  "serde_json",
  "serde_stacker",
  "serde_state",
+ "smallvec",
  "stacker",
  "strip-ansi-escapes",
  "take_mut",
@@ -279,7 +281,7 @@ dependencies = [
 
 [[package]]
 name = "charon-driver-bin-interface"
-version = "0.1.153"
+version = "0.1.162"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -311,6 +313,7 @@ dependencies = [
  "serde_json",
  "serde_stacker",
  "serde_state",
+ "smallvec",
  "stacker",
  "strip-ansi-escapes",
  "take_mut",

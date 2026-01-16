@@ -151,6 +151,7 @@ let region_to_string (env : 'a fmt_env) (r : region) : string =
   match r with
   | RStatic -> "'static"
   | RErased -> "'_"
+  | RBody id -> "°" ^ RegionId.to_string id
   | RVar var -> region_db_var_to_string env var
 
 let region_binder_to_string (value_to_string : 'a fmt_env -> 'c -> string)
@@ -171,9 +172,7 @@ let rec type_id_to_string (env : 'a fmt_env) (id : type_id) : string =
   | TBuiltin aty -> (
       match aty with
       | TBox -> "alloc::boxed::Box"
-      | TStr -> "str"
-      | TArray -> "@Array"
-      | TSlice -> "@Slice")
+      | TStr -> "str")
 
 and type_decl_id_to_string env def_id =
   (* We don't want the printing functions to crash if the crate is partial *)
@@ -285,7 +284,7 @@ and ty_to_string (env : 'a fmt_env) (ty : ty) : string =
       | RShared -> "*const " ^ ty_to_string env rty)
   | TFnPtr binder ->
       let env = fmt_env_push_regions env binder.binder_regions in
-      let inputs, output = binder.binder_value in
+      let { inputs; output; _ } = binder.binder_value in
       let inputs =
         "(" ^ String.concat ", " (List.map (ty_to_string env) inputs) ^ ") -> "
       in
@@ -304,6 +303,9 @@ and ty_to_string (env : 'a fmt_env) (ty : ty) : string =
         | r :: _ -> " + " ^ r
       in
       "dyn (" ^ String.concat " + " clauses ^ reg_str ^ ")"
+  | TArray (ty, len) ->
+      "[" ^ ty_to_string env ty ^ "; " ^ const_generic_to_string env len ^ "]"
+  | TSlice ty -> "[" ^ ty_to_string env ty ^ "]"
   | TPtrMetadata ty -> "PtrMetadata(" ^ ty_to_string env ty ^ ")"
   | TError msg -> "type_error (\"" ^ msg ^ "\")"
 
@@ -369,14 +371,14 @@ and impl_elem_to_string (env : 'a fmt_env) (elem : impl_elem) : string =
   match elem with
   | ImplElemTy bound_ty ->
       (* Locally replace the generics and the predicates *)
-      let env = fmt_env_update_generics_and_preds env bound_ty.binder_params in
+      let env = fmt_env_push_generics_and_preds env bound_ty.binder_params in
       ty_to_string env bound_ty.binder_value
   | ImplElemTrait impl_id -> begin
       match TraitImplId.Map.find_opt impl_id env.crate.trait_impls with
       | None -> trait_impl_id_to_string env impl_id
       | Some impl -> (
           (* Locally replace the generics and the predicates *)
-          let env = fmt_env_update_generics_and_preds env impl.generics in
+          let env = fmt_env_push_generics_and_preds env impl.generics in
           (* Put the first type argument aside (it gives the type for which we
              implement the trait) *)
           let { id; generics } : trait_decl_ref = impl.impl_trait in
@@ -402,7 +404,7 @@ and path_elem_to_string (env : 'a fmt_env) (e : path_elem) : string =
       s ^ d
   | PeImpl impl -> "{" ^ impl_elem_to_string env impl ^ "}"
   | PeInstantiated binder ->
-      let env = fmt_env_update_generics_and_preds env binder.binder_params in
+      let env = fmt_env_push_generics_and_preds env binder.binder_params in
       let explicits, _ = generic_args_to_strings env binder.binder_value in
       "<" ^ String.concat ", " explicits ^ ">"
 
@@ -501,7 +503,7 @@ let predicates_and_trait_clauses_to_string (env : 'a fmt_env) (indent : string)
 
 let type_decl_to_string (env : 'a fmt_env) (def : type_decl) : string =
   (* Locally update the generics and the predicates *)
-  let env = fmt_env_update_generics_and_preds env def.generics in
+  let env = fmt_env_push_generics_and_preds env def.generics in
   let params, clauses =
     predicates_and_trait_clauses_to_string env "" "  " def.generics
   in

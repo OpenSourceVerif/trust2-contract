@@ -152,13 +152,22 @@ and expr_to_string (c : print_config) (e : expr) : string =
               | TkPattern | TkPretty -> "[" ^ ty ^ "]"
               | TkName -> "Slice" ^ ty)
           | _ -> raise (Failure "Ill-formed pattern")))
-  | ERef (r, ty, rk) ->
-      let rk =
-        match rk with
-        | RMut -> "mut "
-        | RShared -> ""
-      in
-      "&" ^ region_to_string c r ^ " " ^ rk ^ expr_to_string c ty
+  | ERef (r, ty, rk) -> (
+      match c.tgt with
+      | TkPattern | TkPretty ->
+          let rk =
+            match rk with
+            | RMut -> "mut "
+            | RShared -> ""
+          in
+          "&" ^ region_to_string c r ^ " " ^ rk ^ expr_to_string c ty
+      | TkName ->
+          let rk =
+            match rk with
+            | RMut -> "Mut"
+            | RShared -> "Shared"
+          in
+          rk ^ region_to_string c r ^ expr_to_string c ty)
   | EVar v -> opt_var_to_string c v
   | EArrow (inputs, out) -> (
       let inputs = List.map (expr_to_string c) inputs in
@@ -315,10 +324,16 @@ let update_map (find_opt : 'a -> 'm -> 'b option) (add : 'a -> 'b -> 'm -> 'm)
       v = v'
 
 let update_rmap (c : match_config) (m : maps) (id : var) (v : T.region) : bool =
+  (* Treat body variables like erased ones *)
+  let v =
+    match v with
+    | RBody _ -> T.RErased
+    | _ -> v
+  in
   (* When it comes to matching, we treat erased regions like variables. *)
   let is_var =
     match v with
-    | RVar _ | RErased -> true
+    | RVar _ | RBody _ | RErased -> true
     | RStatic -> false
   in
   if c.map_vars_to_vars && not is_var then false
@@ -416,10 +431,11 @@ let match_region (c : match_config) (m : maps) (id : region) (v : T.region) :
     bool =
   match (id, v) with
   | RStatic, RStatic -> true
-  | RVar id, (RVar _ | RErased) ->
+  | RVar id, (RVar _ | RErased | RBody _) ->
       (* When it comes to matching, we treat erased regions like variables *)
       opt_update_rmap c m id v
-  | RVar id, _ -> if c.map_vars_to_vars then false else opt_update_rmap c m id v
+  | RVar id, RStatic ->
+      if c.map_vars_to_vars then false else opt_update_rmap c m id v
   | _ -> false
 
 let match_ref_kind (prk : ref_kind) (rk : T.ref_kind) : bool =
@@ -547,20 +563,39 @@ and match_pattern_with_literal_type (pty : pattern) (ty : T.literal_type) : bool
   | [ PWild ] -> true
   | _ -> false
 
-and match_primitive_adt (pid : primitive_adt) (id : T.type_id) : bool =
-  match (pid, id) with
-  | TTuple, TTuple | TArray, TBuiltin TArray | TSlice, TBuiltin TSlice -> true
-  | _ -> false
-
 and match_expr_with_ty (ctx : 'fun_body ctx) (c : match_config) (m : maps)
     (pty : expr) (ty : T.ty) : bool =
   match (pty, ty) with
   | EComp pid, TAdt tref ->
       match_pattern_with_type_id ctx c m pid tref.id tref.generics
   | EComp pid, TLiteral lit -> match_pattern_with_literal_type pid lit
-  | EPrimAdt (pid, pgenerics), TAdt tref ->
-      match_primitive_adt pid tref.id
-      && match_generic_args ctx c m pgenerics tref.generics
+  | EPrimAdt (pid, pgenerics), ty -> begin
+      match (pid, ty) with
+      | TArray, TArray (ty, len) ->
+          let generics : T.generic_args =
+            {
+              types = [ ty ];
+              const_generics = [ len ];
+              regions = [];
+              trait_refs = [];
+            }
+          in
+          match_generic_args ctx c m pgenerics generics
+      | TSlice, TSlice ty ->
+          let generics : T.generic_args =
+            {
+              types = [ ty ];
+              const_generics = [];
+              regions = [];
+              trait_refs = [];
+            }
+          in
+          match_generic_args ctx c m pgenerics generics
+      | TTuple, TAdt tref ->
+          tref.id == TTuple
+          && match_generic_args ctx c m pgenerics tref.generics
+      | _ -> false
+    end
   | ERef (pr, pty, prk), TRef (r, ty, rk) ->
       match_region c m pr r
       && match_expr_with_ty ctx c m pty ty
@@ -573,7 +608,7 @@ and match_expr_with_ty (ctx : 'fun_body ctx) (c : match_config) (m : maps)
       let m =
         maps_push_bound_regions_group_if_nonempty m binder.binder_regions
       in
-      let inputs, output = binder.binder_value in
+      let { T.inputs; output; _ } = binder.binder_value in
       (* Match *)
       List.for_all2 (match_expr_with_ty ctx c m) pinputs inputs
       &&
@@ -763,8 +798,7 @@ let match_fn_ptr (ctx : 'fun_body ctx) (c : match_config) (p : pattern)
         | TraitImplItem (_, trait_ref, method_name, _)
           when c.match_with_trait_decl_refs ->
             let subst =
-              Substitute.make_subst_from_generics d.signature.generics
-                func.generics
+              Substitute.make_subst_from_generics d.generics func.generics Self
             in
             let trait_ref =
               Substitute.trait_decl_ref_substitute subst trait_ref
@@ -843,9 +877,8 @@ let region_to_pattern (m : constraints) (r : T.region) : region =
            (fun varid map -> T.RegionId.Map.find_opt varid map.rmap)
            var)
   | RStatic -> RStatic
-  | RErased ->
-      (* We do get there when converting function pointers (when we try to
-         detect specific function calls) to patterns. *)
+  | RBody _ | RErased ->
+      (* These regions cannot be named. *)
       RVar None
 
 let type_var_to_pattern (m : constraints) (var : T.type_db_var) : var option =
@@ -858,6 +891,12 @@ let const_generic_var_to_pattern (m : constraints)
   lookup_var_in_maps m
     (fun varid map -> T.ConstGenericVarId.Map.find_opt varid map.cmap)
     var
+
+(** Remove the ['] character in a region name *)
+let remove_region_tick (s : string) : string =
+  if String.length s > 0 && s.[0] = '\'' then
+    String.sub s 1 (String.length s - 1)
+  else s
 
 let constraints_map_compute_regions_map (regions : T.region_param list) :
     var option T.RegionId.Map.t =
@@ -873,7 +912,7 @@ let constraints_map_compute_regions_map (regions : T.region_param list) :
          let v =
            match r.name with
            | None -> VarIndex (fresh_id rid_gen)
-           | Some name -> VarName name
+           | Some name -> VarName (remove_region_tick name)
          in
          (r.index, Some v))
        regions)
@@ -995,8 +1034,6 @@ and ty_to_pattern_aux (ctx : 'fun_body ctx) (c : to_pat_config)
             (name_with_generic_args_to_pattern_aux ctx c d.item_meta.name
                (Some generics))
       | TTuple -> EPrimAdt (TTuple, generics)
-      | TBuiltin TArray -> EPrimAdt (TArray, generics)
-      | TBuiltin TSlice -> EPrimAdt (TSlice, generics)
       | TBuiltin TBox -> EComp [ PIdent ("Box", 0, generics) ]
       | TBuiltin TStr -> EComp [ PIdent ("str", 0, generics) ])
   | TVar v -> EVar (type_var_to_pattern m v)
@@ -1017,7 +1054,7 @@ and ty_to_pattern_aux (ctx : 'fun_body ctx) (c : to_pat_config)
       let m =
         constraints_map_push_regions_map_if_nonempty m binder.binder_regions
       in
-      let inputs, output = binder.binder_value in
+      let { T.inputs; output; _ } = binder.binder_value in
       let inputs = List.map (ty_to_pattern_aux ctx c m) inputs in
       let output =
         if output = TypesUtils.mk_unit_ty then None
@@ -1027,6 +1064,23 @@ and ty_to_pattern_aux (ctx : 'fun_body ctx) (c : to_pat_config)
   | TError _ -> EVar None
   | TRawPtr (ty, RMut) -> ERawPtr (Mut, ty_to_pattern_aux ctx c m ty)
   | TRawPtr (ty, RShared) -> ERawPtr (Not, ty_to_pattern_aux ctx c m ty)
+  | TArray (ty, len) ->
+      let generics =
+        generic_args_to_pattern ctx c m
+          {
+            types = [ ty ];
+            const_generics = [ len ];
+            regions = [];
+            trait_refs = [];
+          }
+      in
+      EPrimAdt (TArray, generics)
+  | TSlice ty ->
+      let generics =
+        generic_args_to_pattern ctx c m
+          { types = [ ty ]; const_generics = []; regions = []; trait_refs = [] }
+      in
+      EPrimAdt (TSlice, generics)
   | _ ->
       let fmt_env = ctx_to_fmt_env ctx in
       raise
