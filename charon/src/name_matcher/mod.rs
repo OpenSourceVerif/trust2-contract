@@ -11,11 +11,11 @@ pub use Pattern as NamePattern;
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Pattern {
-    elems: Vec<PatElem>,
+    pub elems: Vec<PatElem>,
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum PatElem {
+pub enum PatElem {
     /// An identifier, optionally with generic arguments. E.g. `std` or `Box<_>`.
     Ident {
         name: String,
@@ -31,7 +31,7 @@ enum PatElem {
 }
 
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
-enum PatTy {
+pub enum PatTy {
     /// A path, like `my_crate::foo::Type<_, usize>`
     Pat(Pattern),
     /// `&T`, `&mut T`
@@ -144,6 +144,26 @@ impl Pattern {
                     }
                     TypeId::Tuple => false,
                 }
+            }
+            TyKind::Array(ty, len) => {
+                let type_name = Name::from_path(&["Array"]);
+                let args = GenericArgs {
+                    regions: [].into(),
+                    types: [ty.clone()].into(),
+                    const_generics: [len.clone()].into(),
+                    trait_refs: [].into(),
+                };
+                self.matches_with_generics(ctx, &type_name, Some(&args))
+            }
+            TyKind::Slice(ty) => {
+                let type_name = Name::from_path(&["Slice"]);
+                let args = GenericArgs {
+                    regions: [].into(),
+                    types: [ty.clone()].into(),
+                    const_generics: [].into(),
+                    trait_refs: [].into(),
+                };
+                self.matches_with_generics(ctx, &type_name, Some(&args))
             }
             TyKind::TypeVar(..)
             | TyKind::Literal(..)

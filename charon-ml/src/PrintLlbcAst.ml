@@ -117,9 +117,7 @@ module Ast = struct
     String.concat ";\n"
       (List.map (statement_to_string env indent indent_incr) b.statements)
 
-  let fun_sig_to_string (env : fmt_env) (indent : string) (indent_incr : string)
-      (sg : fun_sig) : string =
-    fun_sig_to_string env indent indent_incr sg
+  let fun_sig_to_string = fun_sig_to_string
 
   let fun_decl_to_string (env : fmt_env) (indent : string)
       (indent_incr : string) (def : fun_decl) : string =
@@ -128,7 +126,7 @@ module Ast = struct
   let global_decl_to_string (env : fmt_env) (indent : string)
       (_indent_incr : string) (def : global_decl) : string =
     (* Locally update the generics and the predicates *)
-    let env = fmt_env_update_generics_and_preds env def.generics in
+    let env = fmt_env_replace_generics_and_preds env def.generics in
     let params, clauses =
       predicates_and_trait_clauses_to_string env "" "  " def.generics
     in

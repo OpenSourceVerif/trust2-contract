@@ -21,14 +21,14 @@ pub trait Destruct<Self>
 }
 
 // Full name: core::marker::Destruct::drop_in_place
-fn drop_in_place<Self>(@1: *mut Self)
+unsafe fn drop_in_place<Self>(@1: *mut Self)
 = <opaque>
 
 fn UNIT_METADATA()
 {
-    let @0: (); // return
+    let _0: (); // return
 
-    @0 := ()
+    _0 = ()
     return
 }
 
@@ -39,12 +39,12 @@ fn ignore<T>(@1: T)
 where
     [@TraitClause0]: Sized<T>,
 {
-    let @0: (); // return
-    let t@1: T; // arg #1
+    let _0: (); // return
+    let t_1: T; // arg #1
 
-    @0 := ()
-    @0 := ()
-    conditional_drop[{built_in impl Destruct for T}] t@1
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for T}] t_1
     return
 }
 

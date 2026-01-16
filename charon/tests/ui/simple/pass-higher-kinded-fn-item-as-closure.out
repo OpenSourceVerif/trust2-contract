@@ -21,7 +21,7 @@ pub trait Destruct<Self>
 }
 
 // Full name: core::marker::Destruct::drop_in_place
-fn drop_in_place<Self>(@1: *mut Self)
+unsafe fn drop_in_place<Self>(@1: *mut Self)
 = <opaque>
 
 // Full name: core::marker::Tuple
@@ -68,13 +68,13 @@ pub trait Fn<Self, Args, Self_Clause1_Clause1_Output>
     vtable: core::ops::function::Fn::{vtable}<Args, Self_Clause1_Clause1_Output>
 }
 
-pub fn core::ops::function::Fn::call<'_0, Self, Args, Clause0_Clause1_Clause1_Output>(@1: &'_0 (Self), @2: Args) -> Clause0_Clause1_Clause1_Output
+pub fn core::ops::function::Fn::call<'_0, Self, Args, Clause0_Clause1_Clause1_Output>(@1: &'_0 Self, @2: Args) -> Clause0_Clause1_Clause1_Output
 where
     [@TraitClause0]: Fn<Self, Args, Clause0_Clause1_Clause1_Output>,
 = <opaque>
 
 // Full name: core::ops::function::FnMut::call_mut
-pub fn call_mut<'_0, Self, Args, Clause0_Clause1_Output>(@1: &'_0 mut (Self), @2: Args) -> Clause0_Clause1_Output
+pub fn call_mut<'_0, Self, Args, Clause0_Clause1_Output>(@1: &'_0 mut Self, @2: Args) -> Clause0_Clause1_Output
 where
     [@TraitClause0]: FnMut<Self, Args, Clause0_Clause1_Output>,
 = <opaque>
@@ -87,49 +87,49 @@ where
 
 fn UNIT_METADATA()
 {
-    let @0: (); // return
+    let _0: (); // return
 
-    @0 := ()
+    _0 = ()
     return
 }
 
 const UNIT_METADATA: () = @Fun0()
 
 // Full name: test_crate::flabada
-pub fn flabada<'a>(@1: &'a (())) -> &'a (())
+pub fn flabada<'a>(@1: &'a ()) -> &'a ()
 {
-    let @0: &'_ (()); // return
-    let x@1: &'_ (()); // arg #1
+    let _0: &'0 (); // return
+    let x_1: &'0 (); // arg #1
 
-    @0 := copy (x@1)
+    _0 = copy x_1
     return
 }
 
 pub fn test_crate::call<'b, F>(@1: F)
 where
     [@TraitClause0]: Sized<F>,
-    [@TraitClause1]: Fn<F, (&'b (())), &'b (())>,
+    [@TraitClause1]: Fn<F, (&'b ()), &'b ()>,
 {
-    let @0: (); // return
-    let @1: F; // arg #1
+    let _0: (); // return
+    let _1: F; // arg #1
 
-    @0 := ()
-    @0 := ()
-    conditional_drop[{built_in impl Destruct for F}] @1
+    _0 = ()
+    _0 = ()
+    conditional_drop[{built_in impl Destruct for F}] _1
     return
 }
 
 // Full name: test_crate::flibidi
 pub fn flibidi()
 {
-    let @0: (); // return
-    let @1: (); // anonymous local
+    let _0: (); // return
+    let _1: (); // anonymous local
 
-    @0 := ()
-    storage_live(@1)
-    @1 := test_crate::call<'_, for<'a> flabada<'a>>[{built_in impl Sized for for<'a> flabada<'a>}, {built_in impl Fn<(&'_ (())), &'_ (())> for for<'a> flabada<'a>}](const (flabada<'_>))
-    storage_dead(@1)
-    @0 := ()
+    _0 = ()
+    storage_live(_1)
+    _1 = test_crate::call<'0, for<'a> flabada<'a>>[{built_in impl Sized for for<'a> flabada<'a>}, {built_in impl Fn<(&'0 ()), &'8 ()> for for<'a> flabada<'a>}](const flabada<'_>)
+    storage_dead(_1)
+    _0 = ()
     return
 }
 

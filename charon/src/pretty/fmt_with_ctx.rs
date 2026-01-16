@@ -3,6 +3,7 @@ use crate::{
     common::{TAB_INCR, repeat_except_first},
     formatter::*,
     gast,
+    ids::IndexVec,
     llbc_ast::{self as llbc, *},
     transform::utils::GenericsSource,
     ullbc_ast::{self as ullbc, *},
@@ -272,7 +273,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Call {
         let dest = self.dest.with_ctx(ctx);
         let func = self.func.with_ctx(ctx);
         let args = self.args.iter().map(|x| x.with_ctx(ctx)).format(", ");
-        write!(f, "{dest} := {func}({args})")
+        write!(f, "{dest} = {func}({args})")
     }
 }
 
@@ -292,7 +293,18 @@ impl<C: AstFormatter> FmtWithCtx<C> for CastKind {
                 )?;
                 match meta {
                     UnsizingMetadata::Length(len) => write!(f, ", {}", len.with_ctx(ctx))?,
-                    UnsizingMetadata::VTablePtr(tref) => write!(f, ", {}", tref.with_ctx(ctx))?,
+                    UnsizingMetadata::VTable(tref, vt) => {
+                        write!(f, ", {} with ", tref.with_ctx(ctx))?;
+                        match vt {
+                            Some(vt) => write!(f, "{}", vt.with_ctx(ctx))?,
+                            None => write!(f, "?")?,
+                        }
+                    }
+                    UnsizingMetadata::VTableUpcast(fields) => {
+                        write!(f, ", ")?;
+                        let fields = fields.iter().map(|x| format!("{}", x.index())).format(", ");
+                        write!(f, " at [{}]", fields)?
+                    }
                     UnsizingMetadata::Unknown => {}
                 }
                 write!(f, ">")
@@ -373,10 +385,85 @@ impl<C: AstFormatter> FmtWithCtx<C> for DeclarationGroup {
 
 impl<C: AstFormatter> FmtWithCtx<C> for DynPredicate {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctx = &ctx.push_binder(Cow::Borrowed(&self.binder.params));
-        let ty = self.binder.skip_binder.with_ctx(ctx);
-        let clauses = self.binder.params.formatted_clauses(ctx).format(" + ");
-        write!(f, "exists<{ty}> {clauses}")
+        let params = &self.binder.params;
+        let ctx = &ctx.push_binder(Cow::Borrowed(params));
+        let GenericParams {
+            regions,
+            types,
+            const_generics,
+            trait_clauses,
+            regions_outlive,
+            types_outlive,
+            trait_type_constraints,
+        } = params;
+        assert!(regions.is_empty());
+        assert!(const_generics.is_empty());
+        assert!(regions_outlive.is_empty());
+        assert_eq!(types.elem_count(), 1);
+
+        // Format the clauses with their assoc types, e.g. `Iterator<Item = ...>`.
+        let mut cstrs_per_clause: IndexMap<TraitClauseId, Vec<String>> =
+            trait_clauses.map_ref(|_| vec![]);
+        for cstr in trait_type_constraints {
+            let mut tgt_clause = None;
+            let (_, cstr) = cstr.fmt_split_with(ctx, |ctx, cstr| {
+                let mut path = vec![];
+                let mut tref = &cstr.trait_ref;
+                loop {
+                    match &tref.kind {
+                        TraitRefKind::ParentClause(parent_trait_ref, clause_id) => {
+                            path.push(format!("parent_clause{clause_id}"));
+                            tref = &parent_trait_ref;
+                        }
+                        &TraitRefKind::Clause(DeBruijnVar::Bound(_, clause_id)) => {
+                            tgt_clause = Some(clause_id);
+                            break;
+                        }
+                        _ => unreachable!(),
+                    }
+                }
+                let ty = cstr.ty.to_string_with_ctx(ctx);
+                let path = path
+                    .into_iter()
+                    .map(Either::Left)
+                    .chain([Either::Right(cstr.type_name)])
+                    .format("::");
+                format!("{path} = {ty}")
+            });
+            if let Some(cstrs) = cstrs_per_clause.get_mut(tgt_clause.unwrap()) {
+                cstrs.push(cstr);
+            }
+        }
+        let trait_clauses = trait_clauses.iter().map(|clause| {
+            let cstrs = &cstrs_per_clause[clause.clause_id];
+            clause.trait_.fmt_as_for_with(ctx, |ctx, pred| {
+                let (_, pred) = pred.split_self();
+                let trait_id = pred.id.with_ctx(ctx);
+                let generics = if pred.generics.has_explicits() || !cstrs.is_empty() {
+                    let xs = pred
+                        .generics
+                        .fmt_explicits(ctx)
+                        .map(Either::Left)
+                        .chain(cstrs.into_iter().map(Either::Right))
+                        .format(", ");
+                    format!("<{}>", xs)
+                } else {
+                    String::new()
+                };
+                format!("{trait_id}{generics}")
+            })
+        });
+
+        let types_outlive = types_outlive
+            .iter()
+            .filter(|x| !x.skip_binder.1.is_erased())
+            .map(|x| {
+                x.fmt_as_for_with(ctx, |ctx, types_outlive| {
+                    types_outlive.1.to_string_with_ctx(ctx)
+                })
+            });
+        let clauses = trait_clauses.chain(types_outlive).format(" + ");
+        write!(f, "{clauses}")
     }
 }
 
@@ -457,10 +544,10 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDecl {
             .fmt_item_intro(f, ctx, keyword, self.def_id)?;
 
         // Update the context
-        let ctx = &ctx.set_generics(&self.signature.generics);
+        let ctx = &ctx.set_generics(&self.generics);
 
         // Generic parameters
-        let (params, preds) = self.signature.generics.fmt_with_ctx_with_trait_clauses(ctx);
+        let (params, preds) = self.generics.fmt_with_ctx_with_trait_clauses(ctx);
         write!(f, "{params}")?;
 
         // Arguments
@@ -499,33 +586,34 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDeclRef {
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for FunSig {
+impl<C: AstFormatter> FmtWithCtx<C> for RegionBinder<FunSig> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctx = &ctx.set_generics(&self.generics);
+        // Update the bound regions
+        let ctx = &ctx.push_bound_regions(&self.regions);
+        let FunSig {
+            is_unsafe,
+            inputs,
+            output,
+        } = &self.skip_binder;
 
-        // Unsafe keyword
-        if self.is_unsafe {
+        if *is_unsafe {
             write!(f, "unsafe ")?;
         }
 
-        // Generic parameters
-        let (params, clauses) = self.generics.fmt_with_ctx_with_trait_clauses(ctx);
-        write!(f, "fn{params}")?;
-
-        // Arguments
-        let args = self
-            .inputs
-            .iter()
-            .map(|ty| ty.with_ctx(ctx).to_string())
-            .format(", ");
-        write!(f, "({args})")?;
-
-        // Return type
-        if !self.output.is_unit() {
-            write!(f, " -> {}", self.output.with_ctx(ctx))?;
+        write!(f, "fn")?;
+        if !self.regions.is_empty() {
+            write!(
+                f,
+                "<{}>",
+                self.regions.iter().map(|r| r.with_ctx(ctx)).format(", ")
+            )?;
         }
-
-        write!(f, "{clauses}")?;
+        let inputs = inputs.iter().map(|x| x.with_ctx(ctx)).format(", ");
+        write!(f, "({inputs})")?;
+        if !output.is_unit() {
+            let output = output.with_ctx(ctx);
+            write!(f, " -> {output}")?;
+        }
         Ok(())
     }
 }
@@ -739,7 +827,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents> {
         fn fmt_body<C: AstFormatter>(
             f: &mut fmt::Formatter<'_>,
             ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
-            body: &Vector<BlockId, BlockData>,
+            body: &IndexVec<BlockId, BlockData>,
         ) -> Result<(), fmt::Error> {
             let tab = ctx.indent();
             let ctx = &ctx.increase_indent();
@@ -950,7 +1038,7 @@ impl Display for Local {
         if let Some(name) = &self.name {
             write!(f, "{name}")?
         }
-        write!(f, "{}", self.index.to_pretty_string())?;
+        write!(f, "_{}", self.index)?;
         Ok(())
     }
 }
@@ -999,9 +1087,9 @@ impl_display_via_ctx!(Operand);
 impl<C: AstFormatter> FmtWithCtx<C> for Operand {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Operand::Copy(p) => write!(f, "copy ({})", p.with_ctx(ctx)),
-            Operand::Move(p) => write!(f, "move ({})", p.with_ctx(ctx)),
-            Operand::Const(c) => write!(f, "const ({})", c.with_ctx(ctx)),
+            Operand::Copy(p) => write!(f, "copy {}", p.with_ctx(ctx)),
+            Operand::Move(p) => write!(f, "move {}", p.with_ctx(ctx)),
+            Operand::Const(c) => write!(f, "const {}", c.with_ctx(ctx)),
         }
     }
 }
@@ -1069,7 +1157,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Place {
                 let sub = subplace.with_ctx(ctx);
                 match projection {
                     ProjectionElem::Deref => {
-                        write!(f, "*({sub})")
+                        write!(f, "(*{sub})")
                     }
                     ProjectionElem::Field(proj_kind, field_id) => match proj_kind {
                         FieldProjKind::Adt(adt_id, opt_variant_id) => {
@@ -1083,7 +1171,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Place {
                             Ok(())
                         }
                         FieldProjKind::Tuple(_) => {
-                            write!(f, "({sub}).{field_id}")
+                            write!(f, "{sub}.{field_id}")
                         }
                     },
                     ProjectionElem::PtrMetadata => {
@@ -1093,24 +1181,24 @@ impl<C: AstFormatter> FmtWithCtx<C> for Place {
                         offset,
                         from_end: true,
                         ..
-                    } => write!(f, "({sub})[-{}]", offset.with_ctx(ctx)),
+                    } => write!(f, "{sub}[-{}]", offset.with_ctx(ctx)),
                     ProjectionElem::Index {
                         offset,
                         from_end: false,
                         ..
-                    } => write!(f, "({sub})[{}]", offset.with_ctx(ctx)),
+                    } => write!(f, "{sub}[{}]", offset.with_ctx(ctx)),
                     ProjectionElem::Subslice {
                         from,
                         to,
                         from_end: true,
                         ..
-                    } => write!(f, "({sub})[{}..-{}]", from.with_ctx(ctx), to.with_ctx(ctx)),
+                    } => write!(f, "{sub}[{}..-{}]", from.with_ctx(ctx), to.with_ctx(ctx)),
                     ProjectionElem::Subslice {
                         from,
                         to,
                         from_end: false,
                         ..
-                    } => write!(f, "({sub})[{}..{}]", from.with_ctx(ctx), to.with_ctx(ctx)),
+                    } => write!(f, "{sub}[{}..{}]", from.with_ctx(ctx), to.with_ctx(ctx)),
                 }
             }
         }
@@ -1188,6 +1276,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Region {
         match self {
             Region::Static => write!(f, "'static"),
             Region::Var(var) => write!(f, "{}", var.with_ctx(ctx)),
+            Region::Body(id) => write!(f, "'{}", id),
             Region::Erased => write!(f, "'_"),
         }
     }
@@ -1200,6 +1289,17 @@ impl<T> RegionBinder<T> {
         C: AstFormatter,
         T: FmtWithCtx<C::Reborrow<'a>>,
     {
+        self.fmt_split_with(ctx, |ctx, x| x.to_string_with_ctx(ctx))
+    }
+    /// Format the parameters and contents of this binder and returns the resulting strings.
+    fn fmt_split_with<'a, C>(
+        &'a self,
+        ctx: &'a C,
+        fmt_inner: impl FnOnce(&C::Reborrow<'a>, &T) -> String,
+    ) -> (String, String)
+    where
+        C: AstFormatter,
+    {
         let ctx = &ctx.push_bound_regions(&self.regions);
         (
             self.regions
@@ -1207,7 +1307,7 @@ impl<T> RegionBinder<T> {
                 .map(|r| r.with_ctx(ctx))
                 .format(", ")
                 .to_string(),
-            self.skip_binder.to_string_with_ctx(ctx),
+            fmt_inner(ctx, &self.skip_binder),
         )
     }
 
@@ -1217,7 +1317,19 @@ impl<T> RegionBinder<T> {
         C: AstFormatter,
         T: FmtWithCtx<C::Reborrow<'a>>,
     {
-        let (regions, value) = self.fmt_split(ctx);
+        self.fmt_as_for_with(ctx, |ctx, x| x.to_string_with_ctx(ctx))
+    }
+    /// Formats the binder as `for<params> value`.
+    fn fmt_as_for_with<'a, C>(
+        &'a self,
+        ctx: &'a C,
+        fmt_inner: impl FnOnce(&C::Reborrow<'a>, &T) -> String,
+    ) -> String
+    where
+        C: AstFormatter,
+        T: FmtWithCtx<C::Reborrow<'a>>,
+    {
+        let (regions, value) = self.fmt_split_with(ctx, fmt_inner);
         let regions = if regions.is_empty() {
             "".to_string()
         } else {
@@ -1322,9 +1434,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Rvalue {
                         match ty_ref.id {
                             TypeId::Tuple => write!(f, "({})", ops_s),
                             TypeId::Builtin(BuiltinTy::Box) => write!(f, "Box({})", ops_s),
-                            TypeId::Builtin(
-                                BuiltinTy::Array | BuiltinTy::Slice | BuiltinTy::Str,
-                            ) => {
+                            TypeId::Builtin(BuiltinTy::Str) => {
                                 write!(f, "[{}]", ops_s)
                             }
                             TypeId::Adt(ty_id) => {
@@ -1398,15 +1508,12 @@ impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
             writeln!(f, "{tab}// {line}")?;
         }
         match &self.kind {
-            StatementKind::Assign(place, rvalue) => write!(
-                f,
-                "{tab}{} := {}",
-                place.with_ctx(ctx),
-                rvalue.with_ctx(ctx),
-            ),
+            StatementKind::Assign(place, rvalue) => {
+                write!(f, "{tab}{} = {}", place.with_ctx(ctx), rvalue.with_ctx(ctx),)
+            }
             StatementKind::SetDiscriminant(place, variant_id) => write!(
                 f,
-                "{tab}@discriminant({}) := {}",
+                "{tab}@discriminant({}) = {}",
                 place.with_ctx(ctx),
                 variant_id
             ),
@@ -1431,7 +1538,6 @@ impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
             }
             StatementKind::Assert(assert) => write!(f, "{tab}{}", assert.with_ctx(ctx)),
             StatementKind::Nop => write!(f, "{tab}nop"),
-            StatementKind::Error(s) => write!(f, "{tab}@Error({})", s),
         }
     }
 }
@@ -1446,14 +1552,11 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
         write!(f, "{tab}")?;
         match &self.kind {
             StatementKind::Assign(place, rvalue) => {
-                write!(f, "{} := {}", place.with_ctx(ctx), rvalue.with_ctx(ctx),)
+                write!(f, "{} = {}", place.with_ctx(ctx), rvalue.with_ctx(ctx),)
             }
-            StatementKind::SetDiscriminant(place, variant_id) => write!(
-                f,
-                "@discriminant({}) := {}",
-                place.with_ctx(ctx),
-                variant_id
-            ),
+            StatementKind::SetDiscriminant(place, variant_id) => {
+                write!(f, "@discriminant({}) = {}", place.with_ctx(ctx), variant_id)
+            }
             StatementKind::CopyNonOverlapping(box CopyNonOverlapping { src, dst, count }) => {
                 write!(
                     f,
@@ -1721,9 +1824,16 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitDeclRef {
 }
 
 impl TraitDeclRef {
-    fn format_as_impl<C: AstFormatter>(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// Split off the `Self` type. The returned `TraitDeclRef` has incorrect generics. The returned
+    /// `Self` is `None` for monomorphized traits.
+    fn split_self(&self) -> (Option<Ty>, Self) {
         let mut pred = self.clone();
         let self_ty = pred.generics.types.remove_and_shift_ids(TypeVarId::ZERO);
+        (self_ty, pred)
+    }
+
+    fn format_as_impl<C: AstFormatter>(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (self_ty, pred) = self.split_self();
         let pred = pred.with_ctx(ctx);
         match self_ty {
             Some(self_ty) => {
@@ -1863,42 +1973,16 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitTypeConstraint {
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for RegionBinder<(Vec<Ty>, Ty)> {
-    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // Update the bound regions
-        let ctx = &ctx.push_bound_regions(&self.regions);
-
-        write!(f, "fn")?;
-        if !self.regions.is_empty() {
-            write!(
-                f,
-                "<{}>",
-                self.regions.iter().map(|r| r.with_ctx(ctx)).format(", ")
-            )?;
-        }
-        let (inputs, output) = &self.skip_binder;
-        let inputs = inputs.iter().map(|x| x.with_ctx(ctx)).format(", ");
-        write!(f, "({inputs})")?;
-        if !output.is_unit() {
-            let output = output.with_ctx(ctx);
-            write!(f, " -> {output}")?;
-        }
-        Ok(())
-    }
-}
-
 impl<C: AstFormatter> FmtWithCtx<C> for Ty {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind() {
-            TyKind::Adt(tref) => {
-                if tref.id.is_tuple() {
-                    assert!(tref.generics.trait_refs.is_empty());
+            TyKind::Adt(tref) => match tref.id {
+                TypeId::Tuple => {
                     let generics = tref.generics.fmt_explicits(ctx).format(", ");
                     write!(f, "({generics})")
-                } else {
-                    write!(f, "{}", tref.with_ctx(ctx))
                 }
-            }
+                _ => write!(f, "{}", tref.with_ctx(ctx)),
+            },
             TyKind::TypeVar(id) => write!(f, "{}", id.with_ctx(ctx)),
             TyKind::Literal(kind) => write!(f, "{kind}"),
             TyKind::Never => write!(f, "!"),
@@ -1907,7 +1991,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
                 if let RefKind::Mut = kind {
                     write!(f, "mut ")?;
                 }
-                write!(f, "({})", ty.with_ctx(ctx))
+                write!(f, "{}", ty.with_ctx(ctx))
             }
             TyKind::RawPtr(ty, kind) => {
                 write!(f, "*")?;
@@ -1916,6 +2000,12 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
                     RefKind::Mut => write!(f, "mut")?,
                 }
                 write!(f, " {}", ty.with_ctx(ctx))
+            }
+            TyKind::Array(ty, len) => {
+                write!(f, "[{}; {}]", ty.with_ctx(ctx), len.with_ctx(ctx))
+            }
+            TyKind::Slice(ty) => {
+                write!(f, "[{}]", ty.with_ctx(ctx))
             }
             TyKind::TraitType(trait_ref, name) => {
                 write!(f, "{}::{name}", trait_ref.with_ctx(ctx),)

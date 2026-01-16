@@ -21,6 +21,11 @@ pub struct TransformCtx {
 
 /// A pass that modifies ullbc bodies.
 pub trait UllbcPass: Sync {
+    /// Whether the pass should run.
+    fn should_run(&self, _options: &TranslateOptions) -> bool {
+        true
+    }
+
     /// Transform a body.
     fn transform_body(&self, _ctx: &mut TransformCtx, _body: &mut ullbc_ast::ExprBody) {}
 
@@ -60,6 +65,11 @@ pub trait UllbcPass: Sync {
 
 /// A pass that modifies llbc bodies.
 pub trait LlbcPass: Sync {
+    /// Whether the pass should run.
+    fn should_run(&self, _options: &TranslateOptions) -> bool {
+        true
+    }
+
     /// Transform a body.
     fn transform_body(&self, _ctx: &mut TransformCtx, _body: &mut llbc_ast::ExprBody) {}
 
@@ -99,6 +109,11 @@ pub trait LlbcPass: Sync {
 
 /// A pass that transforms the crate data.
 pub trait TransformPass: Sync {
+    /// Whether the pass should run.
+    fn should_run(&self, _options: &TranslateOptions) -> bool {
+        true
+    }
+
     fn transform_ctx(&self, ctx: &mut TransformCtx);
 
     /// The name of the pass, used for debug logging. The default implementation uses the type
@@ -251,20 +266,17 @@ pub trait BodyTransformCtx: Sized {
             // `storage_live(len_var)`
             // `len_var = len(p)`
             let len_var = self.fresh_var(None, Ty::mk_usize());
+            let len = match len_place.ty().kind() {
+                TyKind::Array(_, len) => Some(len.clone()),
+                TyKind::Slice(_) => None,
+                _ => panic!(
+                    "called `compute_subslice_end_idx` on something that isn't an array or slice: {:?}",
+                    len_place.ty()
+                ),
+            };
             self.insert_assn_stmt(
                 len_var.clone(),
-                Rvalue::Len(
-                    len_place.clone(),
-                    len_place.ty().clone(),
-                    len_place
-                        .ty()
-                        .as_adt()
-                        .unwrap()
-                        .generics
-                        .const_generics
-                        .get(0.into())
-                        .cloned(),
-                ),
+                Rvalue::Len(len_place.clone(), len_place.ty().clone(), len),
             );
 
             // `storage_live(index_var)`
@@ -532,7 +544,7 @@ impl FunDecl {
         if let Some(body) = self.body.as_unstructured_mut() {
             let mut ctx = UllbcStatementTransformCtx {
                 ctx,
-                params: &self.signature.generics,
+                params: &self.generics,
                 locals: &mut body.locals,
                 span: self.item_meta.span,
                 statements: Vec::new(),
@@ -557,7 +569,7 @@ impl FunDecl {
         if let Some(body) = self.body.as_unstructured_mut() {
             let mut ctx = UllbcStatementTransformCtx {
                 ctx,
-                params: &self.signature.generics,
+                params: &self.generics,
                 locals: &mut body.locals,
                 span: self.item_meta.span,
                 statements: Vec::new(),
@@ -595,7 +607,7 @@ impl FunDecl {
                 locals: &mut body.locals,
                 statements: Vec::new(),
                 span: self.item_meta.span,
-                params: &self.signature.generics,
+                params: &self.generics,
             };
             body.body.visit_blocks_bwd(|block: &mut llbc_ast::Block| {
                 ctx.statements = Vec::with_capacity(block.statements.len());

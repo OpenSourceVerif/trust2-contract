@@ -1,5 +1,9 @@
 //@ no-default-options
 //@ charon-args=--hide-allocator
+//@ charon-args=--treat-box-as-builtin
+//@ charon-args=--ops-to-function-calls
+//@ charon-args=--index-to-function-calls
+//@ charon-args=--unbind-item-vars
 #![feature(register_tool)]
 #![register_tool(pattern)]
 //! Tests for the ml name matcher. This is in the rust test suite so that the llbc file gets
@@ -101,4 +105,15 @@ impl<T> MonoContainer<T> {
 fn mono_usage() {
     let _container1 = MonoContainer::create(42i32);
     let _container2 = MonoContainer::create("test");
+}
+
+trait Get<'a, T> {
+    fn get(self) -> &'a T;
+}
+
+impl<'a, T> Get<'a, T> for &'a MonoContainer<T> {
+    #[pattern::to_name("test_cratetest_crateGetASharedAtest_crateMonoContainerTTget")]
+    fn get(self) -> &'a T {
+        &self.item
+    }
 }

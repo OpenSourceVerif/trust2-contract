@@ -1,7 +1,6 @@
 use super::translate_ctx::*;
 use charon_lib::ast::*;
-use charon_lib::ids::Vector;
-use core::convert::*;
+use charon_lib::ids::{IndexMap, IndexVec};
 use hax::{HasOwnerId, HasParamEnv, Visibility};
 use itertools::Itertools;
 
@@ -14,6 +13,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     ) -> Result<Region, Error> {
         use hax::RegionKind::*;
         match &region.kind {
+            ReErased if let Some(v) = &mut self.lifetime_freshener => Ok(Region::Body(v.push(()))),
             ReErased => Ok(Region::Erased),
             ReStatic => Ok(Region::Static),
             ReBound(hax::BoundVarIndexKind::Bound(id), br) => {
@@ -139,14 +139,17 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 TyKind::Adt(tref)
             }
             hax::TyKind::Array(item_ref) => {
-                let args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
-                let tref = TypeDeclRef::new(TypeId::Builtin(BuiltinTy::Array), args);
-                TyKind::Adt(tref)
+                let mut args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
+                assert!(args.types.elem_count() == 1 && args.const_generics.elem_count() == 1);
+                TyKind::Array(
+                    args.types.pop().unwrap(),
+                    args.const_generics.pop().unwrap(),
+                )
             }
             hax::TyKind::Slice(item_ref) => {
-                let args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
-                let tref = TypeDeclRef::new(TypeId::Builtin(BuiltinTy::Slice), args);
-                TyKind::Adt(tref)
+                let mut args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
+                assert!(args.types.elem_count() == 1);
+                TyKind::Slice(args.types.pop().unwrap())
             }
             hax::TyKind::Tuple(item_ref) => {
                 let args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
@@ -198,7 +201,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             hax::TyKind::Arrow(sig) => {
                 trace!("Arrow");
                 trace!("bound vars: {:?}", sig.bound_vars);
-                let sig = self.translate_fun_sig(span, sig)?;
+                let sig = self.translate_poly_fun_sig(span, sig)?;
                 TyKind::FnPtr(sig)
             }
             hax::TyKind::FnDef { item, .. } => {
@@ -268,19 +271,24 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         Ok(kind.into_ty())
     }
 
-    pub fn translate_fun_sig(
+    pub fn translate_poly_fun_sig(
         &mut self,
         span: Span,
         sig: &hax::Binder<hax::TyFnSig>,
-    ) -> Result<RegionBinder<(Vec<Ty>, Ty)>, Error> {
-        self.translate_region_binder(span, sig, |ctx, sig| {
-            let inputs = sig
-                .inputs
-                .iter()
-                .map(|x| ctx.translate_ty(span, x))
-                .try_collect()?;
-            let output = ctx.translate_ty(span, &sig.output)?;
-            Ok((inputs, output))
+    ) -> Result<RegionBinder<FunSig>, Error> {
+        self.translate_region_binder(span, sig, |ctx, sig| ctx.translate_fun_sig(span, sig))
+    }
+    pub fn translate_fun_sig(&mut self, span: Span, sig: &hax::TyFnSig) -> Result<FunSig, Error> {
+        let inputs = sig
+            .inputs
+            .iter()
+            .map(|x| self.translate_ty(span, x))
+            .try_collect()?;
+        let output = self.translate_ty(span, &sig.output)?;
+        Ok(FunSig {
+            is_unsafe: sig.safety == hax::Safety::Unsafe,
+            inputs,
+            output,
         })
     }
 
@@ -294,9 +302,9 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         use hax::GenericArg::*;
         trace!("{:?}", substs);
 
-        let mut regions = Vector::new();
-        let mut types = Vector::new();
-        let mut const_generics = Vector::new();
+        let mut regions = IndexMap::new();
+        let mut types = IndexMap::new();
+        let mut const_generics = IndexMap::new();
         for param in substs {
             match param {
                 Type(param_ty) => {
@@ -344,7 +352,9 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         item: &hax::ItemRef,
     ) -> Result<Option<BuiltinTy>, Error> {
         let def = self.hax_def(item)?;
-        let ty = if def.lang_item.as_deref() == Some("owned_box") && !self.t_ctx.options.raw_boxes {
+        let ty = if def.lang_item.as_deref() == Some("owned_box")
+            && self.t_ctx.options.treat_box_as_builtin
+        {
             Some(BuiltinTy::Box)
         } else {
             None
@@ -432,7 +442,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 r_abi::FieldsShape::Arbitrary { offsets, .. } => {
                     offsets.iter().map(|o| o.bytes()).collect()
                 }
-                r_abi::FieldsShape::Primitive | r_abi::FieldsShape::Union(_) => Vector::default(),
+                r_abi::FieldsShape::Primitive | r_abi::FieldsShape::Union(_) => IndexVec::default(),
                 r_abi::FieldsShape::Array { .. } => panic!("Unexpected layout shape"),
             };
             VariantLayout {
@@ -526,7 +536,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             r_abi::Variants::Single { .. } | r_abi::Variants::Empty => None,
         };
 
-        let mut variant_layouts: Vector<VariantId, VariantLayout> = Vector::new();
+        let mut variant_layouts: IndexVec<VariantId, VariantLayout> = IndexVec::new();
 
         match layout.variants() {
             r_abi::Variants::Multiple { variants, .. } => {
@@ -565,7 +575,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     // All the variants not initialized below are uninhabited.
                     variant_layouts = (0..n_variants)
                         .map(|_| VariantLayout {
-                            field_offsets: Vector::default(),
+                            field_offsets: IndexVec::default(),
                             uninhabited: true,
                             tag: None,
                         })
@@ -611,12 +621,11 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     align: Some(align),
                     discriminant_layout: None,
                     uninhabited: false,
-                    variant_layouts: [VariantLayout {
+                    variant_layouts: IndexVec::from_array([VariantLayout {
                         field_offsets,
                         tag: None,
                         uninhabited: false,
-                    }]
-                    .into(),
+                    }]),
                 })
             }
             _ => raise_error!(
@@ -680,11 +689,11 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         }
 
         // The type is transparent: explore the variants
-        let mut translated_variants: Vector<VariantId, Variant> = Default::default();
+        let mut translated_variants: IndexVec<VariantId, Variant> = Default::default();
         for (i, var_def) in variants.iter().enumerate() {
             trace!("variant {i}: {var_def:?}");
 
-            let mut fields: Vector<FieldId, Field> = Default::default();
+            let mut fields: IndexVec<FieldId, Field> = Default::default();
             /* This is for sanity: check that either all the fields have names, or
              * none of them has */
             let mut have_names: Option<bool> = None;
