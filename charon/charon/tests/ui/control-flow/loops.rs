@@ -294,3 +294,87 @@ pub fn interleaved_loops() {
     }
     x = 8;
 }
+
+pub fn interleaved_loops2() {
+    let mut x = 0;
+    'a: loop {
+        x = 1;
+        'b: loop {
+            x = 2;
+            if true {
+                x = 3;
+                continue 'a;
+            } else {
+                // This node is interesting: it can reach a backward edge to 'b in the forward
+                // graph, but not one to 'a. If we're not careful, we could think it's an exit node
+                // for 'a.
+                x = 4;
+                if true {
+                    break 'a;
+                }
+            }
+            x = 5;
+        }
+        x = 6; // unreachable
+    }
+    x = 7;
+}
+
+pub fn loop_after_loop() {
+    let mut x = 0;
+    while x > 13 {
+        x = 1;
+    }
+    x = 2;
+    while x > 13 {
+        x = 3;
+    }
+    x = 4;
+}
+
+/// This tricks the loop exit computation into picking a suboptimal exit block.
+pub fn trick_exit_computation() {
+    let mut x = 0;
+    'a: loop {
+        x = 1;
+        'b: loop {
+            x = 2;
+            // This makes the algorithm pick the outer break as loop exit, making the reconstructed
+            // cfg much worse than with fewer branches.
+            match x {
+                0 => {
+                    x = 3;
+                    break 'a;
+                }
+                1 => {
+                    x = 4;
+                    break 'a;
+                }
+                2 => {
+                    x = 5;
+                    break 'a;
+                }
+                3 => {
+                    x = 6;
+                    break 'a;
+                }
+                4 => {
+                    x = 7;
+                    break 'a;
+                }
+                5 => {
+                    x = 8;
+                    break;
+                }
+                6 => {
+                    x = 9;
+                    break;
+                }
+                _ => {}
+            }
+            x = 10;
+        }
+        x = 11;
+    }
+    x = 12;
+}

@@ -57,7 +57,7 @@ pub trait FnMut<Self, Args>
 }
 
 // Full name: core::ops::function::Fn
-#[lang_item("r#fn")]
+#[lang_item("fn")]
 pub trait Fn<Self, Args>
 {
     parent_clause0 : [@TraitClause0]: MetaSized<Self>
@@ -140,7 +140,7 @@ fn {impl FnOnce<()> for trust2_contract_sample::max::closure#2}::call_once(@1: t
 
     storage_live(_3)
     _3 = &mut _1
-    _0 = {impl FnMut<()> for trust2_contract_sample::max::closure#2}::call_mut<'_>(move _3, move _2)
+    _0 = {impl FnMut<()> for trust2_contract_sample::max::closure#2}::call_mut<'2>(move _3, move _2)
     drop[{impl Destruct for trust2_contract_sample::max::closure#2}] _1
     return
 }
@@ -236,8 +236,8 @@ fn {impl FnOnce<(u64)> for trust2_contract_sample::max::closure#1<'_0>}::call_on
 
     storage_live(_3)
     _3 = &mut _1
-    _0 = {impl FnMut<(u64)> for trust2_contract_sample::max::closure#1<'_0>}::call_mut<'_0, '_>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}<'_>] _1
+    _0 = {impl FnMut<(u64)> for trust2_contract_sample::max::closure#1<'_0>}::call_mut<'_0, '4>(move _3, move _2)
+    drop[{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}<'_0>] _1
     return
 }
 
@@ -332,8 +332,8 @@ fn {impl FnOnce<(u64)> for trust2_contract_sample::max::closure<'_0>}::call_once
 
     storage_live(_3)
     _3 = &mut _1
-    _0 = {impl FnMut<(u64)> for trust2_contract_sample::max::closure<'_0>}::call_mut<'_0, '_>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::max::closure<'_0>}<'_>] _1
+    _0 = {impl FnMut<(u64)> for trust2_contract_sample::max::closure<'_0>}::call_mut<'_0, '4>(move _3, move _2)
+    drop[{impl Destruct for trust2_contract_sample::max::closure<'_0>}<'_0>] _1
     return
 }
 
@@ -374,10 +374,10 @@ pub fn max(@1: u64, @2: u64) -> u64
     let _0: u64; // return
     let a_1: u64; // arg #1
     let b_2: u64; // arg #2
-    let _3: trust2_contract_sample::max::closure<'_>; // anonymous local
-    let _4: &'0 u64; // anonymous local
-    let _5: trust2_contract_sample::max::closure#1<'_>; // anonymous local
-    let _6: &'0 u64; // anonymous local
+    let _3: trust2_contract_sample::max::closure<'0>; // anonymous local
+    let _4: &'1 u64; // anonymous local
+    let _5: trust2_contract_sample::max::closure#1<'2>; // anonymous local
+    let _6: &'1 u64; // anonymous local
     let _7: trust2_contract_sample::max::closure#2; // anonymous local
     let _8: bool; // anonymous local
     let _9: u64; // anonymous local
@@ -502,8 +502,8 @@ fn {impl FnOnce<(u64)> for trust2_contract_sample::min::closure<'_0, '_1>}::call
 
     storage_live(_3)
     _3 = &mut _1
-    _0 = {impl FnMut<(u64)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_mut<'_0, '_1, '_>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}<'_, '_>] _1
+    _0 = {impl FnMut<(u64)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_mut<'_0, '_1, '6>(move _3, move _2)
+    drop[{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}<'_0, '_1>] _1
     return
 }
 
@@ -544,9 +544,9 @@ pub fn min(@1: u64, @2: u64) -> u64
     let _0: u64; // return
     let a_1: u64; // arg #1
     let b_2: u64; // arg #2
-    let _3: trust2_contract_sample::min::closure<'_, '_>; // anonymous local
-    let _4: &'0 u64; // anonymous local
-    let _5: &'0 u64; // anonymous local
+    let _3: trust2_contract_sample::min::closure<'0, '1>; // anonymous local
+    let _4: &'2 u64; // anonymous local
+    let _5: &'2 u64; // anonymous local
     let _6: bool; // anonymous local
     let _7: u64; // anonymous local
     let _8: u64; // anonymous local

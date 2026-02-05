@@ -81,7 +81,7 @@ where
     let _3: bool; // anonymous local
 
     storage_live(_3)
-    _3 = @TraitClause0::eq<'_, '_>(move self_1, move other_2)
+    _3 = @TraitClause0::eq<'4, '5>(move self_1, move other_2)
     _0 = ~(move _3)
     storage_dead(_3)
     return
@@ -246,16 +246,6 @@ where
     _0 = const 42 : u32
     return
 }
-
-fn UNIT_METADATA()
-{
-    let _0: (); // return
-
-    _0 = ()
-    return
-}
-
-const UNIT_METADATA: () = @Fun0()
 
 // Full name: test_crate::use_inlines
 fn use_inlines() -> u32

@@ -107,9 +107,10 @@ impl GenericParams {
             types: self
                 .types
                 .map_ref_indexed(|id, _| TyKind::TypeVar(DeBruijnVar::bound(depth, id)).into_ty()),
-            const_generics: self
-                .const_generics
-                .map_ref_indexed(|id, _| ConstGeneric::Var(DeBruijnVar::bound(depth, id))),
+            const_generics: self.const_generics.map_ref_indexed(|id, c| ConstantExpr {
+                ty: c.ty.clone(),
+                kind: ConstantExprKind::Var(DeBruijnVar::bound(depth, id)),
+            }),
             trait_refs: self
                 .trait_clauses
                 .map_ref(|clause| clause.identity_tref_at_depth(depth)),
@@ -271,8 +272,8 @@ impl<T: AstVisitable> Binder<Binder<T>> {
                     *id += self.shift_by.types.slot_count();
                 }
             }
-            fn enter_const_generic(&mut self, x: &mut ConstGeneric) {
-                if let ConstGeneric::Var(var) = x
+            fn enter_constant_expr(&mut self, x: &mut ConstantExpr) {
+                if let ConstantExprKind::Var(ref mut var) = x.kind
                     && let Some(id) = var.bound_at_depth_mut(self.binder_depth)
                 {
                     *id += self.shift_by.const_generics.slot_count();
@@ -383,7 +384,7 @@ impl<T> RegionBinder<T> {
     /// Substitute the bound variables with the given lifetimes.
     pub fn apply(self, regions: IndexMap<RegionId, Region>) -> T
     where
-        T: AstVisitable,
+        T: TyVisitable,
     {
         assert_eq!(regions.slot_count(), self.regions.slot_count());
         let args = GenericArgs {
@@ -396,7 +397,7 @@ impl<T> RegionBinder<T> {
     /// Substitute the bound variables with erased lifetimes.
     pub fn erase(self) -> T
     where
-        T: AstVisitable,
+        T: TyVisitable,
     {
         let regions = self.regions.map_ref_indexed(|_, _| Region::Erased);
         self.apply(regions)
@@ -448,7 +449,7 @@ impl GenericArgs {
     pub fn new(
         regions: IndexMap<RegionId, Region>,
         types: IndexMap<TypeVarId, Ty>,
-        const_generics: IndexMap<ConstGenericVarId, ConstGeneric>,
+        const_generics: IndexMap<ConstGenericVarId, ConstantExpr>,
         trait_refs: IndexMap<TraitClauseId, TraitRef>,
     ) -> Self {
         Self {
@@ -699,8 +700,8 @@ impl Ty {
         .into_ty()
     }
 
-    pub fn mk_array(ty: Ty, len: ConstGeneric) -> Ty {
-        TyKind::Array(ty, len).into_ty()
+    pub fn mk_array(ty: Ty, len: ConstantExpr) -> Ty {
+        TyKind::Array(ty, Box::new(len)).into_ty()
     }
 
     pub fn mk_slice(ty: Ty) -> Ty {
@@ -1008,13 +1009,16 @@ impl RefKind {
 /// skipped, and all the seen De Bruijn indices will count from the outside of the value. The
 /// returned value, if any, will be put in place of the variable.
 pub trait VarsVisitor {
+    fn visit_erased_region(&mut self) -> Option<Region> {
+        None
+    }
     fn visit_region_var(&mut self, _v: RegionDbVar) -> Option<Region> {
         None
     }
     fn visit_type_var(&mut self, _v: TypeDbVar) -> Option<Ty> {
         None
     }
-    fn visit_const_generic_var(&mut self, _v: ConstGenericDbVar) -> Option<ConstGeneric> {
+    fn visit_const_generic_var(&mut self, _v: ConstGenericDbVar) -> Option<ConstantExprKind> {
         None
     }
     fn visit_clause_var(&mut self, _v: ClauseDbVar) -> Option<TraitRefKind> {
@@ -1095,8 +1099,10 @@ impl VarsVisitor for SubstVisitor<'_> {
     fn visit_type_var(&mut self, v: TypeDbVar) -> Option<Ty> {
         self.process_var(v, |id| self.generics.types.get(id))
     }
-    fn visit_const_generic_var(&mut self, v: ConstGenericDbVar) -> Option<ConstGeneric> {
-        self.process_var(v, |id| self.generics.const_generics.get(id))
+    fn visit_const_generic_var(&mut self, v: ConstGenericDbVar) -> Option<ConstantExprKind> {
+        self.process_var(v, |id| {
+            self.generics.const_generics.get(id).map(|c| &c.kind)
+        })
     }
     fn visit_clause_var(&mut self, v: ClauseDbVar) -> Option<TraitRefKind> {
         if self.explicits_only {
@@ -1124,26 +1130,28 @@ pub trait TyVisitable: Sized + AstVisitable {
             v: &'v mut V,
             depth: DeBruijnId,
         }
+        impl<V> VisitorWithBinderDepth for Wrap<'_, V> {
+            fn binder_depth_mut(&mut self) -> &mut DeBruijnId {
+                &mut self.depth
+            }
+        }
         impl<V: VarsVisitor> VisitAstMut for Wrap<'_, V> {
-            fn enter_region_binder<T: AstVisitable>(&mut self, _: &mut RegionBinder<T>) {
-                self.depth = self.depth.incr()
-            }
-            fn exit_region_binder<T: AstVisitable>(&mut self, _: &mut RegionBinder<T>) {
-                self.depth = self.depth.decr()
-            }
-            fn enter_binder<T: AstVisitable>(&mut self, _: &mut Binder<T>) {
-                self.depth = self.depth.incr()
-            }
-            fn exit_binder<T: AstVisitable>(&mut self, _: &mut Binder<T>) {
-                self.depth = self.depth.decr()
+            fn visit<'a, T: AstVisitable>(&'a mut self, x: &mut T) -> ControlFlow<Self::Break> {
+                VisitWithBinderDepth::new(self).visit(x)
             }
 
             fn exit_region(&mut self, r: &mut Region) {
-                if let Region::Var(var) = r
-                    && let Some(var) = var.move_out_from_depth(self.depth)
-                    && let Some(new_r) = self.v.visit_region_var(var)
-                {
-                    *r = new_r.move_under_binders(self.depth);
+                match r {
+                    Region::Var(var)
+                        if let Some(var) = var.move_out_from_depth(self.depth)
+                            && let Some(new_r) = self.v.visit_region_var(var) =>
+                    {
+                        *r = new_r.move_under_binders(self.depth);
+                    }
+                    Region::Erased if let Some(new_r) = self.v.visit_erased_region() => {
+                        *r = new_r.move_under_binders(self.depth);
+                    }
+                    _ => (),
                 }
             }
             fn exit_ty(&mut self, ty: &mut Ty) {
@@ -1154,20 +1162,12 @@ pub trait TyVisitable: Sized + AstVisitable {
                     *ty = new_ty.move_under_binders(self.depth);
                 }
             }
-            fn exit_const_generic(&mut self, cg: &mut ConstGeneric) {
-                if let ConstGeneric::Var(var) = cg
-                    && let Some(var) = var.move_out_from_depth(self.depth)
-                    && let Some(new_cg) = self.v.visit_const_generic_var(var)
-                {
-                    *cg = new_cg.move_under_binders(self.depth);
-                }
-            }
             fn exit_constant_expr(&mut self, ce: &mut ConstantExpr) {
                 if let ConstantExprKind::Var(var) = &mut ce.kind
                     && let Some(var) = var.move_out_from_depth(self.depth)
                     && let Some(new_cg) = self.v.visit_const_generic_var(var)
                 {
-                    ce.kind = new_cg.move_under_binders(self.depth).into();
+                    ce.kind = new_cg.move_under_binders(self.depth);
                 }
             }
             fn exit_trait_ref_kind(&mut self, kind: &mut TraitRefKind) {
@@ -1188,10 +1188,11 @@ pub trait TyVisitable: Sized + AstVisitable {
                 }
             }
         }
-        let _ = self.drive_mut(&mut Wrap {
+        Wrap {
             v,
             depth: DeBruijnId::zero(),
-        });
+        }
+        .visit(self);
     }
 
     /// Substitute the generic variables inside `self` by replacing them with the provided values.
@@ -1303,6 +1304,20 @@ pub trait TyVisitable: Sized + AstVisitable {
             f,
             depth: DeBruijnId::zero(),
         })
+    }
+
+    /// Replace all the erased regions by the output of the provided function. Binders levels are
+    /// handled automatically.
+    fn replace_erased_regions(mut self, f: impl FnMut() -> Region) -> Self {
+        #[derive(Visitor)]
+        struct RefreshErasedRegions<F>(F);
+        impl<F: FnMut() -> Region> VarsVisitor for RefreshErasedRegions<F> {
+            fn visit_erased_region(&mut self) -> Option<Region> {
+                Some((self.0)())
+            }
+        }
+        self.visit_vars(&mut RefreshErasedRegions(f));
+        self
     }
 }
 
@@ -1431,7 +1446,7 @@ impl Eq for TraitParam {}
 
 mk_index_impls!(GenericArgs.regions[RegionId]: Region);
 mk_index_impls!(GenericArgs.types[TypeVarId]: Ty);
-mk_index_impls!(GenericArgs.const_generics[ConstGenericVarId]: ConstGeneric);
+mk_index_impls!(GenericArgs.const_generics[ConstGenericVarId]: ConstantExpr);
 mk_index_impls!(GenericArgs.trait_refs[TraitClauseId]: TraitRef);
 mk_index_impls!(GenericParams.regions[RegionId]: RegionParam);
 mk_index_impls!(GenericParams.types[TypeVarId]: TypeParam);

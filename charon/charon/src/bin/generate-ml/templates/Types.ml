@@ -47,10 +47,11 @@ type ('id, 'name) indexed_var = {
 
 (* __REPLACE0__ *)
 
+
 (** Ancestor for iter visitor for {!type: Types.ty} *)
 class ['self] iter_ty_base_base =
   object (self : 'self)
-    inherit [_] iter_const_generic
+    inherit [_] iter_type_vars
 
     method visit_indexed_var
         : 'id 'name.
@@ -68,7 +69,7 @@ class ['self] iter_ty_base_base =
 (** Ancestor for map visitor for {!type: Types.ty} *)
 class virtual ['self] map_ty_base_base =
   object (self : 'self)
-    inherit [_] map_const_generic
+    inherit [_] map_type_vars
 
     method visit_indexed_var
         : 'id 'name.

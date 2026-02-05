@@ -190,7 +190,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "charon"
-version = "0.1.162"
+version = "0.1.165"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -235,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "charon-bin-interface"
-version = "0.1.162"
+version = "0.1.165"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -281,7 +281,7 @@ dependencies = [
 
 [[package]]
 name = "charon-driver-bin-interface"
-version = "0.1.162"
+version = "0.1.165"
 dependencies = [
  "annotate-snippets",
  "anstream",
@@ -474,12 +474,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6184e33543162437515c2e2b48714794e37845ec9851711914eec9d308f6ebe8"
 
 [[package]]
-name = "dyn-clone"
-version = "1.0.20"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d0881ea181b1df73ff77ffaaf9c7544ecc11e82fba9b5f27b262a3c73a332555"
-
-[[package]]
 name = "either"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -629,7 +623,6 @@ checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 [[package]]
 name = "hax-adt-into"
 version = "0.3.5"
-source = "git+https://github.com/AeneasVerif/hax?branch=main#3c2b6f01af4a4362dd855b811aa910ad173d546f"
 dependencies = [
  "itertools 0.11.0",
  "proc-macro2",
@@ -640,29 +633,13 @@ dependencies = [
 [[package]]
 name = "hax-frontend-exporter"
 version = "0.3.5"
-source = "git+https://github.com/AeneasVerif/hax?branch=main#3c2b6f01af4a4362dd855b811aa910ad173d546f"
 dependencies = [
  "extension-traits",
  "hax-adt-into",
- "hax-frontend-exporter-options",
  "itertools 0.11.0",
  "lazy_static",
  "paste",
- "schemars",
- "serde",
- "serde_json",
  "tracing",
-]
-
-[[package]]
-name = "hax-frontend-exporter-options"
-version = "0.3.5"
-source = "git+https://github.com/AeneasVerif/hax?branch=main#3c2b6f01af4a4362dd855b811aa910ad173d546f"
-dependencies = [
- "hax-adt-into",
- "schemars",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -1206,30 +1183,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
 
 [[package]]
-name = "schemars"
-version = "0.8.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3fbf2ae1b8bc8e02df939598064d22402220cd5bbcca1c76f7d6a310974d5615"
-dependencies = [
- "dyn-clone",
- "schemars_derive",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "schemars_derive"
-version = "0.8.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32e265784ad618884abaea0600a9adf15393368d840e0222d101a072f3f7534d"
-dependencies = [
- "proc-macro2",
- "quote",
- "serde_derive_internals",
- "syn 2.0.114",
-]
-
-[[package]]
 name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1265,17 +1218,6 @@ name = "serde_derive"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d540f220d3187173da220f885ab66608367b6574e925011a9353e4badda91d79"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.114",
-]
-
-[[package]]
-name = "serde_derive_internals"
-version = "0.29.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18d26a20a969b9e3fdf2fc2d9f21eda6c40e2de84c9408bb5d3b05d499aae711"
 dependencies = [
  "proc-macro2",
  "quote",

@@ -4,30 +4,6 @@
 #[lang_item("meta_sized")]
 pub trait MetaSized::<bool>
 
-// Full name: core::marker::Sized::<bool>
-#[lang_item("sized")]
-pub trait Sized::<bool>
-{
-    parent_clause0 : [@TraitClause0]: MetaSized::<bool>
-    non-dyn-compatible
-}
-
-// Full name: core::marker::MetaSized
-#[lang_item("meta_sized")]
-pub trait MetaSized<Self>
-
-// Full name: core::marker::Destruct::<bool>
-#[lang_item("destruct")]
-pub trait Destruct::<bool>
-{
-    fn drop_in_place = drop_in_place::<bool>
-    vtable: core::marker::Destruct::{vtable}::<bool>
-}
-
-// Full name: core::marker::Destruct::drop_in_place::<bool>
-unsafe fn drop_in_place::<bool>(@1: *mut bool)
-= <opaque>
-
 fn UNIT_METADATA()
 {
     let _0: (); // return
@@ -46,20 +22,7 @@ pub trait Trait::<bool>
     vtable: test_crate::Trait::{vtable}::<bool>
 }
 
-// Full name: test_crate::Trait
-pub trait Trait<Self>
-{
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn method<'_0_1> = test_crate::Trait::method<'_0_1, Self>[Self]
-    vtable: test_crate::Trait::{vtable}
-}
-
 pub fn test_crate::Trait::method::<bool><'_0>(@1: &'_0 bool)
-= <method_without_default_body>
-
-pub fn test_crate::Trait::method<'_0, Self>(@1: &'_0 Self)
-where
-    [@TraitClause0]: Trait<Self>,
 = <method_without_default_body>
 
 // Full name: test_crate::{impl Trait::<bool>}::method
@@ -80,24 +43,6 @@ impl Trait::<bool> {
     vtable: {impl Trait::<bool>}::{vtable}
 }
 
-// Full name: test_crate::{impl Trait for bool}::method
-pub fn {impl Trait for bool}::method<'_0>(@1: &'_0 bool)
-{
-    let _0: (); // return
-    let self_1: &'0 bool; // arg #1
-
-    _0 = ()
-    _0 = ()
-    return
-}
-
-// Full name: test_crate::{impl Trait for bool}
-impl Trait for bool {
-    parent_clause0 = {built_in impl MetaSized for bool}
-    fn method<'_0_1> = {impl Trait for bool}::method<'_0_1>
-    vtable: {impl Trait for bool}::{vtable}
-}
-
 // Full name: test_crate::do_test::<bool>
 fn do_test::<bool>(@1: bool)
 {
@@ -108,7 +53,7 @@ fn do_test::<bool>(@1: bool)
     _0 = ()
     storage_live(_2)
     _2 = &x_1
-    _0 = {impl Trait::<bool>}::method<'_>(move _2)
+    _0 = {impl Trait::<bool>}::method<'2>(move _2)
     storage_dead(_2)
     return
 }

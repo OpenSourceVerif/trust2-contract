@@ -1,4 +1,8 @@
 //! Functions to translate constants to LLBC.
+use rustc_middle::ty;
+
+use crate::translate::translate_bodies::translate_variant_id;
+
 use super::translate_ctx::*;
 use charon_lib::ast::*;
 
@@ -53,7 +57,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     /// TODO: the user_ty might be None because hax doesn't extract it (because
     /// we are translating a [ConstantExpr] instead of a Constant. We need to
     /// update hax.
-    pub(crate) fn translate_constant_expr_to_constant_expr(
+    pub(crate) fn translate_constant_expr(
         &mut self,
         span: Span,
         v: &hax::ConstantExpr,
@@ -63,14 +67,14 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             hax::ConstantExprKind::Literal(lit) => {
                 self.translate_constant_literal_to_constant_expr_kind(span, lit)?
             }
-            hax::ConstantExprKind::Adt { info, fields } => {
+            hax::ConstantExprKind::Adt { kind, fields } => {
                 let fields: Vec<ConstantExpr> = fields
                     .iter()
-                    .map(|f| self.translate_constant_expr_to_constant_expr(span, &f.value))
+                    .map(|f| self.translate_constant_expr(span, &f.value))
                     .try_collect()?;
                 use hax::VariantKind;
-                let vid = if let VariantKind::Enum { index, .. } = info.kind {
-                    Some(VariantId::new(index))
+                let vid = if let VariantKind::Enum { index, .. } = *kind {
+                    Some(translate_variant_id(index))
                 } else {
                     None
                 };
@@ -79,7 +83,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             hax::ConstantExprKind::Array { fields } => {
                 let fields: Vec<ConstantExpr> = fields
                     .iter()
-                    .map(|x| self.translate_constant_expr_to_constant_expr(span, x))
+                    .map(|x| self.translate_constant_expr(span, x))
                     .try_collect()?;
 
                 if matches!(v.ty.kind(), hax::TyKind::Slice { .. }) {
@@ -92,7 +96,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 let fields: Vec<ConstantExpr> = fields
                     .iter()
                     // TODO: the user_ty is not always None
-                    .map(|f| self.translate_constant_expr_to_constant_expr(span, f))
+                    .map(|f| self.translate_constant_expr(span, f))
                     .try_collect()?;
                 ConstantExprKind::Adt(None, fields)
             }
@@ -116,7 +120,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 ConstantExprKind::Literal(Literal::Str(s.clone()))
             }
             hax::ConstantExprKind::Borrow(v) => {
-                let val = self.translate_constant_expr_to_constant_expr(span, v)?;
+                let val = self.translate_constant_expr(span, v)?;
                 ConstantExprKind::Ref(Box::new(val))
             }
             hax::ConstantExprKind::Cast { .. } => {
@@ -128,8 +132,8 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 ConstantExprKind::Opaque("`ConstantExprKind::Cast {{..}}`".into())
             }
             hax::ConstantExprKind::RawBorrow { mutability, arg } => {
-                let arg = self.translate_constant_expr_to_constant_expr(span, arg)?;
-                let rk = RefKind::mutable(*mutability);
+                let arg = self.translate_constant_expr(span, arg)?;
+                let rk = RefKind::mutable(mutability.is_mut());
                 ConstantExprKind::Ptr(rk, Box::new(arg))
             }
             hax::ConstantExprKind::ConstRef { id } => {
@@ -139,15 +143,11 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 }
             }
             hax::ConstantExprKind::FnDef(item) => {
-                let fn_ptr = self
-                    .translate_fn_ptr(span, item, TransItemSourceKind::Fun)?
-                    .erase();
+                let fn_ptr = self.translate_fn_ptr(span, item, TransItemSourceKind::Fun)?;
                 ConstantExprKind::FnDef(fn_ptr)
             }
             hax::ConstantExprKind::FnPtr(item) => {
-                let fn_ptr = self
-                    .translate_fn_ptr(span, item, TransItemSourceKind::Fun)?
-                    .erase();
+                let fn_ptr = self.translate_fn_ptr(span, item, TransItemSourceKind::Fun)?;
                 ConstantExprKind::FnPtr(fn_ptr)
             }
             hax::ConstantExprKind::Memory(bytes) => {
@@ -162,38 +162,12 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         Ok(ConstantExpr { kind, ty })
     }
 
-    /// Remark: [hax::ConstantExpr] contains span information, but it is often
-    /// the default span (i.e., it is useless), hence the additional span argument.
-    pub(crate) fn translate_constant_expr_to_const_generic(
+    pub(crate) fn translate_ty_constant_expr(
         &mut self,
         span: Span,
-        v: &hax::ConstantExpr,
-    ) -> Result<ConstGeneric, Error> {
-        // Remark: we can't user globals as constant generics (meaning
-        // the user provided type annotation should always be none).
-        let kind = self.translate_constant_expr_to_constant_expr(span, v)?.kind;
-        match kind {
-            ConstantExprKind::Var(v) => Ok(ConstGeneric::Var(v)),
-            ConstantExprKind::Literal(v) => Ok(ConstGeneric::Value(v)),
-            ConstantExprKind::Global(global_ref) => {
-                // TODO: handle constant arguments with generics (this can likely only happen with
-                // a feature gate).
-                error_assert!(self, span, global_ref.generics.is_empty());
-                Ok(ConstGeneric::Global(global_ref.id))
-            }
-            ConstantExprKind::Adt(..)
-            | ConstantExprKind::Array { .. }
-            | ConstantExprKind::Slice { .. }
-            | ConstantExprKind::RawMemory { .. }
-            | ConstantExprKind::TraitConst { .. }
-            | ConstantExprKind::Ref(_)
-            | ConstantExprKind::Ptr(..)
-            | ConstantExprKind::FnPtr { .. }
-            | ConstantExprKind::FnDef { .. }
-            | ConstantExprKind::Opaque(_)
-            | ConstantExprKind::PtrNoProvenance(..) => {
-                raise_error!(self, span, "Unexpected constant generic: {:?}", kind)
-            }
-        }
+        c: &ty::Const<'tcx>,
+    ) -> Result<ConstantExpr, Error> {
+        let c = self.catch_sinto(span, c)?;
+        self.translate_constant_expr(span, &c)
     }
 }

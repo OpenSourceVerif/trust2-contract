@@ -1239,12 +1239,11 @@ fn generate_ml(
             markers: markers_from_children(&ctx, &[
                 (GenerationKind::TypeDecl(Some(DeriveVisitors {
                     ancestors: &["literal"],
-                    name: "const_generic",
+                    name: "type_vars",
                     reduce: true,
                     extra_types: &[],
                 })), &[
                     "TypeVarId",
-                    "ConstGeneric",
                     "TraitClauseId",
                     "DeBruijnVar",
                     "ItemId",
@@ -1257,6 +1256,7 @@ fn generate_ml(
                     reduce: false,
                     extra_types: &["span"],
                 })), &[
+                    "ConstantExpr",
                     "TyKind",
                     "TraitImplRef",
                     "FunDeclRef",

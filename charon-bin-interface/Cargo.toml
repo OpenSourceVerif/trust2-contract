@@ -1,6 +1,6 @@
 [package]
 name = "charon-bin-interface"
-version = "0.1.162"
+version = "0.1.165"
 authors = [
     "Son Ho <hosonmarc@gmail.com>",
     "Guillaume Boisseau <nadrieril+git@gmail.com>",
@@ -17,8 +17,7 @@ path = "../charon/charon/src/bin/charon/main.rs"
 [dependencies]
 charon = { path = "../charon/charon" }
 
-hax = { package = "hax-frontend-exporter", git = "https://github.com/AeneasVerif/hax", branch = "main", optional = true }
-# hax = { package = "hax-frontend-exporter", path = "../../hax/frontend/exporter", optional = true }
+hax = { package = "hax-frontend-exporter", path = "../charon/charon/hax-frontend", optional = true }
 serde_state = { git = "https://github.com/Nadrieril/serde_state", branch = "main" }
 # serde_state = { path = "../../../forks/serde_state/serde_state" }
 macros = { path = "../charon/charon/macros" }

@@ -40,18 +40,6 @@ impl Clone for i32 {
     non-dyn-compatible
 }
 
-// Full name: core::marker::Destruct
-#[lang_item("destruct")]
-pub trait Destruct<Self>
-{
-    fn drop_in_place = drop_in_place<Self>
-    vtable: core::marker::Destruct::{vtable}
-}
-
-// Full name: core::marker::Destruct::drop_in_place
-unsafe fn drop_in_place<Self>(@1: *mut Self)
-= <opaque>
-
 fn UNIT_METADATA()
 {
     let _0: (); // return
@@ -101,24 +89,8 @@ where
     (*self_1) = move _3
     storage_live(_4)
     _4 = &(*arg_2)
-    _0 = @TraitClause1::clone<'_>(move _4)
+    _0 = @TraitClause1::clone<'3>(move _4)
     storage_dead(_4)
-    return
-}
-
-// Full name: test_crate::{impl Modifiable<T> for i32}::{vtable_drop_shim}
-unsafe fn {vtable_drop_shim}<T>(@1: *mut (dyn Modifiable<T>))
-where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
-{
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn Modifiable<T> + '0); // arg #1
-    let target_self_2: *mut i32; // local
-
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn Modifiable<T> + '1), *mut i32>(move dyn_self_1)
     return
 }
 
@@ -136,6 +108,22 @@ where
     storage_live(_3)
     _3 = concretize<&'_0 mut (dyn Modifiable<T> + '1), &'_0 mut i32>(move _1)
     _0 = {impl Modifiable<T> for i32}::modify<'_0, '_1, T>[@TraitClause0, @TraitClause1](move _3, move _2)
+    return
+}
+
+// Full name: test_crate::{impl Modifiable<T> for i32}::{vtable_drop_shim}
+unsafe fn {vtable_drop_shim}<T>(@1: *mut (dyn Modifiable<T>))
+where
+    [@TraitClause0]: Sized<T>,
+    [@TraitClause1]: Clone<T>,
+{
+    let ret_0: (); // return
+    let dyn_self_1: *mut (dyn Modifiable<T> + '0); // arg #1
+    let target_self_2: *mut i32; // local
+
+    ret_0 = ()
+    storage_live(target_self_2)
+    target_self_2 = concretize<*mut (dyn Modifiable<T> + '1), *mut i32>(move dyn_self_1)
     return
 }
 
@@ -236,7 +224,7 @@ fn main()
     _4 = move _5
     _3 = &(*_4)
     _2 = &(*_3)
-    _1 = modify_trait_object<'_, i32>[{built_in impl Sized for i32}, {impl Clone for i32}](move _2)
+    _1 = modify_trait_object<'2, i32>[{built_in impl Sized for i32}, {impl Clone for i32}](move _2)
     storage_dead(_2)
     storage_dead(_3)
     storage_dead(_1)
