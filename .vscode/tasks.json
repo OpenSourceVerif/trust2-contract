@@ -12,7 +12,22 @@
         {
             "label": "git subtree: pull charon",
             "type": "shell",
-            "command": "git subtree --prefix charon pull --squash charon main && Write-Host -ForegroundColor DarkYellow \"`nUpdate rust-toolchain.toml and Cargo.toml accordingly.\"",
+            "command": "git subtree --prefix charon pull --squash charon main; printf '\\033[33m\\nUpdate rust-toolchain.toml and Cargo.toml accordingly.\\033[0m'",
+            "options": {
+                "shell": {
+                    "executable": "/bin/sh",
+                    "args": ["-c"]
+                }
+            },
+            "windows": {
+                "command": "git subtree --prefix charon pull --squash charon main; Write-Host -ForegroundColor DarkYellow \"`nUpdate rust-toolchain.toml and Cargo.toml accordingly.\"",
+                "options": {
+                    "shell": {
+                        "executable": "powershell",
+                        "args": ["-Command"]
+                    }
+                }
+            },
             "problemMatcher": []
         },
         {
