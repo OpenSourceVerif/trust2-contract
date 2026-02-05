@@ -1,17 +1,5 @@
 # Final LLBC before serialization:
 
-// Full name: core::marker::MetaSized::<()>
-#[lang_item("meta_sized")]
-pub trait MetaSized::<()>
-
-// Full name: core::marker::Sized::<()>
-#[lang_item("sized")]
-pub trait Sized::<()>
-{
-    parent_clause0 : [@TraitClause0]: MetaSized::<()>
-    non-dyn-compatible
-}
-
 // Full name: core::marker::MetaSized::<(())>
 #[lang_item("meta_sized")]
 pub trait MetaSized::<(())>
@@ -28,14 +16,6 @@ pub trait Sized::<(())>
 #[lang_item("meta_sized")]
 pub trait MetaSized::<closure::<()>>
 
-// Full name: core::marker::Destruct::<()>
-#[lang_item("destruct")]
-pub trait Destruct::<()>
-{
-    fn drop_in_place = core::marker::Destruct::drop_in_place::<()>
-    vtable: core::marker::Destruct::{vtable}::<()>
-}
-
 // Full name: test_crate::foo::{const}::closure::<()>
 struct closure::<()> {}
 
@@ -48,9 +28,6 @@ pub trait Destruct::<closure::<()>>
 }
 
 unsafe fn core::marker::Destruct::drop_in_place::<closure::<()>>(@1: *mut closure::<()>)
-= <opaque>
-
-unsafe fn core::marker::Destruct::drop_in_place::<()>(@1: *mut ())
 = <opaque>
 
 // Full name: core::marker::Tuple::<(())>
@@ -85,7 +62,7 @@ pub trait FnMut::<closure::<()>, (())>
 }
 
 // Full name: core::ops::function::Fn::<closure::<()>, (())>
-#[lang_item("r#fn")]
+#[lang_item("fn")]
 pub trait Fn::<closure::<()>, (())>
 {
     parent_clause0 : [@TraitClause0]: MetaSized::<closure::<()>>
@@ -97,9 +74,6 @@ pub trait Fn::<closure::<()>, (())>
 }
 
 pub fn core::ops::function::Fn::call::<closure::<()>, (())><'_0>(@1: &'_0 closure::<()>, @2: (()))
-= <opaque>
-
-pub fn core::ops::function::FnMut::call_mut<'_0>(@1: &'_0 mut closure::<()>, @2: (()))
 = <opaque>
 
 pub fn core::ops::function::FnMut::call_mut::<closure::<()>, (())><'_0>(@1: &'_0 mut closure::<()>, @2: (()))
@@ -178,7 +152,7 @@ fn {impl FnOnce::<closure::<()>, (())>}::call_once::<()>(@1: closure::<()>, @2: 
     storage_live(_3)
     _0 = ()
     _3 = &mut _1
-    _0 = {impl FnMut::<closure::<()>, (())>}::call_mut::<()><'_>(move _3, move _2)
+    _0 = {impl FnMut::<closure::<()>, (())>}::call_mut::<()><'2>(move _3, move _2)
     drop[{impl Destruct::<closure::<()>>}::<()>] _1
     return
 }

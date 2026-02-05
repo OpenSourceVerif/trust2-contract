@@ -57,7 +57,7 @@ pub trait FnMut<Self, Args>
 }
 
 // Full name: core::ops::function::Fn
-#[lang_item("r#fn")]
+#[lang_item("fn")]
 pub trait Fn<Self, Args>
 {
     parent_clause0 : [@TraitClause0]: MetaSized<Self>
@@ -224,12 +224,12 @@ pub fn test_bool_trait_bool(@1: bool) -> bool
     storage_live(_2)
     storage_live(_3)
     _3 = &x_1
-    _2 = {impl BoolTrait for bool}::get_bool<'_>(move _3)
+    _2 = {impl BoolTrait for bool}::get_bool<'2>(move _3)
     if move _2 {
         storage_dead(_3)
         storage_live(_4)
         _4 = &x_1
-        _0 = {impl BoolTrait for bool}::ret_true<'_>(move _4)
+        _0 = {impl BoolTrait for bool}::ret_true<'4>(move _4)
         storage_dead(_4)
     } else {
         storage_dead(_3)
@@ -296,12 +296,12 @@ where
     storage_live(_2)
     storage_live(_3)
     _3 = &x_1
-    _2 = {impl BoolTrait for Option<T>[@TraitClause0]}::get_bool<'_, T>[@TraitClause0](move _3)
+    _2 = {impl BoolTrait for Option<T>[@TraitClause0]}::get_bool<'2, T>[@TraitClause0](move _3)
     if move _2 {
         storage_dead(_3)
         storage_live(_4)
         _4 = &x_1
-        _0 = {impl BoolTrait for Option<T>[@TraitClause0]}::ret_true<'_, T>[@TraitClause0](move _4)
+        _0 = {impl BoolTrait for Option<T>[@TraitClause0]}::ret_true<'4, T>[@TraitClause0](move _4)
         storage_dead(_4)
     } else {
         storage_dead(_3)
@@ -324,7 +324,7 @@ where
 
     storage_live(_2)
     _2 = &x_1
-    _0 = @TraitClause1::get_bool<'_>(move _2)
+    _0 = @TraitClause1::get_bool<'2>(move _2)
     storage_dead(_2)
     conditional_drop[{built_in impl Destruct for T}] x_1
     return
@@ -708,7 +708,7 @@ where
         storage_dead(_7)
         storage_live(_8)
         _8 = &y_5
-        _0 = {impl TestTrait for TestType1}::test<'_>(move _8)
+        _0 = {impl TestTrait for TestType1}::test<'3>(move _8)
         storage_dead(_8)
     } else {
         storage_dead(_7)
@@ -812,18 +812,6 @@ where
     [@TraitClause0]: WithConstTy<Self, LEN>,
 = <method_without_default_body>
 
-// Full name: test_crate::{impl WithConstTy<32 : usize> for bool}::LEN1
-pub fn LEN1() -> usize
-{
-    let _0: usize; // return
-
-    _0 = const 12 : usize
-    return
-}
-
-// Full name: test_crate::{impl WithConstTy<32 : usize> for bool}::LEN1
-pub const LEN1: usize = LEN1()
-
 // Full name: test_crate::{impl WithConstTy<32 : usize> for bool}::f
 pub fn {impl WithConstTy<32 : usize> for bool}::f<'_0, '_1>(@1: &'_0 mut u64, @2: &'_1 [u8; 32 : usize])
 {
@@ -835,6 +823,18 @@ pub fn {impl WithConstTy<32 : usize> for bool}::f<'_0, '_1>(@1: &'_0 mut u64, @2
     _0 = ()
     return
 }
+
+// Full name: test_crate::{impl WithConstTy<32 : usize> for bool}::LEN1
+pub fn LEN1() -> usize
+{
+    let _0: usize; // return
+
+    _0 = const 12 : usize
+    return
+}
+
+// Full name: test_crate::{impl WithConstTy<32 : usize> for bool}::LEN1
+pub const LEN1: usize = LEN1()
 
 // Full name: test_crate::{impl WithConstTy<32 : usize> for bool}
 impl WithConstTy<32 : usize> for bool {
@@ -974,7 +974,7 @@ where
 
     storage_live(_2)
     _2 = &(*x_1)
-    _0 = @TraitClause1::parent_clause1::get_name<'_>(move _2)
+    _0 = @TraitClause1::parent_clause1::get_name<'2>(move _2)
     storage_dead(_2)
     return
 }
@@ -991,7 +991,7 @@ where
 
     storage_live(_2)
     _2 = &(*x_1)
-    _0 = @TraitClause1::parent_clause1::get_w<'_>(move _2)
+    _0 = @TraitClause1::parent_clause1::get_w<'2>(move _2)
     storage_dead(_2)
     return
 }
@@ -1222,7 +1222,7 @@ where
 
     storage_live(_2)
     _2 = &(*x_1)
-    _0 = @TraitClause1::get_w<'_>(move _2)
+    _0 = @TraitClause1::get_w<'2>(move _2)
     storage_dead(_2)
     return
 }
@@ -1412,7 +1412,7 @@ pub fn flibidi()
 
     _0 = ()
     storage_live(_1)
-    _1 = test_crate::call<'0, for<'a> flabada<'a>>[{built_in impl Sized for for<'a> flabada<'a>}, {built_in impl Fn<(&'0 ())> for for<'a> flabada<'a>}](const flabada<'_>)
+    _1 = test_crate::call<'0, for<'a> flabada<'a>>[{built_in impl Sized for for<'a> flabada<'a>}, {built_in impl Fn<(&'0 ())> for for<'a> flabada<'a>}](const flabada<'35>)
     storage_dead(_1)
     _0 = ()
     return

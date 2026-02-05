@@ -43,18 +43,9 @@ type ('id, 'name) indexed_var = {
 }
 [@@deriving show, ord, eq]
 
-(** Const Generic Values. Either a primitive value, or a variable corresponding
-    to a primitve value *)
-type const_generic =
-  | CgGlobal of global_decl_id  (** A global constant *)
-  | CgVar of const_generic_var_id de_bruijn_var  (** A const generic variable *)
-  | CgValue of literal  (** A concrete value *)
-
-and const_generic_var_id = (ConstGenericVarId.id[@visitors.opaque])
-
 (** The index of a binder, counting from the innermost. See [[DeBruijnVar]] for
     details. *)
-and de_bruijn_id = int
+type de_bruijn_id = int
 
 (** Type-level variable.
 
@@ -101,10 +92,10 @@ and global_decl_id = (GlobalDeclId.id[@visitors.opaque])
 (** The id of a translated item. *)
 and item_id =
   | IdType of type_decl_id
-  | IdFun of fun_decl_id
-  | IdGlobal of global_decl_id
   | IdTraitDecl of trait_decl_id
   | IdTraitImpl of trait_impl_id
+  | IdFun of fun_decl_id
+  | IdGlobal of global_decl_id
 
 and trait_clause_id = (TraitClauseId.id[@visitors.opaque])
 and trait_decl_id = (TraitDeclId.id[@visitors.opaque])
@@ -118,7 +109,7 @@ and type_var_id = (TypeVarId.id[@visitors.opaque])
   ord,
   visitors
     {
-      name = "iter_const_generic";
+      name = "iter_type_vars";
       monomorphic = [ "env" ];
       variety = "iter";
       ancestors = [ "iter_literal" ];
@@ -126,7 +117,7 @@ and type_var_id = (TypeVarId.id[@visitors.opaque])
     },
   visitors
     {
-      name = "map_const_generic";
+      name = "map_type_vars";
       monomorphic = [ "env" ];
       variety = "map";
       ancestors = [ "map_literal" ];
@@ -134,7 +125,7 @@ and type_var_id = (TypeVarId.id[@visitors.opaque])
     },
   visitors
     {
-      name = "reduce_const_generic";
+      name = "reduce_type_vars";
       monomorphic = [ "env" ];
       variety = "reduce";
       ancestors = [ "reduce_literal" ];
@@ -142,7 +133,7 @@ and type_var_id = (TypeVarId.id[@visitors.opaque])
     },
   visitors
     {
-      name = "mapreduce_const_generic";
+      name = "mapreduce_type_vars";
       monomorphic = [ "env" ];
       variety = "mapreduce";
       ancestors = [ "mapreduce_literal" ];
@@ -152,7 +143,7 @@ and type_var_id = (TypeVarId.id[@visitors.opaque])
 (** Ancestor for iter visitor for {!type: Types.ty} *)
 class ['self] iter_ty_base_base =
   object (self : 'self)
-    inherit [_] iter_const_generic
+    inherit [_] iter_type_vars
 
     method visit_indexed_var :
         'id 'name.
@@ -170,7 +161,7 @@ class ['self] iter_ty_base_base =
 (** Ancestor for map visitor for {!type: Types.ty} *)
 class virtual ['self] map_ty_base_base =
   object (self : 'self)
-    inherit [_] map_const_generic
+    inherit [_] map_type_vars
 
     method visit_indexed_var :
         'id 'name.
@@ -306,14 +297,124 @@ and builtin_ty =
   | TBox  (** Boxes are de facto a primitive type. *)
   | TStr  (** Primitive type *)
 
+(** A byte, in the MiniRust sense: it can either be uninitialized, a concrete u8
+    value, or part of a pointer with provenance (e.g. to a global or a function)
+*)
+and byte =
+  | Uninit  (** An uninitialized byte *)
+  | Value of int  (** A concrete byte value *)
+  | Provenance of provenance * int
+      (** A byte that is part of a pointer with provenance. The u8 is the offset
+          within the pointer. Note that we do not have an actual value for this
+          pointer byte, unlike MiniRust, as that is non-deterministic. *)
+
 (** A const generic variable in a signature or binder. *)
 and const_generic_param = {
   index : const_generic_var_id;
       (** Index identifying the variable among other variables bound at the same
           level. *)
   name : string;  (** Const generic name *)
-  ty : literal_type;  (** Type of the const generic *)
+  ty : ty;  (** Type of the const generic *)
 }
+
+and const_generic_var_id = (ConstGenericVarId.id[@visitors.opaque])
+and constant_expr = { kind : constant_expr_kind; ty : ty }
+
+(** A constant expression.
+
+    Only the [[ConstantExprKind::Literal]] and [[ConstantExprKind::Var]] cases
+    are left in the final LLBC.
+
+    The other cases come from a straight translation from the MIR:
+
+    [[ConstantExprKind::Adt]] case: It is a bit annoying, but rustc treats some
+    ADT and tuple instances as constants when generating MIR:
+    - an enumeration with one variant and no fields is a constant.
+    - a structure with no field is a constant.
+    - sometimes, Rust stores the initialization of an ADT as a constant (if all
+      the fields are constant) rather than as an aggregated value We later
+      desugar those to regular ADTs, see [regularize_constant_adts.rs].
+
+    [[ConstantExprKind::Global]] case: access to a global variable. We later
+    desugar it to a copy of a place global.
+
+    [[ConstantExprKind::Ref]] case: reference to a constant value. We later
+    desugar it to a separate statement.
+
+    [[ConstantExprKind::FnPtr]] case: a function pointer (to a top-level
+    function).
+
+    Remark: MIR seems to forbid more complex expressions like paths. For
+    instance, reading the constant [a.b] is translated to
+    [{ _1 = const a; _2 = (_1.0) }]. *)
+and constant_expr_kind =
+  | CLiteral of literal
+  | CAdt of variant_id option * constant_expr list
+      (** In most situations: Enumeration with one variant with no fields,
+          structure with no fields, unit (encoded as a 0-tuple).
+
+          Less frequently: arbitrary ADT values.
+
+          We eliminate this case in a micro-pass. *)
+  | CArray of constant_expr list
+  | CSlice of constant_expr list
+  | CGlobal of global_decl_ref
+      (** The value is a top-level constant/static.
+
+          We eliminate this case in a micro-pass.
+
+          Remark: constants can actually have generic parameters.
+          {@rust[
+            struct V<const N: usize, T> {
+              x: [T; N],
+            }
+
+            impl<const N: usize, T> V<N, T> {
+              const LEN: usize = N; // This has generics <N, T>
+            }
+
+            fn use_v<const N: usize, T>(v: V<N, T>) {
+              let l = V::<N, T>::LEN; // We need to provided a substitution here
+            }
+          ]} *)
+  | CTraitConst of trait_ref * trait_item_name
+      (** A trait constant.
+
+          Ex.:
+          {@rust[
+            impl Foo for Bar {
+              const C : usize = 32; // <-
+            }
+          ]}
+
+          Remark: trait constants can not be used in types, they are necessarily
+          values. *)
+  | CRef of constant_expr
+      (** A shared reference to a constant value.
+
+          We eliminate this case in a micro-pass. *)
+  | CPtr of ref_kind * constant_expr
+      (** A pointer to a mutable static.
+
+          We eliminate this case in a micro-pass. *)
+  | CVar of const_generic_var_id de_bruijn_var  (** A const generic var *)
+  | CFnDef of fn_ptr  (** Function definition -- this is a ZST constant *)
+  | CFnPtr of fn_ptr
+      (** A function pointer to a function item; this is an actual pointer to
+          that function item.
+
+          We eliminate this case in a micro-pass. *)
+  | CPtrNoProvenance of big_int
+      (** A pointer with no provenance (e.g. 0 for the null pointer)
+
+          We eliminate this case in a micro-pass. *)
+  | CRawMemory of byte list
+      (** Raw memory value obtained from constant evaluation. Used when a more
+          structured representation isn't possible (e.g. for unions) or just
+          isn't implemented yet. *)
+  | COpaque of string
+      (** A constant expression that Charon still doesn't handle, along with the
+          reason why. *)
 
 (** The contents of a [dyn Trait] type. *)
 and dyn_predicate = {
@@ -362,7 +463,7 @@ and fun_sig = {
 and generic_args = {
   regions : region list;
   types : ty list;
-  const_generics : const_generic list;
+  const_generics : constant_expr list;
   trait_refs : trait_ref list;
 }
 
@@ -395,6 +496,11 @@ and 'a0 hash_consed = 'a0 (* Not actually hash-consed on the OCaml side *)
 
 (** .0 outlives .1 *)
 and ('a0, 'a1) outlives_pred = 'a0 * 'a1
+
+and provenance =
+  | Global of global_decl_ref
+  | Function of fun_decl_ref
+  | Unknown
 
 and ref_kind = RMut | RShared
 
@@ -624,7 +730,7 @@ and ty_kind =
   | TPtrMetadata of ty
       (** As a marker of taking out metadata from a given type The internal type
           is assumed to be a type variable *)
-  | TArray of ty * const_generic  (** An array type [[T; N]] *)
+  | TArray of ty * constant_expr  (** An array type [[T; N]] *)
   | TSlice of ty  (** A slice type [[T]] *)
   | TError of string  (** A type that could not be computed or was incorrect. *)
 
@@ -651,6 +757,8 @@ and type_id =
 
 (** A type variable in a signature or binder. *)
 and type_param = (type_var_id, string) indexed_var
+
+and variant_id = (VariantId.id[@visitors.opaque])
 [@@deriving
   show,
   eq,
@@ -1007,8 +1115,6 @@ and variant = {
           [tag]). That one is described by [[DiscriminantLayout]] and
           [[TagEncoding]]. *)
 }
-
-and variant_id = (VariantId.id[@visitors.opaque])
 
 (** Simplified layout of a single variant.
 

@@ -6,6 +6,7 @@ use charon_lib::formatter::IntoFormatter;
 use charon_lib::pretty::FmtWithCtx;
 use derive_generic_visitor::Visitor;
 use itertools::Itertools;
+use rustc_span::sym;
 use std::mem;
 use std::ops::ControlFlow;
 
@@ -69,6 +70,9 @@ impl<'tcx, 'ctx> TranslateCtx<'tcx> {
         }
         let def = self.hax_def_for_item(&item_src.item)?;
         let item_meta = self.translate_item_meta(&def, item_src, name, opacity);
+        if item_meta.opacity.is_invisible() {
+            return Ok(());
+        }
 
         // Initialize the item translation context
         let mut bt_ctx = ItemTransCtx::new(item_src.clone(), trans_id, self);
@@ -448,9 +452,7 @@ impl ItemTransCtx<'_, '_> {
                 repr = Some(self.translate_repr_options(hax_repr));
                 self.translate_adt_def(trans_id, span, &item_meta, def)
             }
-            hax::FullDefKind::Closure { args, .. } => {
-                self.translate_closure_adt(trans_id, span, &args)
-            }
+            hax::FullDefKind::Closure { args, .. } => self.translate_closure_adt(span, &args),
             _ => panic!("Unexpected item when translating types: {def:?}"),
         };
 
@@ -848,7 +850,7 @@ impl ItemTransCtx<'_, '_> {
             }
         }
 
-        if def.lang_item.as_deref() == Some("destruct") {
+        if def.lang_item == Some(sym::destruct) {
             // Add a `drop_in_place(*mut self)` method that contains the drop glue for this type.
             let (method_name, method_binder) =
                 self.prepare_drop_in_place_method(def, span, def_id, None);
@@ -1100,7 +1102,7 @@ impl ItemTransCtx<'_, '_> {
         }
 
         let implemented_trait_def = self.poly_hax_def(&trait_pred.trait_ref.def_id)?;
-        if implemented_trait_def.lang_item.as_deref() == Some("destruct") {
+        if implemented_trait_def.lang_item == Some(sym::destruct) {
             raise_error!(
                 self,
                 span,

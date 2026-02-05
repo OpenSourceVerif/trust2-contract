@@ -1,10 +1,32 @@
+use itertools::Itertools;
+use rustc_middle::ty;
+use rustc_span::sym;
+
 use super::translate_ctx::*;
 use charon_lib::ast::*;
 use charon_lib::ids::{IndexMap, IndexVec};
 use hax::{HasOwnerId, HasParamEnv, Visibility};
-use itertools::Itertools;
 
 impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
+    /// Translate an erased region. If we're inside a body, this will return a fresh body region
+    /// instead.
+    pub(crate) fn translate_erased_region(&mut self) -> Region {
+        if let Some(v) = &mut self.lifetime_freshener {
+            Region::Body(v.push(()))
+        } else {
+            Region::Erased
+        }
+    }
+
+    /// Erase a region binder by supplying erased lifetimes (or fresh body lifetimes) for all its
+    /// arguments.
+    pub(crate) fn erase_region_binder<T: TyVisitable>(&mut self, b: RegionBinder<T>) -> T {
+        let regions = b
+            .regions
+            .map_ref_indexed(|_, _| self.translate_erased_region());
+        b.apply(regions)
+    }
+
     // Translate a region
     pub(crate) fn translate_region(
         &mut self,
@@ -13,8 +35,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     ) -> Result<Region, Error> {
         use hax::RegionKind::*;
         match &region.kind {
-            ReErased if let Some(v) = &mut self.lifetime_freshener => Ok(Region::Body(v.push(()))),
-            ReErased => Ok(Region::Erased),
+            ReErased => Ok(self.translate_erased_region()),
             ReStatic => Ok(Region::Static),
             ReBound(hax::BoundVarIndexKind::Bound(id), br) => {
                 Ok(match self.lookup_bound_region(span, *id, br.var) {
@@ -143,7 +164,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 assert!(args.types.elem_count() == 1 && args.const_generics.elem_count() == 1);
                 TyKind::Array(
                     args.types.pop().unwrap(),
-                    args.const_generics.pop().unwrap(),
+                    Box::new(args.const_generics.pop().unwrap()),
                 )
             }
             hax::TyKind::Slice(item_ref) => {
@@ -161,7 +182,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
 
                 let region = self.translate_region(span, region)?;
                 let ty = self.translate_ty(span, ty)?;
-                let kind = if *mutability {
+                let kind = if mutability.is_mut() {
                     RefKind::Mut
                 } else {
                     RefKind::Shared
@@ -171,7 +192,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             hax::TyKind::RawPtr(ty, mutbl) => {
                 trace!("RawPtr: {:?}", (ty, mutbl));
                 let ty = self.translate_ty(span, ty)?;
-                let kind = if *mutbl {
+                let kind = if mutbl.is_mut() {
                     RefKind::Mut
                 } else {
                     RefKind::Shared
@@ -205,7 +226,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 TyKind::FnPtr(sig)
             }
             hax::TyKind::FnDef { item, .. } => {
-                let fnref = self.translate_fn_ptr(span, item, TransItemSourceKind::Fun)?;
+                let fnref = self.translate_bound_fn_ptr(span, item, TransItemSourceKind::Fun)?;
                 TyKind::FnDef(fnref)
             }
             hax::TyKind::Closure(args) => {
@@ -271,6 +292,15 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         Ok(kind.into_ty())
     }
 
+    pub(crate) fn translate_rustc_ty(
+        &mut self,
+        span: Span,
+        ty: &ty::Ty<'tcx>,
+    ) -> Result<Ty, Error> {
+        let ty = self.t_ctx.catch_sinto(&self.hax_state, span, ty)?;
+        self.translate_ty(span, &ty)
+    }
+
     pub fn translate_poly_fun_sig(
         &mut self,
         span: Span,
@@ -314,7 +344,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     regions.push(self.translate_region(span, region)?);
                 }
                 Const(c) => {
-                    const_generics.push(self.translate_constant_expr_to_const_generic(span, c)?);
+                    const_generics.push(self.translate_constant_expr(span, c)?);
                 }
             }
         }
@@ -328,32 +358,13 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         })
     }
 
-    /// Append the given late bound variables to the provided generics.
-    pub fn append_late_bound_to_generics(
-        &mut self,
-        span: Span,
-        generics: GenericArgs,
-        late_bound: Option<hax::Binder<()>>,
-    ) -> Result<RegionBinder<GenericArgs>, Error> {
-        let late_bound = late_bound.unwrap_or(hax::Binder {
-            value: (),
-            bound_vars: vec![],
-        });
-        self.translate_region_binder(span, &late_bound, |ctx, _| {
-            Ok(generics
-                .move_under_binder()
-                .concat(&ctx.innermost_binder().params.identity_args()))
-        })
-    }
-
     /// Checks whether the given id corresponds to a built-in type.
     pub(crate) fn recognize_builtin_type(
         &mut self,
         item: &hax::ItemRef,
     ) -> Result<Option<BuiltinTy>, Error> {
         let def = self.hax_def(item)?;
-        let ty = if def.lang_item.as_deref() == Some("owned_box")
-            && self.t_ctx.options.treat_box_as_builtin
+        let ty = if def.lang_item == Some(sym::owned_box) && self.t_ctx.options.treat_box_as_builtin
         {
             Some(BuiltinTy::Box)
         } else {
@@ -374,7 +385,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         use rustc_middle::ty;
         let tcx = self.t_ctx.tcx;
         let rdefid = item.def_id.as_rust_def_id().unwrap();
-        let hax_state = &self.hax_state_with_id;
+        let hax_state = &self.hax_state;
         let ty_env = hax_state.typing_env();
         let ty = tcx
             .type_of(rdefid)
@@ -396,20 +407,19 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             ty::Str | ty::Slice(..) => PtrMetadata::Length,
             ty::Dynamic(..) => match hax_ty.kind() {
                 hax::TyKind::Dynamic(dyn_binder, _) => {
-                    let vtable = self
-                        .translate_region_binder(
-                            span,
-                            &dyn_binder.predicates.predicates[0].0.kind,
-                            |ctx, kind: &hax::ClauseKind| {
-                                let hax::ClauseKind::Trait(trait_predicate) = kind else {
-                                    unreachable!()
-                                };
-                                Ok(ctx
-                                    .translate_vtable_struct_ref(span, &trait_predicate.trait_ref)?
-                                    .unwrap())
-                            },
-                        )?
-                        .erase();
+                    let vtable = self.translate_region_binder(
+                        span,
+                        &dyn_binder.predicates.predicates[0].0.kind,
+                        |ctx, kind: &hax::ClauseKind| {
+                            let hax::ClauseKind::Trait(trait_predicate) = kind else {
+                                unreachable!()
+                            };
+                            Ok(ctx
+                                .translate_vtable_struct_ref(span, &trait_predicate.trait_ref)?
+                                .unwrap())
+                        },
+                    )?;
+                    let vtable = self.erase_region_binder(vtable);
                     PtrMetadata::VTable(vtable)
                 }
                 _ => unreachable!("Unexpected hax type {hax_ty:?} for dynamic type: {ty:?}"),
@@ -671,7 +681,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             AdtKind::Struct | AdtKind::Union => {
                 // Check the unique variant
                 error_assert!(self, def_span, variants.len() == 1);
-                variants[0]
+                variants[hax::VariantIdx::from(0usize)]
                     .fields
                     .iter()
                     .all(|f| matches!(f.vis, Visibility::Public))
@@ -699,7 +709,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             let mut have_names: Option<bool> = None;
             for (j, field_def) in var_def.fields.iter().enumerate() {
                 trace!("variant {i}: field {j}: {field_def:?}");
-                let field_span = self.t_ctx.translate_span_from_hax(&field_def.span);
+                let field_span = self.t_ctx.translate_span(&field_def.span);
                 // Translate the field type
                 let ty = self.translate_ty(field_span, &field_def.ty)?;
                 let field_full_def =
@@ -707,7 +717,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 let field_attrs = self.t_ctx.translate_attr_info(&field_full_def);
 
                 // Retrieve the field name.
-                let field_name = field_def.name.clone();
+                let field_name = field_def.name.map(|s| s.to_string());
                 // Sanity check
                 match &have_names {
                     None => {
@@ -725,15 +735,15 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 let field = Field {
                     span: field_span,
                     attr_info: field_attrs,
-                    name: field_name.clone(),
+                    name: field_name,
                     ty,
                 };
                 fields.push(field);
             }
 
             let discriminant = self.translate_discriminant(def_span, &var_def.discr_val)?;
-            let variant_span = self.t_ctx.translate_span_from_hax(&var_def.span);
-            let variant_name = var_def.name.clone();
+            let variant_span = self.t_ctx.translate_span(&var_def.span);
+            let variant_name = var_def.name.to_string();
             let variant_full_def =
                 self.hax_def(&def.this().with_def_id(self.hax_state(), &var_def.def_id))?;
             let variant_attrs = self.t_ctx.translate_attr_info(&variant_full_def);

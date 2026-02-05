@@ -12,16 +12,6 @@ pub trait Sized<Self>
     non-dyn-compatible
 }
 
-fn UNIT_METADATA()
-{
-    let _0: (); // return
-
-    _0 = ()
-    return
-}
-
-const UNIT_METADATA: () = @Fun0()
-
 // Full name: test_crate::V
 struct V<T, const N : usize>
 where
@@ -163,9 +153,6 @@ impl<const N : usize> HasDefaultLen<N> for [(); N] {
 }
 
 // Full name: test_crate::{impl HasDefaultLen<N> for [bool; N]}::LEN
-pub const {impl HasDefaultLen<N> for [bool; N]}::LEN<const N : usize>: usize = {impl HasDefaultLen<N> for [bool; N]}::LEN()
-
-// Full name: test_crate::{impl HasDefaultLen<N> for [bool; N]}::LEN
 pub fn {impl HasDefaultLen<N> for [bool; N]}::LEN<const N : usize>() -> usize
 {
     let _0: usize; // return
@@ -181,6 +168,9 @@ pub fn {impl HasDefaultLen<N> for [bool; N]}::LEN<const N : usize>() -> usize
     storage_dead(_1)
     return
 }
+
+// Full name: test_crate::{impl HasDefaultLen<N> for [bool; N]}::LEN
+pub const {impl HasDefaultLen<N> for [bool; N]}::LEN<const N : usize>: usize = {impl HasDefaultLen<N> for [bool; N]}::LEN()
 
 // Full name: test_crate::{impl HasDefaultLen<N> for [bool; N]}
 impl<const N : usize> HasDefaultLen<N> for [bool; N] {

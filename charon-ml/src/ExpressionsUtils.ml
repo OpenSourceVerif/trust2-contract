@@ -1,3 +1,4 @@
+open Types
 open Expressions
 
 let unop_can_fail : unop -> bool = function

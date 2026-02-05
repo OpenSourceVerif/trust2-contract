@@ -1,25 +1,15 @@
 # Final LLBC before serialization:
 
-fn UNIT_METADATA()
+fn test_crate::nonzero_disambiguator::my_function#1()
 {
     let _0: (); // return
 
     _0 = ()
+    _0 = ()
     return
 }
-
-const UNIT_METADATA: () = @Fun0()
 
 fn test_crate::nonzero_disambiguator::my_function()
-{
-    let _0: (); // return
-
-    _0 = ()
-    _0 = ()
-    return
-}
-
-fn test_crate::nonzero_disambiguator::my_function#1()
 {
     let _0: (); // return
 
