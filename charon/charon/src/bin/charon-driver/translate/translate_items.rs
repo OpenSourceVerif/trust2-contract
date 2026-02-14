@@ -471,6 +471,7 @@ impl ItemTransCtx<'_, '_> {
             layout,
             ptr_metadata,
             repr,
+            specs: TypeSpecs::new(),
         };
 
         Ok(type_def)

@@ -9,3 +9,8 @@ pub fn precondition(_attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn postcondition(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+
+#[proc_macro_attribute]
+pub fn invariant(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    item
+}

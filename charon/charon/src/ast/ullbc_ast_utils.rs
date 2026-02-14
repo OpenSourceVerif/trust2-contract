@@ -243,16 +243,16 @@ impl BlockData {
     }
 }
 
-impl Specs {
+impl FunSpecs {
     pub fn new() -> Self {
-        Specs {
+        Self {
             preconditions: Vec::new(),
             postconditions: Vec::new(),
         }
     }
 }
 
-impl Default for Specs {
+impl Default for FunSpecs {
     fn default() -> Self {
         Self::new()
     }
@@ -314,7 +314,7 @@ impl BodyBuilder {
             bound_body_regions: 0,
             body: IndexVec::new(),
             comments: vec![],
-            specs: Specs::new(),
+            specs: FunSpecs::new(),
         };
         let current_block = body.body.push(BlockData {
             statements: Default::default(),

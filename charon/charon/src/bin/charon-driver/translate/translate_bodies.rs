@@ -1281,7 +1281,7 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
             bound_body_regions: self.i_ctx.lifetime_freshener.take().unwrap().slot_count(),
             body: self.blocks.make_contiguous(),
             comments,
-            specs: Specs::new(),
+            specs: FunSpecs::new(),
         }))
     }
 }

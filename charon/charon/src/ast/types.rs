@@ -514,6 +514,8 @@ pub struct TypeDecl {
     #[drive(skip)]
     #[serde_state(stateless)]
     pub repr: Option<ReprOptions>,
+    /// Associated trust2-contract specifications.
+    pub specs: TypeSpecs,
 }
 
 generate_index_type!(VariantId, "Variant");
@@ -971,4 +973,9 @@ pub struct DynPredicate {
     /// Only the first trait clause may have methods. We use the vtable of this trait in the `dyn
     /// Trait` pointer metadata.
     pub binder: Binder<Ty>,
+}
+
+#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+pub struct TypeSpecs {
+    pub invariants: Vec<FunDeclId>,
 }

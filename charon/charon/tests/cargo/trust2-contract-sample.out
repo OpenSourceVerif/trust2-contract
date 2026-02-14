@@ -1,5 +1,27 @@
 # Final LLBC before serialization:
 
+// Full name: core::cmp::PartialEq
+#[lang_item("eq")]
+pub trait PartialEq<Self, Rhs>
+{
+    fn eq<'_0_1, '_1_1> = core::cmp::PartialEq::eq<'_0_1, '_1_1, Self, Rhs>[Self]
+    vtable: core::cmp::PartialEq::{vtable}<Rhs>
+}
+
+#[lang_item("cmp_partialeq_eq")]
+pub fn core::cmp::PartialEq::eq<'_0, '_1, Self, Rhs>(@1: &'_0 Self, @2: &'_1 Rhs) -> bool
+where
+    [@TraitClause0]: PartialEq<Self, Rhs>,
+= <opaque>
+
+// Full name: core::cmp::Ordering
+#[lang_item("Ordering")]
+pub enum Ordering {
+  Less,
+  Equal,
+  Greater,
+}
+
 // Full name: core::marker::MetaSized
 #[lang_item("meta_sized")]
 pub trait MetaSized<Self>
@@ -11,6 +33,44 @@ pub trait Sized<Self>
     parent_clause0 : [@TraitClause0]: MetaSized<Self>
     non-dyn-compatible
 }
+
+// Full name: core::option::Option
+#[lang_item("Option")]
+pub enum Option<T>
+where
+    [@TraitClause0]: Sized<T>,
+{
+  None,
+  Some(T),
+}
+
+// Full name: core::cmp::PartialOrd
+#[lang_item("partial_ord")]
+pub trait PartialOrd<Self, Rhs>
+{
+    parent_clause0 : [@TraitClause0]: PartialEq<Self, Rhs>
+    fn partial_cmp<'_0_1, '_1_1> = core::cmp::PartialOrd::partial_cmp<'_0_1, '_1_1, Self, Rhs>[Self]
+    fn le<'_0_1, '_1_1> = core::cmp::PartialOrd::le<'_0_1, '_1_1, Self, Rhs>[Self]
+    vtable: core::cmp::PartialOrd::{vtable}<Rhs>
+}
+
+#[lang_item("cmp_partialord_cmp")]
+pub fn core::cmp::PartialOrd::partial_cmp<'_0, '_1, Self, Rhs>(@1: &'_0 Self, @2: &'_1 Rhs) -> Option<Ordering>[{built_in impl Sized for Ordering}]
+where
+    [@TraitClause0]: PartialOrd<Self, Rhs>,
+= <opaque>
+
+#[lang_item("cmp_partialord_le")]
+pub fn core::cmp::PartialOrd::le<'_0, '_1, Self, Rhs>(@1: &'_0 Self, @2: &'_1 Rhs) -> bool
+where
+    [@TraitClause0]: PartialOrd<Self, Rhs>,
+= <opaque>
+
+// Full name: core::cmp::impls::{impl PartialOrd<&'_0 B> for &'_1 A}::le
+pub fn {impl PartialOrd<&'_0 B> for &'_1 A}::le<'_0, '_1, '_2, '_3, A, B>(@1: &'_2 &'_1 A, @2: &'_3 &'_0 B) -> bool
+where
+    [@TraitClause0]: PartialOrd<A, B>,
+= <opaque>
 
 // Full name: core::marker::Destruct
 #[lang_item("destruct")]
@@ -81,6 +141,19 @@ where
 pub fn core::ops::function::FnOnce::call_once<Self, Args>(@1: Self, @2: Args) -> @TraitClause0::Output
 where
     [@TraitClause0]: FnOnce<Self, Args>,
+= <opaque>
+
+// Full name: trust2_contract::internal::TypeInvariant
+pub trait TypeInvariant<Self>
+{
+    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    fn invariant<'_0_1> = trust2_contract::internal::TypeInvariant::invariant<'_0_1, Self>[Self]
+    vtable: trust2_contract::internal::TypeInvariant::{vtable}
+}
+
+pub fn trust2_contract::internal::TypeInvariant::invariant<'_0, Self>(@1: &'_0 Self) -> bool
+where
+    [@TraitClause0]: TypeInvariant<Self>,
 = <opaque>
 
 fn UNIT_METADATA()
@@ -579,6 +652,54 @@ pub fn min(@1: u64, @2: u64) -> u64
     }
     storage_dead(_6)
     return
+}
+
+// Full name: trust2_contract_sample::{impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::invariant
+pub fn {impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::invariant<'a, '_1, T>(@1: &'_1 RefRange<'a, T>[@TraitClause0, @TraitClause1]) -> bool
+where
+    [@TraitClause0]: Sized<T>,
+    [@TraitClause1]: PartialOrd<T, T>,
+{
+    let _0: bool; // return
+    let self_1: &'0 RefRange<'1, T>[@TraitClause0, @TraitClause1]; // arg #1
+    let _2: &'2 &'3 T; // anonymous local
+    let _3: &'2 &'3 T; // anonymous local
+    let _4: &'3 T; // anonymous local
+
+    storage_live(_2)
+    _2 = &((*self_1)).start
+    storage_live(_3)
+    storage_live(_4)
+    _4 = &(*((*self_1)).end)
+    _3 = &_4
+    _0 = {impl PartialOrd<&'_0 B> for &'_1 A}::le<'4, '5, '8, '9, T, T>[@TraitClause1](move _2, move _3)
+    storage_dead(_4)
+    storage_dead(_3)
+    storage_dead(_2)
+    return
+}
+
+// Full name: trust2_contract_sample::RefRange
+pub struct RefRange<'a, T>
+where
+    [@TraitClause0]: Sized<T>,
+    [@TraitClause1]: PartialOrd<T, T>,
+    T : 'a,
+{
+  start: &'a T,
+  end: &'a T,
+}
+invariant({impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::invariant)
+
+// Full name: trust2_contract_sample::{impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}
+impl<'a, T> TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]
+where
+    [@TraitClause0]: Sized<T>,
+    [@TraitClause1]: PartialOrd<T, T>,
+{
+    parent_clause0 = {built_in impl MetaSized for RefRange<'_, T>[@TraitClause0, @TraitClause1]}
+    fn invariant<'_0_1> = {impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::invariant<'a, '_0_1, T>[@TraitClause0, @TraitClause1]
+    vtable: {impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::{vtable}<'a, T>[@TraitClause0, @TraitClause1]
 }
 
 

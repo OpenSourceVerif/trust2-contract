@@ -584,6 +584,80 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDeclRef {
     }
 }
 
+impl ullbc::FunSpecBlock {
+    fn fmt_with_ctx_and_kind<C: AstFormatter>(
+        &self,
+        ctx: &C,
+        f: &mut fmt::Formatter<'_>,
+        kind: &str,
+    ) -> fmt::Result {
+        let tab = ctx.indent();
+        let ctx = &ctx.increase_indent();
+        writeln!(
+            f,
+            "{tab}{kind}({}) {{",
+            self.call
+                .args
+                .iter()
+                .map(|arg| arg.with_ctx(ctx))
+                .format(", "),
+        )?;
+        for st in &self.statements {
+            writeln!(f, "{}", st.with_ctx(ctx))?;
+        }
+        writeln!(f, "{tab}}}")
+    }
+}
+
+impl llbc::FunSpecBlock {
+    fn fmt_with_ctx_and_kind<C: AstFormatter>(
+        &self,
+        ctx: &C,
+        f: &mut fmt::Formatter<'_>,
+        kind: &str,
+    ) -> fmt::Result {
+        let tab = ctx.indent();
+        let ctx = &ctx.increase_indent();
+        writeln!(
+            f,
+            "{tab}{kind}({}) {{",
+            self.call
+                .args
+                .iter()
+                .map(|arg| arg.with_ctx(ctx))
+                .format(", "),
+        )?;
+        for st in &self.statements {
+            writeln!(f, "{}", st.with_ctx(ctx))?;
+        }
+        writeln!(f, "{tab}}}")
+    }
+}
+
+impl<C: AstFormatter> FmtWithCtx<C> for ullbc::FunSpecs {
+    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for precondition in &self.preconditions {
+            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
+        }
+        for postcondition in &self.postconditions {
+            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
+        }
+        Ok(())
+    }
+}
+
+impl<C: AstFormatter> FmtWithCtx<C> for llbc::FunSpecs {
+    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for precondition in &self.preconditions {
+            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
+        }
+        for postcondition in &self.postconditions {
+            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
+        }
+        Ok(())
+    }
+}
+
 impl<C: AstFormatter> FmtWithCtx<C> for RegionBinder<FunSig> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Update the bound regions
@@ -805,14 +879,14 @@ impl<T, U> GExprBody<T, U> {
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block, llbc_ast::Specs> {
+impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block, llbc_ast::FunSpecs> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Inference fails when this is a closure.
         fn fmt_body<C: AstFormatter>(
             f: &mut fmt::Formatter<'_>,
             ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             body: &Block,
-            specs: &llbc_ast::Specs,
+            specs: &llbc_ast::FunSpecs,
         ) -> Result<(), fmt::Error> {
             writeln!(f, "{}", specs.with_ctx(ctx))?;
             body.fmt_with_ctx(ctx, f)?;
@@ -821,14 +895,14 @@ impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block, llbc_ast::Spe
         self.fmt_with_ctx_and_callback(ctx, f, fmt_body::<C>)
     }
 }
-impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents, ullbc_ast::Specs> {
+impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents, ullbc_ast::FunSpecs> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Inference fails when this is a closure.
         fn fmt_body<C: AstFormatter>(
             f: &mut fmt::Formatter<'_>,
             ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             body: &IndexVec<BlockId, BlockData>,
-            specs: &ullbc_ast::Specs,
+            specs: &ullbc_ast::FunSpecs,
         ) -> Result<(), fmt::Error> {
             write!(f, "{}", specs.with_ctx(ctx))?;
             let tab = ctx.indent();
@@ -1534,80 +1608,6 @@ impl Display for ScalarValue {
     }
 }
 
-impl ullbc::SpecBlock {
-    fn fmt_with_ctx_and_kind<C: AstFormatter>(
-        &self,
-        ctx: &C,
-        f: &mut fmt::Formatter<'_>,
-        kind: &str,
-    ) -> fmt::Result {
-        let tab = ctx.indent();
-        let ctx = &ctx.increase_indent();
-        writeln!(
-            f,
-            "{tab}{kind}({}) {{",
-            self.call
-                .args
-                .iter()
-                .map(|arg| arg.with_ctx(ctx))
-                .format(", "),
-        )?;
-        for st in &self.statements {
-            writeln!(f, "{}", st.with_ctx(ctx))?;
-        }
-        writeln!(f, "{tab}}}")
-    }
-}
-
-impl llbc::SpecBlock {
-    fn fmt_with_ctx_and_kind<C: AstFormatter>(
-        &self,
-        ctx: &C,
-        f: &mut fmt::Formatter<'_>,
-        kind: &str,
-    ) -> fmt::Result {
-        let tab = ctx.indent();
-        let ctx = &ctx.increase_indent();
-        writeln!(
-            f,
-            "{tab}{kind}({}) {{",
-            self.call
-                .args
-                .iter()
-                .map(|arg| arg.with_ctx(ctx))
-                .format(", "),
-        )?;
-        for st in &self.statements {
-            writeln!(f, "{}", st.with_ctx(ctx))?;
-        }
-        writeln!(f, "{tab}}}")
-    }
-}
-
-impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Specs {
-    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for precondition in &self.preconditions {
-            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
-        }
-        for postcondition in &self.postconditions {
-            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
-        }
-        Ok(())
-    }
-}
-
-impl<C: AstFormatter> FmtWithCtx<C> for llbc::Specs {
-    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for precondition in &self.preconditions {
-            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
-        }
-        for postcondition in &self.postconditions {
-            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
-        }
-        Ok(())
-    }
-}
-
 impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tab = ctx.indent();
@@ -2175,7 +2175,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeDecl {
                         writeln!(f, "  {},", field.with_ctx(ctx))?;
                     }
                 }
-                write!(f, "}}")
+                write!(f, "}}")?;
             }
             TypeDeclKind::Union(fields) => {
                 write!(f, "{nl_or_space}{{")?;
@@ -2183,7 +2183,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeDecl {
                 for field in fields {
                     writeln!(f, "  {},", field.with_ctx(ctx))?;
                 }
-                write!(f, "}}")
+                write!(f, "}}")?;
             }
             TypeDeclKind::Enum(variants) => {
                 write!(f, "{nl_or_space}{{")?;
@@ -2191,11 +2191,17 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeDecl {
                 for variant in variants {
                     writeln!(f, "  {},", variant.with_ctx(ctx))?;
                 }
-                write!(f, "}}")
+                write!(f, "}}")?;
             }
-            TypeDeclKind::Alias(ty) => write!(f, " = {}", ty.with_ctx(ctx)),
-            TypeDeclKind::Opaque => write!(f, ""),
-            TypeDeclKind::Error(msg) => write!(f, " = ERROR({msg})"),
+            TypeDeclKind::Alias(ty) => write!(f, " = {}", ty.with_ctx(ctx))?,
+            TypeDeclKind::Opaque => write!(f, "")?,
+            TypeDeclKind::Error(msg) => write!(f, " = ERROR({msg})")?,
+        }
+
+        if !self.specs.invariants.is_empty() {
+            write!(f, "\n{}", self.specs.with_ctx(ctx))
+        } else {
+            Ok(())
         }
     }
 }
@@ -2227,6 +2233,19 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeId {
 impl<C: AstFormatter> FmtWithCtx<C> for TypeParam {
     fn fmt_with_ctx(&self, _ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.name)
+    }
+}
+
+impl<C: AstFormatter> FmtWithCtx<C> for TypeSpecs {
+    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "invariant({})",
+            self.invariants
+                .iter()
+                .map(|invariant| invariant.with_ctx(ctx))
+                .format(", "),
+        )
     }
 }
 

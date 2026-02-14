@@ -1,4 +1,3 @@
-pub mod collect_specs;
 pub mod ctx;
 pub mod typecheck_and_unify;
 pub mod utils;
@@ -17,6 +16,12 @@ pub mod add_missing_info {
     pub mod recover_body_comments;
     pub mod reorder_decls;
     pub mod sccs;
+}
+
+/// Passes that collect and move trust2-contract specifications.
+pub mod collect_specs {
+    pub mod non_body;
+    pub mod unstructured_body;
 }
 
 /// Passes that effect some kind of normalization on the crate.
@@ -123,9 +128,6 @@ pub static ULLBC_PASSES: &[Pass] = &[
     UnstructuredBody(&simplify_output::inline_anon_consts::Transform),
     // Remove drop statements that are noops.
     UnstructuredBody(&simplify_output::filter_trivial_drops::Transform),
-    // # Micro-pass: Collect and move trust2-contract specifications.
-    // `merge_goto_chains` is useful to cleanup the output of this pass.
-    UnstructuredBody(&collect_specs::Transform),
     // # Micro-pass: merge single-origin gotos into their parent. This drastically reduces the
     // graph size of the CFG.
     // This must be done early as some resugaring passes depend on it.
@@ -164,6 +166,10 @@ pub static ULLBC_PASSES: &[Pass] = &[
     UnstructuredBody(&control_flow::duplicate_return::Transform),
     // Remove the locals which are never used.
     NonBody(&simplify_output::remove_unused_locals::Transform),
+    // # Micro-pass: Collect and move trust2-contract specifications, unstructured body part.
+    // This pass happens before `merge_goto_chains`,
+    // because `merge_goto_chains` is useful to clean up the output of this pass.
+    UnstructuredBody(&collect_specs::unstructured_body::Transform),
     // Another round.
     UnstructuredBody(&control_flow::merge_goto_chains::Transform),
     // # Micro-pass: filter the "dangling" blocks. Those might have been introduced by,
@@ -203,6 +209,8 @@ pub static SHARED_FINALIZING_PASSES: &[Pass] = &[
     // Partially monomorphize items so that no item is ever instanciated with a mutable reference
     // or a type containing one.
     NonBody(&normalize::partial_monomorphization::Transform),
+    // # Micro-pass: Collect and move trust2-contract specifications, non-body part.
+    NonBody(&collect_specs::non_body::Transform),
     // # Reorder the graph of dependencies and compute the strictly connex components to:
     // - compute the order in which to extract the definitions
     // - find the recursive definitions

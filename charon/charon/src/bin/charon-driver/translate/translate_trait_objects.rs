@@ -492,6 +492,7 @@ impl ItemTransCtx<'_, '_> {
             // A vtable struct is always sized
             ptr_metadata: PtrMetadata::None,
             repr: None,
+            specs: TypeSpecs::new(),
         })
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     ast::{BuiltinFunId, Call, FnOperand, FnPtrKind, FunId, SpecCall},
     transform::{TransformCtx, ctx::UllbcPass},
-    ullbc_ast::{BlockData, SpecBlock, Terminator, TerminatorKind},
+    ullbc_ast::{BlockData, FunSpecBlock, Terminator, TerminatorKind},
 };
 
 use std::mem;
@@ -48,7 +48,7 @@ impl UllbcPass for Transform {
                 let args = mem::take(args);
                 let new_block_data = BlockData::new_goto(span, target);
                 let old_block_data = mem::replace(block_data, new_block_data);
-                let spec_block = SpecBlock {
+                let spec_block = FunSpecBlock {
                     statements: old_block_data.statements,
                     call: SpecCall { span, args },
                 };

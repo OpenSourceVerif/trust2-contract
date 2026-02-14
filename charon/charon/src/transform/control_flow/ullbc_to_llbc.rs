@@ -1213,8 +1213,8 @@ impl<'a> ReconstructCtx<'a> {
 }
 
 /// `ctx` is passed only to reuse `ctx.translate_statement`.
-fn translate_spec_block(spec_block: &src::SpecBlock, ctx: &ReconstructCtx) -> tgt::SpecBlock {
-    tgt::SpecBlock {
+fn translate_spec_block(spec_block: &src::FunSpecBlock, ctx: &ReconstructCtx) -> tgt::FunSpecBlock {
+    tgt::FunSpecBlock {
         statements: spec_block
             .statements
             .iter()
@@ -1225,8 +1225,8 @@ fn translate_spec_block(spec_block: &src::SpecBlock, ctx: &ReconstructCtx) -> tg
 }
 
 /// `ctx` is passed only to reuse `ctx.translate_statement`.
-fn translate_specs(specs: &src::Specs, ctx: &ReconstructCtx) -> tgt::Specs {
-    tgt::Specs {
+fn translate_specs(specs: &src::FunSpecs, ctx: &ReconstructCtx) -> tgt::FunSpecs {
+    tgt::FunSpecs {
         preconditions: specs
             .preconditions
             .iter()

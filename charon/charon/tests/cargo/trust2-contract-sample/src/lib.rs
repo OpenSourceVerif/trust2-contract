@@ -1,4 +1,4 @@
-use trust2_contract::{precondition, postcondition};
+use trust2_contract::{invariant, postcondition, precondition};
 
 #[precondition(true)]
 #[postcondition(|c| c >= a)]
@@ -10,4 +10,10 @@ pub fn max(a: u64, b: u64) -> u64 {
 #[postcondition(|c| c <= a && c <= b)]
 pub fn min(a: u64, b: u64) -> u64 {
     if a < b { a } else { b }
+}
+
+#[invariant(self.start <= self.end)]
+pub struct RefRange<'a, T: PartialOrd> {
+    start: &'a T,
+    end: &'a T,
 }

@@ -14,7 +14,7 @@ pub static START_BLOCK_ID: BlockId = BlockId::ZERO;
 
 #[charon::rename("Blocks")]
 pub type BodyContents = IndexVec<BlockId, BlockData>;
-pub type ExprBody = GExprBody<BodyContents, Specs>;
+pub type ExprBody = GExprBody<BodyContents, FunSpecs>;
 
 /// A raw statement: a statement without meta data.
 #[derive(
@@ -139,13 +139,13 @@ pub struct BlockData {
 }
 
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct SpecBlock {
+pub struct FunSpecBlock {
     pub statements: Vec<Statement>,
     pub call: SpecCall,
 }
 
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct Specs {
-    pub preconditions: Vec<SpecBlock>,
-    pub postconditions: Vec<SpecBlock>,
+pub struct FunSpecs {
+    pub preconditions: Vec<FunSpecBlock>,
+    pub postconditions: Vec<FunSpecBlock>,
 }

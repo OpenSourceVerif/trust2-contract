@@ -1485,6 +1485,20 @@ impl<T: AstVisitable> TyVisitable for T {}
 
 impl Eq for TraitParam {}
 
+impl TypeSpecs {
+    pub fn new() -> Self {
+        Self {
+            invariants: Vec::new(),
+        }
+    }
+}
+
+impl Default for TypeSpecs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 mk_index_impls!(GenericArgs.regions[RegionId]: Region);
 mk_index_impls!(GenericArgs.types[TypeVarId]: Ty);
 mk_index_impls!(GenericArgs.const_generics[ConstGenericVarId]: ConstantExpr);

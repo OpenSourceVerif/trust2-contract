@@ -145,15 +145,15 @@ pub enum Switch {
 }
 
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct SpecBlock {
+pub struct FunSpecBlock {
     pub statements: Vec<Statement>,
     pub call: SpecCall,
 }
 
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct Specs {
-    pub preconditions: Vec<SpecBlock>,
-    pub postconditions: Vec<SpecBlock>,
+pub struct FunSpecs {
+    pub preconditions: Vec<FunSpecBlock>,
+    pub postconditions: Vec<FunSpecBlock>,
 }
 
-pub type ExprBody = GExprBody<Block, Specs>;
+pub type ExprBody = GExprBody<Block, FunSpecs>;
