@@ -17,7 +17,7 @@ quote = "1.0.40"
 [dependencies.syn]
 default-features = false
 features = ["full", "parsing", "printing", "proc-macro"]
-version = "2.0.106"
+version = "2.0.116"
 
 [dev-dependencies]
-syn = { version = "2.0.106", default-features = false, features = ["extra-traits"] }
+syn = { version = "2.0.116", default-features = false, features = ["extra-traits"] }
