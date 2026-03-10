@@ -72,7 +72,7 @@ pub struct ExistentialProjection {
 /// Reflects [`ty::BoundTyKind`]
 
 #[derive(AdtInto, Clone, Debug, Hash, PartialEq, Eq)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundTyKind, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundTyKind<'tcx>, state: S as s)]
 pub enum BoundTyKind {
     Anon,
     #[custom_arm(&FROM_TYPE::Param(def_id) => TO_TYPE::Param(def_id.sinto(s), s.base().tcx.item_name(def_id).sinto(s)),)]
@@ -82,7 +82,7 @@ pub enum BoundTyKind {
 /// Reflects [`ty::BoundTy`]
 
 #[derive(AdtInto, Clone, Debug, Hash, PartialEq, Eq)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundTy, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundTy<'tcx>, state: S as s)]
 pub struct BoundTy {
     pub var: BoundVar,
     pub kind: BoundTyKind,
@@ -93,10 +93,10 @@ sinto_as_usize!(rustc_middle::ty, BoundVar);
 /// Reflects [`ty::BoundRegionKind`]
 
 #[derive(AdtInto, Clone, Debug, Hash, PartialEq, Eq)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundRegionKind, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundRegionKind<'tcx>, state: S as s)]
 pub enum BoundRegionKind {
     Anon,
-    NamedAnon(Symbol),
+    NamedForPrinting(Symbol),
     #[custom_arm(&FROM_TYPE::Named(def_id) => TO_TYPE::Named(def_id.sinto(s), s.base().tcx.item_name(def_id).sinto(s)),)]
     Named(DefId, Symbol),
     ClosureEnv,
@@ -105,7 +105,7 @@ pub enum BoundRegionKind {
 /// Reflects [`ty::BoundRegion`]
 
 #[derive(AdtInto, Clone, Debug, Hash, PartialEq, Eq)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundRegion, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundRegion<'tcx>, state: S as s)]
 pub struct BoundRegion {
     pub var: BoundVar,
     pub kind: BoundRegionKind,
@@ -126,7 +126,7 @@ pub struct Placeholder<T> {
 }
 
 impl<'tcx, S: UnderOwnerState<'tcx>, T: SInto<S, U>, U> SInto<S, Placeholder<U>>
-    for ty::Placeholder<T>
+    for ty::Placeholder<ty::TyCtxt<'tcx>, T>
 {
     fn sinto(&self, s: &S) -> Placeholder<U> {
         Placeholder {
@@ -1291,7 +1291,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Predicate> for ty::Predicate<'tcx>
 
 /// Reflects [`ty::BoundVariableKind`]
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundVariableKind, state: S as tcx)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::BoundVariableKind<'tcx>, state: S as tcx)]
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum BoundVariableKind {
     Ty(BoundTyKind),
@@ -1438,22 +1438,81 @@ impl ClosureArgs {
     where
         S: UnderOwnerState<'tcx>,
     {
-        let from = from.as_closure();
+        use rustc_middle::ty;
+        use rustc_type_ir::TypeFoldable;
+        use rustc_type_ir::TypeSuperFoldable;
+
+        struct RegionUnEraserVisitor<'tcx> {
+            tcx: ty::TyCtxt<'tcx>,
+            depth: u32,
+            bound_vars: Vec<ty::BoundVariableKind<'tcx>>,
+        }
+
+        impl<'tcx> ty::TypeFolder<ty::TyCtxt<'tcx>> for RegionUnEraserVisitor<'tcx> {
+            fn cx(&self) -> ty::TyCtxt<'tcx> {
+                self.tcx
+            }
+
+            fn fold_ty(&mut self, ty: ty::Ty<'tcx>) -> ty::Ty<'tcx> {
+                ty.super_fold_with(self)
+            }
+
+            fn fold_binder<T>(&mut self, t: ty::Binder<'tcx, T>) -> ty::Binder<'tcx, T>
+            where
+                T: ty::TypeFoldable<ty::TyCtxt<'tcx>>,
+            {
+                self.depth += 1;
+                let t = t.super_fold_with(self);
+                self.depth -= 1;
+                t
+            }
+
+            fn fold_region(&mut self, r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+                // Replace erased regions with fresh bound regions.
+                if r.is_erased() {
+                    let bound_region = ty::BoundRegion {
+                        var: ty::BoundVar::from_usize(self.bound_vars.len()),
+                        kind: ty::BoundRegionKind::Anon,
+                    };
+                    self.bound_vars
+                        .push(ty::BoundVariableKind::Region(bound_region.kind));
+                    ty::Region::new_bound(
+                        self.tcx,
+                        ty::DebruijnIndex::from(self.depth),
+                        bound_region,
+                    )
+                } else {
+                    r
+                }
+            }
+        }
+
         let tcx = s.base().tcx;
-        let sig = from.sig();
+        let closure = from.as_closure();
         let item = {
             // The closure has no generics of its own: it inherits its parent generics and could
             // have late-bound args but these are part of the signature.
-            let parent_args = tcx.mk_args(from.parent_args());
+            let parent_args = tcx.mk_args(closure.parent_args());
             translate_item_ref(s, def_id, parent_args)
+        };
+        let sig = closure.sig();
+        let sig = tcx.signature_unclosure(sig, rustc_hir::Safety::Safe);
+        // Add bound variables for each erased region in the signature.
+        let sig = {
+            let mut visitor = RegionUnEraserVisitor {
+                tcx,
+                depth: 0,
+                bound_vars: sig.bound_vars().iter().collect(),
+            };
+            let unbound_sig = sig.skip_binder().fold_with(&mut visitor);
+            let bound_vars = tcx.mk_bound_variable_kinds(&visitor.bound_vars);
+            ty::Binder::bind_with_vars(unbound_sig, bound_vars)
         };
         ClosureArgs {
             item,
-            kind: from.kind().sinto(s),
-            fn_sig: tcx
-                .signature_unclosure(sig, rustc_hir::Safety::Safe)
-                .sinto(s),
-            upvar_tys: from.upvar_tys().sinto(s),
+            kind: closure.kind().sinto(s),
+            fn_sig: sig.sinto(s),
+            upvar_tys: closure.upvar_tys().sinto(s),
         }
     }
 }

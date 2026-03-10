@@ -17,11 +17,11 @@ pub trait Sized<Self>
 pub trait Destruct<Self>
 {
     fn drop_in_place = drop_in_place<Self>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
 // Full name: core::marker::Destruct::drop_in_place
-unsafe fn drop_in_place<Self>(@1: *mut Self)
+unsafe fn drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
 fn UNIT_METADATA()
@@ -57,19 +57,19 @@ trait HasMethod<Self>
     vtable: test_crate::HasMethod::{vtable}
 }
 
-fn test_crate::HasMethod::method<'_0, Self>(@1: &'_0 Self)
+fn test_crate::HasMethod::method<'_0, Self>(_1: &'_0 Self)
 where
     [@TraitClause0]: HasMethod<Self>,
 = <method_without_default_body>
 
 // Full name: test_crate::{impl HasMethod for T}::method
-fn {impl HasMethod for T}::method<'_0, T>(@1: &'_0 T)
+fn {impl HasMethod for T}::method<'_0, T>(_1: &'_0 T)
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: OtherTrait<T>,
 {
     let _0: (); // return
-    let self_1: &'0 T; // arg #1
+    let self_1: &'1 T; // arg #1
 
     _0 = ()
     _0 = ()
@@ -88,7 +88,7 @@ where
 }
 
 // Full name: test_crate::call_method
-fn call_method<T>(@1: T)
+fn call_method<T>(_1: T)
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: ImpliesOtherTrait<T>,
@@ -96,13 +96,13 @@ where
     let _0: (); // return
     let x_1: T; // arg #1
     let _2: (); // anonymous local
-    let _3: &'0 T; // anonymous local
+    let _3: &'1 T; // anonymous local
 
     _0 = ()
     storage_live(_2)
     storage_live(_3)
     _3 = &x_1
-    _2 = {impl HasMethod for T}::method<'2, T>[@TraitClause0, @TraitClause1::parent_clause1](move _3)
+    _2 = {impl HasMethod for T}::method<'3, T>[@TraitClause0, @TraitClause1::parent_clause1](move _3)
     storage_dead(_3)
     storage_dead(_2)
     _0 = ()

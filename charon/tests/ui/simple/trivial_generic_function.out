@@ -17,15 +17,15 @@ pub trait Sized<Self>
 pub trait Destruct<Self>
 {
     fn drop_in_place = drop_in_place<Self>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
 // Full name: core::marker::Destruct::drop_in_place
-unsafe fn drop_in_place<Self>(@1: *mut Self)
+unsafe fn drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
 // Full name: test_crate::ignore
-fn ignore<T>(@1: T)
+fn ignore<T>(_1: T)
 where
     [@TraitClause0]: Sized<T>,
 {

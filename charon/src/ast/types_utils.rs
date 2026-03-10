@@ -689,6 +689,10 @@ impl Ty {
         Self::mk_tuple(vec![])
     }
 
+    pub fn mk_bool() -> Ty {
+        TyKind::Literal(LiteralTy::Bool).into()
+    }
+
     pub fn mk_usize() -> Ty {
         TyKind::Literal(LiteralTy::UInt(UIntTy::Usize)).into()
     }
@@ -1156,7 +1160,9 @@ pub trait TyVisitable: Sized + AstVisitable {
                     {
                         *r = new_r.move_under_binders(self.depth);
                     }
-                    Region::Erased if let Some(new_r) = self.v.visit_erased_region() => {
+                    Region::Erased | Region::Body(..)
+                        if let Some(new_r) = self.v.visit_erased_region() =>
+                    {
                         *r = new_r.move_under_binders(self.depth);
                     }
                     _ => (),

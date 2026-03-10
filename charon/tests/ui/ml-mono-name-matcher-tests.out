@@ -14,11 +14,11 @@ pub enum Option::<i32> {
 }
 
 // Full name: core::option::{Option::<i32>}::is_some::<i32>
-pub fn is_some::<i32><'_0>(@1: &'_0 Option::<i32>) -> bool
+pub fn is_some::<i32><'_0>(_1: &'_0 Option::<i32>) -> bool
 = <opaque>
 
 // Full name: core::slice::index::{impl Index::<[bool], RangeFrom::<usize>>}::index::<bool, RangeFrom::<usize>>
-pub fn {impl Index::<[bool], RangeFrom::<usize>>}::index::<bool, RangeFrom::<usize>><'_0>(@1: &'_0 [bool], @2: RangeFrom::<usize>) -> &'_0 [bool]
+pub fn {impl Index::<[bool], RangeFrom::<usize>>}::index::<bool, RangeFrom::<usize>><'_0>(_1: &'_0 [bool], _2: RangeFrom::<usize>) -> &'_0 [bool]
 = <opaque>
 
 fn UNIT_METADATA()
@@ -46,19 +46,19 @@ fn foo()
 {
     let _0: (); // return
     let _1: bool; // anonymous local
-    let _2: &'0 Option::<i32>; // anonymous local
-    let slice_3: &'1 [bool]; // local
-    let _4: &'2 [bool; 1 : usize]; // anonymous local
-    let _5: &'2 [bool; 1 : usize]; // anonymous local
-    let _6: &'1 [bool]; // anonymous local
-    let _7: &'1 [bool]; // anonymous local
-    let _8: &'1 [bool]; // anonymous local
+    let _2: &'1 Option::<i32>; // anonymous local
+    let slice_3: &'3 [bool]; // local
+    let _4: &'5 [bool; 1 : usize]; // anonymous local
+    let _5: &'6 [bool; 1 : usize]; // anonymous local
+    let _6: &'7 [bool]; // anonymous local
+    let _7: &'8 [bool]; // anonymous local
+    let _8: &'9 [bool]; // anonymous local
     let _9: RangeFrom::<usize>; // anonymous local
-    let _10: &'2 [bool; 1 : usize]; // anonymous local
-    let _11: &'0 Option::<i32>; // anonymous local
-    let _12: &'_ Option::<i32>; // anonymous local
+    let _10: &'10 [bool; 1 : usize]; // anonymous local
+    let _11: &'11 Option::<i32>; // anonymous local
+    let _12: &'19 Option::<i32>; // anonymous local
     let _13: Option::<i32>; // anonymous local
-    let _14: &'_ [bool; 1 : usize]; // anonymous local
+    let _14: &'20 [bool; 1 : usize]; // anonymous local
     let _15: [bool; 1 : usize]; // anonymous local
 
     storage_live(_12)
@@ -72,7 +72,7 @@ fn foo()
     storage_live(_2)
     _11 = move _12
     _2 = &(*_11)
-    _1 = is_some::<i32><'4>(move _2)
+    _1 = is_some::<i32><'14>(move _2)
     storage_live(_14)
     storage_live(_15)
     _15 = [const false]
@@ -94,7 +94,7 @@ fn foo()
     _8 = &(*slice_3) with_metadata(copy slice_3.metadata)
     storage_live(_9)
     _9 = RangeFrom::<usize> { start: const 1 : usize }
-    _7 = {impl Index::<[bool], RangeFrom::<usize>>}::index::<bool, RangeFrom::<usize>><'6>(move _8, move _9)
+    _7 = {impl Index::<[bool], RangeFrom::<usize>>}::index::<bool, RangeFrom::<usize>><'18>(move _8, move _9)
     storage_dead(_9)
     storage_dead(_8)
     _6 = &(*_7) with_metadata(copy _7.metadata)
@@ -122,7 +122,7 @@ fn test_crate::funs_with_disambiguator::f() -> u32
 }
 
 // Full name: test_crate::funs_with_disambiguator
-fn funs_with_disambiguator(@1: bool) -> u32
+fn funs_with_disambiguator(_1: bool) -> u32
 {
     let _0: u32; // return
     let b_1: bool; // arg #1
@@ -149,7 +149,7 @@ struct MonoContainer::<&'_ Str> {
   item: &'_ Str,
 }
 
-fn test_crate::{MonoContainer::<i32>}::create::<i32>(@1: i32) -> MonoContainer::<i32>
+fn test_crate::{MonoContainer::<i32>}::create::<i32>(_1: i32) -> MonoContainer::<i32>
 {
     let _0: MonoContainer::<i32>; // return
     let item_1: i32; // arg #1
@@ -162,11 +162,11 @@ fn test_crate::{MonoContainer::<i32>}::create::<i32>(@1: i32) -> MonoContainer::
     return
 }
 
-fn test_crate::{MonoContainer::<&'_ Str>}::create::<&'_ Str>(@1: &'_ Str) -> MonoContainer::<&'_ Str>
+fn test_crate::{MonoContainer::<&'_ Str>}::create::<&'_ Str>(_1: &'_ Str) -> MonoContainer::<&'_ Str>
 {
     let _0: MonoContainer::<&'_ Str>; // return
-    let item_1: &'_ Str; // arg #1
-    let _2: &'_ Str; // anonymous local
+    let item_1: &'0 Str; // arg #1
+    let _2: &'1 Str; // anonymous local
 
     storage_live(_2)
     _2 = move item_1

@@ -34,13 +34,13 @@ pub trait Display<Self>
     vtable: core::fmt::Display::{vtable}
 }
 
-pub fn core::fmt::Display::fmt<'_0, '_1, '_2, Self>(@1: &'_0 Self, @2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
+pub fn core::fmt::Display::fmt<'_0, '_1, '_2, Self>(_1: &'_0 Self, _2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
 where
     [@TraitClause0]: Display<Self>,
 = <opaque>
 
 // Full name: core::fmt::{impl Display for Str}::fmt
-pub fn {impl Display for Str}::fmt<'_0, '_1, '_2>(@1: &'_0 Str, @2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
+pub fn {impl Display for Str}::fmt<'_0, '_1, '_2>(_1: &'_0 Str, _2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
 = <opaque>
 
 // Full name: core::fmt::{impl Display for Str}
@@ -54,10 +54,10 @@ impl Display for Str {
 pub trait Destruct<Self>
 {
     fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
-unsafe fn core::marker::Destruct::drop_in_place<Self>(@1: *mut Self)
+unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
 // Full name: alloc::string::String
@@ -65,7 +65,7 @@ unsafe fn core::marker::Destruct::drop_in_place<Self>(@1: *mut Self)
 pub opaque type String
 
 // Full name: alloc::string::String::{impl Destruct for String}::drop_in_place
-unsafe fn {impl Destruct for String}::drop_in_place(@1: *mut String)
+unsafe fn {impl Destruct for String}::drop_in_place(_1: *mut String)
 = <opaque>
 
 // Full name: alloc::string::String::{impl Destruct for String}
@@ -75,7 +75,7 @@ impl Destruct for String {
 }
 
 // Full name: alloc::string::{impl ToString for T}::to_string
-pub fn {impl ToString for T}::to_string<'_0, T>(@1: &'_0 T) -> String
+pub fn {impl ToString for T}::to_string<'_0, T>(_1: &'_0 T) -> String
 where
     [@TraitClause0]: MetaSized<T>,
     [@TraitClause1]: Display<T>,
@@ -94,17 +94,17 @@ const UNIT_METADATA: () = @Fun0()
 // Full name: test_crate::FOO
 fn FOO() -> &'static Str
 {
-    let _0: &'0 Str; // return
+    let _0: &'1 Str; // return
     let _1: [u8; 5 : usize]; // anonymous local
     let _2: &'_ [u8; 5 : usize]; // anonymous local
-    let _3: &'0 Str; // anonymous local
+    let _3: &'2 Str; // anonymous local
 
     storage_live(_1)
     _1 = const RawMemory(0x68, 0x65, 0x6c, 0x6c, 0x6f)
     storage_live(_2)
     _2 = &_1
     storage_live(_3)
-    _3 = unsize_cast<&'_ [u8; 5 : usize], &'0 Str, 5 : usize>(move _2)
+    _3 = unsize_cast<&'_ [u8; 5 : usize], &'2 Str, 5 : usize>(move _2)
     _0 = move _3
     return
 }
@@ -115,11 +115,11 @@ static FOO: &'static Str = FOO()
 // Full name: test_crate::BAR
 fn BAR() -> &'static [u8]
 {
-    let _0: &'0 [u8]; // return
-    let _1: &'1 [u8; 5 : usize]; // anonymous local
-    let _2: &'1 [u8; 5 : usize]; // anonymous local
+    let _0: &'1 [u8]; // return
+    let _1: &'3 [u8; 5 : usize]; // anonymous local
+    let _2: &'4 [u8; 5 : usize]; // anonymous local
     let _3: [u8; 5 : usize]; // anonymous local
-    let _4: &'1 [u8; 5 : usize]; // anonymous local
+    let _4: &'5 [u8; 5 : usize]; // anonymous local
 
     storage_live(_1)
     storage_live(_2)
@@ -143,11 +143,11 @@ fn main()
 {
     let _0: (); // return
     let _s_1: String; // local
-    let _2: &'0 Str; // anonymous local
-    let _3: &'0 Str; // anonymous local
+    let _2: &'1 Str; // anonymous local
+    let _3: &'2 Str; // anonymous local
     let _4: [u8; 5 : usize]; // anonymous local
     let _5: &'_ [u8; 5 : usize]; // anonymous local
-    let _6: &'0 Str; // anonymous local
+    let _6: &'3 Str; // anonymous local
 
     _0 = ()
     storage_live(_s_1)
@@ -158,10 +158,10 @@ fn main()
     storage_live(_5)
     _5 = &_4
     storage_live(_6)
-    _6 = unsize_cast<&'_ [u8; 5 : usize], &'0 Str, 5 : usize>(move _5)
+    _6 = unsize_cast<&'_ [u8; 5 : usize], &'3 Str, 5 : usize>(move _5)
     _3 = move _6
     _2 = &(*_3) with_metadata(copy _3.metadata)
-    _s_1 = {impl ToString for T}::to_string<'2, Str>[{built_in impl MetaSized for Str}, {impl Display for Str}](move _2)
+    _s_1 = {impl ToString for T}::to_string<'5, Str>[{built_in impl MetaSized for Str}, {impl Display for Str}](move _2)
     storage_dead(_2)
     storage_dead(_3)
     _0 = ()

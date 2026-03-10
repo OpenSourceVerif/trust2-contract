@@ -42,7 +42,11 @@ and statement_kind =
           deallocated, this is a no-op. A local may not have a [StorageDead] in
           the function's body, in which case it is implicitly deallocated at the
           end of the function. *)
-  | Deinit of place
+  | PlaceMention of place
+      (** A place is mentioned, but not accessed. The place itself must still be
+          valid though, so this statement is not a no-op: it can trigger UB if
+          the place's projections are not valid (e.g. because they go out of
+          bounds). *)
   | Drop of place * trait_ref * drop_kind
       (** Drop the value at the given place.
 
@@ -50,7 +54,10 @@ and statement_kind =
           or a conditional call that should only happen if the place has not
           been moved out of. See the docs of [DropKind] for more details; to get
           precise drops use [--precise-drops]. *)
-  | Assert of assertion
+  | Assert of assertion * abort_kind
+      (** Fields:
+          - [assert]
+          - [on_failure] *)
   | Call of call
   | Abort of abort_kind
       (** Panic also handles "unreachable". We keep the name of the panicking

@@ -47,14 +47,14 @@ pub trait core::marker::Sized::<Option<Option<&_ mut _>>><'_0, T0>
 pub trait Destruct<Self>
 {
     fn drop_in_place = drop_in_place<Self>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
 #[lang_item("destruct")]
 pub trait core::marker::Destruct::<&_ mut _><'_0, T0>
 {
     fn drop_in_place = core::marker::Destruct::drop_in_place::<&_ mut _><'_0, T0>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
 // Full name: core::option::Option
@@ -68,27 +68,27 @@ pub enum Option<T> {
 pub trait core::marker::Destruct::<Option<&_ mut _>><'_0, T0>
 {
     fn drop_in_place = core::marker::Destruct::drop_in_place::<Option<&_ mut _>><'_0, T0>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
 #[lang_item("destruct")]
 pub trait core::marker::Destruct::<Option<Option<&_ mut _>>><'_0, T0>
 {
     fn drop_in_place = core::marker::Destruct::drop_in_place::<Option<Option<&_ mut _>>><'_0, T0>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
 // Full name: core::marker::Destruct::drop_in_place
-unsafe fn drop_in_place<Self>(@1: *mut Self)
+unsafe fn drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
-unsafe fn core::marker::Destruct::drop_in_place::<&_ mut _><'_0, T0>(@1: *mut &'_0 mut T0)
+unsafe fn core::marker::Destruct::drop_in_place::<&_ mut _><'_0, T0>(_1: *mut &'_0 mut T0)
 = <opaque>
 
-unsafe fn core::marker::Destruct::drop_in_place::<Option<&_ mut _>><'_0, T0>(@1: *mut Option<&'_0 mut T0>)
+unsafe fn core::marker::Destruct::drop_in_place::<Option<&_ mut _>><'_0, T0>(_1: *mut Option<&'_0 mut T0>)
 = <opaque>
 
-unsafe fn core::marker::Destruct::drop_in_place::<Option<Option<&_ mut _>>><'_0, T0>(@1: *mut Option<Option<&'_0 mut T0>>)
+unsafe fn core::marker::Destruct::drop_in_place::<Option<Option<&_ mut _>>><'_0, T0>(_1: *mut Option<Option<&'_0 mut T0>>)
 = <opaque>
 
 fn UNIT_METADATA()
@@ -102,7 +102,7 @@ fn UNIT_METADATA()
 const UNIT_METADATA: () = @Fun0()
 
 // Full name: test_crate::identity
-fn identity<T>(@1: T) -> T
+fn identity<T>(_1: T) -> T
 where
     [@TraitClause0]: Sized<T>,
 {
@@ -114,7 +114,7 @@ where
     return
 }
 
-fn test_crate::identity::<&_ mut _><'_0, T0>(@1: &'_0 mut T0) -> &'_0 mut T0
+fn test_crate::identity::<&_ mut _><'_0, T0>(_1: &'_0 mut T0) -> &'_0 mut T0
 where
     [@TraitClause0]: core::marker::Sized::<&_ mut _><'_0, T0>,
 {
@@ -126,7 +126,7 @@ where
     return
 }
 
-fn test_crate::identity::<Option<&_ mut _>><'_0, T0>(@1: Option<&'_0 mut T0>) -> Option<&'_0 mut T0>
+fn test_crate::identity::<Option<&_ mut _>><'_0, T0>(_1: Option<&'_0 mut T0>) -> Option<&'_0 mut T0>
 where
     [@TraitClause0]: core::marker::Sized::<Option<&_ mut _>><'_0, T0>,
 {
@@ -138,7 +138,7 @@ where
     return
 }
 
-fn test_crate::identity::<Option<Option<&_ mut _>>><'_0, T0>(@1: Option<Option<&'_0 mut T0>>) -> Option<Option<&'_0 mut T0>>
+fn test_crate::identity::<Option<Option<&_ mut _>>><'_0, T0>(_1: Option<Option<&'_0 mut T0>>) -> Option<Option<&'_0 mut T0>>
 where
     [@TraitClause0]: core::marker::Sized::<Option<Option<&_ mut _>>><'_0, T0>,
 {
@@ -151,28 +151,28 @@ where
 }
 
 // Full name: test_crate::use_id_mut
-fn use_id_mut<X, A>(@1: A)
+fn use_id_mut<X, A>(_1: A)
 where
     [@TraitClause0]: Sized<X>,
     [@TraitClause1]: Sized<A>,
 {
     let _0: (); // return
     let x_1: A; // arg #1
-    let _2: &'0 u32; // anonymous local
-    let _3: &'0 u32; // anonymous local
-    let _4: &'1 mut u32; // anonymous local
-    let _5: &'1 mut u32; // anonymous local
+    let _2: &'1 u32; // anonymous local
+    let _3: &'2 u32; // anonymous local
+    let _4: &'4 mut u32; // anonymous local
+    let _5: &'5 mut u32; // anonymous local
     let _6: u32; // anonymous local
-    let _7: Option<&'1 mut u32>; // anonymous local
-    let _8: Option<&'1 mut u32>; // anonymous local
-    let _9: &'1 mut u32; // anonymous local
+    let _7: Option<&'11 mut u32>; // anonymous local
+    let _8: Option<&'14 mut u32>; // anonymous local
+    let _9: &'17 mut u32; // anonymous local
     let _10: u32; // anonymous local
-    let _11: Option<Option<&'4 mut A>>; // anonymous local
-    let _12: Option<Option<&'4 mut A>>; // anonymous local
-    let _13: Option<&'4 mut A>; // anonymous local
-    let _14: &'4 mut A; // anonymous local
-    let _15: &'0 u32; // anonymous local
-    let _16: &'_ u32; // anonymous local
+    let _11: Option<Option<&'45 mut A>>; // anonymous local
+    let _12: Option<Option<&'54 mut A>>; // anonymous local
+    let _13: Option<&'63 mut A>; // anonymous local
+    let _14: &'66 mut A; // anonymous local
+    let _15: &'67 u32; // anonymous local
+    let _16: &'212 u32; // anonymous local
     let _17: u32; // anonymous local
 
     storage_live(_16)
@@ -185,7 +185,7 @@ where
     storage_live(_3)
     _15 = move _16
     _3 = &(*_15)
-    _2 = identity<&'0 u32>[{built_in impl Sized for &'0 u32}](move _3)
+    _2 = identity<&'69 u32>[{built_in impl Sized for &'69 u32}](move _3)
     storage_dead(_3)
     storage_dead(_2)
     storage_live(_4)
@@ -193,7 +193,7 @@ where
     storage_live(_6)
     _6 = const 0 : u32
     _5 = &mut _6
-    _4 = test_crate::identity::<&_ mut _><'1, u32>[{built_in impl core::marker::Sized::<&_ mut _><'1> for u32}](move _5)
+    _4 = test_crate::identity::<&_ mut _><'74, u32>[{built_in impl core::marker::Sized::<&_ mut _><'74> for u32}](move _5)
     storage_dead(_5)
     storage_dead(_6)
     storage_dead(_4)
@@ -205,7 +205,7 @@ where
     _9 = &mut _10
     _8 = Option::Some { 0: move _9 }
     storage_dead(_9)
-    _7 = test_crate::identity::<Option<&_ mut _>><'1, u32>[{built_in impl core::marker::Sized::<Option<&_ mut _>><'1> for u32}](move _8)
+    _7 = test_crate::identity::<Option<&_ mut _>><'84, u32>[{built_in impl core::marker::Sized::<Option<&_ mut _>><'84> for u32}](move _8)
     storage_dead(_8)
     storage_dead(_10)
     storage_dead(_7)
@@ -218,7 +218,7 @@ where
     storage_dead(_14)
     _12 = Option::Some { 0: move _13 }
     storage_dead(_13)
-    _11 = test_crate::identity::<Option<Option<&_ mut _>>><'4, A>[{built_in impl core::marker::Sized::<Option<Option<&_ mut _>>><'4> for A}](move _12)
+    _11 = test_crate::identity::<Option<Option<&_ mut _>>><'131, A>[{built_in impl core::marker::Sized::<Option<Option<&_ mut _>>><'131> for A}](move _12)
     storage_dead(_12)
     storage_dead(_11)
     _0 = ()

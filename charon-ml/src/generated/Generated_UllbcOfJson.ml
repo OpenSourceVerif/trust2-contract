@@ -60,12 +60,16 @@ and statement_kind_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc [ ("StorageDead", storage_dead) ] ->
         let* storage_dead = local_id_of_json ctx storage_dead in
         Ok (StorageDead storage_dead)
-    | `Assoc [ ("Deinit", deinit) ] ->
-        let* deinit = place_of_json ctx deinit in
-        Ok (Deinit deinit)
-    | `Assoc [ ("Assert", assert_) ] ->
+    | `Assoc [ ("PlaceMention", place_mention) ] ->
+        let* place_mention = place_of_json ctx place_mention in
+        Ok (PlaceMention place_mention)
+    | `Assoc
+        [
+          ("Assert", `Assoc [ ("assert", assert_); ("on_failure", on_failure) ]);
+        ] ->
         let* assert_ = assertion_of_json ctx assert_ in
-        Ok (Assert assert_)
+        let* on_failure = abort_kind_of_json ctx on_failure in
+        Ok (Assert (assert_, on_failure))
     | `String "Nop" -> Ok Nop
     | _ -> Error "")
 
@@ -141,6 +145,18 @@ and terminator_kind_of_json (ctx : of_json_ctx) (js : json) :
         let* target = block_id_of_json ctx target in
         let* on_unwind = block_id_of_json ctx on_unwind in
         Ok (Drop (kind, place, tref, target, on_unwind))
+    | `Assoc
+        [
+          ( "Assert",
+            `Assoc
+              [
+                ("assert", assert_); ("target", target); ("on_unwind", on_unwind);
+              ] );
+        ] ->
+        let* assert_ = assertion_of_json ctx assert_ in
+        let* target = block_id_of_json ctx target in
+        let* on_unwind = block_id_of_json ctx on_unwind in
+        Ok (TAssert (assert_, target, on_unwind))
     | `Assoc [ ("Abort", abort) ] ->
         let* abort = abort_kind_of_json ctx abort in
         Ok (Abort abort)

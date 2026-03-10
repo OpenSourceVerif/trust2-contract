@@ -83,6 +83,25 @@ impl<C: AstFormatter> FmtWithCtx<C> for AbortKind {
     }
 }
 
+impl<C: AstFormatter> FmtWithCtx<C> for BuiltinAssertKind {
+    fn fmt_with_ctx(&self, _ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            BuiltinAssertKind::BoundsCheck { .. } => write!(f, "bounds_check"),
+            BuiltinAssertKind::Overflow(..) => write!(f, "overflow"),
+            BuiltinAssertKind::OverflowNeg(..) => write!(f, "overflow_neg"),
+            BuiltinAssertKind::DivisionByZero(..) => write!(f, "division_by_zero"),
+            BuiltinAssertKind::RemainderByZero(..) => write!(f, "remainder_by_zero"),
+            BuiltinAssertKind::MisalignedPointerDereference { .. } => {
+                write!(f, "misaligned_pointer_dereference")
+            }
+            BuiltinAssertKind::NullPointerDereference => write!(f, "null_pointer_dereference"),
+            BuiltinAssertKind::InvalidEnumConstruction(..) => {
+                write!(f, "invalid_enum_construction")
+            }
+        }
+    }
+}
+
 impl<C: AstFormatter> FmtWithCtx<C> for ItemId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match ctx
@@ -127,7 +146,11 @@ impl<C: AstFormatter> FmtWithCtx<C> for Assert {
             "assert({} == {})",
             self.cond.with_ctx(ctx),
             self.expected,
-        )
+        )?;
+        if let Some(check_kind) = &self.check_kind {
+            write!(f, " ({})", check_kind.with_ctx(ctx))?;
+        }
+        Ok(())
     }
 }
 
@@ -281,12 +304,8 @@ impl<C: AstFormatter> FmtWithCtx<C> for UnsizingMetadata {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             UnsizingMetadata::Length(len) => write!(f, "{}", len.with_ctx(ctx)),
-            UnsizingMetadata::VTable(tref, vt) => {
-                write!(f, "{} with ", tref.with_ctx(ctx))?;
-                match vt {
-                    Some(vt) => write!(f, "{}", vt.with_ctx(ctx)),
-                    None => write!(f, "?"),
-                }
+            UnsizingMetadata::VTable(_, vtable) => {
+                write!(f, "{}", vtable.with_ctx(ctx))
             }
             UnsizingMetadata::VTableUpcast(fields) => {
                 write!(f, " at [")?;
@@ -551,7 +570,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDecl {
             // The input variables start at index 1
             // TODO: use the locals to get the variable names
             let id = LocalId::new(i + 1);
-            args.push(format!("{}: {}", id.to_pretty_string(), ty.with_ctx(ctx)));
+            args.push(format!("{}: {}", id.with_ctx(ctx), ty.with_ctx(ctx)));
         }
         let args = args.join(", ");
         write!(f, "({args})")?;
@@ -1252,6 +1271,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for ConstantExprKind {
             ConstantExprKind::TraitConst(trait_ref, name) => {
                 write!(f, "{}::{name}", trait_ref.with_ctx(ctx),)
             }
+            ConstantExprKind::VTableRef(trait_ref) => {
+                write!(f, "&vtable_of({})", trait_ref.with_ctx(ctx),)
+            }
             ConstantExprKind::Ref(cv, meta) => {
                 if let Some(meta) = meta {
                     write!(
@@ -1376,6 +1398,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for RegionDbVar {
 
 impl<C: AstFormatter> FmtWithCtx<C> for RegionParam {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.mutability.is_mutable() {
+            write!(f, "mut ")?;
+        }
         match &self.name {
             Some(name) => write!(f, "{name}"),
             None => {
@@ -1459,7 +1484,10 @@ impl<C: AstFormatter> FmtWithCtx<C> for Rvalue {
                 match kind {
                     AggregateKind::Adt(ty_ref, variant_id, field_id) => {
                         match ty_ref.id {
-                            TypeId::Tuple => write!(f, "({})", ops_s),
+                            TypeId::Tuple => {
+                                let trailing_comma = if ops.len() == 1 { "," } else { "" };
+                                write!(f, "({ops_s}{trailing_comma})")
+                            }
                             TypeId::Builtin(BuiltinTy::Box) => write!(f, "Box({})", ops_s),
                             TypeId::Builtin(BuiltinTy::Str) => {
                                 write!(f, "[{}]", ops_s)
@@ -1560,10 +1588,17 @@ impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
             StatementKind::StorageDead(var_id) => {
                 write!(f, "{tab}storage_dead({})", var_id.with_ctx(ctx))
             }
-            StatementKind::Deinit(place) => {
-                write!(f, "{tab}deinit({})", place.with_ctx(ctx))
+            StatementKind::PlaceMention(place) => {
+                write!(f, "{tab}_ = {}", place.with_ctx(ctx))
             }
-            StatementKind::Assert(assert) => write!(f, "{tab}{}", assert.with_ctx(ctx)),
+            StatementKind::Assert { assert, on_failure } => {
+                write!(
+                    f,
+                    "{tab}{} else {}",
+                    assert.with_ctx(ctx),
+                    on_failure.with_ctx(ctx)
+                )
+            }
             StatementKind::Nop => write!(f, "{tab}nop"),
         }
     }
@@ -1599,8 +1634,8 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
             StatementKind::StorageDead(var_id) => {
                 write!(f, "storage_dead({})", var_id.with_ctx(ctx))
             }
-            StatementKind::Deinit(place) => {
-                write!(f, "deinit({})", place.with_ctx(ctx))
+            StatementKind::PlaceMention(place) => {
+                write!(f, "_ = {}", place.with_ctx(ctx))
             }
             StatementKind::Drop(place, tref, kind) => {
                 let kind = match kind {
@@ -1609,8 +1644,13 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
                 };
                 write!(f, "{kind}[{}] {}", tref.with_ctx(ctx), place.with_ctx(ctx),)
             }
-            StatementKind::Assert(assert) => {
-                write!(f, "{}", assert.with_ctx(ctx),)
+            StatementKind::Assert { assert, on_failure } => {
+                write!(
+                    f,
+                    "{} else {}",
+                    assert.with_ctx(ctx),
+                    on_failure.with_ctx(ctx)
+                )
             }
             StatementKind::Call(call) => {
                 write!(f, "{}", call.with_ctx(ctx))
@@ -1747,6 +1787,17 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
                     "{kind}[{}] {} -> bb{target} (unwind: bb{on_unwind})",
                     tref.with_ctx(ctx),
                     place.with_ctx(ctx),
+                )
+            }
+            TerminatorKind::Assert {
+                assert,
+                target,
+                on_unwind,
+            } => {
+                write!(
+                    f,
+                    "assert {} -> bb{target} (unwind: bb{on_unwind})",
+                    assert.with_ctx(ctx),
                 )
             }
             TerminatorKind::Abort(kind) => write!(f, "{}", kind.with_ctx(ctx)),
@@ -2006,7 +2057,12 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
             TyKind::Adt(tref) => match tref.id {
                 TypeId::Tuple => {
                     let generics = tref.generics.fmt_explicits(ctx).format(", ");
-                    write!(f, "({generics})")
+                    let trailing_comma = if tref.generics.types.slot_count() == 1 {
+                        ","
+                    } else {
+                        ""
+                    };
+                    write!(f, "({generics}{trailing_comma})")
                 }
                 _ => write!(f, "{}", tref.with_ctx(ctx)),
             },
