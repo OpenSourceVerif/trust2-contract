@@ -1,6 +1,56 @@
 # trust2-contract
 Contract-based design for Rust
 
+
+## Quick Start
+
+1. After cloning this repository, first create a new package.
+
+```bash
+cargo new package
+cd package
+cargo add --path <repo-root>/trust2-contract
+```
+Copy the test example into src/main.rs or src/lib.rs.
+```Rust
+//for example
+use trust2_contract::{invariant, postcondition, precondition};
+
+#[expect(dead_code)]
+#[precondition(x < 16)]
+#[postcondition(|x2| x2 >= x)]
+fn square(x: u8) -> u8 {
+    x * x
+}
+
+#[expect(dead_code)]
+#[invariant(self.start <= self.end)]
+struct RefRange<'a, T: PartialOrd> {
+    start: &'a T,
+    end: &'a T,
+}
+
+```
+
+2. Set up the toolchain.
+
+Copy the rust-toolchain file from this repository to package/, then run:
+
+```bash
+rustup toolchain install
+```
+
+3. Install cargo-verify.
+
+```bash
+cargo install --path <repo-root>/cargo-verify
+```
+
+4. Generate llbc with contracts.
+```bash
+cargo verify --charon-out-dir Charon-LLBC --charon-pretty-print > output.llbc.pretty
+```
+
 ## Usage
 
 - To specify contracts in source code, use `trust2-contract` package.
