@@ -1,7 +1,7 @@
 # proc-macro-crate
 
 
-[![](https://docs.rs/proc-macro-crate/badge.svg)](https://docs.rs/proc-macro-crate/) [![](https://img.shields.io/crates/v/proc-macro-crate.svg)](https://crates.io/crates/proc-macro-crate) [![](https://img.shields.io/crates/d/proc-macro-crate.png)](https://crates.io/crates/proc-macro-crate) [![Build Status](https://travis-ci.org/bkchr/proc-macro-crate.png?branch=master)](https://travis-ci.org/bkchr/proc-macro-crate)
+[![](https://docs.rs/proc-macro-crate/badge.svg)](https://docs.rs/proc-macro-crate) [![](https://img.shields.io/crates/v/proc-macro-crate.svg)](https://crates.io/crates/proc-macro-crate) [![](https://img.shields.io/crates/d/proc-macro-crate.svg)](https://crates.io/crates/proc-macro-crate) [![Build Status](https://github.com/bkchr/proc-macro-crate/actions/workflows/rust.yml/badge.svg)](https://github.com/bkchr/proc-macro-crate/actions)
 
 Providing support for `$crate` in procedural macros.
 
