@@ -94,21 +94,26 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     /// regions), in which case the return type is different.
     #[tracing::instrument(skip(self, span))]
     pub(crate) fn translate_ty(&mut self, span: Span, hax_ty: &hax::Ty) -> Result<Ty, Error> {
-        if let Some(ty) = self
+        let mut ty = if let Some(ty) = self
             .innermost_binder()
             .type_trans_cache
             .get(&hax_ty)
             .cloned()
         {
-            return Ok(ty);
+            ty
+        } else {
+            let ty = self
+                .translate_ty_inner(span, hax_ty)
+                .unwrap_or_else(|e| TyKind::Error(e.msg).into_ty());
+            self.innermost_binder_mut()
+                .type_trans_cache
+                .insert(hax_ty.clone(), ty.clone());
+            ty
+        };
+        if let Some(v) = &mut self.lifetime_freshener {
+            // We might be reusing a value from cache: we must refresh the erased & body regions.
+            ty = ty.replace_erased_regions(|| Region::Body(v.push(())));
         }
-        // Catch the error to avoid a single error stopping the translation of a whole item.
-        let ty = self
-            .translate_ty_inner(span, hax_ty)
-            .unwrap_or_else(|e| TyKind::Error(e.msg).into_ty());
-        self.innermost_binder_mut()
-            .type_trans_cache
-            .insert(hax_ty.clone(), ty.clone());
         Ok(ty)
     }
 
@@ -414,9 +419,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                             let hax::ClauseKind::Trait(trait_predicate) = kind else {
                                 unreachable!()
                             };
-                            Ok(ctx
-                                .translate_vtable_struct_ref(span, &trait_predicate.trait_ref)?
-                                .unwrap())
+                            ctx.translate_vtable_struct_ref(span, &trait_predicate.trait_ref)
                         },
                     )?;
                     let vtable = self.erase_region_binder(vtable);

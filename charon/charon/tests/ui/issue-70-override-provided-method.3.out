@@ -22,7 +22,7 @@ pub trait Clone<Self>
 }
 
 #[lang_item("clone_fn")]
-pub fn core::clone::Clone::clone<'_0, Self>(@1: &'_0 Self) -> Self
+pub fn core::clone::Clone::clone<'_0, Self>(_1: &'_0 Self) -> Self
 where
     [@TraitClause0]: Clone<Self>,
 = <opaque>
@@ -37,7 +37,7 @@ pub trait PartialEq<Self, Rhs>
 
 // Full name: core::cmp::PartialEq::eq
 #[lang_item("cmp_partialeq_eq")]
-pub fn eq<'_0, '_1, Self, Rhs>(@1: &'_0 Self, @2: &'_1 Rhs) -> bool
+pub fn eq<'_0, '_1, Self, Rhs>(_1: &'_0 Self, _2: &'_1 Rhs) -> bool
 where
     [@TraitClause0]: PartialEq<Self, Rhs>,
 = <opaque>
@@ -56,11 +56,11 @@ pub trait Copy<Self>
 pub trait Destruct<Self>
 {
     fn drop_in_place = drop_in_place<Self>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
 // Full name: core::marker::Destruct::drop_in_place
-unsafe fn drop_in_place<Self>(@1: *mut Self)
+unsafe fn drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
 // Full name: core::option::Option
@@ -74,7 +74,7 @@ where
 }
 
 // Full name: core::option::{impl Clone for Option<T>[@TraitClause0]}::clone
-pub fn {impl Clone for Option<T>[@TraitClause0]}::clone<'_0, T>(@1: &'_0 Option<T>[@TraitClause0]) -> Option<T>[@TraitClause0]
+pub fn {impl Clone for Option<T>[@TraitClause0]}::clone<'_0, T>(_1: &'_0 Option<T>[@TraitClause0]) -> Option<T>[@TraitClause0]
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Clone<T>,
@@ -119,7 +119,7 @@ where
     [@TraitClause0]: GenericTrait<Self, T>,
 = <method_without_default_body>
 
-fn test_crate::GenericTrait::provided<Self, T, U>(@1: T, @2: U)
+fn test_crate::GenericTrait::provided<Self, T, U>(_1: T, _2: U)
 where
     [@TraitClause0]: GenericTrait<Self, T>,
     [@TraitClause1]: Sized<U>,
@@ -129,8 +129,8 @@ where
     let x_1: T; // arg #1
     let y_2: U; // arg #2
     let _3: bool; // anonymous local
-    let _4: &'0 U; // anonymous local
-    let _5: &'1 T; // anonymous local
+    let _4: &'1 U; // anonymous local
+    let _5: &'3 T; // anonymous local
 
     _0 = ()
     storage_live(_3)
@@ -138,7 +138,7 @@ where
     _4 = &y_2
     storage_live(_5)
     _5 = &x_1
-    _3 = @TraitClause2::eq<'4, '5>(move _4, move _5)
+    _3 = @TraitClause2::eq<'6, '7>(move _4, move _5)
     if move _3 {
         storage_dead(_5)
         storage_dead(_4)
@@ -176,7 +176,7 @@ where
 }
 
 // Full name: test_crate::{impl GenericTrait<Option<T>[@TraitClause0]> for Override<T>[@TraitClause0]}::provided
-fn {impl GenericTrait<Option<T>[@TraitClause0]> for Override<T>[@TraitClause0]}::provided<T, U>(@1: Option<T>[@TraitClause0], @2: U)
+fn {impl GenericTrait<Option<T>[@TraitClause0]> for Override<T>[@TraitClause0]}::provided<T, U>(_1: Option<T>[@TraitClause0], _2: U)
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Copy<T>,
@@ -187,8 +187,8 @@ where
     let x_1: Option<T>[@TraitClause0]; // arg #1
     let y_2: U; // arg #2
     let _3: bool; // anonymous local
-    let _4: &'0 U; // anonymous local
-    let _5: &'1 Option<T>[@TraitClause0]; // anonymous local
+    let _4: &'1 U; // anonymous local
+    let _5: &'3 Option<T>[@TraitClause0]; // anonymous local
 
     _0 = ()
     storage_live(_3)
@@ -196,7 +196,7 @@ where
     _4 = &y_2
     storage_live(_5)
     _5 = &x_1
-    _3 = @TraitClause3::eq<'4, '5>(move _4, move _5)
+    _3 = @TraitClause3::eq<'6, '7>(move _4, move _5)
     if move _3 {
         storage_dead(_5)
         storage_dead(_4)
@@ -247,7 +247,7 @@ where
 }
 
 // Full name: test_crate::{impl GenericTrait<Option<T>[@TraitClause0]> for NoOverride<T>[@TraitClause0]}::provided
-fn {impl GenericTrait<Option<T>[@TraitClause0]> for NoOverride<T>[@TraitClause0]}::provided<T, U>(@1: Option<T>[@TraitClause0], @2: U)
+fn {impl GenericTrait<Option<T>[@TraitClause0]> for NoOverride<T>[@TraitClause0]}::provided<T, U>(_1: Option<T>[@TraitClause0], _2: U)
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Copy<T>,
@@ -258,8 +258,8 @@ where
     let x_1: Option<T>[@TraitClause0]; // arg #1
     let y_2: U; // arg #2
     let _3: bool; // anonymous local
-    let _4: &'0 U; // anonymous local
-    let _5: &'1 Option<T>[@TraitClause0]; // anonymous local
+    let _4: &'1 U; // anonymous local
+    let _5: &'3 Option<T>[@TraitClause0]; // anonymous local
 
     _0 = ()
     storage_live(_3)
@@ -267,7 +267,7 @@ where
     _4 = &y_2
     storage_live(_5)
     _5 = &x_1
-    _3 = @TraitClause3::eq<'4, '5>(move _4, move _5)
+    _3 = @TraitClause3::eq<'6, '7>(move _4, move _5)
     if move _3 {
         storage_dead(_5)
         storage_dead(_4)

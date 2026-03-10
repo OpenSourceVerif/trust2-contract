@@ -2,6 +2,8 @@
 use annotate_snippets::Level;
 use clap::ValueEnum;
 use indoc::indoc;
+use itertools::Itertools;
+use macros::EnumAsGetters;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -57,6 +59,7 @@ pub struct CliOpts {
     #[clap(long = "rustc-arg")]
     #[serde(default)]
     pub rustc_args: Vec<String>,
+
     /// Monomorphize the items encountered when possible. Generic items found in the crate are
     /// skipped. To only translate a particular call graph, use `--start-from`. Note: this doesn't
     /// currently support `dyn Trait`.
@@ -82,6 +85,23 @@ pub struct CliOpts {
     #[clap(long, value_delimiter = ',')]
     #[serde(default)]
     pub start_from: Vec<String>,
+    /// Use all the items annotated with the given attribute as starting points for translation
+    /// (except modules).
+    /// If an attribute name is not specified, `verify::start_from` is used.
+    #[clap(
+        long,
+        value_name("ATTRIBUTE"),
+        num_args(0..=1),
+        require_equals(true),
+        default_missing_value("verify::start_from"),
+    )]
+    #[serde(default)]
+    pub start_from_attribute: Option<String>,
+    /// Use all the `pub` items as starting points for translation (except modules).
+    #[clap(long)]
+    #[serde(default)]
+    pub start_from_pub: bool,
+
     /// Whitelist of items to translate. These use the name-matcher syntax.
     #[clap(
         long,
@@ -127,11 +147,11 @@ pub struct CliOpts {
     #[serde(default)]
     pub translate_all_methods: bool,
 
-    /// Transforma the associate types of traits to be type parameters instead. This takes a list
+    /// Transform the associate types of traits to be type parameters instead. This takes a list
     /// of name patterns of the traits to transform, using the same syntax as `--include`.
-    #[clap(long)]
+    #[clap(long, alias = "remove-associated-types")]
     #[serde(default)]
-    pub remove_associated_types: Vec<String>,
+    pub lift_associated_types: Vec<String>,
     /// Whether to hide various marker traits such as `Sized`, `Sync`, `Send` and `Destruct`
     /// anywhere they show up. This can considerably speed up translation.
     #[clap(long)]
@@ -312,7 +332,7 @@ impl CliOpts {
                     self.ullbc = true;
                 }
                 Preset::Aeneas => {
-                    self.remove_associated_types.push("*".to_owned());
+                    self.lift_associated_types.push("*".to_owned());
                     self.treat_box_as_builtin = true;
                     self.ops_to_function_calls = true;
                     self.index_to_function_calls = true;
@@ -335,7 +355,7 @@ impl CliOpts {
                     self.index_to_function_calls = true;
                     self.reconstruct_fallible_operations = true;
                     self.reconstruct_asserts = true;
-                    self.remove_associated_types.push("*".to_owned());
+                    self.lift_associated_types.push("*".to_owned());
                     self.unbind_item_vars = true;
                     // Eurydice doesn't support opaque vtables it seems?
                     self.include.push("core::marker::MetaSized".to_owned());
@@ -374,7 +394,7 @@ impl CliOpts {
             )
         }
 
-        if self.remove_adt_clauses && self.remove_associated_types.is_empty() {
+        if self.remove_adt_clauses && self.lift_associated_types.is_empty() {
             anyhow::bail!(
                 "`--remove-adt-clauses` should be used with `--remove-associated-types='*'` \
                 to avoid missing clause errors",
@@ -392,10 +412,37 @@ impl CliOpts {
     }
 }
 
+/// Predicates that determine wihch items to use as starting point for translation.
+#[derive(Debug, Clone, EnumAsGetters)]
+pub enum StartFrom {
+    /// Item identified by a pattern/path.
+    Pattern(NamePattern),
+    /// Item annotated with the given attribute.
+    Attribute(String),
+    /// Item marked `pub`. Note that this does not take accessibility into account; a
+    /// non-reexported `pub` item will be included here.
+    Pub,
+}
+
+impl StartFrom {
+    pub fn matches(&self, ctx: &TranslatedCrate, item_meta: &ItemMeta) -> bool {
+        match self {
+            StartFrom::Pattern(pattern) => pattern.matches(ctx, &item_meta.name),
+            StartFrom::Attribute(attr) => item_meta
+                .attr_info
+                .attributes
+                .iter()
+                .filter_map(|a| a.as_unknown())
+                .any(|raw_attr| raw_attr.path == *attr),
+            StartFrom::Pub => item_meta.attr_info.public,
+        }
+    }
+}
+
 /// The options that control translation and transformation.
 pub struct TranslateOptions {
     /// Items from which to start translation.
-    pub start_from: Vec<NamePattern>,
+    pub start_from: Vec<StartFrom>,
     /// The level at which to extract the MIR
     pub mir_level: MirLevel,
     /// Usually we skip the provided methods that aren't used. When this flag is on, we translate
@@ -440,7 +487,7 @@ pub struct TranslateOptions {
     /// field.
     pub item_opacities: Vec<(NamePattern, ItemOpacity)>,
     /// List of traits for which we transform associated types to type parameters.
-    pub remove_associated_types: Vec<NamePattern>,
+    pub lift_associated_types: Vec<NamePattern>,
     /// Transform Drop to Call drop_in_place
     pub desugar_drops: bool,
     /// Add `Destruct` bounds to all generic params.
@@ -468,15 +515,21 @@ impl TranslateOptions {
             mir_level = std::cmp::max(mir_level, MirLevel::Elaborated);
         }
 
-        let start_from = if options.start_from.is_empty() {
-            vec![parse_pattern("crate").unwrap()]
-        } else {
-            options
-                .start_from
-                .iter()
-                .filter_map(|path| parse_pattern(&path).ok())
-                .collect()
-        };
+        let mut start_from = options
+            .start_from
+            .iter()
+            .filter_map(|path| parse_pattern(&path).ok())
+            .map(StartFrom::Pattern)
+            .collect_vec();
+        if let Some(attr) = options.start_from_attribute.clone() {
+            start_from.push(StartFrom::Attribute(attr));
+        }
+        if options.start_from_pub {
+            start_from.push(StartFrom::Pub);
+        }
+        if start_from.is_empty() {
+            start_from.push(StartFrom::Pattern(parse_pattern("crate").unwrap()))
+        }
 
         let item_opacities = {
             use ItemOpacity::*;
@@ -516,8 +569,8 @@ impl TranslateOptions {
                 .collect()
         };
 
-        let remove_associated_types = options
-            .remove_associated_types
+        let lift_associated_types = options
+            .lift_associated_types
             .iter()
             .filter_map(|s| parse_pattern(&s).ok())
             .collect();
@@ -540,7 +593,7 @@ impl TranslateOptions {
             unsized_strings: options.unsized_strings,
             reconstruct_fallible_operations: options.reconstruct_fallible_operations,
             reconstruct_asserts: options.reconstruct_asserts,
-            remove_associated_types,
+            lift_associated_types,
             unbind_item_vars: options.unbind_item_vars,
             translate_all_methods: options.translate_all_methods,
             desugar_drops: options.desugar_drops,

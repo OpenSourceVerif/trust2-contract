@@ -23,14 +23,17 @@ type fn_ptr_kind = Types.fn_ptr_kind [@@deriving show, ord]
 type fun_decl_id = Types.fun_decl_id [@@deriving show, ord]
 
 (** (U)LLBC is a language with side-effects: a statement may abort in a way that
-    isn't tracked by control-flow. The two kinds of abort are:
-    - Panic (may unwind or not depending on compilation setting);
-    - Undefined behavior: *)
+    isn't tracked by control-flow. The three kinds of abort are:
+    - Panic
+    - Undefined behavior (caused by an "assume")
+    - Unwind termination *)
 type abort_kind =
-  | Panic of name option  (** A built-in panicking function. *)
+  | Panic of name option
+      (** A built-in panicking function, or a panic due to a failed built-in
+          check (e.g. for out-of-bounds accesses). *)
   | UndefinedBehavior  (** Undefined behavior in the rust abstract machine. *)
   | UnwindTerminate
-      (** Unwind had to stop for Abi reasons or because cleanup code panicked
+      (** Unwind had to stop for ABI reasons or because cleanup code panicked
           again. *)
 
 (** Check the value of an operand and abort if the value is not expected. This
@@ -47,8 +50,32 @@ and assertion = {
   expected : bool;
       (** The value that the operand should evaluate to for the assert to
           succeed. *)
-  on_failure : abort_kind;  (** What kind of abort happens on assert failure. *)
+  check_kind : builtin_assert_kind option;
+      (** The kind of check performed by this assert. This is only used for
+          error reporting, as the check is actually performed by the
+          instructions preceding the assert. *)
 }
+
+(** The kind of a built-in assertion, which may panic and unwind. These are
+    removed by [reconstruct_fallible_operations] because they're implicit in the
+    semantics of (U)LLBC. This kind should only be used for error-reporting
+    purposes, as the check itself is performed in the instructions preceding the
+    assert. *)
+and builtin_assert_kind =
+  | BoundsCheck of operand * operand
+      (** Fields:
+          - [len]
+          - [index] *)
+  | Overflow of binop * operand * operand
+  | OverflowNeg of operand
+  | DivisionByZero of operand
+  | RemainderByZero of operand
+  | MisalignedPointerDereference of operand * operand
+      (** Fields:
+          - [required]
+          - [found] *)
+  | NullPointerDereference
+  | InvalidEnumConstruction of operand
 
 and call = { func : fn_operand; args : operand list; dest : place }
 and copy_non_overlapping = { src : operand; dst : operand; count : operand }
@@ -101,6 +128,7 @@ and local = {
   name : string option;
       (** Variable name - may be [None] if the variable was introduced by Rust
           through desugaring. *)
+  span : span;  (** Span of the variable declaration. *)
   local_ty : ty;  (** The variable type *)
 }
 
@@ -184,6 +212,7 @@ and global_kind =
 (** An associated constant in a trait. *)
 type trait_assoc_const = {
   name : trait_item_name;
+  attr_info : attr_info;
   ty : ty;
   default : global_decl_ref option;
 }
@@ -191,6 +220,7 @@ type trait_assoc_const = {
 (** An associated type in a trait. *)
 and trait_assoc_ty = {
   name : trait_item_name;
+  attr_info : attr_info;
   default : ty option;
   implied_clauses : trait_param list;
       (** List of trait clauses that apply to this type. *)
@@ -269,6 +299,7 @@ and trait_decl = {
 (** A trait method. *)
 and trait_method = {
   name : trait_item_name;
+  attr_info : attr_info;
   item : fun_decl_ref;
       (** Each method declaration is represented by a function item. That
           function contains the signature of the method as well as information
@@ -385,6 +416,13 @@ type cli_options = {
           will translate these items and any items they refer to, according to
           the opacity rules. When absent, we start from the path [crate] (which
           translates the whole crate). *)
+  start_from_attribute : string option;
+      (** Use all the items annotated with the given attribute as starting
+          points for translation (except modules). If an attribute name is not
+          specified, [verify::start_from] is used. *)
+  start_from_pub : bool;
+      (** Use all the [pub] items as starting points for translation (except
+          modules). *)
   included : string list;
       (** Whitelist of items to translate. These use the name-matcher syntax. *)
   opaque : string list;
@@ -399,10 +437,10 @@ type cli_options = {
   translate_all_methods : bool;
       (** Usually we skip the provided methods that aren't used. When this flag
           is on, we translate them all. *)
-  remove_associated_types : string list;
-      (** Transforma the associate types of traits to be type parameters
-          instead. This takes a list of name patterns of the traits to
-          transform, using the same syntax as [--include]. *)
+  lift_associated_types : string list;
+      (** Transform the associate types of traits to be type parameters instead.
+          This takes a list of name patterns of the traits to transform, using
+          the same syntax as [--include]. *)
   hide_marker_traits : bool;
       (** Whether to hide various marker traits such as [Sized], [Sync], [Send]
           and [Destruct] anywhere they show up. This can considerably speed up

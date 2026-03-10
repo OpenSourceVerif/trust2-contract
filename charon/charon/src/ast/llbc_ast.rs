@@ -44,14 +44,20 @@ pub enum StatementKind {
     /// a no-op. A local may not have a `StorageDead` in the function's body, in which case it
     /// is implicitly deallocated at the end of the function.
     StorageDead(LocalId),
-    Deinit(Place),
+    /// A place is mentioned, but not accessed. The place itself must still be valid though, so
+    /// this statement is not a no-op: it can trigger UB if the place's projections are not valid
+    /// (e.g. because they go out of bounds).
+    PlaceMention(Place),
     /// Drop the value at the given place.
     ///
     /// Depending on `DropKind`, this may be a real call to `drop_in_place`, or a conditional call
     /// that should only happen if the place has not been moved out of. See the docs of `DropKind`
     /// for more details; to get precise drops use `--precise-drops`.
     Drop(Place, TraitRef, #[drive(skip)] DropKind),
-    Assert(Assert),
+    Assert {
+        assert: Assert,
+        on_failure: AbortKind,
+    },
     Call(Call),
     /// Panic also handles "unreachable". We keep the name of the panicking function that was
     /// called.

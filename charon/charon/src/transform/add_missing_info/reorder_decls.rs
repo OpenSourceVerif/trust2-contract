@@ -302,7 +302,7 @@ fn compute_declarations_graph<'tcx>(ctx: &'tcx TransformCtx) -> DiGraphMap<ItemI
             ctx.options
                 .start_from
                 .iter()
-                .any(|pat| pat.matches(&ctx.translated, &item.item_meta().name))
+                .any(|pat| pat.matches(&ctx.translated, item.item_meta()))
         })
         .map(|item| item.id())
         .collect();
@@ -368,6 +368,7 @@ fn compute_declarations_graph<'tcx>(ctx: &'tcx TransformCtx) -> DiGraphMap<ItemI
                 for assoc_const in consts {
                     let TraitAssocConst {
                         name: _,
+                        attr_info: _,
                         ty,
                         default,
                     } = assoc_const;

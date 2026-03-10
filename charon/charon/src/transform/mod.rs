@@ -38,6 +38,7 @@ pub mod normalize {
 /// wrote.
 pub mod resugar {
     pub mod inline_local_panic_functions;
+    pub mod move_asserts_to_statements;
     pub mod reconstruct_asserts;
     pub mod reconstruct_boxes;
     pub mod reconstruct_fallible_operations;
@@ -128,6 +129,11 @@ pub static ULLBC_PASSES: &[Pass] = &[
     UnstructuredBody(&simplify_output::inline_anon_consts::Transform),
     // Remove drop statements that are noops.
     UnstructuredBody(&simplify_output::filter_trivial_drops::Transform),
+    // Inline all asserts that correspond to dynamic checks into statements.
+    // The following pass will then merge the generated gotos as part of this substitution,
+    // and [reconstruct_fallible_operations] can then use the inlined asserts to reconstruct
+    // the fallible operations.
+    UnstructuredBody(&resugar::move_asserts_to_statements::Transform),
     // # Micro-pass: merge single-origin gotos into their parent. This drastically reduces the
     // graph size of the CFG.
     // This must be done early as some resugaring passes depend on it.

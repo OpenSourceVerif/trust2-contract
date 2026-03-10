@@ -21,11 +21,14 @@ pub trait Sized<Self>
 pub trait Destruct<Self>
 {
     fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
-    vtable: core::marker::Destruct::{vtable}
+    non-dyn-compatible
 }
 
-unsafe fn core::marker::Destruct::drop_in_place<Self>(@1: *mut Self)
+unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
 = <opaque>
+
+// Full name: core::ptr::alignment::Alignment
+pub opaque type Alignment
 
 // Full name: core::mem::SizedTypeProperties
 pub trait SizedTypeProperties<Self>
@@ -33,6 +36,7 @@ pub trait SizedTypeProperties<Self>
     parent_clause0 : [@TraitClause0]: Sized<Self>
     const SIZE : usize
     const ALIGN : usize
+    const ALIGNMENT : Alignment
     const IS_ZST : bool
     const LAYOUT : Layout
     const MAX_SLICE_LEN : usize
@@ -66,6 +70,18 @@ pub const ALIGN<Self>: usize
 where
     [@TraitClause0]: SizedTypeProperties<Self>,
  = ALIGN()
+
+// Full name: core::mem::SizedTypeProperties::ALIGNMENT
+pub fn ALIGNMENT<Self>() -> Alignment
+where
+    [@TraitClause0]: SizedTypeProperties<Self>,
+= <opaque>
+
+// Full name: core::mem::SizedTypeProperties::ALIGNMENT
+pub const ALIGNMENT<Self>: Alignment
+where
+    [@TraitClause0]: SizedTypeProperties<Self>,
+ = ALIGNMENT()
 
 // Full name: core::mem::SizedTypeProperties::IS_ZST
 pub fn IS_ZST<Self>() -> bool
@@ -111,6 +127,7 @@ where
     parent_clause0 = @TraitClause0
     const SIZE = SIZE<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
     const ALIGN = ALIGN<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
+    const ALIGNMENT = ALIGNMENT<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
     const IS_ZST = IS_ZST<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
     const LAYOUT = LAYOUT<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
     const MAX_SLICE_LEN = MAX_SLICE_LEN<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
@@ -129,7 +146,7 @@ pub opaque type Unique<T>
 pub struct Global {}
 
 // Full name: alloc::boxed::{impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop
-pub fn {impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop<'_0, T, A>(@1: &'_0 mut alloc::boxed::Box<T>[@TraitClause0, @TraitClause1])
+pub fn {impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop<'_0, T, A>(_1: &'_0 mut alloc::boxed::Box<T>[@TraitClause0, @TraitClause1])
 where
     [@TraitClause0]: MetaSized<T>,
     [@TraitClause1]: Sized<A>,
@@ -140,7 +157,7 @@ where
 pub opaque type String
 
 // Full name: alloc::string::String::{impl Destruct for String}::drop_in_place
-unsafe fn {impl Destruct for String}::drop_in_place(@1: *mut String)
+unsafe fn {impl Destruct for String}::drop_in_place(_1: *mut String)
 = <opaque>
 
 // Full name: alloc::string::String::{impl Destruct for String}
@@ -160,12 +177,12 @@ fn UNIT_METADATA()
 const UNIT_METADATA: () = @Fun0()
 
 // Full name: test_crate::into_inner
-fn into_inner(@1: alloc::boxed::Box<String>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}])
+fn into_inner(_1: alloc::boxed::Box<String>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}])
 {
     let _0: (); // return
     let b_1: alloc::boxed::Box<String>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}]; // arg #1
     let _x_2: String; // local
-    let _3: &'0 mut alloc::boxed::Box<String>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}]; // anonymous local
+    let _3: &'1 mut alloc::boxed::Box<String>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}]; // anonymous local
     let _4: (); // anonymous local
     let _5: *const String; // anonymous local
     let _6: *const String; // anonymous local
@@ -195,14 +212,14 @@ fn into_inner(@1: alloc::boxed::Box<String>[{built_in impl MetaSized for String}
     _10 = copy _8 == const 0 : usize
     _11 = copy _10 & copy _9
     _12 = ~(copy _11)
-    assert(copy _12 == true)
+    assert(copy _12 == true) (null_pointer_dereference) else undefined_behavior
     _x_2 = move (*_6)
     _0 = ()
     drop[{impl Destruct for String}] _x_2
     storage_dead(_x_2)
     _5 = transmute<NonNull<String>, *const String>(copy ((*b_1)).0)
     _3 = &mut b_1
-    _4 = {impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop<'2, String, Global>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}](move _3)
+    _4 = {impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop<'5, String, Global>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}](move _3)
     return
 }
 

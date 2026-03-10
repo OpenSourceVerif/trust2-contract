@@ -47,6 +47,12 @@ Options:
       --start-from <START_FROM>
           A list of item paths to use as starting points for the translation. We will translate these items and any items they refer to, according to the opacity rules. When absent, we start from the path `crate` (which translates the whole crate)
 
+      --start-from-attribute[=<ATTRIBUTE>]
+          Use all the items annotated with the given attribute as starting points for translation (except modules). If an attribute name is not specified, `verify::start_from` is used
+
+      --start-from-pub
+          Use all the `pub` items as starting points for translation (except modules)
+
       --include <INCLUDE>
           Whitelist of items to translate. These use the name-matcher syntax (note: this differs
           a bit from the ocaml NameMatcher).
@@ -80,8 +86,8 @@ Options:
       --translate-all-methods
           Usually we skip the provided methods that aren't used. When this flag is on, we translate them all
 
-      --remove-associated-types <REMOVE_ASSOCIATED_TYPES>
-          Transforma the associate types of traits to be type parameters instead. This takes a list of name patterns of the traits to transform, using the same syntax as `--include`
+      --lift-associated-types <LIFT_ASSOCIATED_TYPES>
+          Transform the associate types of traits to be type parameters instead. This takes a list of name patterns of the traits to transform, using the same syntax as `--include`
 
       --hide-marker-traits
           Whether to hide various marker traits such as `Sized`, `Sync`, `Send` and `Destruct` anywhere they show up. This can considerably speed up translation

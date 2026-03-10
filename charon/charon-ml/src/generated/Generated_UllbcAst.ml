@@ -6,7 +6,9 @@ open Identifiers
 open GAst
 module BlockId = IdGen ()
 
-type block_id = (BlockId.id[@visitors.opaque])
+type block = { statements : statement list; terminator : terminator }
+and block_id = (BlockId.id[@visitors.opaque])
+and blocks = block list
 
 and statement = {
   span : span;
@@ -34,13 +36,21 @@ and statement_kind =
           deallocated, this is a no-op. A local may not have a [StorageDead] in
           the function's body, in which case it is implicitly deallocated at the
           end of the function. *)
-  | Deinit of place
-  | Assert of assertion
-      (** A runtime check for a condition. This can be either:
-          - Emitted for bounds/overflow/etc checks if
-            [--reconstruct-fallible-operations] is not set;
-          - Reconstructed from [if b { panic() }] if [--reconstruct-assets] is
-            set. *)
+  | PlaceMention of place
+      (** A place is mentioned, but not accessed. The place itself must still be
+          valid though, so this statement is not a no-op: it can trigger UB if
+          the place's projections are not valid (e.g. because they go out of
+          bounds). *)
+  | Assert of assertion * abort_kind
+      (** A non-diverging runtime check for a condition. This can be either:
+          - Emitted for inlined "assumes" (which cause UB on failure)
+          - Reconstructed from [if b { panic() }] if [--reconstruct-asserts] is
+            set. This statement comes with the effect that happens when the
+            check fails (rather than representing it as an unwinding edge).
+
+          Fields:
+          - [assert]
+          - [on_failure] *)
   | Nop  (** Does nothing. Useful for passes. *)
 
 and switch =
@@ -49,29 +59,6 @@ and switch =
       (** Gives the integer type, a map linking values to switch branches, and
           the otherwise block. Note that matches over enumerations are performed
           by switching over the discriminant, which is an integer. *)
-[@@deriving
-  show,
-  eq,
-  ord,
-  visitors
-    {
-      name = "iter_statement";
-      monomorphic = [ "env" ];
-      variety = "iter";
-      ancestors = [ "iter_trait_impl" ];
-      nude = true (* Don't inherit VisitorsRuntime *);
-    },
-  visitors
-    {
-      name = "map_statement";
-      monomorphic = [ "env" ];
-      variety = "map";
-      ancestors = [ "map_trait_impl" ];
-      nude = true (* Don't inherit VisitorsRuntime *);
-    }]
-
-type block = { statements : statement list; terminator : terminator }
-and blocks = block list
 
 and terminator = {
   span : span;
@@ -107,6 +94,14 @@ and terminator_kind =
           - [tref]
           - [target]
           - [on_unwind] *)
+  | TAssert of assertion * block_id * block_id
+      (** Assert that the given condition holds, and if not, unwind to the given
+          block. This is used for bounds checks, overflow checks, etc.
+
+          Fields:
+          - [assert]
+          - [target]
+          - [on_unwind] *)
   | Abort of abort_kind  (** Handles panics and impossible cases. *)
   | Return
   | UnwindResume
@@ -119,7 +114,7 @@ and terminator_kind =
       name = "iter_ullbc_ast";
       monomorphic = [ "env" ];
       variety = "iter";
-      ancestors = [ "iter_statement" ];
+      ancestors = [ "iter_trait_impl" ];
       nude = true (* Don't inherit VisitorsRuntime *);
     },
   visitors
@@ -127,6 +122,8 @@ and terminator_kind =
       name = "map_ullbc_ast";
       monomorphic = [ "env" ];
       variety = "map";
-      ancestors = [ "map_statement" ];
+      ancestors = [ "map_trait_impl" ];
       nude = true (* Don't inherit VisitorsRuntime *);
     }]
+
+(* __REPLACE1__ *)

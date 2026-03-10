@@ -263,10 +263,9 @@ pub enum CastKind {
 pub enum UnsizingMetadata {
     /// Cast from `[T; N]` to `[T]`.
     Length(Box<ConstantExpr>),
-    /// Cast from a sized value to a `dyn Trait` value. The `TraitRef` gives the trait for which
-    /// we're getting a vtable (this is the _principal_ trait of the `dyn Trait` target). The second
-    /// field is the vtable instance, if we could resolve it.
-    VTable(TraitRef, Option<GlobalDeclRef>),
+    /// Cast from a sized value to a `dyn Trait` value. The `TraitRef` is the proof of the `dyn
+    /// Trait` predicate; the constant expression is a reference to the vtable `static` value.
+    VTable(TraitRef, Box<ConstantExpr>),
     /// Cast from `dyn Trait` to `dyn OtherTrait`. The fields indicate how to retreive the vtable:
     /// it's always either the same we already had, or the vtable for a (possibly nested) supertrait.
     ///
@@ -544,6 +543,7 @@ impl From<FunDeclRef> for FnPtr {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut, Hash)]
+#[charon::variants_prefix("Prov")]
 pub enum Provenance {
     Global(GlobalDeclRef),
     Function(FunDeclRef),
@@ -637,8 +637,7 @@ pub enum ConstantExprKind {
     /// }
     /// ```
     Global(GlobalDeclRef),
-    ///
-    /// A trait constant.
+    /// A trait associated constant.
     ///
     /// Ex.:
     /// ```text
@@ -646,10 +645,11 @@ pub enum ConstantExprKind {
     ///   const C : usize = 32; // <-
     /// }
     /// ```
-    ///
-    /// Remark: trait constants can not be used in types, they are necessarily
-    /// values.
     TraitConst(TraitRef, TraitItemName),
+    /// A reference to the vtable `static` item for this trait ref. This can be normalized for
+    /// cases where we do emit a vtable item. That's not always the case for builtin traits, e.g.
+    /// for `MetaSized`.
+    VTableRef(TraitRef),
     /// A shared reference to a constant value.
     ///
     /// We eliminate this case in a micro-pass.

@@ -7,6 +7,13 @@ use std::{collections::HashMap, path::MAIN_SEPARATOR};
 mod util;
 use util::*;
 
+fn translate_with_options(
+    code: impl std::fmt::Display,
+    options: &[&str],
+) -> anyhow::Result<TranslatedCrate> {
+    util::translate_rust_text(code, options)
+}
+
 fn translate(code: impl std::fmt::Display) -> anyhow::Result<TranslatedCrate> {
     util::translate_rust_text(code, &[])
 }
@@ -82,7 +89,7 @@ fn file_name() -> anyhow::Result<()> {
 
 #[test]
 fn spans() -> anyhow::Result<()> {
-    let crate_data = translate(
+    let crate_data = translate_with_options(
         "
         pub fn sum(s: &[u32]) -> u32 {
             let mut sum = 0;
@@ -94,16 +101,26 @@ fn spans() -> anyhow::Result<()> {
             sum
         }
         ",
+        &["--reconstruct-fallible-operations"],
     )?;
     let function = &crate_data.fun_decls[1];
     // Span of the whole function.
     assert_eq!(repr_span(function.item_meta.span), "2:8-10:9");
 
-    let body = &function.body.as_structured().unwrap().body;
+    let body = &function.body.as_structured().unwrap();
     // Span of the function body
-    assert_eq!(repr_span(body.span), "3:16-10:9");
+    assert_eq!(repr_span(body.body.span), "3:16-10:9");
 
-    let the_loop = body.statements.iter().find(|st| st.kind.is_loop()).unwrap();
+    let sum_var = &body.locals.locals[2];
+    assert_eq!(sum_var.name.as_deref(), Some("sum"));
+    assert_eq!(repr_span(sum_var.span), "3:16-3:23");
+
+    let the_loop = body
+        .body
+        .statements
+        .iter()
+        .find(|st| st.kind.is_loop())
+        .unwrap();
     assert_eq!(repr_span(the_loop.span), "5:12-8:13");
 
     Ok(())
@@ -410,6 +427,12 @@ fn rename_attribute() -> anyhow::Result<()> {
 
         #[charon::rename("BoolTest")]
         pub trait BoolTrait {
+            #[charon::rename("AsSoCtY")]
+            type AssocTy;
+
+            #[charon::rename("konst")]
+            const ASSOC_CONST: u32 = 42;
+
             // Required method
             #[charon::rename("getTest")]
             fn get_bool(&self) -> bool;
@@ -423,6 +446,8 @@ fn rename_attribute() -> anyhow::Result<()> {
 
         #[charon::rename("BoolImpl")]
         impl BoolTrait for bool {
+            type AssocTy = ();
+
             fn get_bool(&self) -> bool {
                 *self
             }
@@ -467,6 +492,32 @@ fn rename_attribute() -> anyhow::Result<()> {
             .rename
             .as_deref(),
         Some("BoolTest")
+    );
+
+    assert_eq!(
+        crate_data.trait_decls[0].types[0]
+            .skip_binder
+            .attr_info
+            .rename
+            .as_deref(),
+        Some("AsSoCtY")
+    );
+
+    assert_eq!(
+        crate_data.trait_decls[0].consts[0]
+            .attr_info
+            .rename
+            .as_deref(),
+        Some("konst")
+    );
+
+    assert_eq!(
+        crate_data.trait_decls[0].methods[0]
+            .skip_binder
+            .attr_info
+            .rename
+            .as_deref(),
+        Some("getTest")
     );
 
     assert_eq!(
