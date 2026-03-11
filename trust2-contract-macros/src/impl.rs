@@ -4,6 +4,8 @@ use syn::{Error, Expr, ItemEnum, ItemFn, ItemStruct, ItemUnion, ReturnType, pars
 
 use std::sync::LazyLock;
 
+mod parse;
+
 macro_rules! parse_macro_input {
     ($tokenstream:ident as $ty:ty) => {
         match parse::<$ty>($tokenstream) {
@@ -14,10 +16,11 @@ macro_rules! parse_macro_input {
 }
 
 pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
+    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
 
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
     let stmt = parse_quote! {
         {
             ::#crate_name::internal::entry();
@@ -31,10 +34,12 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
+    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
+    let expr = parse::replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name);
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
 
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
     let ty: TokenStream = match item.sig.output {
         ReturnType::Default => quote! {
             ()
@@ -56,6 +61,8 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
+    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
     let expr = parse_macro_input!(expr as Expr);
     let (type_ident, type_generics) = {
         let type_name = (|item: &TokenStream| {
@@ -82,7 +89,6 @@ pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
     let (impl_generics, type_generics, where_clause) = type_generics.split_for_impl();
     quote! {
         #item
@@ -111,6 +117,10 @@ static CRATE_NAME: LazyLock<String> = {
 #[cfg(test)]
 static CRATE_NAME: LazyLock<String> = LazyLock::new(|| "trust2_contract".into());
 
+const COMMON_KEYWORDS: &[&str] = &["forall", "exists", "implies"];
+
+const POSTCONDITION_KEYWORDS: &[&str] = &["old"];
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -138,8 +148,8 @@ mod tests {
         };
         let result = precondition(expr, item);
         assert_eq!(
-            parse::<ItemFn>(result).unwrap(),
             parse::<ItemFn>(expect).unwrap(),
+            parse::<ItemFn>(result).unwrap(),
         );
     }
 
@@ -165,8 +175,34 @@ mod tests {
         };
         let result = invariant(expr, item);
         assert_eq!(
-            parse::<File>(result).unwrap(),
             parse::<File>(expect).unwrap(),
+            parse::<File>(result).unwrap(),
+        );
+    }
+
+    #[test]
+    fn test_postcondition_forall_implies() {
+        let item = quote! {
+            fn to_sorted(a: &[i32]) -> Vec<i32> {
+                vec![]
+            }
+        };
+        let expr = quote! {
+            |b| forall(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1]))
+        };
+        let expect = quote! {
+            fn to_sorted(a: &[i32]) -> Vec<i32> {
+                {
+                    ::trust2_contract::internal::entry();
+                    ::trust2_contract::internal::postcondition::<Vec<i32>, _>(|b| ::trust2_contract::internal::forall(|i: usize| ::trust2_contract::internal::implies(i + 1 < a.len(), b[i] <= b[i + 1])));
+                }
+                vec![]
+            }
+        };
+        let result = postcondition(expr, item);
+        assert_eq!(
+            parse::<ItemFn>(expect).unwrap(),
+            parse::<ItemFn>(result).unwrap(),
         );
     }
 }

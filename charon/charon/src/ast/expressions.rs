@@ -434,6 +434,14 @@ pub enum BuiltinFunId {
     SpecPrecondition,
     /// trust2-contract postcondition marker
     SpecPostcondition,
+    /// trust2-contract forall quantifier
+    SpecForall,
+    /// trust2-contract exists quantifier
+    SpecExists,
+    /// trust2-contract implies logical operator
+    SpecImplies,
+    /// trust2-contract old marker
+    SpecOld,
     /// Cast `&[T; N]` to `&[T]`.
     ///
     /// This is used instead of unsizing coercions when `--ops-to-function-calls` is set.

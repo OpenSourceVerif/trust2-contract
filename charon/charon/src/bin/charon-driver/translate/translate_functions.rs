@@ -76,7 +76,7 @@ impl ItemTransCtx<'_, '_> {
 }
 
 fn recognize_spec_call(name: &Name) -> Option<BuiltinFunId> {
-    if !(name.compare_with_ref_name(false, &["trust2_contract", "internal"]) && name.len() >= 3) {
+    if !(name.compare_with_ref_name(false, &["trust2_contract", "internal"]) && name.len() == 3) {
         return None;
     }
     let PathElem::Ident(ref ident, _) = name.name[2] else {
@@ -87,6 +87,10 @@ fn recognize_spec_call(name: &Name) -> Option<BuiltinFunId> {
         "entry" => Some(BuiltinFunId::SpecEntry),
         "precondition" => Some(BuiltinFunId::SpecPrecondition),
         "postcondition" => Some(BuiltinFunId::SpecPostcondition),
+        "forall" => Some(BuiltinFunId::SpecForall),
+        "exists" => Some(BuiltinFunId::SpecExists),
+        "implies" => Some(BuiltinFunId::SpecImplies),
+        "old" => Some(BuiltinFunId::SpecOld),
         _ => None,
     }
 }
