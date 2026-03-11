@@ -1233,5 +1233,253 @@ pub fn to_sorted<'_0>(_1: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized f
     return
 }
 
+struct trust2_contract_sample::use_assert::closure {}
+
+struct trust2_contract_sample::use_assert::decuple::closure<'_0> {
+  &'_0 u8,
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple
+fn decuple(_1: u8) -> u8
+{
+    let _0: u8; // return
+    let x_1: u8; // arg #1
+    let _2: trust2_contract_sample::use_assert::decuple::closure<'1>; // anonymous local
+    let _3: &'3 u8; // anonymous local
+    let _4: u8; // anonymous local
+    let _5: u8; // anonymous local
+    let _6: u32; // anonymous local
+    let _7: bool; // anonymous local
+    let _8: u8; // anonymous local
+    let _9: u8; // anonymous local
+    let _10: u32; // anonymous local
+    let _11: bool; // anonymous local
+    let _12: (u8, bool); // anonymous local
+    precondition(move _2) {
+        storage_live(_2)
+        storage_live(_3)
+        _3 = &x_1
+        _2 = trust2_contract_sample::use_assert::decuple::closure { 0: move _3 }
+        storage_dead(_3)
+    }
+
+    storage_live(_6)
+    storage_live(_7)
+    storage_live(_10)
+    storage_live(_11)
+    storage_live(_12)
+    storage_dead(_2)
+    storage_live(_4)
+    storage_live(_5)
+    _5 = copy x_1
+    _6 = cast<i32, u32>(const 3 : i32)
+    _7 = move _6 < const 8 : u32
+    assert(move _7 == true) (overflow) else panic
+    _4 = move _5 wrap.<< const 3 : i32
+    storage_dead(_5)
+    storage_live(_8)
+    storage_live(_9)
+    _9 = copy x_1
+    _10 = cast<i32, u32>(const 1 : i32)
+    _11 = move _10 < const 8 : u32
+    assert(move _11 == true) (overflow) else panic
+    _8 = move _9 wrap.<< const 1 : i32
+    storage_dead(_9)
+    _12 = copy _4 checked.+ copy _8
+    assert(move _12.1 == false) (overflow) else panic
+    _0 = move _12.0
+    storage_dead(_8)
+    storage_dead(_4)
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::{impl Fn<()> for trust2_contract_sample::use_assert::closure}::call
+fn {impl Fn<()> for trust2_contract_sample::use_assert::closure}::call<'_0>(_1: &'_0 trust2_contract_sample::use_assert::closure, _2: ()) -> bool
+{
+    let _0: bool; // return
+    let _1: &'1 trust2_contract_sample::use_assert::closure; // arg #1
+    let tupled_args_2: (); // arg #2
+    let _3: u8; // anonymous local
+
+    storage_live(_3)
+    _3 = decuple(const 9 : u8)
+    _0 = move _3 == const 90 : u8
+    storage_dead(_3)
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::{impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut
+fn {impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut<'_0>(_1: &'_0 mut trust2_contract_sample::use_assert::closure, _2: ()) -> bool
+{
+    let _0: bool; // return
+    let state_1: &'_0 mut trust2_contract_sample::use_assert::closure; // arg #1
+    let args_2: (); // arg #2
+    let _3: &'0 trust2_contract_sample::use_assert::closure; // anonymous local
+
+    storage_live(_3)
+    _3 = &(*state_1)
+    _0 = {impl Fn<()> for trust2_contract_sample::use_assert::closure}::call<'2>(move _3, move args_2)
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::closure::{impl Destruct for trust2_contract_sample::use_assert::closure}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::use_assert::closure}::drop_in_place(_1: *mut trust2_contract_sample::use_assert::closure)
+= <missing>
+
+// Full name: trust2_contract_sample::use_assert::closure::{impl Destruct for trust2_contract_sample::use_assert::closure}
+impl Destruct for trust2_contract_sample::use_assert::closure {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::use_assert::closure}::drop_in_place
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::{impl FnOnce<()> for trust2_contract_sample::use_assert::closure}::call_once
+fn {impl FnOnce<()> for trust2_contract_sample::use_assert::closure}::call_once(_1: trust2_contract_sample::use_assert::closure, _2: ()) -> bool
+{
+    let _0: bool; // return
+    let _1: trust2_contract_sample::use_assert::closure; // arg #1
+    let _2: (); // arg #2
+    let _3: &'1 mut trust2_contract_sample::use_assert::closure; // anonymous local
+
+    storage_live(_3)
+    _3 = &mut _1
+    _0 = {impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut<'3>(move _3, move _2)
+    drop[{impl Destruct for trust2_contract_sample::use_assert::closure}] _1
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::{impl FnOnce<()> for trust2_contract_sample::use_assert::closure}
+impl FnOnce<()> for trust2_contract_sample::use_assert::closure {
+    parent_clause0 = {built_in impl MetaSized for trust2_contract_sample::use_assert::closure}
+    parent_clause1 = {built_in impl Sized for ()}
+    parent_clause2 = {built_in impl Tuple for ()}
+    parent_clause3 = {built_in impl Sized for bool}
+    type Output = bool
+    fn call_once = {impl FnOnce<()> for trust2_contract_sample::use_assert::closure}::call_once
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::{impl FnMut<()> for trust2_contract_sample::use_assert::closure}
+impl FnMut<()> for trust2_contract_sample::use_assert::closure {
+    parent_clause0 = {built_in impl MetaSized for trust2_contract_sample::use_assert::closure}
+    parent_clause1 = {impl FnOnce<()> for trust2_contract_sample::use_assert::closure}
+    parent_clause2 = {built_in impl Sized for ()}
+    parent_clause3 = {built_in impl Tuple for ()}
+    fn call_mut<'_0_1> = {impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut<'_0_1>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::{impl Fn<()> for trust2_contract_sample::use_assert::closure}
+impl Fn<()> for trust2_contract_sample::use_assert::closure {
+    parent_clause0 = {built_in impl MetaSized for trust2_contract_sample::use_assert::closure}
+    parent_clause1 = {impl FnMut<()> for trust2_contract_sample::use_assert::closure}
+    parent_clause2 = {built_in impl Sized for ()}
+    parent_clause3 = {built_in impl Tuple for ()}
+    fn call<'_0_1> = {impl Fn<()> for trust2_contract_sample::use_assert::closure}::call<'_0_1>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert
+fn use_assert()
+{
+    let _0: (); // return
+    let _1: (); // anonymous local
+    let _2: trust2_contract_sample::use_assert::closure; // anonymous local
+
+    _0 = ()
+    storage_live(_1)
+    storage_live(_2)
+    _2 = trust2_contract_sample::use_assert::closure {  }
+    _1 = @SpecAssert<trust2_contract_sample::use_assert::closure>[{built_in impl Sized for trust2_contract_sample::use_assert::closure}, {impl Fn<()> for trust2_contract_sample::use_assert::closure}, {built_in impl Copy for trust2_contract_sample::use_assert::closure}](move _2)
+    storage_dead(_2)
+    storage_dead(_1)
+    _0 = ()
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::{impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call
+fn {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::use_assert::decuple::closure<'_0>, _2: ()) -> bool
+{
+    let _0: bool; // return
+    let _1: &'1 trust2_contract_sample::use_assert::decuple::closure<'_0>; // arg #1
+    let tupled_args_2: (); // arg #2
+    let _3: u8; // anonymous local
+
+    storage_live(_3)
+    _3 = copy (*((*_1)).0)
+    _0 = move _3 <= const 25 : u8
+    storage_dead(_3)
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::{impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut
+fn {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut<'_0, '_1>(_1: &'_1 mut trust2_contract_sample::use_assert::decuple::closure<'_0>, _2: ()) -> bool
+{
+    let _0: bool; // return
+    let state_1: &'_1 mut trust2_contract_sample::use_assert::decuple::closure<'_0>; // arg #1
+    let args_2: (); // arg #2
+    let _3: &'0 trust2_contract_sample::use_assert::decuple::closure<'_0>; // anonymous local
+
+    storage_live(_3)
+    _3 = &(*state_1)
+    _0 = {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call<'_0, '2>(move _3, move args_2)
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::closure::{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::use_assert::decuple::closure<'_0>)
+= <missing>
+
+// Full name: trust2_contract_sample::use_assert::decuple::closure::{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+impl<'_0> Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0> {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place<'_0>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::{impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_once
+fn {impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_once<'_0>(_1: trust2_contract_sample::use_assert::decuple::closure<'_0>, _2: ()) -> bool
+{
+    let _0: bool; // return
+    let _1: trust2_contract_sample::use_assert::decuple::closure<'_0>; // arg #1
+    let _2: (); // arg #2
+    let _3: &'1 mut trust2_contract_sample::use_assert::decuple::closure<'_0>; // anonymous local
+
+    storage_live(_3)
+    _3 = &mut _1
+    _0 = {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut<'_0, '5>(move _3, move _2)
+    drop[{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}<'_0>] _1
+    return
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::{impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+impl<'_0> FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0> {
+    parent_clause0 = {built_in impl MetaSized for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+    parent_clause1 = {built_in impl Sized for ()}
+    parent_clause2 = {built_in impl Tuple for ()}
+    parent_clause3 = {built_in impl Sized for bool}
+    type Output = bool
+    fn call_once = {impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_once<'_0>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::{impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+impl<'_0> FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0> {
+    parent_clause0 = {built_in impl MetaSized for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+    parent_clause1 = {impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}<'_0>
+    parent_clause2 = {built_in impl Sized for ()}
+    parent_clause3 = {built_in impl Tuple for ()}
+    fn call_mut<'_0_1> = {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut<'_0, '_0_1>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::{impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+impl<'_0> Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0> {
+    parent_clause0 = {built_in impl MetaSized for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+    parent_clause1 = {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}<'_0>
+    parent_clause2 = {built_in impl Sized for ()}
+    parent_clause3 = {built_in impl Tuple for ()}
+    fn call<'_0_1> = {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call<'_0, '_0_1>
+    non-dyn-compatible
+}
+
 
 

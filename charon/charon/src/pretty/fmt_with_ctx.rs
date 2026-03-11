@@ -276,6 +276,8 @@ impl Display for BuiltinFunId {
             BuiltinFunId::SpecExists => "SpecExists",
             BuiltinFunId::SpecImplies => "SpecImplies",
             BuiltinFunId::SpecOld => "SpecOld",
+            BuiltinFunId::SpecAssert => "SpecAssert",
+            BuiltinFunId::SpecAssume => "SpecAssume",
             BuiltinFunId::ArrayToSliceShared => "ArrayToSliceShared",
             BuiltinFunId::ArrayToSliceMut => "ArrayToSliceMut",
             BuiltinFunId::ArrayRepeat => "ArrayRepeat",

@@ -91,6 +91,8 @@ fn recognize_spec_call(name: &Name) -> Option<BuiltinFunId> {
         "exists" => Some(BuiltinFunId::SpecExists),
         "implies" => Some(BuiltinFunId::SpecImplies),
         "old" => Some(BuiltinFunId::SpecOld),
+        "contract_assert" => Some(BuiltinFunId::SpecAssert),
+        "contract_assume" => Some(BuiltinFunId::SpecAssume),
         _ => None,
     }
 }

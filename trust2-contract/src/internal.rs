@@ -23,3 +23,7 @@ pub fn implies(_: bool, _: bool) -> bool {
 pub fn old<T>(x: &mut T) -> &mut T {
     x
 }
+
+pub fn contract_assert<T: Fn() -> bool + Copy>(_: T) {}
+
+pub fn contract_assume<T: Fn() -> bool + Copy>(_: T) {}

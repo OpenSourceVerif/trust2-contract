@@ -430,18 +430,22 @@ pub enum BuiltinFunId {
     BoxNew,
     /// trust2-contract entry marker
     SpecEntry,
-    /// trust2-contract precondition marker
+    /// trust2-contract precondition
     SpecPrecondition,
-    /// trust2-contract postcondition marker
+    /// trust2-contract postcondition
     SpecPostcondition,
-    /// trust2-contract forall quantifier
+    /// trust2-contract universal quantification
     SpecForall,
-    /// trust2-contract exists quantifier
+    /// trust2-contract existential quantification
     SpecExists,
     /// trust2-contract implies logical operator
     SpecImplies,
     /// trust2-contract old marker
     SpecOld,
+    /// trust2-contract assertion
+    SpecAssert,
+    /// trust2-contract assumption
+    SpecAssume,
     /// Cast `&[T; N]` to `&[T]`.
     ///
     /// This is used instead of unsizing coercions when `--ops-to-function-calls` is set.

@@ -1,4 +1,4 @@
-use trust2_contract::{invariant, postcondition, precondition};
+use trust2_contract::prelude::*;
 
 #[expect(dead_code)]
 #[precondition(x < 16)]
@@ -18,4 +18,14 @@ struct RefRange<'a, T: PartialOrd> {
 #[postcondition(|b| forall(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1])))]
 fn to_sorted(a: &[i32]) -> Vec<i32> {
     vec![]
+}
+
+#[expect(dead_code)]
+fn use_assert() {
+    #[precondition(x <= 25)]
+    fn decuple(x: u8) -> u8 {
+        (x << 3) + (x << 1)
+    }
+
+    contract_assert!(decuple(9) == 90);
 }

@@ -101,6 +101,32 @@ pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
     }
 }
 
+pub fn contract_assert(expr: TokenStream) -> TokenStream {
+    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
+    let expr = parse_macro_input!(expr as Expr);
+
+    quote! {
+        {
+            ::#crate_name::internal::entry();
+            ::#crate_name::internal::contract_assert(|| #expr);
+        }
+    }
+}
+
+pub fn contract_assume(expr: TokenStream) -> TokenStream {
+    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
+    let expr = parse_macro_input!(expr as Expr);
+
+    quote! {
+        {
+            ::#crate_name::internal::entry();
+            ::#crate_name::internal::contract_assume(|| #expr);
+        }
+    }
+}
+
 #[cfg(not(test))]
 static CRATE_NAME: LazyLock<String> = {
     use proc_macro_crate::FoundCrate;

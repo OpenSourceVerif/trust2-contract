@@ -1,1 +1,1 @@
-pub use crate::{invariant, postcondition, precondition};
+pub use crate::{contract_assert, contract_assume, invariant, postcondition, precondition};

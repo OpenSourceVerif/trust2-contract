@@ -14,3 +14,13 @@ pub fn postcondition(_attr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn invariant(_attr: TokenStream, item: TokenStream) -> TokenStream {
     item
 }
+
+#[proc_macro]
+pub fn contract_assert(_expr: TokenStream) -> TokenStream {
+    TokenStream::new()
+}
+
+#[proc_macro]
+pub fn contract_assume(_expr: TokenStream) -> TokenStream {
+    TokenStream::new()
+}
