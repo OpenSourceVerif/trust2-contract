@@ -13,5 +13,5 @@ utils = { path = "../utils" }
 anyhow = "1.0.81"
 clap = { version = "4.5.50", features = ["derive"] }
 clap-cargo = "0.18.3"
-tempfile = "3.24.0"
+tempfile = "3.27.0"
 yansi = { version = "1.0.1", features = ["detect-tty", "detect-env"] }
