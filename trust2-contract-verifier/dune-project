@@ -1,0 +1,19 @@
+(lang dune 3.22)
+
+(name trust2-contract-verifier)
+
+(generate_opam_files true)
+
+(package
+ (name trust2-contract-verifier)
+ (depends ocaml charon))
+
+(pin
+ (url ../charon)
+ (package (name charon)))
+
+(pin
+ (url ../charon)
+ (package (name name_matcher_parser)))
+
+; See the complete stanza docs at https://dune.readthedocs.io/en/stable/reference/dune-project/index.html

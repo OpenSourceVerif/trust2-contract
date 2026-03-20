@@ -1,13 +1,13 @@
 {
-    "rust-analyzer.rustc.source": "discover",
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
         "charon/charon/Cargo.toml",
         "proc-macro-crate/Cargo.toml"
     ],
+    "rust-analyzer.rustc.source": "discover",
     "rust-analyzer.cargo.features": "all",
     "ocaml.sandbox": {
         "kind": "opam",
-        "switch": "${workspaceFolder:trust2-contract}\\charon"
+        "switch": "${workspaceFolder:trust2-contract}"
     }
 }

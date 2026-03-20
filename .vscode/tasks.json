@@ -10,30 +10,43 @@
             "problemMatcher": []
         },
         {
-            "label": "git subtree: pull charon",
+            "label": "rust: cargo test workspace",
             "type": "shell",
-            "command": "git subtree --prefix charon pull --squash charon main; printf '\\033[33m\\nUpdate rust-toolchain.toml and Cargo.toml accordingly.\\033[0m'",
-            "options": {
-                "shell": {
-                    "executable": "/bin/sh",
-                    "args": ["-c"]
-                }
-            },
-            "windows": {
-                "command": "git subtree --prefix charon pull --squash charon main; Write-Host -ForegroundColor DarkYellow \"`nUpdate rust-toolchain.toml and Cargo.toml accordingly.\"",
-                "options": {
-                    "shell": {
-                        "executable": "powershell",
-                        "args": ["-Command"]
-                    }
-                }
-            },
-            "problemMatcher": []
+            "command": "cargo test --all-features",
+            "problemMatcher": [
+                "$rustc"
+            ],
+            "group": "test"
         },
         {
             "label": "git subtree: pull proc-macro-crate",
             "type": "shell",
             "command": "git subtree --prefix proc-macro-crate pull --squash proc-macro-crate master",
+            "problemMatcher": []
+        },
+        {
+            "label": "git subtree: pull charon",
+            "type": "shell",
+            "options": {
+                "shell": {
+                    "executable": "/bin/sh",
+                    "args": [
+                        "-c"
+                    ]
+                }
+            },
+            "command": "git subtree --prefix charon pull --squash charon main; printf '\\033[33m\\nUpdate rust-toolchain.toml, Cargo.toml, and .ocamlformat accordingly.\\033[0m'",
+            "windows": {
+                "options": {
+                    "shell": {
+                        "executable": "powershell",
+                        "args": [
+                            "-Command"
+                        ]
+                    }
+                },
+                "command": "git subtree --prefix charon pull --squash charon main; Write-Host -ForegroundColor DarkYellow \"`nUpdate rust-toolchain.toml, Cargo.toml, and .ocamlformat accordingly.\""
+            },
             "problemMatcher": []
         }
     ]
