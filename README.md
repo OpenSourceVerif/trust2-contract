@@ -79,6 +79,8 @@ The following commands assume the current working directory is the root of this 
 
 ## Development setup
 
+If Charon depends on the openssl crate, additional steps may be required to build. See [openssl - Rust](https://docs.rs/openssl/latest/openssl/#automatic).
+
 ```sh
 git config set core.hooksPath .git-hooks
 

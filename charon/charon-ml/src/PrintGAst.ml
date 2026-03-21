@@ -16,23 +16,24 @@ let item_id_to_string (id : item_id) : string =
   | IdTraitDecl id -> TraitDeclId.to_string id
   | IdTraitImpl id -> TraitImplId.to_string id
 
-let fn_operand_to_string (env : 'a fmt_env) (op : fn_operand) : string =
+let fn_operand_to_string (env : ('a, 'b) fmt_env) (op : fn_operand) : string =
   match op with
   | FnOpRegular func -> fn_ptr_to_string env func
   | FnOpDynamic op -> "(" ^ operand_to_string env op ^ ")"
 
-let call_to_string (env : 'a fmt_env) (indent : string) (call : call) : string =
+let call_to_string (env : ('a, 'b) fmt_env) (indent : string) (call : call) :
+    string =
   let func = fn_operand_to_string env call.func in
   let args = List.map (operand_to_string env) call.args in
   let args = "(" ^ String.concat ", " args ^ ")" in
   let dest = place_to_string env call.dest in
   indent ^ dest ^ " := move " ^ func ^ args
 
-let assertion_to_string (env : 'a fmt_env) (a : assertion) : string =
+let assertion_to_string (env : ('a, 'b) fmt_env) (a : assertion) : string =
   let cond = operand_to_string env a.cond in
   if a.expected then "assert(" ^ cond ^ ")" else "assert(¬" ^ cond ^ ")"
 
-let abort_kind_to_string (env : 'a fmt_env) (a : abort_kind) : string =
+let abort_kind_to_string (env : ('a, 'b) fmt_env) (a : abort_kind) : string =
   match a with
   | Panic None -> "panic"
   | Panic (Some name) -> "panic(" ^ name_to_string env name ^ ")"
@@ -40,7 +41,7 @@ let abort_kind_to_string (env : 'a fmt_env) (a : abort_kind) : string =
   | UnwindTerminate -> "unwind_terminate"
 
 (** Small helper *)
-let fun_sig_with_name_to_string (env : 'a fmt_env) (indent : string)
+let fun_sig_with_name_to_string (env : ('a, 'b) fmt_env) (indent : string)
     (indent_incr : string) (attribute : string option) (name : string option)
     (args : local list option) (sg : bound_fun_sig) : string =
   let { item_binder_params = generics; item_binder_value = sg; _ } = sg in
@@ -92,14 +93,14 @@ let fun_sig_with_name_to_string (env : 'a fmt_env) (indent : string)
   indent ^ attribute ^ unsafe ^ "fn" ^ name ^ params ^ "(" ^ args ^ ")" ^ ret_ty
   ^ clauses
 
-let fun_sig_to_string (env : 'a fmt_env) (indent : string)
+let fun_sig_to_string (env : ('a, 'b) fmt_env) (indent : string)
     (indent_incr : string) (sg : fun_sig item_binder) : string =
   fun_sig_with_name_to_string env indent indent_incr None None None sg
 
-let gfun_decl_to_string (env : 'a fmt_env) (indent : string)
+let gfun_decl_to_string (env : ('a, 'b) fmt_env) (indent : string)
     (indent_incr : string)
-    (body_to_string : 'a fmt_env -> string -> string -> 'body -> string)
-    (def : 'body gfun_decl) : string =
+    (body_to_string : ('a, 'b) fmt_env -> string -> string -> 'body -> string)
+    (def : ('body, 'specs) gfun_decl) : string =
   (* Locally update the environment *)
   let env = fmt_env_replace_generics_and_preds env def.generics in
 
@@ -144,7 +145,7 @@ let gfun_decl_to_string (env : 'a fmt_env) (indent : string)
         (Some inputs) sg
       ^ indent ^ "\n{\n" ^ locals ^ "\n\n" ^ body ^ "\n" ^ indent ^ "}"
 
-let trait_decl_to_string (env : 'a fmt_env) (indent : string)
+let trait_decl_to_string (env : ('a, 'b) fmt_env) (indent : string)
     (indent_incr : string) (def : trait_decl) : string =
   (* Locally update the environment *)
   let env = fmt_env_replace_generics_and_preds env def.generics in
@@ -212,7 +213,7 @@ let trait_decl_to_string (env : 'a fmt_env) (indent : string)
 
   "trait " ^ name ^ params ^ clauses ^ items
 
-let trait_impl_to_string (env : 'a fmt_env) (indent : string)
+let trait_impl_to_string (env : ('a, 'b) fmt_env) (indent : string)
     (indent_incr : string) (def : trait_impl) : string =
   (* Locally update the environment *)
   let env = fmt_env_replace_generics_and_preds env def.generics in

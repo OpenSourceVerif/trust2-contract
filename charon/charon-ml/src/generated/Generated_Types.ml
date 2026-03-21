@@ -175,6 +175,15 @@ and builtin_fun_id =
   | BoxNew
       (** Used instead of [alloc::boxed::Box::new] when [--treat-box-as-builtin]
           is set. *)
+  | SpecEntry  (** trust2-contract entry marker *)
+  | SpecPrecondition  (** trust2-contract precondition *)
+  | SpecPostcondition  (** trust2-contract postcondition *)
+  | SpecForall  (** trust2-contract universal quantification *)
+  | SpecExists  (** trust2-contract existential quantification *)
+  | SpecImplies  (** trust2-contract implies logical operator *)
+  | SpecOld  (** trust2-contract old marker *)
+  | SpecAssert  (** trust2-contract assertion *)
+  | SpecAssume  (** trust2-contract assumption *)
   | ArrayToSliceShared
       (** Cast [&[T; N]] to [&[T]].
 
@@ -1074,6 +1083,7 @@ and type_decl = {
   repr : repr_options option;
       (** The representation options of this type declaration as annotated by
           the user. Is [None] for foreign type declarations. *)
+  specs : type_specs;  (** Associated trust2-contract specifications. *)
 }
 
 and type_decl_kind =
@@ -1090,6 +1100,8 @@ and type_decl_kind =
   | TDeclError of string
       (** Used if an error happened during the extraction, and we don't panic on
           error. *)
+
+and type_specs = { invariants : fun_decl_id list }
 
 and v_table_field =
   | VTableSize

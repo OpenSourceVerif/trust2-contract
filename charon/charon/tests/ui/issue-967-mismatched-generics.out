@@ -81,7 +81,7 @@ error: Type error after transformations:
          charon_lib::ast::gast::Local
          charon_lib::ids::index_vec::IndexVec<charon_lib::ast::values::LocalId, charon_lib::ast::gast::Local>
          charon_lib::ast::gast::Locals
-         charon_lib::ast::gast::GExprBody<charon_lib::ast::llbc_ast::Block>
+         charon_lib::ast::gast::GExprBody<charon_lib::ast::llbc_ast::Block, charon_lib::ast::llbc_ast::FunSpecs>
          charon_lib::ast::gast::Body
          charon_lib::ast::gast::FunDecl
        Binding stack (depth 1):

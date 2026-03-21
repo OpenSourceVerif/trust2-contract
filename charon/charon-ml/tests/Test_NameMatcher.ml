@@ -73,7 +73,7 @@ module PatternTest = struct
   }
 
   type env = {
-    ctx : LlbcAst.block ctx;
+    ctx : (LlbcAst.block, LlbcAst.fun_specs) ctx;
     file_name : string;
     match_config : match_config;
     fmt_env : PrintLlbcAst.fmt_env;
@@ -81,7 +81,7 @@ module PatternTest = struct
     to_pat_config : to_pat_config;
   }
 
-  let mk_env (ctx : LlbcAst.block ctx) file_name : env =
+  let mk_env (ctx : (LlbcAst.block, LlbcAst.fun_specs) ctx) file_name : env =
     let tgt = TkPattern in
     let match_with_trait_decl_refs = true in
     {

@@ -21,8 +21,9 @@ let option_list_of_json of_json = list_of_json (option_of_json of_json)
 (* This is written by hand because the corresponding rust type is not type-generic. *)
 let rec gfun_decl_of_json
     (body_of_json :
-      of_json_ctx -> json -> ('body gexpr_body option, string) result)
-    (ctx : of_json_ctx) (js : json) : ('body gfun_decl, string) result =
+      of_json_ctx -> json -> (('body, 'specs) gexpr_body option, string) result)
+    (ctx : of_json_ctx) (js : json) : (('body, 'specs) gfun_decl, string) result
+    =
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc
@@ -85,8 +86,8 @@ and id_to_file_of_json (ctx : of_json_ctx) (js : json) :
    deserialize in the exact same order as the rust side. *)
 and gtranslated_crate_of_json
     (body_of_json :
-      of_json_ctx -> json -> ('body gexpr_body option, string) result)
-    (js : json) : ('body gcrate, string) result =
+      of_json_ctx -> json -> (('body, 'specs) gexpr_body option, string) result)
+    (js : json) : (('body, 'specs) gcrate, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc
@@ -166,8 +167,8 @@ and gtranslated_crate_of_json
 
 and gcrate_of_json
     (body_of_json :
-      of_json_ctx -> json -> ('body gexpr_body option, string) result)
-    (js : json) : ('body gcrate, string) result =
+      of_json_ctx -> json -> (('body, 'specs) gexpr_body option, string) result)
+    (js : json) : (('body, 'specs) gcrate, string) result =
   match js with
   | `Assoc [ ("charon_version", charon_version); ("translated", translated) ]
   | `Assoc [ ("charon_version", charon_version); ("translated", translated); _ ]

@@ -13,8 +13,8 @@ let block_id_to_string (id : UllbcAst.BlockId.id) : string =
 (** The formatting environment can be incomplete: if some information is missing
     (for instance we can't find the type variable for a given index) we print
     the id in raw format. *)
-type 'fun_body fmt_env = {
-  crate : 'fun_body gcrate;
+type ('fun_body, 'fun_specs) fmt_env = {
+  crate : ('fun_body, 'fun_specs) gcrate;
   generics : generic_params list;
       (** We have a stack of generic parameters, because we can dive into
           binders (for instance because of the arrow type). *)
@@ -22,19 +22,20 @@ type 'fun_body fmt_env = {
       (** The local variables don't need to be ordered (same as the generics) *)
 }
 
-let of_crate (crate : 'fun_body gcrate) : 'fun_body fmt_env =
+let of_crate (crate : ('fun_body, 'fun_specs) gcrate) :
+    ('fun_body, 'fun_specs) fmt_env =
   { crate; generics = []; locals = [] }
 
-let fmt_env_push_generics_and_preds (env : 'a fmt_env)
-    (generics : generic_params) : 'a fmt_env =
+let fmt_env_push_generics_and_preds (env : ('a, 'b) fmt_env)
+    (generics : generic_params) : ('a, 'b) fmt_env =
   { env with generics = generics :: env.generics }
 
-let fmt_env_replace_generics_and_preds (env : 'a fmt_env)
-    (generics : generic_params) : 'a fmt_env =
+let fmt_env_replace_generics_and_preds (env : ('a, 'b) fmt_env)
+    (generics : generic_params) : ('a, 'b) fmt_env =
   { env with generics = [ generics ] }
 
-let fmt_env_push_regions (env : 'a fmt_env) (regions : region_param list) :
-    'a fmt_env =
+let fmt_env_push_regions (env : ('a, 'b) fmt_env) (regions : region_param list)
+    : ('a, 'b) fmt_env =
   {
     env with
     generics = { TypesUtils.empty_generic_params with regions } :: env.generics;

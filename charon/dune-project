@@ -41,7 +41,7 @@
   yojson
   zarith
   name_matcher_parser
-  (ocamlformat :with-test)))
+  (ocamlformat (and :with-test (= 0.27.0)))))
 
 (package
  (name name_matcher_parser)

@@ -16,7 +16,7 @@ let local_to_string (v : local) : string =
   | None -> local_id_to_pretty_string v.index
   | Some name -> name ^ "^" ^ LocalId.to_string v.index
 
-let local_id_to_string (env : 'a fmt_env) (id : LocalId.id) : string =
+let local_id_to_string (env : ('a, 'b) fmt_env) (id : LocalId.id) : string =
   match List.find_opt (fun (i, _) -> i = id) env.locals with
   | None -> local_id_to_pretty_string id
   | Some (_, name) -> (
@@ -35,7 +35,7 @@ let (var_id_to_string
 let (var_to_string [@ocaml.alert deprecated "use [local_to_string] instead"]) =
   local_to_string
 
-let rec projection_elem_to_string (env : 'a fmt_env) (sub : string)
+let rec projection_elem_to_string (env : ('a, 'b) fmt_env) (sub : string)
     (pe : projection_elem) : string =
   match pe with
   | Deref -> "*(" ^ sub ^ ")"
@@ -60,7 +60,7 @@ let rec projection_elem_to_string (env : 'a fmt_env) (sub : string)
           "(" ^ sub ^ " as " ^ variant_name ^ ")." ^ field_name)
   | PtrMetadata -> sub ^ ".metadata"
 
-and place_to_string (env : 'a fmt_env) (p : place) : string =
+and place_to_string (env : ('a, 'b) fmt_env) (p : place) : string =
   match p.kind with
   | PlaceLocal var_id -> local_id_to_string env var_id
   | PlaceProjection (subplace, pe) ->
@@ -70,7 +70,7 @@ and place_to_string (env : 'a fmt_env) (p : place) : string =
       let generics = generic_args_to_string env global_ref.generics in
       global_decl_id_to_string env global_ref.id ^ generics
 
-and cast_kind_to_string (env : 'a fmt_env) (cast : cast_kind) : string =
+and cast_kind_to_string (env : ('a, 'b) fmt_env) (cast : cast_kind) : string =
   match cast with
   | CastScalar (src, tgt) ->
       "cast<" ^ literal_type_to_string src ^ "," ^ literal_type_to_string tgt
@@ -82,7 +82,7 @@ and cast_kind_to_string (env : 'a fmt_env) (cast : cast_kind) : string =
   | CastConcretize (src, tgt) ->
       "concretize<" ^ ty_to_string env src ^ "," ^ ty_to_string env tgt ^ ">"
 
-and nullop_to_string (env : 'a fmt_env) (op : nullop) : string =
+and nullop_to_string (env : ('a, 'b) fmt_env) (op : nullop) : string =
   match op with
   | SizeOf -> "size_of"
   | AlignOf -> "align_of"
@@ -91,7 +91,7 @@ and nullop_to_string (env : 'a fmt_env) (op : nullop) : string =
   | ContractChecks -> "contract_checks"
   | OverflowChecks -> "overflow_checks"
 
-and unop_to_string (env : 'a fmt_env) (unop : unop) : string =
+and unop_to_string (env : ('a, 'b) fmt_env) (unop : unop) : string =
   match unop with
   | Not -> "¬"
   | Neg om -> overflow_mode_to_string om ^ ".-"
@@ -127,13 +127,13 @@ and binop_to_string (binop : binop) : string =
   | Cmp -> "cmp"
   | Offset -> "offset"
 
-and operand_to_string (env : 'a fmt_env) (op : operand) : string =
+and operand_to_string (env : ('a, 'b) fmt_env) (op : operand) : string =
   match op with
   | Copy p -> "copy " ^ place_to_string env p
   | Move p -> "move " ^ place_to_string env p
   | Constant cv -> constant_expr_to_string env cv
 
-and aggregate_to_string (env : 'a fmt_env) (agg : aggregate_kind)
+and aggregate_to_string (env : ('a, 'b) fmt_env) (agg : aggregate_kind)
     (fields : operand list) : string =
   let fields = List.map (operand_to_string env) fields in
   match agg with
@@ -179,7 +179,7 @@ and aggregate_to_string (env : 'a fmt_env) (agg : aggregate_kind)
       in
       refk ^ " (" ^ String.concat ", " fields ^ ")"
 
-and rvalue_to_string (env : 'a fmt_env) (rv : rvalue) : string =
+and rvalue_to_string (env : ('a, 'b) fmt_env) (rv : rvalue) : string =
   match rv with
   | Use op -> operand_to_string env op
   | RvRef (p, bk, op) -> begin

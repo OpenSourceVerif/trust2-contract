@@ -9,6 +9,12 @@ module BlockId = IdGen ()
 type block = { statements : statement list; terminator : terminator }
 and block_id = (BlockId.id[@visitors.opaque])
 and blocks = block list
+and fun_spec_block = { statements : statement list; call : spec_call }
+
+and fun_specs = {
+  preconditions : fun_spec_block list;
+  postconditions : fun_spec_block list;
+}
 
 and statement = {
   span : span;

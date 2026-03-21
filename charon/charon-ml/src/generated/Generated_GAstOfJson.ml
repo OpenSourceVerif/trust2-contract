@@ -295,6 +295,15 @@ and builtin_fun_id_of_json (ctx : of_json_ctx) (js : json) :
   combine_error_msgs js __FUNCTION__
     (match js with
     | `String "BoxNew" -> Ok BoxNew
+    | `String "SpecEntry" -> Ok SpecEntry
+    | `String "SpecPrecondition" -> Ok SpecPrecondition
+    | `String "SpecPostcondition" -> Ok SpecPostcondition
+    | `String "SpecForall" -> Ok SpecForall
+    | `String "SpecExists" -> Ok SpecExists
+    | `String "SpecImplies" -> Ok SpecImplies
+    | `String "SpecOld" -> Ok SpecOld
+    | `String "SpecAssert" -> Ok SpecAssert
+    | `String "SpecAssume" -> Ok SpecAssume
     | `String "ArrayToSliceShared" -> Ok ArrayToSliceShared
     | `String "ArrayToSliceMut" -> Ok ArrayToSliceMut
     | `String "ArrayRepeat" -> Ok ArrayRepeat
@@ -966,12 +975,13 @@ and g_declaration_group_of_json :
     | _ -> Error "")
 
 and gexpr_body_of_json :
-    'a0.
+    'a0 'a1.
     (of_json_ctx -> json -> ('a0, string) result) ->
+    (of_json_ctx -> json -> ('a1, string) result) ->
     of_json_ctx ->
     json ->
-    ('a0 gexpr_body, string) result =
- fun arg0_of_json ctx js ->
+    (('a0, 'a1) gexpr_body, string) result =
+ fun arg0_of_json arg1_of_json ctx js ->
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc
@@ -981,12 +991,14 @@ and gexpr_body_of_json :
           ("locals", locals);
           ("body", body);
           ("comments", _);
+          ("specs", specs);
         ] ->
         let* span = span_of_json ctx span in
         let* bound_body_regions = int_of_json ctx bound_body_regions in
         let* locals = locals_of_json ctx locals in
         let* body = arg0_of_json ctx body in
-        Ok ({ span; bound_body_regions; locals; body } : _ gexpr_body)
+        let* specs = arg1_of_json ctx specs in
+        Ok ({ span; bound_body_regions; locals; body; specs } : _ gexpr_body)
     | _ -> Error "")
 
 and generic_args_of_json (ctx : of_json_ctx) (js : json) :
@@ -1816,6 +1828,16 @@ and span_data_of_json (ctx : of_json_ctx) (js : json) :
         Ok ({ file; beg_loc; end_loc } : span_data)
     | _ -> Error "")
 
+and spec_call_of_json (ctx : of_json_ctx) (js : json) :
+    (spec_call, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("span", span); ("args", args) ] ->
+        let* span = span_of_json ctx span in
+        let* args = list_of_json operand_of_json ctx args in
+        Ok ({ span; args } : spec_call)
+    | _ -> Error "")
+
 and tag_encoding_of_json (ctx : of_json_ctx) (js : json) :
     (tag_encoding, string) result =
   combine_error_msgs js __FUNCTION__
@@ -2227,6 +2249,7 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
           ("layout", layout);
           ("ptr_metadata", ptr_metadata);
           ("repr", repr);
+          ("specs", specs);
         ] ->
         let* def_id = type_decl_id_of_json ctx def_id in
         let* item_meta = item_meta_of_json ctx item_meta in
@@ -2236,6 +2259,7 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
         let* layout = option_of_json layout_of_json ctx layout in
         let* ptr_metadata = ptr_metadata_of_json ctx ptr_metadata in
         let* repr = option_of_json repr_options_of_json ctx repr in
+        let* specs = type_specs_of_json ctx specs in
         Ok
           ({
              def_id;
@@ -2246,6 +2270,7 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
              layout;
              ptr_metadata;
              repr;
+             specs;
            }
             : type_decl)
     | _ -> Error "")
@@ -2315,6 +2340,15 @@ and type_param_of_json (ctx : of_json_ctx) (js : json) :
         let* index = type_var_id_of_json ctx index in
         let* name = string_of_json ctx name in
         Ok ({ index; name } : type_param)
+    | _ -> Error "")
+
+and type_specs_of_json (ctx : of_json_ctx) (js : json) :
+    (type_specs, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("invariants", invariants) ] ->
+        let* invariants = list_of_json fun_decl_id_of_json ctx invariants in
+        Ok ({ invariants } : type_specs)
     | _ -> Error "")
 
 and type_var_id_of_json (ctx : of_json_ctx) (js : json) :

@@ -1141,13 +1141,19 @@ fn generate_ml(
 
         // (u)llbc types are those that are dominated by the entrypoint of the corresponding
         // module, i.e. those that can't be reached if you remove these entrypoints.
-        let non_llbc_types: HashSet<_> =
-            ctx.children_of_except("TranslatedCrate", &["charon_lib::ast::llbc_ast::Block"]);
+        let non_llbc_types: HashSet<_> = ctx.children_of_except(
+            "TranslatedCrate",
+            &[
+                "charon_lib::ast::llbc_ast::Block",
+                "charon_lib::ast::llbc_ast::FunSpecs",
+            ],
+        );
         let non_ullbc_types: HashSet<_> = ctx.children_of_except(
             "TranslatedCrate",
             &[
                 "charon_lib::ast::ullbc_ast::BlockData",
                 "charon_lib::ast::ullbc_ast::BlockId",
+                "charon_lib::ast::ullbc_ast::FunSpecs",
             ],
         );
         let llbc_types: HashSet<_> = all_types.difference(&non_llbc_types).copied().collect();
@@ -1305,6 +1311,7 @@ fn generate_ml(
                     "CopyNonOverlapping",
                     "Error",
                     "AbortKind",
+                    "SpecCall",
                 ]),
                 // These have to be kept separate to avoid field name clashes
                 (GenerationKind::TypeDecl(Some(DeriveVisitors {
@@ -1349,6 +1356,7 @@ fn generate_ml(
                     extra_types: &[],
                 })), &[
                     "charon_lib::ast::llbc_ast::Statement",
+                    "charon_lib::ast::llbc_ast::FunSpecs",
                 ]),
             ]),
         },
@@ -1363,6 +1371,7 @@ fn generate_ml(
                     extra_types: &[],
                 })), &[
                     "charon_lib::ast::ullbc_ast::BodyContents",
+                    "charon_lib::ast::ullbc_ast::FunSpecs",
                 ]),
             ]),
         },

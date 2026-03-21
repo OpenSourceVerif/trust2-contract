@@ -6,7 +6,7 @@ open PrintTypes
 open PrintValues
 open PrintExpressions
 
-type fmt_env = block PrintUtils.fmt_env
+type fmt_env = (block, fun_specs) PrintUtils.fmt_env
 
 (** Pretty-printing for LLBC AST (generic functions) *)
 module Ast = struct

@@ -14,6 +14,32 @@ and block_of_json (ctx : of_json_ctx) (js : json) : (block, string) result =
         Ok ({ span; statements } : block)
     | _ -> Error "")
 
+and fun_spec_block_of_json (ctx : of_json_ctx) (js : json) :
+    (fun_spec_block, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("statements", statements); ("call", call) ] ->
+        let* statements = list_of_json statement_of_json ctx statements in
+        let* call = spec_call_of_json ctx call in
+        Ok ({ statements; call } : fun_spec_block)
+    | _ -> Error "")
+
+and fun_specs_of_json (ctx : of_json_ctx) (js : json) :
+    (fun_specs, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc
+        [ ("preconditions", preconditions); ("postconditions", postconditions) ]
+      ->
+        let* preconditions =
+          list_of_json fun_spec_block_of_json ctx preconditions
+        in
+        let* postconditions =
+          list_of_json fun_spec_block_of_json ctx postconditions
+        in
+        Ok ({ preconditions; postconditions } : fun_specs)
+    | _ -> Error "")
+
 and statement_of_json (ctx : of_json_ctx) (js : json) :
     (statement, string) result =
   combine_error_msgs js __FUNCTION__

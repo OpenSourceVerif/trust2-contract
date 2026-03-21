@@ -7,6 +7,12 @@ open Identifiers
 module StatementId = IdGen ()
 
 type block = { span : span; statements : statement list }
+and fun_spec_block = { statements : statement list; call : spec_call }
+
+and fun_specs = {
+  preconditions : fun_spec_block list;
+  postconditions : fun_spec_block list;
+}
 
 and statement = {
   span : span;

@@ -39,12 +39,12 @@ let locals_get_input_vars (locals : locals) : local list =
   let args = List.tl locals.locals in
   Collections.List.prefix locals.arg_count args
 
-let fun_body_get_input_vars (fbody : 'body gexpr_body) : local list =
+let fun_body_get_input_vars (fbody : ('body, 'specs) gexpr_body) : local list =
   locals_get_input_vars fbody.locals
 
 (** Get the signature of this function as a bound value, i.e. including its
     generics parameters. *)
-let bound_fun_sig_of_decl (def : 'a gfun_decl) : bound_fun_sig =
+let bound_fun_sig_of_decl (def : ('a, 'b) gfun_decl) : bound_fun_sig =
   { item_binder_params = def.generics; item_binder_value = def.signature }
 
 (** Lookup a method in this trait decl. The two levels of binders in the output

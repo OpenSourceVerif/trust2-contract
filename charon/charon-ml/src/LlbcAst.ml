@@ -5,12 +5,12 @@ open Meta
 include GAst
 include Generated_LlbcAst
 
-type expr_body = block gexpr_body [@@deriving show]
+type expr_body = (block, fun_specs) gexpr_body [@@deriving show]
 type fun_body = expr_body [@@deriving show]
-type fun_decl = block gfun_decl [@@deriving show]
+type fun_decl = (block, fun_specs) gfun_decl [@@deriving show]
 
 (** LLBC crate *)
-type crate = block gcrate [@@deriving show]
+type crate = (block, fun_specs) gcrate [@@deriving show]
 
 (* Ancestors for the type_decl visitors *)
 class ['self] iter_statement =
