@@ -53,6 +53,8 @@ cargo verify --charon-out-dir Charon-LLBC --charon-pretty-print > output.llbc.pr
 
 ## Build
 
+Windows is not supported currently, because the OCaml ecosystem does not support Windows well.
+
 The following commands assume the current working directory is the root of this repository.
 
 1. Prerequisites: rustup, opam, dune.
