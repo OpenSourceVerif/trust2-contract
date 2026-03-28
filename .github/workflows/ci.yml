@@ -33,6 +33,9 @@ jobs:
         with:
           ocaml-compiler: ocaml-base-compiler.5.4.1
 
+      - name: Install Dune
+        run: opam install dune -y
+
       - name: Build
         run: sh build.sh
 
