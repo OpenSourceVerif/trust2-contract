@@ -37,8 +37,8 @@ jobs:
         run: opam install dune -y
 
       - name: Build
-        run: sh build.sh
+        run: opam exec -- sh build.sh
 
       - name: Run Verifier Tests
-        run: dune runtest
+        run: opam exec -- dune runtest
         working-directory: trust2-contract-verifier
