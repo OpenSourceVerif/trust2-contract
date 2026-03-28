@@ -6,7 +6,11 @@
 
 (package
  (name trust2-contract-verifier)
- (depends ocaml charon))
+ (depends
+  ocaml
+  (ocamlformat (= 0.27.0))
+  charon
+  why3))
 
 (pin
  (url ../charon)

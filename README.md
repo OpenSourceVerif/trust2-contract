@@ -84,6 +84,11 @@ The following commands assume the current working directory is the root of this 
 If Charon depends on the openssl crate, additional steps may be required to build. See [openssl - Rust](https://docs.rs/openssl/latest/openssl/#automatic).
 
 ```sh
+opam switch create . 5.3.0
+opam install ocaml-lsp-server odoc ocamlformat.0.27.0 utop
+```
+
+```sh
 git config set core.hooksPath .git-hooks
 
 git remote add charon https://github.com/AeneasVerif/charon.git

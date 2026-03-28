@@ -35,7 +35,7 @@
                     ]
                 }
             },
-            "command": "git subtree --prefix charon pull --squash charon main; printf '\\033[33m\\nUpdate rust-toolchain.toml, Cargo.toml, and .ocamlformat accordingly.\\033[0m'",
+            "command": "git subtree --prefix charon pull --squash charon main; printf '\\033[33m\\nUpdate rust-toolchain.toml, Cargo.toml, .ocamlformat, dune-project, and README.md accordingly.\\033[0m'",
             "windows": {
                 "options": {
                     "shell": {
@@ -45,7 +45,7 @@
                         ]
                     }
                 },
-                "command": "git subtree --prefix charon pull --squash charon main; Write-Host -ForegroundColor DarkYellow \"`nUpdate rust-toolchain.toml, Cargo.toml, and .ocamlformat accordingly.\""
+                "command": "git subtree --prefix charon pull --squash charon main; Write-Host -ForegroundColor DarkYellow \"`nUpdate rust-toolchain.toml, Cargo.toml, .ocamlformat, dune-project, and README.md accordingly.\""
             },
             "problemMatcher": []
         }
