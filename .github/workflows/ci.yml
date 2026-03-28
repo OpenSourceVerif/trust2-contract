@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgmp-dev pkg-config
+
+      - name: Set Up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: nightly-2026-02-07
+          components: rustc-dev, llvm-tools
+
+      - name: Cache Rust Artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Set Up OCaml
+        uses: avsm/setup-ocaml@v3
+        with:
+          ocaml-compiler: ocaml-base-compiler.5.4.1
+
+      - name: Build
+        run: sh build.sh
+
+      - name: Run Verifier Tests
+        run: dune runtest
+        working-directory: trust2-contract-verifier
