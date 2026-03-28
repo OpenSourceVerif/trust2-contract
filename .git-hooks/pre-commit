@@ -3,6 +3,7 @@
 set -e
 
 cd $(git rev-parse --show-toplevel)
+eval $(opam env)
 
 # `cargo clippy` runs `cargo check`, which may produce warnings.
 cargo clippy --all-targets --all-features -- --no-deps -D warnings
