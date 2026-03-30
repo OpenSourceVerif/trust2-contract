@@ -1,3 +1,0 @@
-(test
- (name test_trust2_contract_verifier)
- (libraries trust2_contract_verifier))

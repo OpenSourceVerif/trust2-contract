@@ -1,4 +1,0 @@
-(executable
- (public_name trust2-contract-verifier)
- (name main)
- (libraries trust2_contract_verifier charon))

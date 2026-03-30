@@ -51,20 +51,6 @@ cargo install --path <repo-root>/cargo-verify
 cargo verify --charon-out-dir Charon-LLBC --charon-pretty-print > output.llbc.pretty
 ```
 
-## Build
-
-Windows is not supported currently, because the OCaml ecosystem does not support Windows well.
-
-The following commands assume the current working directory is the root of this repository.
-
-1. Prerequisites: rustup, opam, dune.
-
-2. `rustup toolchain install`
-
-3. Ensure the following packages are installed: pkg-config, libgmp-dev.
-
-4. `sh build.sh` or `sh build.sh --install`
-
 ## Usage
 
 - Copy `./rust-toolchain.toml` to your package/workspace root.
@@ -76,6 +62,8 @@ The following commands assume the current working directory is the root of this 
   Add `./trust2-contract` as a path dependency to use.
 
 - To verify contracts specified, use `cargo verify` subcommand.
+
+  Install through `cargo install --path ./cargo-verify`.
 
   Run `cargo verify --help` for help.
 

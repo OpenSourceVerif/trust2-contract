@@ -1,6 +1,4 @@
 /target
 
 _opam/
-_build/
-dune-workspace
 dune.lock/
