@@ -78,7 +78,7 @@ smallvec = "1.15.1"
 stacker = "0.1"
 strip-ansi-escapes = "0.2.1"
 take_mut = "0.2.2"
-tar = { version = "0.4.42", optional = true }
+tar = { version = "0.4.45", optional = true }
 toml = { version = "0.8", features = ["parse"] }
 tracing-subscriber = { version = "0.3", features = [ "env-filter", "std", "fmt", ] }
 tracing-tree = { git = "https://github.com/Nadrieril/tracing-tree", features = [ "time", ] } # Fork with improved formating and timing info.
