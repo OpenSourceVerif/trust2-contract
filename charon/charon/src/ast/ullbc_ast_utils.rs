@@ -365,7 +365,7 @@ impl BodyBuilder {
         // Replace erased regions with fresh ones.
         let mut freshener: IndexMap<RegionId, ()> = IndexMap::new();
         self.body.dyn_visit_mut(|r: &mut Region| {
-            if r.is_erased() {
+            if r.is_erased() || r.is_body() {
                 *r = Region::Body(freshener.push(()));
             }
         });
@@ -424,8 +424,8 @@ impl BodyBuilder {
             .push(mk_block(self.span, TerminatorKind::Return));
         let term = TerminatorKind::Drop {
             kind: DropKind::Precise,
-            place: place,
-            tref: tref,
+            place,
+            tref,
             target: next_block,
             on_unwind: self.unwind_block(),
         };

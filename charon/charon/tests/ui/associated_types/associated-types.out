@@ -142,6 +142,7 @@ where
     [@TraitClause0]: ToOwned<Self, Clause0_Owned>,
 = <opaque>
 
+// Full name: UNIT_METADATA
 fn UNIT_METADATA()
 {
     let _0: (); // return
@@ -150,7 +151,8 @@ fn UNIT_METADATA()
     return
 }
 
-const UNIT_METADATA: () = @Fun0()
+// Full name: UNIT_METADATA
+const UNIT_METADATA: () = UNIT_METADATA()
 
 trait test_crate::Foo<'a, Self, Self_Item>
 where
@@ -466,7 +468,7 @@ where
     parent_clause0 = {built_in impl MetaSized for ()}
     parent_clause1 = {built_in impl Sized for Option<T>[@TraitClause0]}
     parent_clause2 = {built_in impl Sized for &'_ ()}
-    parent_clause3 = {built_in impl Sized for &'_ (Option<T>[@TraitClause0], &'_ ())}
+    parent_clause3 = {impl test_crate::params::Foo<'a, Option<T>[@TraitClause0], &'a (), &'a (Option<T>[@TraitClause0], &'a ())> for ()}<'a, T>[@TraitClause0]::parent_clause3
     vtable: {impl test_crate::params::Foo<'a, Option<T>[@TraitClause0], &'a (), &'a (Option<T>[@TraitClause0], &'a ())> for ()}::{vtable}<'a, T>[@TraitClause0]
 }
 

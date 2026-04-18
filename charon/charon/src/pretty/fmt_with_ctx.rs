@@ -254,6 +254,14 @@ impl<C: AstFormatter> FmtWithCtx<C> for gast::Body {
             Body::Opaque => write!(f, "= <opaque>"),
             Body::Missing => write!(f, "= <missing>"),
             Body::Error(error) => write!(f, "= error(\"{}\")", error.msg),
+            Body::TargetDispatch(targets) => {
+                writeln!(f, "= target_dispatch {{")?;
+                for (target, fun) in targets {
+                    let fun = fun.with_ctx(ctx);
+                    writeln!(f, "{tab}{TAB_INCR}{target} => {fun},")?;
+                }
+                write!(f, "{tab}}}")
+            }
         }
     }
 }
@@ -436,7 +444,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for DynPredicate {
                     match &tref.kind {
                         TraitRefKind::ParentClause(parent_trait_ref, clause_id) => {
                             path.push(format!("parent_clause{clause_id}"));
-                            tref = &parent_trait_ref;
+                            tref = parent_trait_ref;
                         }
                         &TraitRefKind::Clause(DeBruijnVar::Bound(_, clause_id)) => {
                             tgt_clause = Some(clause_id);
@@ -467,7 +475,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for DynPredicate {
                         .generics
                         .fmt_explicits(ctx)
                         .map(Either::Left)
-                        .chain(cstrs.into_iter().map(Either::Right))
+                        .chain(cstrs.iter().map(Either::Right))
                         .format(", ");
                     format!("<{}>", xs)
                 } else {
@@ -969,7 +977,7 @@ where
         // Predicates
         write!(f, "{preds}")?;
         if self.generics.has_predicates() {
-            write!(f, "\n")?;
+            writeln!(f)?;
         }
         write!(f, " ")?;
 
@@ -1245,6 +1253,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for PathElem {
                     binder.skip_binder.fmt_explicits(ctx).format(", ")
                 )
             }
+            PathElem::Target(target) => write!(f, "{target}"),
         }
     }
 }
@@ -1336,7 +1345,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Byte {
 impl<C: AstFormatter> FmtWithCtx<C> for ConstantExprKind {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ConstantExprKind::Literal(c) => write!(f, "{}", c.to_string()),
+            ConstantExprKind::Literal(c) => write!(f, "{}", c),
             ConstantExprKind::Adt(variant_id, values) => {
                 // It is a bit annoying: in order to properly format the value,
                 // we need the type (which contains the type def id).
@@ -1844,7 +1853,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
                 SwitchTargets::SwitchInt(_ty, maps, otherwise) => {
                     let maps = maps
                         .iter()
-                        .map(|(v, bid)| format!("{}: bb{}", v.to_string(), bid))
+                        .map(|(v, bid)| format!("{}: bb{}", v, bid))
                         .chain([format!("otherwise: bb{otherwise}")])
                         .format(", ");
                     write!(f, "switch {} -> {}", discr.with_ctx(ctx), maps)
@@ -1948,7 +1957,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitDecl {
                             let _ = writeln!(
                                 f,
                                 "{TAB_INCR}{TAB_INCR}implied_clause_{} : {}",
-                                c.clause_id.to_string(),
+                                c.clause_id,
                                 c.with_ctx(ctx)
                             );
                         }
@@ -2124,7 +2133,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitRef {
                 write!(f, "}}")?;
                 Ok(())
             }
-            TraitRefKind::Dyn { .. } => write!(f, "{}", self.trait_decl_ref.with_ctx(ctx)),
+            TraitRefKind::Dyn => write!(f, "{}", self.trait_decl_ref.with_ctx(ctx)),
             TraitRefKind::Unknown(msg) => write!(f, "UNKNOWN({msg})"),
         }
     }

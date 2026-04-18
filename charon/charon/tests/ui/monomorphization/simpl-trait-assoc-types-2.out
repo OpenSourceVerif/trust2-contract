@@ -18,6 +18,7 @@ opaque type core::marker::MetaSized::{vtable}
 #[lang_item("meta_sized")]
 pub trait MetaSized<Self>
 
+// Full name: UNIT_METADATA
 fn UNIT_METADATA()
 {
     let _0: (); // return
@@ -26,7 +27,8 @@ fn UNIT_METADATA()
     return
 }
 
-const UNIT_METADATA: () = @Fun0()
+// Full name: UNIT_METADATA
+const UNIT_METADATA: () = UNIT_METADATA()
 
 struct test_crate::Trait::{vtable} {
   size: usize,

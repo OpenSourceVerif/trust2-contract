@@ -10,17 +10,16 @@ cargo clippy --all-targets --all-features -- --no-deps -D warnings
 #     cd proc-macro-crate
 #     cargo clippy --all-targets --all-features -- -D warnings
 # )
-# (
-#     cd charon/charon
-#     cargo clippy --all-targets --all-features -- -D warnings
-# )
+(
+    cd charon/charon
+    cargo clippy --all-targets --all-features -- -D warnings
+)
 
-# `cargo fmt` does not support `--workspace`.
-cargo fmt -p cargo-verify -p trust2-contract -p trust2-contract-macros -p utils --check
-# (
-#     cd proc-macro-crate
-#     cargo fmt --check
-# )
+cargo fmt --check
+(
+    cd proc-macro-crate
+    cargo fmt --all --check
+)
 # (
 #     cd charon/charon
 #     cargo fmt --all --check
