@@ -74,23 +74,21 @@ impl TypeCheckVisitor<'_> {
     }
 
     fn match_regions(&mut self, a: &Region, b: &Region) -> Result<(), TypeError> {
-        match (a, b) {
-            (Region::Body(a), Region::Body(b)) => {
-                if let Some(unifier) = &mut self.body_lt_unifier {
-                    unifier.union(*a, *b);
-                }
-            }
-            _ => {}
+        if let (Region::Body(a), Region::Body(b)) = (a, b)
+            && let Some(unifier) = &mut self.body_lt_unifier
+        {
+            unifier.union(*a, *b);
         }
         Ok(())
     }
 
+    /// Compare two types for equality. Because we can't use the full power of rustc's type
+    /// equality, we err on the side of accepting.
     fn match_tys(&mut self, a: &Ty, b: &Ty) -> Result<(), TypeError> {
         match (a.kind(), b.kind()) {
             (TyKind::Adt(a), TyKind::Adt(b)) if a.id == b.id => {
                 self.match_generics(&a.generics, &b.generics)?
             }
-            (TyKind::TypeVar(a), TyKind::TypeVar(b)) if a == b => {}
             (TyKind::Literal(a), TyKind::Literal(b)) if a == b => {}
             (TyKind::Never, TyKind::Never) => {}
             (TyKind::Array(aty, _), TyKind::Array(bty, _)) => {
@@ -111,7 +109,8 @@ impl TypeCheckVisitor<'_> {
             (TyKind::DynTrait(..), TyKind::DynTrait(..)) => {}
             (TyKind::FnPtr(..), TyKind::FnPtr(..)) => {}
             (TyKind::FnDef(..), TyKind::FnDef(..)) => {}
-            // We may be missing normalization. TODO: fetch value from env.
+            // We can't decide type equality, so we avoid false positives here.
+            (TyKind::TypeVar(_), _) | (_, TyKind::TypeVar(_)) => {}
             (TyKind::TraitType(..), _) | (_, TyKind::TraitType(..)) => {}
             (TyKind::PtrMetadata(..), _) | (_, TyKind::PtrMetadata(..)) => {}
             (TyKind::Error(_), _) | (_, TyKind::Error(_)) => {}
@@ -144,19 +143,15 @@ impl TypeCheckVisitor<'_> {
     }
 
     fn match_trait_ref_against_itself(&mut self, tref: &TraitRef) -> Result<(), TypeError> {
-        match &tref.kind {
-            TraitRefKind::TraitImpl(trait_impl_ref) => {
-                if let Some(timpl) = self.ctx.translated.trait_impls.get(trait_impl_ref.id)
-                    && let Ok(target_pred) = timpl
-                        .impl_trait
-                        .clone()
-                        .try_substitute(&trait_impl_ref.generics)
-                {
-                    let pred = tref.trait_decl_ref.clone().erase();
-                    self.match_trait_decl_refs(&pred, &target_pred)?;
-                }
-            }
-            _ => {}
+        if let TraitRefKind::TraitImpl(trait_impl_ref) = &tref.kind
+            && let Some(timpl) = self.ctx.translated.trait_impls.get(trait_impl_ref.id)
+            && let Ok(target_pred) = timpl
+                .impl_trait
+                .clone()
+                .try_substitute(&trait_impl_ref.generics)
+        {
+            let pred = tref.trait_decl_ref.clone().erase();
+            self.match_trait_decl_refs(&pred, &target_pred)?;
         }
         Ok(())
     }
@@ -290,13 +285,13 @@ impl TypeCheckVisitor<'_> {
         target: &GenericsSource,
     ) {
         let _ = self.zip_assert_match(
-            &clauses.val,
+            clauses.val,
             trefs,
             params_fmt,
             kind,
             target,
             |this, tclause, tref| {
-                this.assert_clause_matches(&params_fmt, clauses.rebind(tclause), tref)
+                this.assert_clause_matches(params_fmt, clauses.rebind(tclause), tref)
             },
         );
     }
@@ -377,7 +372,7 @@ impl TypeCheckVisitor<'_> {
 }
 
 impl VisitAstMut for TypeCheckVisitor<'_> {
-    fn visit<'a, T: AstVisitable>(&'a mut self, x: &mut T) -> ControlFlow<Self::Break> {
+    fn visit<T: AstVisitable>(&mut self, x: &mut T) -> ControlFlow<Self::Break> {
         self.visit_stack.push(x.name());
         VisitWithSpan::new(VisitWithBinderStack::new(self)).visit(x)?;
         self.visit_stack.pop();
@@ -386,24 +381,24 @@ impl VisitAstMut for TypeCheckVisitor<'_> {
 
     // Check that generics are correctly bound.
     fn enter_region(&mut self, x: &mut Region) {
-        if let Region::Var(var) = x {
-            if self.binder_stack.get_var(*var).is_none() {
-                self.error(format!("Found incorrect region var: {var}"));
-            }
+        if let Region::Var(var) = x
+            && self.binder_stack.get_var(*var).is_none()
+        {
+            self.error(format!("Found incorrect region var: {var}"));
         }
     }
     fn enter_ty_kind(&mut self, x: &mut TyKind) {
-        if let TyKind::TypeVar(var) = x {
-            if self.binder_stack.get_var(*var).is_none() {
-                self.error(format!("Found incorrect type var: {var}"));
-            }
+        if let TyKind::TypeVar(var) = x
+            && self.binder_stack.get_var(*var).is_none()
+        {
+            self.error(format!("Found incorrect type var: {var}"));
         }
     }
     fn enter_constant_expr(&mut self, x: &mut ConstantExpr) {
-        if let ConstantExprKind::Var(var) = &x.kind {
-            if self.binder_stack.get_var(*var).is_none() {
-                self.error(format!("Found incorrect const-generic var: {var}"));
-            }
+        if let ConstantExprKind::Var(var) = &x.kind
+            && self.binder_stack.get_var(*var).is_none()
+        {
+            self.error(format!("Found incorrect const-generic var: {var}"));
         }
     }
     fn enter_trait_ref(&mut self, x: &mut TraitRef) {
@@ -492,11 +487,8 @@ impl VisitAstMut for TypeCheckVisitor<'_> {
         }
     }
     fn visit_rvalue(&mut self, x: &mut Rvalue) -> ::std::ops::ControlFlow<Self::Break> {
-        match x {
-            Rvalue::UnaryOp(UnOp::Cast(CastKind::Concretize(src, tar)), _) => {
-                self.check_concretization_ty_match(src, tar);
-            }
-            _ => {}
+        if let Rvalue::UnaryOp(UnOp::Cast(CastKind::Concretize(src, tar)), _) = x {
+            self.check_concretization_ty_match(src, tar);
         }
         Continue(())
     }

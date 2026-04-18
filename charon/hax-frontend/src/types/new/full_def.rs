@@ -325,7 +325,10 @@ pub enum FullDefKind {
         param_env: ParamEnv,
         implied_predicates: GenericPredicates,
         associated_item: AssocItem,
-        value: Option<Ty>,
+        /// The value for this associated type, along with proofs of the required predicates. If
+        /// we're in a trait decl, this has a value iff the type has a default; if we're in a trait
+        /// impl, this has a value iff the impl provides its own value for it.
+        value: Option<(Ty, Vec<ImplExpr>)>,
     },
     /// Opaque type, aka `impl Trait`.
     OpaqueTy,
@@ -659,26 +662,20 @@ where
                 ),
             }
         }
-        RDefKind::TyAlias { .. } => {
-            let s = &s.with_base(Base {
-                // Rust doesn't enforce bounds on generic parameters in type aliases. Thus, when
-                // translating type aliases, we need to disable trait resolution errors. For more
-                // details, please see https://github.com/hacspec/hax/issues/707.
-                silence_resolution_errors: true,
-                ..s.base()
-            });
-            FullDefKind::TyAlias {
-                param_env: get_param_env(s, args),
-                ty: type_of_self().sinto(s),
-            }
-        }
+        RDefKind::TyAlias { .. } => FullDefKind::TyAlias {
+            param_env: get_param_env(s, args),
+            ty: type_of_self().sinto(s),
+        },
         RDefKind::ForeignTy => FullDefKind::ForeignTy,
         RDefKind::AssocTy { .. } => FullDefKind::AssocTy {
             param_env: get_param_env(s, args),
             implied_predicates: get_implied_predicates(s, args),
             associated_item: AssocItem::sfrom_instantiated(s, &tcx.associated_item(def_id), args),
             value: if tcx.defaultness(def_id).has_value() {
-                Some(type_of_self().sinto(s))
+                let ty = type_of_self();
+                let args = args_or_default();
+                let impl_exprs = solve_item_implied_traits(s, def_id, args);
+                Some((ty.sinto(s), impl_exprs))
             } else {
                 None
             },
@@ -1323,22 +1320,14 @@ fn get_implied_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     s: &S,
     args: Option<ty::GenericArgsRef<'tcx>>,
 ) -> GenericPredicates {
-    use std::borrow::Cow;
     let tcx = s.base().tcx;
     let def_id = s.owner_id();
     let typing_env = s.typing_env();
     let mut implied_predicates = implied_predicates(tcx, def_id, s.base().options.bounds_options);
     if args.is_some() {
-        implied_predicates = Cow::Owned(
-            implied_predicates
-                .iter()
-                .copied()
-                .map(|(clause, span)| {
-                    let clause = substitute(tcx, typing_env, args, clause);
-                    (clause, span)
-                })
-                .collect(),
-        );
+        for pred in implied_predicates.iter_mut() {
+            pred.clause = substitute(tcx, typing_env, args, pred.clause);
+        }
     }
     implied_predicates.sinto(s)
 }

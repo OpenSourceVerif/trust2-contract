@@ -110,13 +110,13 @@ impl TransItemSource {
             if item.has_param {
                 panic!("Item is not monomorphic: {item:?}")
             }
-        } else if let RustcItem::MonoTrait(_) = &item {
-            if !matches!(
+        } else if let RustcItem::MonoTrait(_) = &item
+            && !matches!(
                 kind,
                 TransItemSourceKind::TraitDecl | TransItemSourceKind::VTable
-            ) {
-                panic!("Item kind {kind:?} should not be translated as monomorphic_trait")
-            }
+            )
+        {
+            panic!("Item kind {kind:?} should not be translated as monomorphic_trait")
         }
         Self { item, kind }
     }
@@ -181,16 +181,16 @@ impl TransItemSource {
     /// the main item).
     pub(crate) fn is_derived_item(&self) -> bool {
         use TransItemSourceKind::*;
-        match self.kind {
+        !matches!(
+            self.kind,
             Global
-            | TraitDecl
-            | TraitImpl(TraitImplSource::Normal)
-            | InherentImpl
-            | Module
-            | Fun
-            | Type => false,
-            _ => true,
-        }
+                | TraitDecl
+                | TraitImpl(TraitImplSource::Normal)
+                | InherentImpl
+                | Module
+                | Fun
+                | Type
+        )
     }
 }
 
@@ -210,33 +210,31 @@ impl<'tcx> TranslateCtx<'tcx> {
     pub fn base_kind_for_item(&mut self, def_id: &hax::DefId) -> Option<TransItemSourceKind> {
         use hax::DefKind::*;
         Some(match &def_id.kind {
-            Enum { .. } | Struct { .. } | Union { .. } | TyAlias { .. } | ForeignTy => {
-                TransItemSourceKind::Type
-            }
-            Fn { .. } | AssocFn { .. } => TransItemSourceKind::Fun,
-            Const { .. } | Static { .. } | AssocConst { .. } => TransItemSourceKind::Global,
-            Trait { .. } | TraitAlias { .. } => TransItemSourceKind::TraitDecl,
+            Enum | Struct | Union | TyAlias | ForeignTy => TransItemSourceKind::Type,
+            Fn | AssocFn => TransItemSourceKind::Fun,
+            Const | Static { .. } | AssocConst => TransItemSourceKind::Global,
+            Trait | TraitAlias => TransItemSourceKind::TraitDecl,
             Impl { of_trait: true } => TransItemSourceKind::TraitImpl(TraitImplSource::Normal),
             Impl { of_trait: false } => TransItemSourceKind::InherentImpl,
-            Mod { .. } | ForeignMod { .. } => TransItemSourceKind::Module,
+            Mod | ForeignMod => TransItemSourceKind::Module,
 
             // We skip these
-            ExternCrate { .. } | GlobalAsm { .. } | Macro { .. } | Use { .. } => return None,
+            ExternCrate | GlobalAsm | Macro { .. } | Use => return None,
             // These can happen when doing `--start-from` on a foreign crate. We can skip them
             // because their parents will already have been registered.
-            Ctor { .. } | Variant { .. } => return None,
+            Ctor { .. } | Variant => return None,
             // We cannot encounter these since they're not top-level items.
-            AnonConst { .. }
-            | AssocTy { .. }
-            | Closure { .. }
-            | ConstParam { .. }
-            | Field { .. }
-            | InlineConst { .. }
-            | PromotedConst { .. }
-            | LifetimeParam { .. }
-            | OpaqueTy { .. }
-            | SyntheticCoroutineBody { .. }
-            | TyParam { .. } => {
+            AnonConst
+            | AssocTy
+            | Closure
+            | ConstParam
+            | Field
+            | InlineConst
+            | PromotedConst
+            | LifetimeParam
+            | OpaqueTy
+            | SyntheticCoroutineBody
+            | TyParam => {
                 let span = self.def_span(def_id);
                 register_error!(
                     self,
@@ -341,10 +339,12 @@ impl<'tcx> TranslateCtx<'tcx> {
 
     pub(crate) fn register_target_info(&mut self) {
         let target_data = &self.tcx.data_layout;
-        self.translated.target_information = krate::TargetInfo {
+        let triple = self.get_target_triple();
+        let info = krate::TargetInfo {
             target_pointer_size: target_data.pointer_size().bytes(),
             is_little_endian: matches!(target_data.endian, rustc_abi::Endian::Little),
-        }
+        };
+        self.translated.target_information.insert(triple, info);
     }
 }
 
@@ -457,7 +457,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         // `translate_item_generics`.
         if matches!(
             hax_item.def_id.kind,
-            hax::DefKind::Fn { .. } | hax::DefKind::AssocFn { .. } | hax::DefKind::Closure { .. }
+            hax::DefKind::Fn | hax::DefKind::AssocFn | hax::DefKind::Closure
         ) {
             let def = self.hax_def(hax_item)?;
             match def.kind() {
@@ -687,16 +687,16 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     }
 }
 
-#[tracing::instrument(skip(tcx))]
-pub fn translate<'tcx, 'ctx>(
-    cli_options: &CliOpts,
+#[tracing::instrument(skip(tcx, error_ctx))]
+pub fn translate<'tcx>(
     tcx: TyCtxt<'tcx>,
+    cli_options: &CliOpts,
+    mut error_ctx: ErrorCtx,
     sysroot: PathBuf,
 ) -> Result<TransformCtx, Error> {
-    let mut error_ctx = ErrorCtx::new(!cli_options.abort_on_error, cli_options.error_on_warnings);
     let translate_options = TranslateOptions::new(&mut error_ctx, cli_options);
 
-    let mut hax_state = hax::state::State::new(
+    let hax_state = hax::state::State::new(
         tcx,
         hax::options::Options {
             item_ref_use_concrete_impl: true,
@@ -707,9 +707,6 @@ pub fn translate<'tcx, 'ctx>(
             },
         },
     );
-    // This suppresses warnings when trait resolution fails. We don't need them since we emit our
-    // own.
-    hax_state.base.silence_resolution_errors = true;
 
     let crate_def_id: hax::DefId = rustc_span::def_id::CRATE_DEF_ID
         .to_def_id()
@@ -745,8 +742,8 @@ pub fn translate<'tcx, 'ctx>(
     // Start translating from the selected items.
     for start_from in ctx.options.start_from.clone() {
         match start_from {
-            StartFrom::Pattern(pat) => {
-                match super::resolve_path::def_path_def_ids(&ctx.hax_state, &pat) {
+            StartFrom::Pattern { pattern, strict } => {
+                match super::resolve_path::def_path_def_ids(&ctx.hax_state, &pattern, strict) {
                     Ok(resolved) => {
                         for def_id in resolved {
                             let def_id: hax::DefId = def_id.sinto(&ctx.hax_state);
@@ -757,7 +754,7 @@ pub fn translate<'tcx, 'ctx>(
                         register_error!(
                             ctx,
                             Span::dummy(),
-                            "when processing starting pattern `{pat}`: {err}"
+                            "when processing starting pattern `{pattern}`: {err}"
                         );
                     }
                 }
@@ -765,7 +762,7 @@ pub fn translate<'tcx, 'ctx>(
             StartFrom::Attribute(attr_name) => {
                 let attr_path = attr_name
                     .split("::")
-                    .map(|x| rustc_span::Symbol::intern(x))
+                    .map(rustc_span::Symbol::intern)
                     .collect_vec();
                 let mut add_if_attr_matches = |ldid: rustc_hir::def_id::LocalDefId| {
                     let def_id: hax::DefId = ldid.to_def_id().sinto(&ctx.hax_state);

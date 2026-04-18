@@ -26,6 +26,7 @@ pub trait Destruct<Self>
 unsafe fn drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
+// Full name: UNIT_METADATA
 fn UNIT_METADATA()
 {
     let _0: (); // return
@@ -34,7 +35,8 @@ fn UNIT_METADATA()
     return
 }
 
-const UNIT_METADATA: () = @Fun0()
+// Full name: UNIT_METADATA
+const UNIT_METADATA: () = UNIT_METADATA()
 
 // Full name: test_crate::Foo
 pub trait Foo<Self>
@@ -87,18 +89,18 @@ where
 }
 
 // Full name: test_crate::{impl Broken for T}::broken::{vtable_method}
-fn {vtable_method}<'_0, T>(_1: &'_0 (dyn Broken))
+fn {vtable_method}<'_0, T>(_1: &'_0 (dyn Broken<Assoc = ()>))
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Foo<()>,
 {
     let _0: (); // return
-    let _1: &'_0 (dyn Broken + '0); // arg #1
+    let _1: &'_0 (dyn Broken<Assoc = ()> + '0); // arg #1
     let _2: &'_0 T; // anonymous local
 
     _0 = ()
     storage_live(_2)
-    _2 = concretize<&'_0 (dyn Broken + '1), &'_0 T>(move _1)
+    _2 = concretize<&'_0 (dyn Broken<Assoc = ()> + '1), &'_0 T>(move _1)
     _0 = {impl Broken for T}::broken<'_0, T>[@TraitClause0, @TraitClause1](move _2)
     return
 }
