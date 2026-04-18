@@ -16,15 +16,15 @@ macro_rules! parse_macro_input {
 }
 
 pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
-    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
+    let crate_name_ident = crate_name_ident();
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
 
     let stmt = parse_quote! {
         {
-            ::#crate_name::internal::entry();
-            ::#crate_name::internal::precondition(|| #expr);
+            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::precondition(|| #expr);
         }
     };
     item.block.stmts.insert(0, stmt);
@@ -34,9 +34,9 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
-    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
-    let expr = parse::replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name);
+    let crate_name_ident = crate_name_ident();
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
+    let expr = parse::replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
 
@@ -50,8 +50,8 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     };
     let stmt = parse_quote! {
         {
-            ::#crate_name::internal::entry();
-            ::#crate_name::internal::postcondition::<#ty, _>(#expr);
+            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::postcondition::<#ty, _>(#expr);
         }
     };
     item.block.stmts.insert(0, stmt);
@@ -61,8 +61,8 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
-    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
+    let crate_name_ident = crate_name_ident();
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let (type_ident, type_generics) = {
         let type_name = (|item: &TokenStream| {
@@ -93,7 +93,7 @@ pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
     quote! {
         #item
 
-        impl #impl_generics ::#crate_name::internal::TypeInvariant for #type_ident #type_generics #where_clause {
+        impl #impl_generics ::#crate_name_ident::internal::TypeInvariant for #type_ident #type_generics #where_clause {
             fn invariant(&self) -> ::std::primitive::bool {
                 #expr
             }
@@ -102,29 +102,33 @@ pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
 }
 
 pub fn contract_assert(expr: TokenStream) -> TokenStream {
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
-    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
+    let crate_name_ident = crate_name_ident();
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
     quote! {
         {
-            ::#crate_name::internal::entry();
-            ::#crate_name::internal::contract_assert(|| #expr);
+            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::contract_assert(|| #expr);
         }
     }
 }
 
 pub fn contract_assume(expr: TokenStream) -> TokenStream {
-    let crate_name = Ident::new(&CRATE_NAME, Span::mixed_site());
-    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name);
+    let crate_name_ident = crate_name_ident();
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
     quote! {
         {
-            ::#crate_name::internal::entry();
-            ::#crate_name::internal::contract_assume(|| #expr);
+            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::contract_assume(|| #expr);
         }
     }
+}
+
+fn crate_name_ident() -> Ident {
+    Ident::new(&CRATE_NAME, Span::mixed_site())
 }
 
 #[cfg(not(test))]
@@ -163,11 +167,12 @@ mod tests {
         let expr = quote! {
             x < 16
         };
+        let crate_name_ident = crate_name_ident();
         let expect = quote! {
             fn square(x: u8) -> u8 {
                 {
-                    ::trust2_contract::internal::entry();
-                    ::trust2_contract::internal::precondition(|| #expr);
+                    ::#crate_name_ident::internal::entry();
+                    ::#crate_name_ident::internal::precondition(|| #expr);
                 }
                 x * x
             }
@@ -190,10 +195,11 @@ mod tests {
         let expr = quote! {
             self.start <= self.end
         };
+        let crate_name_ident = crate_name_ident();
         let expect = quote! {
             #item
 
-            impl<'a, T: PartialOrd> ::trust2_contract::internal::TypeInvariant for RefRange<'a, T> {
+            impl<'a, T: PartialOrd> ::#crate_name_ident::internal::TypeInvariant for RefRange<'a, T> {
                 fn invariant(&self) -> ::std::primitive::bool {
                     #expr
                 }
@@ -216,11 +222,12 @@ mod tests {
         let expr = quote! {
             |b| forall(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1]))
         };
+        let crate_name_ident = crate_name_ident();
         let expect = quote! {
             fn to_sorted(a: &[i32]) -> Vec<i32> {
                 {
-                    ::trust2_contract::internal::entry();
-                    ::trust2_contract::internal::postcondition::<Vec<i32>, _>(|b| ::trust2_contract::internal::forall(|i: usize| ::trust2_contract::internal::implies(i + 1 < a.len(), b[i] <= b[i + 1])));
+                    ::#crate_name_ident::internal::entry();
+                    ::#crate_name_ident::internal::postcondition::<Vec<i32>, _>(|b| ::#crate_name_ident::internal::forall(|i: usize| ::#crate_name_ident::internal::implies(i + 1 < a.len(), b[i] <= b[i + 1])));
                 }
                 vec![]
             }
