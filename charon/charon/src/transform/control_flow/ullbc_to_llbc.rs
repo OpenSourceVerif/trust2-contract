@@ -1388,6 +1388,7 @@ fn translate_body(ctx: &mut TransformCtx, body: &mut gast::Body) {
         body: tgt_body,
         comments: src_body.comments.clone(),
         specs: tgt_specs,
+        lowered_specs: None,
     };
     remove_useless_jump_blocks(&mut tgt_body);
 

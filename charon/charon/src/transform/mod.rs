@@ -55,6 +55,7 @@ pub mod simplify_output {
     pub mod index_to_function_calls;
     pub mod inline_anon_consts;
     pub mod lift_associated_item_clauses;
+    pub mod lower_specs_to_ast;
     pub mod ops_to_function_calls;
     pub mod remove_adt_clauses;
     pub mod remove_nops;
@@ -200,6 +201,8 @@ pub static LLBC_PASSES: &[Pass] = &[
     // calls.
     // (introduces: ArrayIndexShared, ArrayIndexMut, etc.)
     StructuredBody(&simplify_output::index_to_function_calls::Transform),
+    // # Micro-pass: lower trust2-contract spec blocks to Why3-style ast.
+    StructuredBody(&simplify_output::lower_specs_to_ast::Transform),
 ];
 
 /// Cleanup passes useful for both llbc and ullbc.

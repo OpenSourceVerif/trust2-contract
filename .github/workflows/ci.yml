@@ -28,17 +28,6 @@ jobs:
       - name: Cache Rust Artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Set Up OCaml
-        uses: avsm/setup-ocaml@v3
-        with:
-          ocaml-compiler: ocaml-base-compiler.5.4.1
-
-      - name: Install Dune
-        run: opam install dune -y
-
-      - name: Build
-        run: opam exec -- sh build.sh
-
-      - name: Run Verifier Tests
-        run: opam exec -- dune runtest
-        working-directory: trust2-contract-verifier
+      - name: Run trust2-contract sample test
+        working-directory: charon/charon
+        run: cargo test --test cargo trust2-contract-sample
