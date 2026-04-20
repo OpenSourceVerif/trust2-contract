@@ -1123,6 +1123,7 @@ fn name_path_segments(name: &Name) -> Vec<String> {
             PathElem::Ident(seg, _) => seg.clone(),
             PathElem::Impl(_) => "impl".to_owned(),
             PathElem::Instantiated(_) => "inst".to_owned(),
+            PathElem::Target(target) => target.clone(),
         })
         .collect()
 }

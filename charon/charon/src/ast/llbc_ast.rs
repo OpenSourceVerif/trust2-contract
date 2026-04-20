@@ -206,3 +206,16 @@ pub struct ExprBody {
     #[drive(skip)]
     pub lowered_specs: Option<PSpec>,
 }
+
+impl PartialEq for ExprBody {
+    fn eq(&self, other: &Self) -> bool {
+        self.span == other.span
+            && self.bound_body_regions == other.bound_body_regions
+            && self.locals == other.locals
+            && self.body == other.body
+            && self.comments == other.comments
+            && self.specs == other.specs
+    }
+}
+
+impl Eq for ExprBody {}
