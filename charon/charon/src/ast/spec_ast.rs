@@ -165,15 +165,17 @@ pub enum LiteralConst {
 pub struct Spec {
     /// Precondition terms.
     pub pre: Vec<Term>,
-    /// Postcondition clauses.
+    /// Postcondition entries.
     pub post: Vec<Post>,
 }
 
-/// Postcondition block.
+/// Postcondition entry.
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Post {
     /// Source span of the originating postcondition call.
     pub span: Span,
-    /// Postcondition clauses.
-    pub clauses: Vec<(Pattern, Term)>,
+    /// Result pattern bound by the postcondition closure.
+    pub pattern: Pattern,
+    /// Logical term attached to `pattern`.
+    pub term: Term,
 }

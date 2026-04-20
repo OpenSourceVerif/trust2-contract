@@ -733,10 +733,8 @@ pub fn max(_1: u64, _2: u64) -> u64
         pre:
           - true
         post:
-          -
-            result => (result >= b)
-          -
-            result => (result >= a)
+          - result => (result >= b)
+          - result => (result >= a)
     storage_dead(_3)
     storage_dead(_5)
     storage_dead(_7)
@@ -900,8 +898,7 @@ pub fn min(_1: u64, _2: u64) -> u64
     lowered_specs:
         pre: []
         post:
-          -
-            result => (if (result <= a) then (result <= b) else false)
+          - result => (if (result <= a) then (result <= b) else false)
     storage_dead(_3)
     storage_live(_6)
     storage_live(_7)
@@ -1246,8 +1243,7 @@ pub fn to_sorted<'_0>(_1: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized f
     lowered_specs:
         pre: []
         post:
-          -
-            result => forall i. (((i + Unsigned(Usize, 1)) < core.slice.impl.len(a)) -> (alloc.vec.impl.index(result, i) <= alloc.vec.impl.index(result, (i + Unsigned(Usize, 1)))))
+          - result => forall i. (((i + Unsigned(Usize, 1)) < core.slice.impl.len(a)) -> (alloc.vec.impl.index(result, i) <= alloc.vec.impl.index(result, (i + Unsigned(Usize, 1)))))
     storage_dead(_2)
     _0 = new<i32>[{built_in impl Sized for i32}]()
     return

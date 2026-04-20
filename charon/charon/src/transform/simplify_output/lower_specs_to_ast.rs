@@ -142,10 +142,8 @@ fn lower_specs(
             Ok(lowered) => {
                 post.push(PPost {
                     span: spec_block.call.span,
-                    clauses: vec![(
-                        binders_to_pattern(spec_block.call.span, &lowered.binders),
-                        lowered.term,
-                    )],
+                    pattern: binders_to_pattern(spec_block.call.span, &lowered.binders),
+                    term: lowered.term,
                 });
             }
             Err(err) => errors.push(err),

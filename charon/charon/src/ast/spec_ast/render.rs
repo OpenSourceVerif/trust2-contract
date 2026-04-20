@@ -22,10 +22,7 @@ impl fmt::Display for Spec {
         } else {
             writeln!(f, "post:")?;
             for post in &self.post {
-                writeln!(f, "  -")?;
-                for (pat, term) in &post.clauses {
-                    writeln!(f, "    {} => {}", pat.as_pretty(), term.as_pretty())?;
-                }
+                writeln!(f, "  - {} => {}", post.pattern.as_pretty(), post.term.as_pretty())?;
             }
         }
         Ok(())
@@ -230,13 +227,11 @@ mod tests {
             pre: Vec::new(),
             post: vec![Post {
                 span,
-                clauses: vec![(
-                    Pattern {
-                        span,
-                        desc: PatternDesc::Var(result),
-                    },
-                    post_term,
-                )],
+                pattern: Pattern {
+                    span,
+                    desc: PatternDesc::Var(result),
+                },
+                term: post_term,
             }],
         };
 
