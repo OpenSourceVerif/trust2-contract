@@ -1,5 +1,6 @@
 use charon_lib::ast::TranslatedCrate;
 use proc_macro_crate::FoundCrate;
+use utils::cargo;
 
 use anyhow::{Context, Result, bail};
 
@@ -17,7 +18,7 @@ pub fn translate_crates(
     let mut crates = HashMap::new();
 
     let feature_args: Box<dyn Iterator<Item = OsString>> = {
-        let cargo_manifest_dir = utils::cargo_manifest_dir()?;
+        let cargo_manifest_dir = cargo::cargo_manifest_dir()?;
         let cargo_manifest_dir = cargo_manifest_dir.into_os_string().into_string().unwrap();
         match proc_macro_crate::package_name("trust2-contract", cargo_manifest_dir) {
             Ok(FoundCrate::Name(name)) => {
