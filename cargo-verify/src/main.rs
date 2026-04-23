@@ -5,6 +5,7 @@ use yansi::{Condition, Paint};
 
 use std::{ffi::OsString, path::PathBuf};
 
+mod llbc_to_whyml;
 mod rust_to_llbc;
 
 #[derive(Parser)]
