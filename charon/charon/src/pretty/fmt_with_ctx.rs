@@ -912,35 +912,22 @@ impl<T, U> GExprBody<T, U> {
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for llbc_ast::ExprBody {
+impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block, llbc_ast::FunSpecs> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let ctx = &ctx.set_locals(&self.locals);
-        let ctx = &ctx.increase_indent();
-        let tab = ctx.indent();
-
-        for v in &self.locals.locals {
-            write!(f, "{tab}")?;
-            write!(f, "let {v}: {};", v.ty.with_ctx(ctx))?;
-            write!(f, " // ")?;
-            if v.index.is_zero() {
-                write!(f, "return")?;
-            } else if self.locals.is_return_or_arg(v.index) {
-                write!(f, "arg #{}", v.index.index())?
-            } else {
-                match &v.name {
-                    Some(_) => write!(f, "local")?,
-                    None => write!(f, "anonymous local")?,
-                }
-            }
-            writeln!(f)?;
+        // Inference fails when this is a closure.
+        fn fmt_body<C: AstFormatter>(
+            f: &mut fmt::Formatter<'_>,
+            ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
+            body: &Block,
+            specs: &llbc_ast::FunSpecs,
+        ) -> Result<(), fmt::Error> {
+            writeln!(f, "{}", specs.with_ctx(ctx))?;
+            body.fmt_with_ctx(ctx, f)?;
+            Ok(())
         }
-
-        writeln!(f, "{}", self.specs.with_ctx(ctx))?;
-        self.body.fmt_with_ctx(ctx, f)?;
-        Ok(())
+        self.fmt_with_ctx_and_callback(ctx, f, fmt_body::<C>)
     }
 }
-
 impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents, ullbc_ast::FunSpecs> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Inference fails when this is a closure.
