@@ -497,7 +497,7 @@ impl VisitAstMut for TypeCheckVisitor<'_> {
             Body::Unstructured(GExprBody {
                 bound_body_regions, ..
             })
-            | Body::Structured(llbc_ast::ExprBody {
+            | Body::Structured(GExprBody {
                 bound_body_regions, ..
             }) => Some(UnionFind::new(*bound_body_regions)),
             _ => None,

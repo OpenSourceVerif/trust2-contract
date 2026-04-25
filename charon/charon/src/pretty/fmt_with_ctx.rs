@@ -936,13 +936,6 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc_ast::ExprBody {
         }
 
         writeln!(f, "{}", self.specs.with_ctx(ctx))?;
-        if let Some(spec) = &self.lowered_specs {
-            writeln!(f, "{tab}lowered_specs:")?;
-            let nested_tab = format!("{tab}{TAB_INCR}");
-            for line in spec.to_string().lines() {
-                writeln!(f, "{nested_tab}{line}")?;
-            }
-        }
         self.body.fmt_with_ctx(ctx, f)?;
         Ok(())
     }

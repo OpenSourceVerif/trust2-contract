@@ -22,7 +22,12 @@ impl fmt::Display for Spec {
         } else {
             writeln!(f, "post:")?;
             for post in &self.post {
-                writeln!(f, "  - {} => {}", post.pattern.as_pretty(), post.term.as_pretty())?;
+                writeln!(
+                    f,
+                    "  - {} => {}",
+                    post.pattern.as_pretty(),
+                    post.term.as_pretty()
+                )?;
             }
         }
         Ok(())
@@ -185,7 +190,7 @@ mod tests {
     use super::super::{
         BinOp, Binder, Ident, Pattern, PatternDesc, Post, Qualid, Quant, Spec, Term, TermDesc,
     };
-    use crate::ast::Span;
+    use charon_lib::ast::Span;
 
     #[test]
     fn pretty_snapshot_post_nested_quantifier_old() {
@@ -239,8 +244,7 @@ mod tests {
         let expected = "\
 pre: []
 post:
-  -
-    result => (at(result, old) && forall j. (j < i))
+  - result => (at(result, old) && forall j. (j < i))
 ";
         assert_eq!(got, expected);
     }

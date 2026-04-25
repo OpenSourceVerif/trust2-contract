@@ -3,14 +3,12 @@
 //! The structures in this module intentionally mirror the naming and layering of Why3's
 //! `ptree.ml`.
 
-use crate::ast::{ScalarValue, Span, Ty};
-use derive_generic_visitor::{Drive, DriveMut};
-use serde_state::{DeserializeState, SerializeState};
+use charon_lib::ast::{ScalarValue, Span, Ty};
 
 mod render;
 
 /// Identifier node (`ident` in Why3).
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ident {
     /// Human-readable identifier text.
     pub name: String,
@@ -30,7 +28,7 @@ impl Ident {
 }
 
 /// Qualified identifier (`qualid` in Why3).
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Qualid {
     /// Single-segment identifier.
     Ident(Ident),
@@ -49,7 +47,7 @@ impl Qualid {
 pub type Ghost = bool;
 
 /// Binder node: `(loc, id option, ghost, ty option)`.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Binder {
     /// Source span.
     pub span: Span,
@@ -62,7 +60,7 @@ pub struct Binder {
 }
 
 /// Pattern node (`pattern` in Why3), currently a V1 subset.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pattern {
     /// Source span.
     pub span: Span,
@@ -71,7 +69,7 @@ pub struct Pattern {
 }
 
 /// Pattern forms supported by V1.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PatternDesc {
     /// Wildcard `_`.
     Wild,
@@ -82,7 +80,7 @@ pub enum PatternDesc {
 }
 
 /// Logical term node (`term` in Why3).
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Term {
     /// Source span.
     pub span: Span,
@@ -98,7 +96,8 @@ impl Term {
 }
 
 /// Core subset of Why3 `term_desc`.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TermDesc {
     True,
     False,
@@ -124,14 +123,15 @@ pub enum TermDesc {
 }
 
 /// Quantifier kind.
-#[derive(Debug, Clone, Copy, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Quant {
     Forall,
     Exists,
 }
 
 /// Binary operator kind.
-#[derive(Debug, Clone, Copy, SerializeState, DeserializeState, Drive, DriveMut)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinOp {
     And,
     Or,
@@ -151,7 +151,7 @@ pub enum BinOp {
 }
 
 /// Literal constants supported by V1.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiteralConst {
     Bool(bool),
     Int(ScalarValue),
@@ -161,7 +161,7 @@ pub enum LiteralConst {
 }
 
 /// Full lowered specification.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Spec {
     /// Precondition terms.
     pub pre: Vec<Term>,
@@ -170,7 +170,7 @@ pub struct Spec {
 }
 
 /// Postcondition entry.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Post {
     /// Source span of the originating postcondition call.
     pub span: Span,

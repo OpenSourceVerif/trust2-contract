@@ -11,7 +11,6 @@ pub mod meta;
 pub mod meta_utils;
 pub mod names;
 pub mod names_utils;
-pub mod spec_ast;
 pub mod types;
 pub mod types_utils;
 pub mod ullbc_ast;
@@ -32,11 +31,6 @@ pub use indexmap::{IndexMap as SeqHashMap, IndexSet as SeqHashSet};
 pub use krate::*;
 pub use meta::*;
 pub use names::*;
-pub use spec_ast::{
-    BinOp as PBinOp, Binder as PBinder, Ghost as PGhost, Ident as PIdent,
-    LiteralConst as PLiteralConst, Pattern as PPattern, PatternDesc as PPatternDesc, Post as PPost,
-    Qualid as PQualid, Quant as PQuant, Spec as PSpec, Term as PTerm, TermDesc as PTermDesc,
-};
 pub use std::ops::ControlFlow;
 pub use types::*;
 pub use types_utils::*;

@@ -175,47 +175,4 @@ pub struct FunSpecs {
     pub postconditions: Vec<FunSpecBlock>,
 }
 
-/// Structured LLBC expression body.
-///
-/// This mirrors [`crate::ast::GExprBody`] and adds an optional lowered Why3-style spec tree.
-#[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-#[charon::rename("GexprBody")]
-pub struct ExprBody {
-    pub span: Span,
-    /// The number of regions existentially bound in this body.
-    #[drive(skip)]
-    pub bound_body_regions: usize,
-    /// The local variables.
-    pub locals: Locals,
-    /// The statements and blocks that compose this body.
-    pub body: Block,
-    /// Whole-line comments collected from source and later attached to statements.
-    #[charon::opaque]
-    #[drive(skip)]
-    pub comments: Vec<(usize, Vec<String>)>,
-    /// Legacy trust2-contract specification blocks.
-    pub specs: FunSpecs,
-    /// Lowered semantic spec tree (Why3-style).
-    ///
-    /// We measured that including this field in serde-state derives makes `rustc`
-    /// memory usage explode during `charon` compilation (>32 GiB in our tests).
-    /// `#[serde(skip)]` is therefore kept here as a workaround.
-    ///
-    /// Kept optional for migration: bodies without specs or with lowering disabled keep `None`.
-    #[serde(skip)]
-    #[drive(skip)]
-    pub lowered_specs: Option<PSpec>,
-}
-
-impl PartialEq for ExprBody {
-    fn eq(&self, other: &Self) -> bool {
-        self.span == other.span
-            && self.bound_body_regions == other.bound_body_regions
-            && self.locals == other.locals
-            && self.body == other.body
-            && self.comments == other.comments
-            && self.specs == other.specs
-    }
-}
-
-impl Eq for ExprBody {}
+pub type ExprBody = GExprBody<Block, FunSpecs>;

@@ -1,78 +1,91 @@
-//! Lower trust2-contract `spec` blocks from LLBC closure form to a Why3-style ptree AST.
+//! Lower trust2-contract `spec` blocks from LLBC closure form to a Why3-style AST.
 
-use crate::{
-    ast::*,
-    errors::Level,
-    ids::IndexVec,
-    transform::{TransformCtx, ctx::LlbcPass},
+use crate::spec_ast::{
+    BinOp as PBinOp, Binder as PBinder, Ident as PIdent, LiteralConst as PLiteralConst,
+    Pattern as PPattern, PatternDesc as PPatternDesc, Post as PPost, Qualid as PQualid,
+    Quant as PQuant, Spec as PSpec, Term as PTerm, TermDesc as PTermDesc,
+};
+use charon_lib::{ast::*, ids::IndexVec};
+
+use std::{
+    collections::BTreeMap,
+    error,
+    fmt::{self, Display, Formatter},
 };
 
-/// Lowering pass from `FunSpecs` blocks to [`PSpec`].
-///
-/// Adapter for `LlbcPass`.
-pub struct Transform;
-
-impl LlbcPass for Transform {
-    fn transform_ctx(&self, ctx: &mut TransformCtx) {
-        // use `ctx.for_each_body` with `transform_ctx` to avoid `transform_function` moving large [`FunDecl`] > 1000 Bytes.
-        // we only need &mut on body and ctx.
-
-        ctx.for_each_body(|ctx, body| {
-            let fun_id = match ctx.errors.borrow().def_id {
-                Some(ItemId::Fun(fun_id)) => fun_id,
-                _ => unreachable!("expected function def_id while lowering specs"),
-            };
-            let decl = ctx
-                .translated
-                .fun_decls
-                .get(fun_id)
-                .expect("missing function declaration while lowering specs");
-            self.log_before_body(ctx, &decl.item_meta.name, body);
-            let function_name = name_to_string(&decl.item_meta.name);
-
-            let Some(body) = body.as_structured_mut() else {
-                return;
-            };
-
-            if body.specs.preconditions.is_empty() && body.specs.postconditions.is_empty() {
-                body.lowered_specs = None;
-                return;
-            }
-
-            match lower_specs(&ctx.translated, &function_name, body) {
-                Ok(spec) => {
-                    body.lowered_specs = Some(spec);
-                }
-                Err(errors) => {
-                    for error in &errors {
-                        let msg = format!(
-                            "spec lowering failed (function=`{}`, spec_kind=`{}`): {}",
-                            error.function_name, error.spec_kind, error.reason
-                        );
-                        let _ = ctx.errors.borrow().display_error(
-                            &ctx.translated,
-                            error.span,
-                            Level::ERROR,
-                            msg,
-                        );
-                    }
-                    panic!(
-                        "spec lowering failed for function `{}` ({} error(s))",
-                        function_name,
-                        errors.len()
-                    );
-                }
-            }
-        });
-    }
-}
-
+/// Structured description of one lowering failure.
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
-struct SpecLowerError {
+pub struct SpecLowerError {
     function_name: Box<str>,
     spec_kind: Box<str>,
     span: Span,
     reason: Box<str>,
+}
+
+impl Display for SpecLowerError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "function=`{}`, spec_kind=`{}`: {}",
+            self.function_name, self.spec_kind, self.reason
+        )
+    }
+}
+
+impl error::Error for SpecLowerError {}
+
+/// Aggregated spec-lowering failures for one crate.
+#[allow(dead_code)]
+#[derive(Debug, Clone)]
+pub struct SpecLowerErrors {
+    errors: Vec<SpecLowerError>,
+}
+
+impl Display for SpecLowerErrors {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "spec lowering failed with {} error(s):",
+            self.errors.len()
+        )?;
+        for error in &self.errors {
+            writeln!(f, "  - {error}")?;
+        }
+        Ok(())
+    }
+}
+
+impl error::Error for SpecLowerErrors {}
+
+/// Lower every structured function body carrying legacy `FunSpecs`.
+pub fn lower_crate_specs(
+    krate: &TranslatedCrate,
+) -> Result<BTreeMap<FunDeclId, PSpec>, SpecLowerErrors> {
+    let mut lowered_specs = BTreeMap::new();
+    let mut errors = Vec::new();
+
+    for (fun_id, fun_decl) in krate.fun_decls.iter_indexed_values() {
+        let Some(body) = fun_decl.body.as_structured() else {
+            continue;
+        };
+        if body.specs.preconditions.is_empty() && body.specs.postconditions.is_empty() {
+            continue;
+        }
+
+        match lower_specs(krate, &name_to_string(&fun_decl.item_meta.name), body) {
+            Ok(spec) => {
+                lowered_specs.insert(fun_id, spec);
+            }
+            Err(mut fun_errors) => errors.append(&mut fun_errors),
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(lowered_specs)
+    } else {
+        Err(SpecLowerErrors { errors })
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -209,7 +222,7 @@ struct TermBuilder<'a> {
     function_name: Box<str>,
     spec_kind: Box<str>,
 
-    /// Maps LocalIds to their current [`Value`] if known.
+    /// Maps `LocalId`s to their current value if known.
     values: IndexVec<LocalId, Option<Value>>,
 }
 
@@ -279,9 +292,7 @@ impl<'a> TermBuilder<'a> {
         }
     }
 
-    /// Assign a lowered [`Value`] to a local slot.
-    ///
-    /// Returns an error if the destination local id is unknown in the current body.
+    /// Assign a lowered value to a local slot.
     fn set_local_value(
         &mut self,
         local: LocalId,
@@ -593,9 +604,7 @@ impl<'a> TermBuilder<'a> {
         )))
     }
 
-    /// Evaluate an rvalue and convert it to a lowered [`Value`].
-    ///
-    /// Complex constructs unsupported by the spec subset return an explicit error.
+    /// Evaluate an rvalue and convert it to a lowered value.
     fn eval_rvalue(&mut self, rvalue: &Rvalue, span: Span) -> Result<Value, SpecLowerError> {
         match rvalue {
             Rvalue::Use(op) => self.eval_operand(op, span),
@@ -754,8 +763,6 @@ impl<'a> TermBuilder<'a> {
     }
 
     /// Evaluate a place expression into a lowered value.
-    ///
-    /// Supports locals, projections, and named globals.
     fn eval_place(&mut self, place: &Place, span: Span) -> Result<Value, SpecLowerError> {
         match &place.kind {
             PlaceKind::Local(local) => self.get_local_value(*local, span),
@@ -779,8 +786,6 @@ impl<'a> TermBuilder<'a> {
     }
 
     /// Apply one projection element to a previously-evaluated base value.
-    ///
-    /// Field projection is supported for tuple-like terms and closure captures.
     fn apply_projection(
         &mut self,
         base: Value,
@@ -839,9 +844,7 @@ impl<'a> TermBuilder<'a> {
         }
     }
 
-    /// Convert a constant expression to a literal constant used by [`PTermDesc::Const`].
-    ///
-    /// Non-literal or unsupported constants produce a lowering error.
+    /// Convert a constant expression to a literal constant used by `PTermDesc::Const`.
     fn constant_to_literal(
         &self,
         constant: &ConstantExpr,
@@ -865,10 +868,7 @@ impl<'a> TermBuilder<'a> {
         }
     }
 
-    /// Lower a closure value by evaluating its call body in a nested [`TermBuilder`].
-    ///
-    /// The closure binders are derived from the call signature and role, then the
-    /// call body statements are interpreted to produce the resulting term.
+    /// Lower a closure value by evaluating its call body in a nested builder.
     fn lower_closure_value(
         &self,
         closure: &ClosureValue,
@@ -1098,7 +1098,8 @@ fn sanitize_local_name(name: Option<&str>, local: LocalId) -> String {
     base
 }
 
-fn name_to_string(name: &Name) -> String {
+/// Render a Charon name as a `::`-separated path.
+pub fn name_to_string(name: &Name) -> String {
     name_path_segments(name).join("::")
 }
 
@@ -1142,5 +1143,113 @@ fn map_binop(binop: BinOp) -> Option<PBinOp> {
         BinOp::BitAnd => Some(PBinOp::And),
         BinOp::BitOr => Some(PBinOp::Or),
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anyhow::{Context, Result};
+    use std::path::PathBuf;
+
+    fn sample_llbc_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../charon/charon/tests/cargo/trust2-contract-sample.llbc")
+    }
+
+    fn load_sample_crate() -> Result<TranslatedCrate> {
+        let path = sample_llbc_path();
+        charon_lib::deserialize_llbc(&path)
+            .with_context(|| format!("failed to deserialize fixture {}", path.display()))
+    }
+
+    fn find_fun_id_by_name(krate: &TranslatedCrate, full_name: &str) -> FunDeclId {
+        krate
+            .fun_decls
+            .iter_indexed_values()
+            .find_map(|(fun_id, decl)| {
+                (name_to_string(&decl.item_meta.name) == full_name).then_some(fun_id)
+            })
+            .unwrap_or_else(|| panic!("missing function fixture: {full_name}"))
+    }
+
+    fn lowered_spec<'a>(lowered: &'a BTreeMap<FunDeclId, PSpec>, fun_id: FunDeclId) -> &'a PSpec {
+        lowered
+            .get(&fun_id)
+            .unwrap_or_else(|| panic!("missing lowered spec for function id {}", fun_id.index()))
+    }
+
+    #[test]
+    fn lowers_max_fixture_pre_and_multiple_posts() -> Result<()> {
+        let krate = load_sample_crate()?;
+        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
+        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::max");
+        let spec = lowered_spec(&lowered, fun_id);
+
+        assert_eq!(
+            spec.to_string(),
+            "\
+pre:
+  - true
+post:
+  - result => (result >= b)
+  - result => (result >= a)
+"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn lowers_min_fixture_if_expression() -> Result<()> {
+        let krate = load_sample_crate()?;
+        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
+        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::min");
+        let spec = lowered_spec(&lowered, fun_id);
+
+        assert_eq!(
+            spec.to_string(),
+            "\
+pre: []
+post:
+  - result => (if (result <= a) then (result <= b) else false)
+"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn lowers_quantified_postcondition_from_fixture() -> Result<()> {
+        let krate = load_sample_crate()?;
+        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
+        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::to_sorted");
+        let spec = lowered_spec(&lowered, fun_id);
+
+        assert_eq!(
+            spec.to_string(),
+            "\
+pre: []
+post:
+  - result => forall i. (((i + Unsigned(Usize, 1)) < core.slice.impl.len(a)) -> (alloc.vec.impl.index(result, i) <= alloc.vec.impl.index(result, (i + Unsigned(Usize, 1)))))
+"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn lowers_nested_precondition_from_fixture() -> Result<()> {
+        let krate = load_sample_crate()?;
+        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
+        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::use_assert::decuple");
+        let spec = lowered_spec(&lowered, fun_id);
+
+        assert_eq!(
+            spec.to_string(),
+            "\
+pre:
+  - (x <= Unsigned(U8, 25))
+post: []
+"
+        );
+        Ok(())
     }
 }
