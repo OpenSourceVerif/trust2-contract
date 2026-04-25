@@ -1160,22 +1160,47 @@ mod tests {
             .join("../charon/charon/tests/cargo/trust2-contract-sample")
     }
 
+    fn charon_manifest_path() -> PathBuf {
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../charon/charon/Cargo.toml")
+    }
+
+    fn ensure_charon_bins_built() -> Result<PathBuf> {
+        let manifest_path = charon_manifest_path();
+        let output = Command::new("cargo")
+            .arg("build")
+            .arg("--quiet")
+            .arg("--manifest-path")
+            .arg(&manifest_path)
+            .arg("--bins")
+            .output()
+            .context("failed to spawn cargo build for charon binaries")?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            bail!(
+                "failed to build charon binaries with `cargo build --quiet --manifest-path {} --bins`:\n{}",
+                manifest_path.display(),
+                stderr.trim()
+            );
+        }
+
+        let charon_bin = manifest_path
+            .parent()
+            .expect("charon manifest path must have a parent")
+            .join("target/debug/charon");
+        if !charon_bin.is_file() {
+            bail!("expected charon binary at {}", charon_bin.display());
+        }
+        Ok(charon_bin)
+    }
+
     fn generate_sample_crate() -> Result<TranslatedCrate> {
         let temp_dir =
             tempfile::tempdir().context("failed to create temporary fixture directory")?;
         let llbc_path = temp_dir.path().join("trust2-contract-sample.llbc");
         let manifest_path = sample_crate_dir().join("Cargo.toml");
         let target_dir = temp_dir.path().join("target");
-        let charon_manifest_path =
-            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../charon/charon/Cargo.toml");
-        let output = Command::new("cargo")
-            .arg("run")
-            .arg("--quiet")
-            .arg("--manifest-path")
-            .arg(&charon_manifest_path)
-            .arg("--bin")
-            .arg("charon")
-            .arg("--")
+        let charon_bin = ensure_charon_bins_built()?;
+        let output = Command::new(&charon_bin)
             .arg("cargo")
             .arg("--dest-file")
             .arg(&llbc_path)
@@ -1186,14 +1211,14 @@ mod tests {
             .arg(&target_dir)
             .arg("--features=trust2-contract/verify")
             .output()
-            .context("failed to spawn cargo run for charon fixture generation")?;
+            .context("failed to spawn charon for fixture generation")?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             bail!(
                 "failed to generate trust2-contract sample fixture with `{}`:\n{}",
                 format!(
-                    "cargo run --quiet --manifest-path {} --bin charon -- cargo --dest-file {} -- --manifest-path {} --target-dir {} --features=trust2-contract/verify",
-                    charon_manifest_path.display(),
+                    "{} -- cargo --dest-file {} -- --manifest-path {} --target-dir {} --features=trust2-contract/verify",
+                    charon_bin.display(),
                     llbc_path.display(),
                     manifest_path.display(),
                     target_dir.display()
