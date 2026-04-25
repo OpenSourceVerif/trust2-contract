@@ -1,191 +1,24 @@
-//! Lower trust2-contract `spec` blocks from LLBC closure form to a Why3-style AST.
+//! Stateful LLBC evaluator used to lower spec closures into `spec_ast` terms.
 
 use crate::spec_ast::{
-    BinOp as PBinOp, Binder as PBinder, Ident as PIdent, LiteralConst as PLiteralConst,
-    Pattern as PPattern, PatternDesc as PPatternDesc, Post as PPost, Qualid as PQualid,
-    Quant as PQuant, Spec as PSpec, Term as PTerm, TermDesc as PTermDesc,
+    BinOp as PBinOp, Ident as PIdent, LiteralConst as PLiteralConst, Qualid as PQualid,
+    Quant as PQuant, Term as PTerm, TermDesc as PTermDesc,
 };
 use charon_lib::{ast::*, ids::IndexVec};
 
-use std::{
-    collections::BTreeMap,
-    error,
-    fmt::{self, Display, Formatter},
+use super::{
+    closure::{
+        ClosureRole, ClosureValue, LoweredClosure, derive_closure_binders,
+        resolve_closure_call_fun_id,
+    },
+    errors::SpecLowerError,
+    naming::{
+        is_closure_type, local_ident_term, map_binop, name_to_qualid, name_to_string,
+        sanitize_local_name,
+    },
 };
 
-/// Structured description of one lowering failure.
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct SpecLowerError {
-    function_name: Box<str>,
-    spec_kind: Box<str>,
-    span: Span,
-    reason: Box<str>,
-}
-
-impl Display for SpecLowerError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "function=`{}`, spec_kind=`{}`: {}",
-            self.function_name, self.spec_kind, self.reason
-        )
-    }
-}
-
-impl error::Error for SpecLowerError {}
-
-/// Aggregated spec-lowering failures for one crate.
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct SpecLowerErrors {
-    errors: Vec<SpecLowerError>,
-}
-
-impl Display for SpecLowerErrors {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        writeln!(
-            f,
-            "spec lowering failed with {} error(s):",
-            self.errors.len()
-        )?;
-        for error in &self.errors {
-            writeln!(f, "  - {error}")?;
-        }
-        Ok(())
-    }
-}
-
-impl error::Error for SpecLowerErrors {}
-
-/// Lower every structured function body carrying legacy `FunSpecs`.
-pub fn lower_crate_specs(
-    krate: &TranslatedCrate,
-) -> Result<BTreeMap<FunDeclId, PSpec>, SpecLowerErrors> {
-    let mut lowered_specs = BTreeMap::new();
-    let mut errors = Vec::new();
-
-    for (fun_id, fun_decl) in krate.fun_decls.iter_indexed_values() {
-        let Some(body) = fun_decl.body.as_structured() else {
-            continue;
-        };
-        if body.specs.preconditions.is_empty() && body.specs.postconditions.is_empty() {
-            continue;
-        }
-
-        match lower_specs(krate, &name_to_string(&fun_decl.item_meta.name), body) {
-            Ok(spec) => {
-                lowered_specs.insert(fun_id, spec);
-            }
-            Err(mut fun_errors) => errors.append(&mut fun_errors),
-        }
-    }
-
-    if errors.is_empty() {
-        Ok(lowered_specs)
-    } else {
-        Err(SpecLowerErrors { errors })
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-enum ClosureRole {
-    Pre,
-    Post,
-    Forall,
-    Exists,
-    Assert,
-    Assume,
-}
-
-impl ClosureRole {
-    fn label(self) -> &'static str {
-        match self {
-            ClosureRole::Pre => "precondition",
-            ClosureRole::Post => "postcondition",
-            ClosureRole::Forall => "forall",
-            ClosureRole::Exists => "exists",
-            ClosureRole::Assert => "assert",
-            ClosureRole::Assume => "assume",
-        }
-    }
-}
-
-fn lower_specs(
-    krate: &TranslatedCrate,
-    function_name: &str,
-    body: &llbc_ast::ExprBody,
-) -> Result<PSpec, Vec<SpecLowerError>> {
-    let mut pre = Vec::new();
-    let mut post = Vec::new();
-    let mut errors = Vec::new();
-
-    for spec_block in &body.specs.preconditions {
-        let builder = TermBuilder::new_for_function(
-            krate,
-            &body.locals,
-            function_name.to_owned().into_boxed_str(),
-            "precondition".into(),
-        );
-        match lower_top_level_spec_block(builder, spec_block, ClosureRole::Pre) {
-            Ok(lowered) => {
-                if !lowered.binders.is_empty() {
-                    errors.push(SpecLowerError {
-                        function_name: function_name.to_owned().into_boxed_str(),
-                        spec_kind: "precondition".into(),
-                        span: spec_block.call.span,
-                        reason: "precondition closure must not bind parameters".into(),
-                    });
-                } else {
-                    pre.push(lowered.term);
-                }
-            }
-            Err(err) => errors.push(err),
-        }
-    }
-
-    for spec_block in &body.specs.postconditions {
-        let builder = TermBuilder::new_for_function(
-            krate,
-            &body.locals,
-            function_name.to_owned().into_boxed_str(),
-            "postcondition".into(),
-        );
-        match lower_top_level_spec_block(builder, spec_block, ClosureRole::Post) {
-            Ok(lowered) => {
-                post.push(PPost {
-                    span: spec_block.call.span,
-                    pattern: binders_to_pattern(spec_block.call.span, &lowered.binders),
-                    term: lowered.term,
-                });
-            }
-            Err(err) => errors.push(err),
-        }
-    }
-
-    if errors.is_empty() {
-        Ok(PSpec { pre, post })
-    } else {
-        Err(errors)
-    }
-}
-
-fn lower_top_level_spec_block(
-    mut builder: TermBuilder<'_>,
-    spec_block: &llbc_ast::FunSpecBlock,
-    role: ClosureRole,
-) -> Result<LoweredClosure, SpecLowerError> {
-    builder.eval_statements(&spec_block.statements)?;
-    let Some(closure_operand) = spec_block.call.args.first() else {
-        return builder.error(
-            spec_block.call.span,
-            "empty spec call argument list".to_owned(),
-        );
-    };
-    let closure = builder.eval_operand_as_closure(closure_operand, spec_block.call.span)?;
-    builder.lower_closure_value(&closure, role, spec_block.call.span)
-}
-
+/// Intermediate value tracked for each local while evaluating LLBC statements.
 #[derive(Clone)]
 enum Value {
     /// Already-lowered term.
@@ -195,6 +28,10 @@ enum Value {
 }
 
 impl Value {
+    /// Convert the intermediate value back into a plain term.
+    ///
+    /// Closure values are reified as tuples of capture terms when they flow
+    /// into a context that only accepts plain terms.
     fn as_term(&self, span: Span) -> PTerm {
         match self {
             Value::Term(term) => term.clone(),
@@ -203,23 +40,17 @@ impl Value {
     }
 }
 
+/// Stateful lowering context for one LLBC expression body.
 #[derive(Clone)]
-struct ClosureValue {
-    type_id: TypeDeclId,
-    captures: Vec<PTerm>,
-}
-
-struct LoweredClosure {
-    binders: Vec<PBinder>,
-    term: PTerm,
-}
-
-#[derive(Clone)]
-struct TermBuilder<'a> {
+pub(super) struct TermBuilder<'a> {
+    /// Crate-level declaration tables used to resolve referenced items.
     krate: &'a TranslatedCrate,
+    /// Local declarations for the body currently being evaluated.
     locals: &'a Locals,
     // `function_name` and `spec_kind` are used for error reporting.
+    /// Fully qualified function name shown in lowering errors.
     function_name: Box<str>,
+    /// Current logical spec fragment shown in lowering errors.
     spec_kind: Box<str>,
 
     /// Maps `LocalId`s to their current value if known.
@@ -231,7 +62,7 @@ impl<'a> TermBuilder<'a> {
     ///
     /// Initializes argument and return locals as named term identifiers so later
     /// expression evaluation can reference them directly in the lowered AST.
-    fn new_for_function(
+    pub(super) fn new_for_function(
         krate: &'a TranslatedCrate,
         locals: &'a Locals,
         function_name: Box<str>,
@@ -259,13 +90,103 @@ impl<'a> TermBuilder<'a> {
     }
 
     /// Build a structured lowering error enriched with function/spec context.
-    fn error<T>(&self, span: Span, reason: String) -> Result<T, SpecLowerError> {
+    pub(super) fn error<T>(&self, span: Span, reason: String) -> Result<T, SpecLowerError> {
         Err(SpecLowerError {
             function_name: self.function_name.clone(),
             spec_kind: self.spec_kind.clone(),
             span,
             reason: reason.into_boxed_str(),
         })
+    }
+
+    /// Evaluate a sequence of LLBC statements in order and update local state.
+    pub(super) fn eval_statements(
+        &mut self,
+        statements: &[llbc_ast::Statement],
+    ) -> Result<(), SpecLowerError> {
+        for statement in statements {
+            self.eval_statement(statement)?;
+        }
+        Ok(())
+    }
+
+    /// Evaluate an operand and require it to be a closure aggregate.
+    pub(super) fn eval_operand_as_closure(
+        &mut self,
+        operand: &Operand,
+        span: Span,
+    ) -> Result<ClosureValue, SpecLowerError> {
+        match self.eval_operand(operand, span)? {
+            Value::Closure(closure) => Ok(closure),
+            _ => self.error(
+                span,
+                "expected closure operand when lowering specification call".to_owned(),
+            ),
+        }
+    }
+
+    /// Lower a closure value by evaluating its call body in a nested builder.
+    pub(super) fn lower_closure_value(
+        &self,
+        closure: &ClosureValue,
+        role: ClosureRole,
+        span: Span,
+    ) -> Result<LoweredClosure, SpecLowerError> {
+        let call_fun_id = resolve_closure_call_fun_id(
+            self.krate,
+            closure.type_id,
+            &self.function_name,
+            &self.spec_kind,
+            span,
+        )?;
+        let Some(call_fun) = self.krate.fun_decls.get(call_fun_id) else {
+            return self.error(
+                span,
+                format!("missing closure call function: {}", call_fun_id.index()),
+            );
+        };
+        let Some(call_body) = call_fun.body.as_structured() else {
+            return self.error(
+                span,
+                "closure call function has no structured body".to_owned(),
+            );
+        };
+
+        let binders = derive_closure_binders(call_body, &call_fun.signature, role, span);
+        let binder_terms = binders
+            .iter()
+            .map(|binder| {
+                let name = binder
+                    .id
+                    .as_ref()
+                    .map(|id| id.name.clone())
+                    .unwrap_or_else(|| "_".to_owned());
+                local_ident_term(span, &name)
+            })
+            .collect::<Vec<_>>();
+
+        let mut builder = Self {
+            krate: self.krate,
+            locals: &call_body.locals,
+            values: call_body.locals.locals.map_ref(|_| None),
+            function_name: name_to_string(&call_fun.item_meta.name).into_boxed_str(),
+            spec_kind: format!("{}/{}", self.spec_kind, role.label()).into_boxed_str(),
+        };
+
+        if call_body.locals.locals.get(LocalId::new(1)).is_some() {
+            builder.set_local_value(LocalId::new(1), Value::Closure(closure.clone()), span)?;
+        }
+        if call_body.locals.locals.get(LocalId::new(2)).is_some() {
+            builder.set_local_value(
+                LocalId::new(2),
+                Value::Term(PTerm::new(span, PTermDesc::Tuple(binder_terms))),
+                span,
+            )?;
+        }
+
+        builder.eval_statements(&call_body.body.statements)?;
+        let term = builder.get_return_term(call_body.span)?;
+        Ok(LoweredClosure { binders, term })
     }
 
     /// Read the current value of a local.
@@ -309,17 +230,6 @@ impl<'a> TermBuilder<'a> {
             );
         };
         *slot = Some(value);
-        Ok(())
-    }
-
-    /// Evaluate a sequence of LLBC statements in order and update local state.
-    fn eval_statements(
-        &mut self,
-        statements: &[llbc_ast::Statement],
-    ) -> Result<(), SpecLowerError> {
-        for statement in statements {
-            self.eval_statement(statement)?;
-        }
         Ok(())
     }
 
@@ -747,21 +657,6 @@ impl<'a> TermBuilder<'a> {
         Ok(self.eval_operand(operand, span)?.as_term(span))
     }
 
-    /// Evaluate an operand and require it to be a closure aggregate.
-    fn eval_operand_as_closure(
-        &mut self,
-        operand: &Operand,
-        span: Span,
-    ) -> Result<ClosureValue, SpecLowerError> {
-        match self.eval_operand(operand, span)? {
-            Value::Closure(closure) => Ok(closure),
-            _ => self.error(
-                span,
-                "expected closure operand when lowering specification call".to_owned(),
-            ),
-        }
-    }
-
     /// Evaluate a place expression into a lowered value.
     fn eval_place(&mut self, place: &Place, span: Span) -> Result<Value, SpecLowerError> {
         match &place.kind {
@@ -866,468 +761,5 @@ impl<'a> TermBuilder<'a> {
                 ),
             ),
         }
-    }
-
-    /// Lower a closure value by evaluating its call body in a nested builder.
-    fn lower_closure_value(
-        &self,
-        closure: &ClosureValue,
-        role: ClosureRole,
-        span: Span,
-    ) -> Result<LoweredClosure, SpecLowerError> {
-        let call_fun_id = resolve_closure_call_fun_id(
-            self.krate,
-            closure.type_id,
-            &self.function_name,
-            &self.spec_kind,
-            span,
-        )?;
-        let Some(call_fun) = self.krate.fun_decls.get(call_fun_id) else {
-            return self.error(
-                span,
-                format!("missing closure call function: {}", call_fun_id.index()),
-            );
-        };
-        let Some(call_body) = call_fun.body.as_structured() else {
-            return self.error(
-                span,
-                "closure call function has no structured body".to_owned(),
-            );
-        };
-
-        let binders = derive_closure_binders(call_body, &call_fun.signature, role, span);
-        let binder_terms = binders
-            .iter()
-            .map(|binder| {
-                let name = binder
-                    .id
-                    .as_ref()
-                    .map(|id| id.name.clone())
-                    .unwrap_or_else(|| "_".to_owned());
-                local_ident_term(span, &name)
-            })
-            .collect::<Vec<_>>();
-
-        let mut builder = TermBuilder {
-            krate: self.krate,
-            locals: &call_body.locals,
-            values: call_body.locals.locals.map_ref(|_| None),
-            function_name: name_to_string(&call_fun.item_meta.name).into_boxed_str(),
-            spec_kind: format!("{}/{}", self.spec_kind, role.label()).into_boxed_str(),
-        };
-
-        if call_body.locals.locals.get(LocalId::new(1)).is_some() {
-            builder.set_local_value(LocalId::new(1), Value::Closure(closure.clone()), span)?;
-        }
-        if call_body.locals.locals.get(LocalId::new(2)).is_some() {
-            builder.set_local_value(
-                LocalId::new(2),
-                Value::Term(PTerm::new(span, PTermDesc::Tuple(binder_terms))),
-                span,
-            )?;
-        }
-
-        builder.eval_statements(&call_body.body.statements)?;
-        let term = builder.get_return_term(call_body.span)?;
-        Ok(LoweredClosure { binders, term })
-    }
-}
-
-fn derive_closure_binders(
-    body: &llbc_ast::ExprBody,
-    signature: &FunSig,
-    role: ClosureRole,
-    span: Span,
-) -> Vec<PBinder> {
-    let Some(args_ty) = signature.inputs.get(1) else {
-        return Vec::new();
-    };
-    let Some(args_tys) = args_ty.as_tuple() else {
-        return Vec::new();
-    };
-
-    let binder_count = args_tys.iter().count();
-    args_tys
-        .iter()
-        .enumerate()
-        .map(|(index, ty)| {
-            let preferred_name = if matches!(role, ClosureRole::Post) && binder_count == 1 {
-                "result".to_owned()
-            } else {
-                body.locals
-                    .locals
-                    .get(LocalId::new(index + 3))
-                    .map(|local| sanitize_local_name(local.name.as_deref(), local.index))
-                    .unwrap_or_else(|| format!("arg{index}"))
-            };
-            PBinder {
-                span,
-                id: Some(PIdent::new(preferred_name, span)),
-                ghost: false,
-                ty: Some(ty.clone()),
-            }
-        })
-        .collect()
-}
-
-fn resolve_closure_call_fun_id(
-    krate: &TranslatedCrate,
-    type_id: TypeDeclId,
-    function_name: &str,
-    spec_kind: &str,
-    span: Span,
-) -> Result<FunDeclId, SpecLowerError> {
-    let Some(type_decl) = krate.type_decls.get(type_id) else {
-        return Err(SpecLowerError {
-            function_name: function_name.to_owned().into_boxed_str(),
-            spec_kind: spec_kind.to_owned().into_boxed_str(),
-            span,
-            reason: format!("unknown closure type id: {}", type_id.index()).into_boxed_str(),
-        });
-    };
-    let ItemSource::Closure { info } = &type_decl.src else {
-        return Err(SpecLowerError {
-            function_name: function_name.to_owned().into_boxed_str(),
-            spec_kind: spec_kind.to_owned().into_boxed_str(),
-            span,
-            reason: "spec closure value did not resolve to a closure type".into(),
-        });
-    };
-
-    let candidates = [
-        ("call", info.fn_impl.as_ref().map(|r| r.skip_binder.id)),
-        (
-            "call_mut",
-            info.fn_mut_impl.as_ref().map(|r| r.skip_binder.id),
-        ),
-        ("call_once", Some(info.fn_once_impl.skip_binder.id)),
-    ];
-    for (method_name, trait_impl_id) in candidates {
-        let Some(trait_impl_id) = trait_impl_id else {
-            continue;
-        };
-        let Some(trait_impl) = krate.trait_impls.get(trait_impl_id) else {
-            continue;
-        };
-        if let Some((_, method_ref)) = trait_impl
-            .methods
-            .iter()
-            .find(|(name, _)| name.0.as_str() == method_name)
-        {
-            return Ok(method_ref.skip_binder.id);
-        }
-    }
-    Err(SpecLowerError {
-        function_name: function_name.to_owned().into_boxed_str(),
-        spec_kind: spec_kind.to_owned().into_boxed_str(),
-        span,
-        reason: format!(
-            "failed to resolve callable closure body for type `{}`",
-            name_to_string(&type_decl.item_meta.name)
-        )
-        .into_boxed_str(),
-    })
-}
-
-fn binders_to_pattern(span: Span, binders: &[PBinder]) -> PPattern {
-    match binders {
-        [] => PPattern {
-            span,
-            desc: PPatternDesc::Wild,
-        },
-        [binder] => {
-            if let Some(id) = &binder.id {
-                PPattern {
-                    span,
-                    desc: PPatternDesc::Var(id.clone()),
-                }
-            } else {
-                PPattern {
-                    span,
-                    desc: PPatternDesc::Wild,
-                }
-            }
-        }
-        _ => PPattern {
-            span,
-            desc: PPatternDesc::Tuple(
-                binders
-                    .iter()
-                    .map(|binder| PPattern {
-                        span,
-                        desc: binder
-                            .id
-                            .as_ref()
-                            .map(|id| PPatternDesc::Var(id.clone()))
-                            .unwrap_or(PPatternDesc::Wild),
-                    })
-                    .collect(),
-            ),
-        },
-    }
-}
-
-fn is_closure_type(krate: &TranslatedCrate, type_id: TypeId) -> bool {
-    let TypeId::Adt(type_id) = type_id else {
-        return false;
-    };
-    krate
-        .type_decls
-        .get(type_id)
-        .map(|decl| matches!(decl.src, ItemSource::Closure { .. }))
-        .unwrap_or(false)
-}
-
-fn local_ident_term(span: Span, name: &str) -> PTerm {
-    PTerm::new(
-        span,
-        PTermDesc::Ident(PQualid::Ident(PIdent::new(name, span))),
-    )
-}
-
-fn sanitize_local_name(name: Option<&str>, local: LocalId) -> String {
-    let base = name
-        .map(str::to_owned)
-        .unwrap_or_else(|| format!("_{}", local.index()));
-    if let Some((prefix, suffix)) = base.rsplit_once('_')
-        && !prefix.is_empty()
-        && suffix.chars().all(|c| c.is_ascii_digit())
-    {
-        return prefix.to_owned();
-    }
-    base
-}
-
-/// Render a Charon name as a `::`-separated path.
-pub fn name_to_string(name: &Name) -> String {
-    name_path_segments(name).join("::")
-}
-
-fn name_to_qualid(name: &Name, span: Span) -> PQualid {
-    let mut segments = name_path_segments(name).into_iter();
-    let Some(first) = segments.next() else {
-        return PQualid::ident("<anon>", span);
-    };
-    let mut qid = PQualid::Ident(PIdent::new(first, span));
-    for segment in segments {
-        qid = PQualid::Dot(Box::new(qid), PIdent::new(segment, span));
-    }
-    qid
-}
-
-fn name_path_segments(name: &Name) -> Vec<String> {
-    name.name
-        .iter()
-        .map(|elem| match elem {
-            PathElem::Ident(seg, _) => seg.clone(),
-            PathElem::Impl(_) => "impl".to_owned(),
-            PathElem::Instantiated(_) => "inst".to_owned(),
-            PathElem::Target(target) => target.clone(),
-        })
-        .collect()
-}
-
-fn map_binop(binop: BinOp) -> Option<PBinOp> {
-    match binop {
-        BinOp::Eq => Some(PBinOp::Eq),
-        BinOp::Ne => Some(PBinOp::Ne),
-        BinOp::Lt => Some(PBinOp::Lt),
-        BinOp::Le => Some(PBinOp::Le),
-        BinOp::Gt => Some(PBinOp::Gt),
-        BinOp::Ge => Some(PBinOp::Ge),
-        BinOp::Add(_) => Some(PBinOp::Add),
-        BinOp::Sub(_) => Some(PBinOp::Sub),
-        BinOp::Mul(_) => Some(PBinOp::Mul),
-        BinOp::Div(_) => Some(PBinOp::Div),
-        BinOp::Rem(_) => Some(PBinOp::Rem),
-        BinOp::BitAnd => Some(PBinOp::And),
-        BinOp::BitOr => Some(PBinOp::Or),
-        _ => None,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::{Context, Result, anyhow, bail};
-    use std::{path::PathBuf, process::Command, sync::LazyLock};
-
-    static SAMPLE_CRATE: LazyLock<Result<TranslatedCrate, String>> =
-        LazyLock::new(|| generate_sample_crate().map_err(|err| format!("{err:#}")));
-
-    fn sample_crate_dir() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../charon/charon/tests/cargo/trust2-contract-sample")
-    }
-
-    fn charon_manifest_path() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../charon/charon/Cargo.toml")
-    }
-
-    fn ensure_charon_bins_built() -> Result<PathBuf> {
-        let manifest_path = charon_manifest_path();
-        let output = Command::new("cargo")
-            .arg("build")
-            .arg("--quiet")
-            .arg("--manifest-path")
-            .arg(&manifest_path)
-            .arg("--bins")
-            .output()
-            .context("failed to spawn cargo build for charon binaries")?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            bail!(
-                "failed to build charon binaries with `cargo build --quiet --manifest-path {} --bins`:\n{}",
-                manifest_path.display(),
-                stderr.trim()
-            );
-        }
-
-        let charon_bin = manifest_path
-            .parent()
-            .expect("charon manifest path must have a parent")
-            .join("target/debug/charon");
-        if !charon_bin.is_file() {
-            bail!("expected charon binary at {}", charon_bin.display());
-        }
-        Ok(charon_bin)
-    }
-
-    fn generate_sample_crate() -> Result<TranslatedCrate> {
-        let temp_dir =
-            tempfile::tempdir().context("failed to create temporary fixture directory")?;
-        let llbc_path = temp_dir.path().join("trust2-contract-sample.llbc");
-        let manifest_path = sample_crate_dir().join("Cargo.toml");
-        let target_dir = temp_dir.path().join("target");
-        let charon_bin = ensure_charon_bins_built()?;
-        let output = Command::new(&charon_bin)
-            .arg("cargo")
-            .arg("--dest-file")
-            .arg(&llbc_path)
-            .arg("--")
-            .arg("--manifest-path")
-            .arg(&manifest_path)
-            .arg("--target-dir")
-            .arg(&target_dir)
-            .arg("--features=trust2-contract/verify")
-            .output()
-            .context("failed to spawn charon for fixture generation")?;
-        if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
-            bail!(
-                "failed to generate trust2-contract sample fixture with `{}`:\n{}",
-                format!(
-                    "{} -- cargo --dest-file {} -- --manifest-path {} --target-dir {} --features=trust2-contract/verify",
-                    charon_bin.display(),
-                    llbc_path.display(),
-                    manifest_path.display(),
-                    target_dir.display()
-                ),
-                stderr.trim()
-            );
-        }
-        charon_lib::deserialize_llbc(&llbc_path).with_context(|| {
-            format!(
-                "failed to deserialize generated fixture {}",
-                llbc_path.display()
-            )
-        })
-    }
-
-    fn load_sample_crate() -> Result<&'static TranslatedCrate> {
-        match &*SAMPLE_CRATE {
-            Ok(krate) => Ok(krate),
-            Err(err) => Err(anyhow!("{err}")),
-        }
-    }
-
-    fn find_fun_id_by_name(krate: &TranslatedCrate, full_name: &str) -> FunDeclId {
-        krate
-            .fun_decls
-            .iter_indexed_values()
-            .find_map(|(fun_id, decl)| {
-                (name_to_string(&decl.item_meta.name) == full_name).then_some(fun_id)
-            })
-            .unwrap_or_else(|| panic!("missing function fixture: {full_name}"))
-    }
-
-    fn lowered_spec<'a>(lowered: &'a BTreeMap<FunDeclId, PSpec>, fun_id: FunDeclId) -> &'a PSpec {
-        lowered
-            .get(&fun_id)
-            .unwrap_or_else(|| panic!("missing lowered spec for function id {}", fun_id.index()))
-    }
-
-    #[test]
-    fn lowers_max_fixture_pre_and_multiple_posts() -> Result<()> {
-        let krate = load_sample_crate()?;
-        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
-        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::max");
-        let spec = lowered_spec(&lowered, fun_id);
-
-        assert_eq!(
-            spec.to_string(),
-            "\
-pre:
-  - true
-post:
-  - result => (result >= b)
-  - result => (result >= a)
-"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn lowers_min_fixture_if_expression() -> Result<()> {
-        let krate = load_sample_crate()?;
-        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
-        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::min");
-        let spec = lowered_spec(&lowered, fun_id);
-
-        assert_eq!(
-            spec.to_string(),
-            "\
-pre: []
-post:
-  - result => (if (result <= a) then (result <= b) else false)
-"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn lowers_quantified_postcondition_from_fixture() -> Result<()> {
-        let krate = load_sample_crate()?;
-        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
-        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::to_sorted");
-        let spec = lowered_spec(&lowered, fun_id);
-
-        assert_eq!(
-            spec.to_string(),
-            "\
-pre: []
-post:
-  - result => forall i. (((i + Unsigned(Usize, 1)) < core.slice.impl.len(a)) -> (alloc.vec.impl.index(result, i) <= alloc.vec.impl.index(result, (i + Unsigned(Usize, 1)))))
-"
-        );
-        Ok(())
-    }
-
-    #[test]
-    fn lowers_nested_precondition_from_fixture() -> Result<()> {
-        let krate = load_sample_crate()?;
-        let lowered = lower_crate_specs(&krate).map_err(anyhow::Error::new)?;
-        let fun_id = find_fun_id_by_name(&krate, "trust2_contract_sample::use_assert::decuple");
-        let spec = lowered_spec(&lowered, fun_id);
-
-        assert_eq!(
-            spec.to_string(),
-            "\
-pre:
-  - (x <= Unsigned(U8, 25))
-post: []
-"
-        );
-        Ok(())
     }
 }
