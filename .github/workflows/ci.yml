@@ -28,6 +28,5 @@ jobs:
       - name: Cache Rust Artifacts
         uses: Swatinem/rust-cache@v2
 
-      - name: Run trust2-contract sample test
-        working-directory: charon/charon
-        run: cargo test --test cargo trust2-contract-sample
+      - name: Run cargo-verify test
+        run: cargo test -p cargo-verify
