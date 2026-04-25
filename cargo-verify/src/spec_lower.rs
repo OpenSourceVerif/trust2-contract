@@ -1149,18 +1149,71 @@ fn map_binop(binop: BinOp) -> Option<PBinOp> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use anyhow::{Context, Result};
-    use std::path::PathBuf;
+    use anyhow::{Context, Result, anyhow, bail};
+    use std::{path::PathBuf, process::Command, sync::LazyLock};
 
-    fn sample_llbc_path() -> PathBuf {
+    static SAMPLE_CRATE: LazyLock<Result<TranslatedCrate, String>> =
+        LazyLock::new(|| generate_sample_crate().map_err(|err| format!("{err:#}")));
+
+    fn sample_crate_dir() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("../charon/charon/tests/cargo/trust2-contract-sample.llbc")
+            .join("../charon/charon/tests/cargo/trust2-contract-sample")
     }
 
-    fn load_sample_crate() -> Result<TranslatedCrate> {
-        let path = sample_llbc_path();
-        charon_lib::deserialize_llbc(&path)
-            .with_context(|| format!("failed to deserialize fixture {}", path.display()))
+    fn generate_sample_crate() -> Result<TranslatedCrate> {
+        let temp_dir =
+            tempfile::tempdir().context("failed to create temporary fixture directory")?;
+        let llbc_path = temp_dir.path().join("trust2-contract-sample.llbc");
+        let manifest_path = sample_crate_dir().join("Cargo.toml");
+        let target_dir = temp_dir.path().join("target");
+        let charon_manifest_path =
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../charon/charon/Cargo.toml");
+        let output = Command::new("cargo")
+            .arg("run")
+            .arg("--quiet")
+            .arg("--manifest-path")
+            .arg(&charon_manifest_path)
+            .arg("--bin")
+            .arg("charon")
+            .arg("--")
+            .arg("cargo")
+            .arg("--dest-file")
+            .arg(&llbc_path)
+            .arg("--")
+            .arg("--manifest-path")
+            .arg(&manifest_path)
+            .arg("--target-dir")
+            .arg(&target_dir)
+            .arg("--features=trust2-contract/verify")
+            .output()
+            .context("failed to spawn cargo run for charon fixture generation")?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            bail!(
+                "failed to generate trust2-contract sample fixture with `{}`:\n{}",
+                format!(
+                    "cargo run --quiet --manifest-path {} --bin charon -- cargo --dest-file {} -- --manifest-path {} --target-dir {} --features=trust2-contract/verify",
+                    charon_manifest_path.display(),
+                    llbc_path.display(),
+                    manifest_path.display(),
+                    target_dir.display()
+                ),
+                stderr.trim()
+            );
+        }
+        charon_lib::deserialize_llbc(&llbc_path).with_context(|| {
+            format!(
+                "failed to deserialize generated fixture {}",
+                llbc_path.display()
+            )
+        })
+    }
+
+    fn load_sample_crate() -> Result<&'static TranslatedCrate> {
+        match &*SAMPLE_CRATE {
+            Ok(krate) => Ok(krate),
+            Err(err) => Err(anyhow!("{err}")),
+        }
     }
 
     fn find_fun_id_by_name(krate: &TranslatedCrate, full_name: &str) -> FunDeclId {
