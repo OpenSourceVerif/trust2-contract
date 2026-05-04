@@ -8,7 +8,7 @@ use charon_lib::{ast::*, ids::IndexVec};
 
 use super::{
     closure::{
-        ClosureRole, ClosureValue, LoweredClosure, derive_closure_binders,
+        ClosureRole, CapturedClosure, LoweredClosure, derive_closure_binders,
         resolve_closure_call_fun_id,
     },
     errors::SpecLowerError,
@@ -24,7 +24,7 @@ enum Value {
     /// Already-lowered term.
     Term(PTerm),
     /// Closure type and captured, already-lowered terms.
-    Closure(ClosureValue),
+    Closure(CapturedClosure),
 }
 
 impl Value {
@@ -53,7 +53,7 @@ pub(super) struct TermBuilder<'a> {
     /// Current logical spec fragment shown in lowering errors.
     spec_kind: Box<str>,
 
-    /// Maps `LocalId`s to their current value if known.
+    /// Cached lowered value for each local when it has been materialized.
     values: IndexVec<LocalId, Option<Value>>,
 }
 
@@ -115,7 +115,7 @@ impl<'a> TermBuilder<'a> {
         &mut self,
         operand: &Operand,
         span: Span,
-    ) -> Result<ClosureValue, SpecLowerError> {
+    ) -> Result<CapturedClosure, SpecLowerError> {
         match self.eval_operand(operand, span)? {
             Value::Closure(closure) => Ok(closure),
             _ => self.error(
@@ -128,7 +128,7 @@ impl<'a> TermBuilder<'a> {
     /// Lower a closure value by evaluating its call body in a nested builder.
     pub(super) fn lower_closure_value(
         &self,
-        closure: &ClosureValue,
+        closure: CapturedClosure,
         role: ClosureRole,
         span: Span,
     ) -> Result<LoweredClosure, SpecLowerError> {
@@ -174,7 +174,7 @@ impl<'a> TermBuilder<'a> {
         };
 
         if call_body.locals.locals.get(LocalId::new(1)).is_some() {
-            builder.set_local_value(LocalId::new(1), Value::Closure(closure.clone()), span)?;
+            builder.set_local_value(LocalId::new(1), Value::Closure(closure), span)?;
         }
         if call_body.locals.locals.get(LocalId::new(2)).is_some() {
             builder.set_local_value(
@@ -388,7 +388,7 @@ impl<'a> TermBuilder<'a> {
                     );
                 }
                 let closure = self.eval_operand_as_closure(&args[0], span)?;
-                let lowered = self.lower_closure_value(&closure, ClosureRole::Forall, span)?;
+                let lowered = self.lower_closure_value(closure, ClosureRole::Forall, span)?;
                 Ok(Value::Term(PTerm::new(
                     span,
                     PTermDesc::Quant(
@@ -410,7 +410,7 @@ impl<'a> TermBuilder<'a> {
                     );
                 }
                 let closure = self.eval_operand_as_closure(&args[0], span)?;
-                let lowered = self.lower_closure_value(&closure, ClosureRole::Exists, span)?;
+                let lowered = self.lower_closure_value(closure, ClosureRole::Exists, span)?;
                 Ok(Value::Term(PTerm::new(
                     span,
                     PTermDesc::Quant(
@@ -432,7 +432,7 @@ impl<'a> TermBuilder<'a> {
                     );
                 }
                 let closure = self.eval_operand_as_closure(&args[0], span)?;
-                let lowered = self.lower_closure_value(&closure, ClosureRole::Assert, span)?;
+                let lowered = self.lower_closure_value(closure, ClosureRole::Assert, span)?;
                 if !lowered.binders.is_empty() {
                     return self.error(
                         span,
@@ -452,7 +452,7 @@ impl<'a> TermBuilder<'a> {
                     );
                 }
                 let closure = self.eval_operand_as_closure(&args[0], span)?;
-                let lowered = self.lower_closure_value(&closure, ClosureRole::Assume, span)?;
+                let lowered = self.lower_closure_value(closure, ClosureRole::Assume, span)?;
                 if !lowered.binders.is_empty() {
                     return self.error(
                         span,
@@ -518,6 +518,9 @@ impl<'a> TermBuilder<'a> {
     fn eval_rvalue(&mut self, rvalue: &Rvalue, span: Span) -> Result<Value, SpecLowerError> {
         match rvalue {
             Rvalue::Use(op) => self.eval_operand(op, span),
+            // `spec_ast` has no reference or pointer nodes: specs talk about the
+            // logical value denoted by a place, not the address used to reach it.
+            // Taking a ref/raw ptr therefore keeps the underlying lowered value.
             Rvalue::Ref { place, .. } | Rvalue::RawPtr { place, .. } => {
                 self.eval_place(place, span)
             }
@@ -598,7 +601,7 @@ impl<'a> TermBuilder<'a> {
                         let TypeId::Adt(type_id) = type_ref.id else {
                             unreachable!();
                         };
-                        Ok(Value::Closure(ClosureValue {
+                        Ok(Value::Closure(CapturedClosure {
                             type_id,
                             captures: args,
                         }))
@@ -688,6 +691,9 @@ impl<'a> TermBuilder<'a> {
         span: Span,
     ) -> Result<Value, SpecLowerError> {
         match elem {
+            // References are already transparent at the value layer, and closure
+            // call shims project captures through `(*state).field`, so deref only
+            // strips the LLBC projection step.
             ProjectionElem::Deref => Ok(base),
             ProjectionElem::Field(_, field_id) => {
                 let index = field_id.index();
@@ -732,7 +738,9 @@ impl<'a> TermBuilder<'a> {
                 span,
                 PTermDesc::Const(PLiteralConst::Unit),
             ))),
-            // the LLBC pass is in `charon/charon/src/transform/simplify_output/index_to_function_calls.rs`
+            // LLBC transforms indexing and slicing into function calls,
+            // but somehow these variants are still present in output type.
+            // LLBC pass is in `charon/charon/src/transform/simplify_output/index_to_function_calls.rs`
             ProjectionElem::Index { .. } | ProjectionElem::Subslice { .. } => panic!("indexing and subslicing should already eliminated on LLBC side")
         }
     }

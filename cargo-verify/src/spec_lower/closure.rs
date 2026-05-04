@@ -44,7 +44,7 @@ impl ClosureRole {
 
 /// Closure aggregate reconstructed from LLBC with its captured values lowered.
 #[derive(Clone)]
-pub(super) struct ClosureValue {
+pub(super) struct CapturedClosure {
     /// Charon type id of the closure ADT.
     pub(super) type_id: TypeDeclId,
     /// Captured environment values in field order.

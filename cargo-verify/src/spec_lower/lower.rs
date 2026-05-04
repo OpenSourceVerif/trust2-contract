@@ -119,5 +119,5 @@ fn lower_top_level_spec_block(
         );
     };
     let closure = builder.eval_operand_as_closure(closure_operand, spec_block.call.span)?;
-    builder.lower_closure_value(&closure, role, spec_block.call.span)
+    builder.lower_closure_value(closure, role, spec_block.call.span)
 }
