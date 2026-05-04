@@ -732,10 +732,8 @@ impl<'a> TermBuilder<'a> {
                 span,
                 PTermDesc::Const(PLiteralConst::Unit),
             ))),
-            ProjectionElem::Index { .. } | ProjectionElem::Subslice { .. } => self.error(
-                span,
-                "index/subslice projections are unsupported in spec lowering".to_owned(),
-            ),
+            // the LLBC pass is in `charon/charon/src/transform/simplify_output/index_to_function_calls.rs`
+            ProjectionElem::Index { .. } | ProjectionElem::Subslice { .. } => panic!("indexing and subslicing should already eliminated on LLBC side")
         }
     }
 
