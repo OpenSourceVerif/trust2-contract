@@ -8,8 +8,9 @@ use std::path::{Component, PathBuf};
 use super::translate_crate::RustcItem;
 use super::translate_ctx::*;
 use super::translate_generics::BindingLevel;
+use crate::hax;
+use crate::hax::{DefPathItem, SInto};
 use charon_lib::ast::*;
-use hax::{DefPathItem, SInto};
 
 // Spans
 impl<'tcx> TranslateCtx<'tcx> {
@@ -22,12 +23,12 @@ impl<'tcx> TranslateCtx<'tcx> {
             None => {
                 let source_file = self.tcx.sess.source_map().lookup_source_file(span.lo());
                 let crate_name = self.tcx.crate_name(source_file.cnum).to_string();
-                let file = File {
+                let id = self.translated.files.push_with(|id| File {
+                    id,
                     name: filename.clone(),
                     crate_name,
                     contents: source_file.src.as_deref().cloned(),
-                };
-                let id = self.translated.files.push(file);
+                });
                 self.file_to_id.insert(filename, id);
                 id
             }
@@ -440,8 +441,32 @@ impl<'tcx> TranslateCtx<'tcx> {
     pub fn translate_name(&mut self, src: &TransItemSource) -> Result<Name, Error> {
         let mut name = self.name_for_src(src)?;
         // Push the generics used for monomorphization, if any.
+        // As an exception, we do not push generics for impls of trait aliases,
+        // since this information is already encoded in the impl block itself,
+        // just like impls of normal traits.
+        //
+        // For example, in Mono mode, given the Rust code
+        // ```
+        // trait A<T> {}
+        // trait B<T> = A<T>;
+        // impl A<u32> for i32 {}
+        // ```
+        //
+        // the resulting names of trait impls are:
+        //
+        // ```
+        // // Full name: crate::{impl A<u32> for i32}
+        // impl A<u32> for i32 { ... }
+        //
+        // // Full name: crate::B::{impl B<u32> for i32}
+        // impl B<u32> for i32 { ... }
+        // ```
         if let RustcItem::Mono(item_ref) = &src.item
             && !item_ref.generic_args.is_empty()
+            && !matches!(
+                src.kind,
+                TransItemSourceKind::TraitImpl(TraitImplSource::TraitAlias)
+            )
         {
             // For preshim functions in Mono mode, we compute their generic and associative arguments,
             // which are appended to the name of these functions.
@@ -736,6 +761,20 @@ impl<'tcx> TranslateCtx<'tcx> {
         def.def_id()
             .parent(&self.hax_state)
             .is_some_and(|parent| matches!(parent.kind, hax::DefKind::ForeignMod))
+    }
+
+    /// If this is an item declared in an `extern { .. }` block, return its symbol name.
+    pub(crate) fn extern_item_symbol_name(&mut self, def: &hax::FullDef) -> Option<String> {
+        if !self.is_extern_item(def) {
+            return None;
+        }
+        let path_item = def.def_id().path_item(&self.hax_state);
+        match path_item.data {
+            hax::DefPathItem::ValueNs(name) | hax::DefPathItem::TypeNs(name) => {
+                Some(name.to_string())
+            }
+            _ => None,
+        }
     }
 
     /// Compute the meta information for a Rust item.
