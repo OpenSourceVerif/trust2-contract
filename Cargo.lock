@@ -216,7 +216,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "charon"
-version = "0.1.180"
+version = "0.1.184"
 dependencies = [
  "annotate-snippets",
  "anstream 0.6.21",
@@ -228,20 +228,23 @@ dependencies = [
  "derive_generic_visitor",
  "either",
  "env_logger",
+ "extension-traits",
  "fraction",
  "hashbrown 0.15.5",
- "hax-frontend-exporter",
+ "hax-adt-into",
  "index_vec",
  "indexmap",
  "indoc",
- "itertools 0.13.0",
+ "itertools",
  "lazy_static",
  "log",
  "macros",
  "nom",
  "nom-supreme",
  "num-bigint",
+ "paste",
  "petgraph",
+ "rustc_trait_elaboration",
  "rustc_version",
  "serde",
  "serde_json",
@@ -262,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "charon-bin-interface"
-version = "0.1.180"
+version = "0.1.184"
 dependencies = [
  "annotate-snippets",
  "anstream 0.6.21",
@@ -275,20 +278,23 @@ dependencies = [
  "derive_generic_visitor",
  "either",
  "env_logger",
+ "extension-traits",
  "fraction",
  "hashbrown 0.15.5",
- "hax-frontend-exporter",
+ "hax-adt-into",
  "index_vec",
  "indexmap",
  "indoc",
- "itertools 0.13.0",
+ "itertools",
  "lazy_static",
  "log",
  "macros",
  "nom",
  "nom-supreme",
  "num-bigint",
+ "paste",
  "petgraph",
+ "rustc_trait_elaboration",
  "rustc_version",
  "serde",
  "serde_json",
@@ -309,7 +315,7 @@ dependencies = [
 
 [[package]]
 name = "charon-driver-bin-interface"
-version = "0.1.180"
+version = "0.1.184"
 dependencies = [
  "annotate-snippets",
  "anstream 0.6.21",
@@ -322,20 +328,23 @@ dependencies = [
  "derive_generic_visitor",
  "either",
  "env_logger",
+ "extension-traits",
  "fraction",
  "hashbrown 0.15.5",
- "hax-frontend-exporter",
+ "hax-adt-into",
  "index_vec",
  "indexmap",
  "indoc",
- "itertools 0.13.0",
+ "itertools",
  "lazy_static",
  "log",
  "macros",
  "nom",
  "nom-supreme",
  "num-bigint",
+ "paste",
  "petgraph",
+ "rustc_trait_elaboration",
  "rustc_version",
  "serde",
  "serde_json",
@@ -490,7 +499,7 @@ checksum = "f3aed1890235ebcf844a24263ecc395c4e57a970f13bcc9948989f22aa051aa7"
 dependencies = [
  "convert_case",
  "darling",
- "itertools 0.13.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -654,21 +663,10 @@ checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
 name = "hax-adt-into"
 version = "0.3.5"
 dependencies = [
- "itertools 0.11.0",
+ "itertools",
  "proc-macro2",
  "quote",
  "syn 1.0.109",
-]
-
-[[package]]
-name = "hax-frontend-exporter"
-version = "0.3.5"
-dependencies = [
- "extension-traits",
- "hax-adt-into",
- "itertools 0.11.0",
- "lazy_static",
- "paste",
  "tracing",
 ]
 
@@ -748,15 +746,6 @@ name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
-
-[[package]]
-name = "itertools"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
-dependencies = [
- "either",
-]
 
 [[package]]
 name = "itertools"
@@ -848,7 +837,7 @@ version = "0.1.0"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.117",
+ "syn 1.0.109",
 ]
 
 [[package]]
@@ -1205,6 +1194,14 @@ name = "regex-syntax"
 version = "0.8.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc897dd8d9e8bd1ed8cdad82b5966c3e0ecae09fb1907d58efaa013543185d0a"
+
+[[package]]
+name = "rustc_trait_elaboration"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "tracing",
+]
 
 [[package]]
 name = "rustc_version"

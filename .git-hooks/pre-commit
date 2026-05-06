@@ -20,7 +20,7 @@ cargo fmt --check
     cd proc-macro-crate
     cargo fmt --all --check
 )
-# (
-#     cd charon/charon
-#     cargo fmt --all --check
-# )
+(
+    cd charon/charon
+    cargo fmt --all --check
+)

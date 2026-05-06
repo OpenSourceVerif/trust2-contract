@@ -4,6 +4,7 @@ open Types
 open Meta
 open Expressions
 include Generated_GAst
+include Generated_FullAst
 
 (* FIXME(#287): Avoid derives triggering deprecation warnings *)
 [@@@alert "-deprecated"]
@@ -27,30 +28,15 @@ type trait_impl_group = TraitImplId.id g_declaration_group [@@deriving show]
 type mixed_declaration_group = item_id g_declaration_group [@@deriving show]
 
 (* Hand-written because the rust equivalent isn't generic *)
-type ('body, 'specs) gfun_decl = {
-  def_id : FunDeclId.id;
-  item_meta : item_meta;
-  generics : generic_params;
-  signature : fun_sig;
-  src : item_source;
-  is_global_initializer : GlobalDeclId.id option;
-  body : ('body, 'specs) gexpr_body option;
-}
-[@@deriving show]
-
-type target_info = { target_pointer_size : int; is_little_endian : bool }
-[@@deriving show]
-
-(* Hand-written because the rust equivalent isn't generic *)
 
 (** A crate *)
-type ('fun_body, 'fun_specs) gcrate = {
+type crate = {
   name : string;
   options : cli_options;
   target_information : (string * target_info) list;
   declarations : declaration_group list;
   type_decls : type_decl TypeDeclId.Map.t;
-  fun_decls : ('fun_body, 'fun_specs) gfun_decl FunDeclId.Map.t;
+  fun_decls : fun_decl FunDeclId.Map.t;
   global_decls : global_decl GlobalDeclId.Map.t;
   trait_decls : trait_decl TraitDeclId.Map.t;
   trait_impls : trait_impl TraitImplId.Map.t;

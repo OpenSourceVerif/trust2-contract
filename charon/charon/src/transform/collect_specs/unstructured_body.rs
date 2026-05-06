@@ -1,13 +1,13 @@
 use crate::{
     ast::{BuiltinFunId, Call, FnOperand, FnPtrKind, FunId, SpecCall},
-    transform::{TransformCtx, ctx::UllbcPass},
+    transform::{TransformCtx, ctx::FusedUllbcPass},
     ullbc_ast::{BlockData, FunSpecBlock, Terminator, TerminatorKind},
 };
 
 use std::mem;
 
 pub struct Transform;
-impl UllbcPass for Transform {
+impl FusedUllbcPass for Transform {
     fn transform_function(&self, _ctx: &mut TransformCtx, decl: &mut crate::ast::FunDecl) {
         let Some(body) = decl.body.as_unstructured_mut() else {
             return;

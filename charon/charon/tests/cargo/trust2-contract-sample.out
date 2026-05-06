@@ -424,7 +424,7 @@ const UNIT_METADATA: () = UNIT_METADATA()
 struct trust2_contract_sample::max::closure#2 {}
 
 // Full name: trust2_contract_sample::max::{impl Fn<()> for trust2_contract_sample::max::closure#2}::call
-fn {impl Fn<()> for trust2_contract_sample::max::closure#2}::call<'_0>(_1: &'_0 trust2_contract_sample::max::closure#2, _2: ()) -> bool
+fn {impl Fn<()> for trust2_contract_sample::max::closure#2}::call<'_0>(_1: &'_0 trust2_contract_sample::max::closure#2, tupled_args_2: ()) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::max::closure#2; // arg #1
@@ -435,7 +435,7 @@ fn {impl Fn<()> for trust2_contract_sample::max::closure#2}::call<'_0>(_1: &'_0 
 }
 
 // Full name: trust2_contract_sample::max::{impl FnMut<()> for trust2_contract_sample::max::closure#2}::call_mut
-fn {impl FnMut<()> for trust2_contract_sample::max::closure#2}::call_mut<'_0>(_1: &'_0 mut trust2_contract_sample::max::closure#2, _2: ()) -> bool
+fn {impl FnMut<()> for trust2_contract_sample::max::closure#2}::call_mut<'_0>(state_1: &'_0 mut trust2_contract_sample::max::closure#2, args_2: ()) -> bool
 {
     let _0: bool; // return
     let state_1: &'_0 mut trust2_contract_sample::max::closure#2; // arg #1
@@ -509,7 +509,7 @@ struct trust2_contract_sample::max::closure#1<'_0> {
 }
 
 // Full name: trust2_contract_sample::max::{impl Fn<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call
-fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::max::closure#1<'_0>, _2: (u64,)) -> bool
+fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::max::closure#1<'_0>, tupled_args_2: (u64,)) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::max::closure#1<'_0>; // arg #1
@@ -531,7 +531,7 @@ fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call<'_0, 
 }
 
 // Full name: trust2_contract_sample::max::{impl FnMut<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_mut
-fn {impl FnMut<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_mut<'_0, '_1>(_1: &'_1 mut trust2_contract_sample::max::closure#1<'_0>, _2: (u64,)) -> bool
+fn {impl FnMut<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_mut<'_0, '_1>(state_1: &'_1 mut trust2_contract_sample::max::closure#1<'_0>, args_2: (u64,)) -> bool
 {
     let _0: bool; // return
     let state_1: &'_1 mut trust2_contract_sample::max::closure#1<'_0>; // arg #1
@@ -605,7 +605,7 @@ struct trust2_contract_sample::max::closure<'_0> {
 }
 
 // Full name: trust2_contract_sample::max::{impl Fn<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call
-fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::max::closure<'_0>, _2: (u64,)) -> bool
+fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::max::closure<'_0>, tupled_args_2: (u64,)) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::max::closure<'_0>; // arg #1
@@ -627,7 +627,7 @@ fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call<'_0, '_
 }
 
 // Full name: trust2_contract_sample::max::{impl FnMut<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_mut
-fn {impl FnMut<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_mut<'_0, '_1>(_1: &'_1 mut trust2_contract_sample::max::closure<'_0>, _2: (u64,)) -> bool
+fn {impl FnMut<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_mut<'_0, '_1>(state_1: &'_1 mut trust2_contract_sample::max::closure<'_0>, args_2: (u64,)) -> bool
 {
     let _0: bool; // return
     let state_1: &'_1 mut trust2_contract_sample::max::closure<'_0>; // arg #1
@@ -697,7 +697,7 @@ impl<'_0> Fn<(u64,)> for trust2_contract_sample::max::closure<'_0> {
 }
 
 // Full name: trust2_contract_sample::max
-pub fn max(_1: u64, _2: u64) -> u64
+pub fn max(a_1: u64, b_2: u64) -> u64
 {
     let _0: u64; // return
     let a_1: u64; // arg #1
@@ -757,7 +757,7 @@ struct trust2_contract_sample::min::closure<'_0, '_1> {
 }
 
 // Full name: trust2_contract_sample::min::{impl Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call
-fn {impl Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call<'_0, '_1, '_2>(_1: &'_2 trust2_contract_sample::min::closure<'_0, '_1>, _2: (u64,)) -> bool
+fn {impl Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call<'_0, '_1, '_2>(_1: &'_2 trust2_contract_sample::min::closure<'_0, '_1>, tupled_args_2: (u64,)) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::min::closure<'_0, '_1>; // arg #1
@@ -797,7 +797,7 @@ fn {impl Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call<'_
 }
 
 // Full name: trust2_contract_sample::min::{impl FnMut<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_mut
-fn {impl FnMut<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_mut<'_0, '_1, '_2>(_1: &'_2 mut trust2_contract_sample::min::closure<'_0, '_1>, _2: (u64,)) -> bool
+fn {impl FnMut<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_mut<'_0, '_1, '_2>(state_1: &'_2 mut trust2_contract_sample::min::closure<'_0, '_1>, args_2: (u64,)) -> bool
 {
     let _0: bool; // return
     let state_1: &'_2 mut trust2_contract_sample::min::closure<'_0, '_1>; // arg #1
@@ -867,7 +867,7 @@ impl<'_0, '_1> Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1> {
 }
 
 // Full name: trust2_contract_sample::min
-pub fn min(_1: u64, _2: u64) -> u64
+pub fn min(a_1: u64, b_2: u64) -> u64
 {
     let _0: u64; // return
     let a_1: u64; // arg #1
@@ -910,7 +910,7 @@ pub fn min(_1: u64, _2: u64) -> u64
 }
 
 // Full name: trust2_contract_sample::{impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::invariant
-pub fn {impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::invariant<'a, '_1, T>(_1: &'_1 RefRange<'a, T>[@TraitClause0, @TraitClause1]) -> bool
+pub fn {impl TypeInvariant for RefRange<'a, T>[@TraitClause0, @TraitClause1]}::invariant<'a, '_1, T>(self_1: &'_1 RefRange<'a, T>[@TraitClause0, @TraitClause1]) -> bool
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: PartialOrd<T, T>,
@@ -967,7 +967,7 @@ struct trust2_contract_sample::to_sorted::closure::closure<'_0, '_1> {
 }
 
 // Full name: trust2_contract_sample::to_sorted::closure::{impl Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call
-fn {impl Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call<'_0, '_1, '_2>(_1: &'_2 trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>, _2: (usize,)) -> bool
+fn {impl Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call<'_0, '_1, '_2>(_1: &'_2 trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>, tupled_args_2: (usize,)) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>; // arg #1
@@ -1049,7 +1049,7 @@ fn {impl Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_
 }
 
 // Full name: trust2_contract_sample::to_sorted::closure::{impl FnMut<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call_mut
-fn {impl FnMut<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call_mut<'_0, '_1, '_2>(_1: &'_2 mut trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>, _2: (usize,)) -> bool
+fn {impl FnMut<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call_mut<'_0, '_1, '_2>(state_1: &'_2 mut trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>, args_2: (usize,)) -> bool
 {
     let _0: bool; // return
     let state_1: &'_2 mut trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>; // arg #1
@@ -1119,7 +1119,7 @@ impl<'_0, '_1> Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::clos
 }
 
 // Full name: trust2_contract_sample::to_sorted::{impl Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call
-fn {impl Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::to_sorted::closure<'_0>, _2: (Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)) -> bool
+fn {impl Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::to_sorted::closure<'_0>, tupled_args_2: (Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::to_sorted::closure<'_0>; // arg #1
@@ -1146,7 +1146,7 @@ fn {impl Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Size
 }
 
 // Full name: trust2_contract_sample::to_sorted::{impl FnMut<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call_mut
-fn {impl FnMut<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call_mut<'_0, '_1>(_1: &'_1 mut trust2_contract_sample::to_sorted::closure<'_0>, _2: (Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)) -> bool
+fn {impl FnMut<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call_mut<'_0, '_1>(state_1: &'_1 mut trust2_contract_sample::to_sorted::closure<'_0>, args_2: (Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)) -> bool
 {
     let _0: bool; // return
     let state_1: &'_1 mut trust2_contract_sample::to_sorted::closure<'_0>; // arg #1
@@ -1216,7 +1216,7 @@ impl<'_0> Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Siz
 }
 
 // Full name: trust2_contract_sample::to_sorted
-pub fn to_sorted<'_0>(_1: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}]
+pub fn to_sorted<'_0>(a_1: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}]
 {
     let _0: Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}]; // return
     let a_1: &'1 [i32]; // arg #1
@@ -1242,7 +1242,7 @@ struct trust2_contract_sample::use_assert::decuple::closure<'_0> {
 }
 
 // Full name: trust2_contract_sample::use_assert::decuple
-fn decuple(_1: u8) -> u8
+fn decuple(x_1: u8) -> u8
 {
     let _0: u8; // return
     let x_1: u8; // arg #1
@@ -1296,7 +1296,7 @@ fn decuple(_1: u8) -> u8
 }
 
 // Full name: trust2_contract_sample::use_assert::{impl Fn<()> for trust2_contract_sample::use_assert::closure}::call
-fn {impl Fn<()> for trust2_contract_sample::use_assert::closure}::call<'_0>(_1: &'_0 trust2_contract_sample::use_assert::closure, _2: ()) -> bool
+fn {impl Fn<()> for trust2_contract_sample::use_assert::closure}::call<'_0>(_1: &'_0 trust2_contract_sample::use_assert::closure, tupled_args_2: ()) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::use_assert::closure; // arg #1
@@ -1311,7 +1311,7 @@ fn {impl Fn<()> for trust2_contract_sample::use_assert::closure}::call<'_0>(_1: 
 }
 
 // Full name: trust2_contract_sample::use_assert::{impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut
-fn {impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut<'_0>(_1: &'_0 mut trust2_contract_sample::use_assert::closure, _2: ()) -> bool
+fn {impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut<'_0>(state_1: &'_0 mut trust2_contract_sample::use_assert::closure, args_2: ()) -> bool
 {
     let _0: bool; // return
     let state_1: &'_0 mut trust2_contract_sample::use_assert::closure; // arg #1
@@ -1399,7 +1399,7 @@ fn use_assert()
 }
 
 // Full name: trust2_contract_sample::use_assert::decuple::{impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call
-fn {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::use_assert::decuple::closure<'_0>, _2: ()) -> bool
+fn {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::use_assert::decuple::closure<'_0>, tupled_args_2: ()) -> bool
 {
     let _0: bool; // return
     let _1: &'1 trust2_contract_sample::use_assert::decuple::closure<'_0>; // arg #1
@@ -1414,7 +1414,7 @@ fn {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::
 }
 
 // Full name: trust2_contract_sample::use_assert::decuple::{impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut
-fn {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut<'_0, '_1>(_1: &'_1 mut trust2_contract_sample::use_assert::decuple::closure<'_0>, _2: ()) -> bool
+fn {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut<'_0, '_1>(state_1: &'_1 mut trust2_contract_sample::use_assert::decuple::closure<'_0>, args_2: ()) -> bool
 {
     let _0: bool; // return
     let state_1: &'_1 mut trust2_contract_sample::use_assert::decuple::closure<'_0>; // arg #1
