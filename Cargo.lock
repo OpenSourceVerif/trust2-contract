@@ -228,7 +228,7 @@ dependencies = [
  "derive_generic_visitor",
  "either",
  "env_logger",
- "extension-traits",
+ "extension-traits 2.0.2",
  "fraction",
  "hashbrown 0.15.5",
  "hax-adt-into",
@@ -278,7 +278,7 @@ dependencies = [
  "derive_generic_visitor",
  "either",
  "env_logger",
- "extension-traits",
+ "extension-traits 1.0.1",
  "fraction",
  "hashbrown 0.15.5",
  "hax-adt-into",
@@ -328,7 +328,7 @@ dependencies = [
  "derive_generic_visitor",
  "either",
  "env_logger",
- "extension-traits",
+ "extension-traits 1.0.1",
  "fraction",
  "hashbrown 0.15.5",
  "hax-adt-into",
@@ -568,7 +568,16 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d772df1c1a777963712fb68e014235e80863d6a91a85c4e06ba2d16243a310e5"
 dependencies = [
- "ext-trait-proc_macros",
+ "ext-trait-proc_macros 1.0.1",
+]
+
+[[package]]
+name = "ext-trait"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ccef4f53516d7589a8ed95216b6ebc9d519df033c1303b42125bfe57aa475d23"
+dependencies = [
+ "ext-trait-proc_macros 2.0.2",
 ]
 
 [[package]]
@@ -583,12 +592,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "ext-trait-proc_macros"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "025e48a9a5db92b84dbd3b6be37853a0e60c1ce9c7c03c08e6ac282766f3e3f0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
 name = "extension-traits"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a296e5a895621edf9fa8329c83aa1cb69a964643e36cf54d8d7a69b789089537"
 dependencies = [
- "ext-trait",
+ "ext-trait 1.0.1",
+]
+
+[[package]]
+name = "extension-traits"
+version = "2.0.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a7dae1256e3fea2900e1e674bae228edc852f5ce9ccb1c916a496a33cb9bc4cb"
+dependencies = [
+ "ext-trait 2.0.2",
 ]
 
 [[package]]
