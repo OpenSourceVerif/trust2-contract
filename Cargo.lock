@@ -225,7 +225,7 @@ dependencies = [
  "clap",
  "colored",
  "convert_case",
- "derive_generic_visitor",
+ "derive_generic_visitor 1.0.1",
  "either",
  "env_logger",
  "extension-traits",
@@ -275,7 +275,7 @@ dependencies = [
  "clap",
  "colored",
  "convert_case",
- "derive_generic_visitor",
+ "derive_generic_visitor 0.2.0",
  "either",
  "env_logger",
  "extension-traits",
@@ -325,7 +325,7 @@ dependencies = [
  "clap",
  "colored",
  "convert_case",
- "derive_generic_visitor",
+ "derive_generic_visitor 0.2.0",
  "either",
  "env_logger",
  "extension-traits",
@@ -488,7 +488,16 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "21588db07753dafe6460b13faad18bd7e46548ce91ee38f0bc0f7529b3864b82"
 dependencies = [
- "derive_generic_visitor_macros",
+ "derive_generic_visitor_macros 0.2.0",
+]
+
+[[package]]
+name = "derive_generic_visitor"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f60ae461802ba8e6ca77593945650df63fe22a675e1389c806ed3c830bec177b"
+dependencies = [
+ "derive_generic_visitor_macros 1.0.1",
 ]
 
 [[package]]
@@ -496,6 +505,20 @@ name = "derive_generic_visitor_macros"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3aed1890235ebcf844a24263ecc395c4e57a970f13bcc9948989f22aa051aa7"
+dependencies = [
+ "convert_case",
+ "darling",
+ "itertools",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.117",
+]
+
+[[package]]
+name = "derive_generic_visitor_macros"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a3ccf2438009beddcda9a51655042f3ce31133b2409027701c1468d4c3718a99"
 dependencies = [
  "convert_case",
  "darling",
