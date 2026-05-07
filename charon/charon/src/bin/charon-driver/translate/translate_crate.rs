@@ -71,7 +71,7 @@ pub enum TransItemSourceKind {
     /// A cast of a state-less closure as a function pointer.
     ClosureAsFnCast,
     /// The `drop_in_place` method of a `Destruct` impl or decl. It contains the drop glue that
-    /// calls `Drop::drop` for the type and then drops its fields. if the `TraitImplSource` is
+    /// calls `Drop::drop` for the type and then drops its fields. If the `TraitImplSource` is
     /// `None` this is the method declaration (and the DefId is that of the `Destruct` trait),
     /// otherwise this is a method implementation (and the DefId is that of the ADT or closure for
     /// which to generate the drop glue).
@@ -447,7 +447,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         kind: TransItemSourceKind,
     ) -> Result<T, Error> {
         let id: ItemId = self.register_item_maybe_enqueue(span, enqueue, hax_item, kind);
-        // In mono mode, we keep generics of trait decls.
+        // In mono mode, we keep trait decls generic.
         let mut generics = if self.monomorphize() && !matches!(kind, TransItemSourceKind::TraitDecl)
         {
             GenericArgs::empty()

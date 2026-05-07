@@ -368,17 +368,6 @@ where
     [@TraitClause2]: Allocator<A>,
 = <opaque>
 
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T, A>[@TraitClause0, @TraitClause1, @TraitClause2]}
-impl<T, A> Destruct for Vec<T, A>[@TraitClause0, @TraitClause1, @TraitClause2]
-where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Sized<A>,
-    [@TraitClause2]: Allocator<A>,
-{
-    fn drop_in_place = {impl Destruct for Vec<T, A>[@TraitClause0, @TraitClause1, @TraitClause2]}::drop_in_place<T, A>[@TraitClause0, @TraitClause1, @TraitClause2]
-    non-dyn-compatible
-}
-
 // Full name: alloc::vec::{Vec<T, Global>[@TraitClause0, {built_in impl Sized for Global}, {impl Allocator for Global}]}::new
 #[lang_item("vec_new")]
 pub fn new<T>() -> Vec<T, Global>[@TraitClause0, {built_in impl Sized for Global}, {impl Allocator for Global}]
@@ -423,6 +412,10 @@ const UNIT_METADATA: () = UNIT_METADATA()
 
 struct trust2_contract_sample::max::closure#2 {}
 
+// Full name: trust2_contract_sample::max::closure#2::{impl Destruct for trust2_contract_sample::max::closure#2}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::max::closure#2}::drop_in_place(_1: *mut trust2_contract_sample::max::closure#2)
+= <missing>
+
 // Full name: trust2_contract_sample::max::{impl Fn<()> for trust2_contract_sample::max::closure#2}::call
 fn {impl Fn<()> for trust2_contract_sample::max::closure#2}::call<'_0>(_1: &'_0 trust2_contract_sample::max::closure#2, tupled_args_2: ()) -> bool
 {
@@ -448,16 +441,6 @@ fn {impl FnMut<()> for trust2_contract_sample::max::closure#2}::call_mut<'_0>(st
     return
 }
 
-// Full name: trust2_contract_sample::max::closure#2::{impl Destruct for trust2_contract_sample::max::closure#2}::drop_in_place
-unsafe fn {impl Destruct for trust2_contract_sample::max::closure#2}::drop_in_place(_1: *mut trust2_contract_sample::max::closure#2)
-= <missing>
-
-// Full name: trust2_contract_sample::max::closure#2::{impl Destruct for trust2_contract_sample::max::closure#2}
-impl Destruct for trust2_contract_sample::max::closure#2 {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::max::closure#2}::drop_in_place
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::max::{impl FnOnce<()> for trust2_contract_sample::max::closure#2}::call_once
 fn {impl FnOnce<()> for trust2_contract_sample::max::closure#2}::call_once(_1: trust2_contract_sample::max::closure#2, _2: ()) -> bool
 {
@@ -469,7 +452,7 @@ fn {impl FnOnce<()> for trust2_contract_sample::max::closure#2}::call_once(_1: t
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<()> for trust2_contract_sample::max::closure#2}::call_mut<'3>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::max::closure#2}] _1
+    drop[{impl Destruct for trust2_contract_sample::max::closure#2}::drop_in_place] _1
     return
 }
 
@@ -504,9 +487,19 @@ impl Fn<()> for trust2_contract_sample::max::closure#2 {
     non-dyn-compatible
 }
 
+// Full name: trust2_contract_sample::max::closure#2::{impl Destruct for trust2_contract_sample::max::closure#2}
+impl Destruct for trust2_contract_sample::max::closure#2 {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::max::closure#2}::drop_in_place
+    non-dyn-compatible
+}
+
 struct trust2_contract_sample::max::closure#1<'_0> {
   &'_0 u64,
 }
+
+// Full name: trust2_contract_sample::max::closure#1::{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::max::closure#1<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::max::closure#1<'_0>)
+= <missing>
 
 // Full name: trust2_contract_sample::max::{impl Fn<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call
 fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::max::closure#1<'_0>, tupled_args_2: (u64,)) -> bool
@@ -544,16 +537,6 @@ fn {impl FnMut<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_mu
     return
 }
 
-// Full name: trust2_contract_sample::max::closure#1::{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}::drop_in_place
-unsafe fn {impl Destruct for trust2_contract_sample::max::closure#1<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::max::closure#1<'_0>)
-= <missing>
-
-// Full name: trust2_contract_sample::max::closure#1::{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}
-impl<'_0> Destruct for trust2_contract_sample::max::closure#1<'_0> {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::max::closure#1<'_0>}::drop_in_place<'_0>
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::max::{impl FnOnce<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_once
 fn {impl FnOnce<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_once<'_0>(_1: trust2_contract_sample::max::closure#1<'_0>, _2: (u64,)) -> bool
 {
@@ -565,7 +548,7 @@ fn {impl FnOnce<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_o
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<(u64,)> for trust2_contract_sample::max::closure#1<'_0>}::call_mut<'_0, '5>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}<'_0>] _1
+    drop[{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}::drop_in_place<'_0>] _1
     return
 }
 
@@ -600,9 +583,19 @@ impl<'_0> Fn<(u64,)> for trust2_contract_sample::max::closure#1<'_0> {
     non-dyn-compatible
 }
 
+// Full name: trust2_contract_sample::max::closure#1::{impl Destruct for trust2_contract_sample::max::closure#1<'_0>}
+impl<'_0> Destruct for trust2_contract_sample::max::closure#1<'_0> {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::max::closure#1<'_0>}::drop_in_place<'_0>
+    non-dyn-compatible
+}
+
 struct trust2_contract_sample::max::closure<'_0> {
   &'_0 u64,
 }
+
+// Full name: trust2_contract_sample::max::closure::{impl Destruct for trust2_contract_sample::max::closure<'_0>}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::max::closure<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::max::closure<'_0>)
+= <missing>
 
 // Full name: trust2_contract_sample::max::{impl Fn<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call
 fn {impl Fn<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::max::closure<'_0>, tupled_args_2: (u64,)) -> bool
@@ -640,16 +633,6 @@ fn {impl FnMut<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_mut<
     return
 }
 
-// Full name: trust2_contract_sample::max::closure::{impl Destruct for trust2_contract_sample::max::closure<'_0>}::drop_in_place
-unsafe fn {impl Destruct for trust2_contract_sample::max::closure<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::max::closure<'_0>)
-= <missing>
-
-// Full name: trust2_contract_sample::max::closure::{impl Destruct for trust2_contract_sample::max::closure<'_0>}
-impl<'_0> Destruct for trust2_contract_sample::max::closure<'_0> {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::max::closure<'_0>}::drop_in_place<'_0>
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::max::{impl FnOnce<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_once
 fn {impl FnOnce<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_once<'_0>(_1: trust2_contract_sample::max::closure<'_0>, _2: (u64,)) -> bool
 {
@@ -661,7 +644,7 @@ fn {impl FnOnce<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_onc
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call_mut<'_0, '5>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::max::closure<'_0>}<'_0>] _1
+    drop[{impl Destruct for trust2_contract_sample::max::closure<'_0>}::drop_in_place<'_0>] _1
     return
 }
 
@@ -693,6 +676,12 @@ impl<'_0> Fn<(u64,)> for trust2_contract_sample::max::closure<'_0> {
     parent_clause2 = {built_in impl Sized for (u64,)}
     parent_clause3 = {built_in impl Tuple for (u64,)}
     fn call<'_0_1> = {impl Fn<(u64,)> for trust2_contract_sample::max::closure<'_0>}::call<'_0, '_0_1>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::max::closure::{impl Destruct for trust2_contract_sample::max::closure<'_0>}
+impl<'_0> Destruct for trust2_contract_sample::max::closure<'_0> {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::max::closure<'_0>}::drop_in_place<'_0>
     non-dyn-compatible
 }
 
@@ -756,6 +745,10 @@ struct trust2_contract_sample::min::closure<'_0, '_1> {
   &'_1 u64,
 }
 
+// Full name: trust2_contract_sample::min::closure::{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}::drop_in_place<'_0, '_1>(_1: *mut trust2_contract_sample::min::closure<'_0, '_1>)
+= <missing>
+
 // Full name: trust2_contract_sample::min::{impl Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call
 fn {impl Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call<'_0, '_1, '_2>(_1: &'_2 trust2_contract_sample::min::closure<'_0, '_1>, tupled_args_2: (u64,)) -> bool
 {
@@ -810,16 +803,6 @@ fn {impl FnMut<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call
     return
 }
 
-// Full name: trust2_contract_sample::min::closure::{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}::drop_in_place
-unsafe fn {impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}::drop_in_place<'_0, '_1>(_1: *mut trust2_contract_sample::min::closure<'_0, '_1>)
-= <missing>
-
-// Full name: trust2_contract_sample::min::closure::{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}
-impl<'_0, '_1> Destruct for trust2_contract_sample::min::closure<'_0, '_1> {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}::drop_in_place<'_0, '_1>
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::min::{impl FnOnce<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_once
 fn {impl FnOnce<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_once<'_0, '_1>(_1: trust2_contract_sample::min::closure<'_0, '_1>, _2: (u64,)) -> bool
 {
@@ -831,7 +814,7 @@ fn {impl FnOnce<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::cal
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call_mut<'_0, '_1, '7>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}<'_0, '_1>] _1
+    drop[{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}::drop_in_place<'_0, '_1>] _1
     return
 }
 
@@ -863,6 +846,12 @@ impl<'_0, '_1> Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1> {
     parent_clause2 = {built_in impl Sized for (u64,)}
     parent_clause3 = {built_in impl Tuple for (u64,)}
     fn call<'_0_1> = {impl Fn<(u64,)> for trust2_contract_sample::min::closure<'_0, '_1>}::call<'_0, '_1, '_0_1>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::min::closure::{impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}
+impl<'_0, '_1> Destruct for trust2_contract_sample::min::closure<'_0, '_1> {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::min::closure<'_0, '_1>}::drop_in_place<'_0, '_1>
     non-dyn-compatible
 }
 
@@ -966,6 +955,10 @@ struct trust2_contract_sample::to_sorted::closure::closure<'_0, '_1> {
   &'_1 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],
 }
 
+// Full name: trust2_contract_sample::to_sorted::closure::{impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::to_sorted::closure<'_0>)
+= <missing>
+
 // Full name: trust2_contract_sample::to_sorted::closure::{impl Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call
 fn {impl Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call<'_0, '_1, '_2>(_1: &'_2 trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>, tupled_args_2: (usize,)) -> bool
 {
@@ -1066,12 +1059,6 @@ fn {impl FnMut<(usize,)> for trust2_contract_sample::to_sorted::closure::closure
 unsafe fn {impl Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::drop_in_place<'_0, '_1>(_1: *mut trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>)
 = <missing>
 
-// Full name: trust2_contract_sample::to_sorted::closure::closure::{impl Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}
-impl<'_0, '_1> Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1> {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::drop_in_place<'_0, '_1>
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::to_sorted::closure::{impl FnOnce<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call_once
 fn {impl FnOnce<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call_once<'_0, '_1>(_1: trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>, _2: (usize,)) -> bool
 {
@@ -1083,7 +1070,7 @@ fn {impl FnOnce<(usize,)> for trust2_contract_sample::to_sorted::closure::closur
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::call_mut<'_0, '_1, '7>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}<'_0, '_1>] _1
+    drop[{impl Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::drop_in_place<'_0, '_1>] _1
     return
 }
 
@@ -1141,7 +1128,7 @@ fn {impl Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Size
     storage_dead(_5)
     _0 = @SpecForall<usize, trust2_contract_sample::to_sorted::closure::closure<'12, '13>>[{built_in impl Sized for usize}, {built_in impl Sized for trust2_contract_sample::to_sorted::closure::closure<'16, '17>}, {impl Fn<(usize,)> for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}<'26, '27>, {built_in impl Copy for trust2_contract_sample::to_sorted::closure::closure<'30, '31>}](move _4)
     storage_dead(_4)
-    conditional_drop[{impl Destruct for Vec<T, A>[@TraitClause0, @TraitClause1, @TraitClause2]}<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}]] b_3
+    conditional_drop[{impl Destruct for Vec<T, A>[@TraitClause0, @TraitClause1, @TraitClause2]}::drop_in_place<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}]] b_3
     return
 }
 
@@ -1159,16 +1146,6 @@ fn {impl FnMut<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl S
     return
 }
 
-// Full name: trust2_contract_sample::to_sorted::closure::{impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}::drop_in_place
-unsafe fn {impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::to_sorted::closure<'_0>)
-= <missing>
-
-// Full name: trust2_contract_sample::to_sorted::closure::{impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}
-impl<'_0> Destruct for trust2_contract_sample::to_sorted::closure<'_0> {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}::drop_in_place<'_0>
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::to_sorted::{impl FnOnce<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call_once
 fn {impl FnOnce<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call_once<'_0>(_1: trust2_contract_sample::to_sorted::closure<'_0>, _2: (Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)) -> bool
 {
@@ -1180,7 +1157,7 @@ fn {impl FnOnce<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl 
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call_mut<'_0, '5>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}<'_0>] _1
+    drop[{impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}::drop_in_place<'_0>] _1
     return
 }
 
@@ -1212,6 +1189,18 @@ impl<'_0> Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Siz
     parent_clause2 = {built_in impl Sized for (Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)}
     parent_clause3 = {built_in impl Tuple for (Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)}
     fn call<'_0_1> = {impl Fn<(Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, {impl Allocator for Global}],)> for trust2_contract_sample::to_sorted::closure<'_0>}::call<'_0, '_0_1>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::to_sorted::closure::{impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}
+impl<'_0> Destruct for trust2_contract_sample::to_sorted::closure<'_0> {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::to_sorted::closure<'_0>}::drop_in_place<'_0>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::to_sorted::closure::closure::{impl Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}
+impl<'_0, '_1> Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1> {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::to_sorted::closure::closure<'_0, '_1>}::drop_in_place<'_0, '_1>
     non-dyn-compatible
 }
 
@@ -1328,12 +1317,6 @@ fn {impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut<'_
 unsafe fn {impl Destruct for trust2_contract_sample::use_assert::closure}::drop_in_place(_1: *mut trust2_contract_sample::use_assert::closure)
 = <missing>
 
-// Full name: trust2_contract_sample::use_assert::closure::{impl Destruct for trust2_contract_sample::use_assert::closure}
-impl Destruct for trust2_contract_sample::use_assert::closure {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::use_assert::closure}::drop_in_place
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::use_assert::{impl FnOnce<()> for trust2_contract_sample::use_assert::closure}::call_once
 fn {impl FnOnce<()> for trust2_contract_sample::use_assert::closure}::call_once(_1: trust2_contract_sample::use_assert::closure, _2: ()) -> bool
 {
@@ -1345,7 +1328,7 @@ fn {impl FnOnce<()> for trust2_contract_sample::use_assert::closure}::call_once(
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<()> for trust2_contract_sample::use_assert::closure}::call_mut<'3>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::use_assert::closure}] _1
+    drop[{impl Destruct for trust2_contract_sample::use_assert::closure}::drop_in_place] _1
     return
 }
 
@@ -1398,6 +1381,10 @@ fn use_assert()
     return
 }
 
+// Full name: trust2_contract_sample::use_assert::decuple::closure::{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place
+unsafe fn {impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::use_assert::decuple::closure<'_0>)
+= <missing>
+
 // Full name: trust2_contract_sample::use_assert::decuple::{impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call
 fn {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call<'_0, '_1>(_1: &'_1 trust2_contract_sample::use_assert::decuple::closure<'_0>, tupled_args_2: ()) -> bool
 {
@@ -1427,16 +1414,6 @@ fn {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>
     return
 }
 
-// Full name: trust2_contract_sample::use_assert::decuple::closure::{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place
-unsafe fn {impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place<'_0>(_1: *mut trust2_contract_sample::use_assert::decuple::closure<'_0>)
-= <missing>
-
-// Full name: trust2_contract_sample::use_assert::decuple::closure::{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}
-impl<'_0> Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0> {
-    fn drop_in_place = {impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place<'_0>
-    non-dyn-compatible
-}
-
 // Full name: trust2_contract_sample::use_assert::decuple::{impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_once
 fn {impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_once<'_0>(_1: trust2_contract_sample::use_assert::decuple::closure<'_0>, _2: ()) -> bool
 {
@@ -1448,7 +1425,7 @@ fn {impl FnOnce<()> for trust2_contract_sample::use_assert::decuple::closure<'_0
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call_mut<'_0, '5>(move _3, move _2)
-    drop[{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}<'_0>] _1
+    drop[{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place<'_0>] _1
     return
 }
 
@@ -1480,6 +1457,18 @@ impl<'_0> Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0> {
     parent_clause2 = {built_in impl Sized for ()}
     parent_clause3 = {built_in impl Tuple for ()}
     fn call<'_0_1> = {impl Fn<()> for trust2_contract_sample::use_assert::decuple::closure<'_0>}::call<'_0, '_0_1>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::decuple::closure::{impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}
+impl<'_0> Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0> {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::use_assert::decuple::closure<'_0>}::drop_in_place<'_0>
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_sample::use_assert::closure::{impl Destruct for trust2_contract_sample::use_assert::closure}
+impl Destruct for trust2_contract_sample::use_assert::closure {
+    fn drop_in_place = {impl Destruct for trust2_contract_sample::use_assert::closure}::drop_in_place
     non-dyn-compatible
 }
 
