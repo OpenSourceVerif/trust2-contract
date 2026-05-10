@@ -18,7 +18,37 @@ use std::{
 
 const SEPARATOR: &str = "''_";
 
-pub const LIB_NAME: &str = "Lib'";
+pub fn lib_alias(lib_name: &str) -> String {
+    format!("{lib_name}'")
+}
+
+pub static LIB_BOOL: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["bool", "Bool"], lib_alias("Bool")));
+
+pub static LIB_BUILTIN: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["builtin", "Builtin"], lib_alias("Builtin")));
+
+pub static LIB_CHAR: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["char", "Char"], lib_alias("Char")));
+
+pub static LIB_I8: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["i8", "I8"], lib_alias("I8")));
+
+pub static LIB_I16: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["i16", "I16"], lib_alias("I16")));
+
+pub static LIB_I32: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["i32", "I32"], lib_alias("I32")));
+
+pub static LIB_I64: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["i64", "I64"], lib_alias("I64")));
+
+pub static LIB_I128: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["i128", "I128"], lib_alias("I128")));
+
+pub static LIB_TUPLE: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["tuple", "Tuple"], lib_alias("Tuple")));
+
+pub static LIB_U8: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["u8", "U8"], lib_alias("U8")));
+
+pub static LIB_U16: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["u16", "U16"], lib_alias("U16")));
+
+pub static LIB_U32: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["u32", "U32"], lib_alias("U32")));
+
+pub static LIB_U64: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["u64", "U64"], lib_alias("U64")));
+
+pub static LIB_U128: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["u128", "U128"], lib_alias("U128")));
 
 pub const EMPTY_TYPE_NAME: &str = "a'";
 
