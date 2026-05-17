@@ -17,13 +17,15 @@
 use itertools::Itertools;
 use rustc_middle::ty::TyCtxt;
 use std::cell::RefCell;
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use super::translate_ctx::*;
+use crate::hax;
+use crate::hax::SInto;
 use charon_lib::ast::*;
 use charon_lib::options::{CliOpts, StartFrom, TranslateOptions};
 use charon_lib::transform::TransformCtx;
-use hax::SInto;
 use macros::VariantIndexArity;
 
 /// The id of an untranslated item. Note that a given `DefId` may show up as multiple different
@@ -69,7 +71,7 @@ pub enum TransItemSourceKind {
     /// A cast of a state-less closure as a function pointer.
     ClosureAsFnCast,
     /// The `drop_in_place` method of a `Destruct` impl or decl. It contains the drop glue that
-    /// calls `Drop::drop` for the type and then drops its fields. if the `TraitImplSource` is
+    /// calls `Drop::drop` for the type and then drops its fields. If the `TraitImplSource` is
     /// `None` this is the method declaration (and the DefId is that of the `Destruct` trait),
     /// otherwise this is a method implementation (and the DefId is that of the ADT or closure for
     /// which to generate the drop glue).
@@ -208,7 +210,7 @@ impl<'tcx> TranslateCtx<'tcx> {
     /// Returns the default translation kind for the given `DefId`. Returns `None` for items that
     /// we don't translate. Errors on unexpected items.
     pub fn base_kind_for_item(&mut self, def_id: &hax::DefId) -> Option<TransItemSourceKind> {
-        use hax::DefKind::*;
+        use crate::hax::DefKind::*;
         Some(match &def_id.kind {
             Enum | Struct | Union | TyAlias | ForeignTy => TransItemSourceKind::Type,
             Fn | AssocFn => TransItemSourceKind::Fun,
@@ -445,7 +447,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         kind: TransItemSourceKind,
     ) -> Result<T, Error> {
         let id: ItemId = self.register_item_maybe_enqueue(span, enqueue, hax_item, kind);
-        // In mono mode, we keep generics of trait decls.
+        // In mono mode, we keep trait decls generic.
         let mut generics = if self.monomorphize() && !matches!(kind, TransItemSourceKind::TraitDecl)
         {
             GenericArgs::empty()
@@ -480,7 +482,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                             self.register_item(span, hax_item, TransItemSourceKind::Type);
                         let adt_decl = self.get_or_translate(adt_decl_id)?;
                         let adt_generics = adt_decl.generic_params();
-                        adt_generics.regions.elem_count() - generics.regions.elem_count()
+                        adt_generics.regions.len() - generics.regions.len()
                     };
                     generics
                         .regions
@@ -696,14 +698,21 @@ pub fn translate<'tcx>(
 ) -> Result<TransformCtx, Error> {
     let translate_options = TranslateOptions::new(&mut error_ctx, cli_options);
 
+    let traits_to_remove: HashSet<rustc_hir::def_id::DefId> = {
+        let hax_state = hax::state::State::new(tcx, hax::options::Options::default());
+        translate_options
+            .hide_traits
+            .iter()
+            .flat_map(|pat| super::resolve_path::def_path_def_ids(&hax_state, pat, true).unwrap())
+            .collect()
+    };
     let hax_state = hax::state::State::new(
         tcx,
         hax::options::Options {
-            item_ref_use_concrete_impl: true,
             inline_anon_consts: !translate_options.raw_consts,
             bounds_options: hax::options::BoundsOptions {
-                resolve_destruct: translate_options.add_destruct_bounds,
-                prune_sized: cli_options.hide_marker_traits,
+                add_destruct_bounds: translate_options.add_destruct_bounds,
+                remove_traits: traits_to_remove,
             },
         },
     );

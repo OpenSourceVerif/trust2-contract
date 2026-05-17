@@ -205,16 +205,6 @@ where
     [@TraitClause1]: Sized<A>,
 = <opaque>
 
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1]}
-impl<T, A> Destruct for Vec<T>[@TraitClause0, @TraitClause1]
-where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Sized<A>,
-{
-    fn drop_in_place = {impl Destruct for Vec<T>[@TraitClause0, @TraitClause1]}::drop_in_place<T, A>[@TraitClause0, @TraitClause1]
-    non-dyn-compatible
-}
-
 #[lang_item("vec_new")]
 pub fn alloc::vec::{Vec<T>[@TraitClause0, {built_in impl Sized for Global}]}::new<T>() -> Vec<T>[@TraitClause0, {built_in impl Sized for Global}]
 where
@@ -226,7 +216,7 @@ pub fn push<'_0, T, A>(_1: &'_0 mut Vec<T>[@TraitClause0, @TraitClause1], _2: T)
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Sized<A>,
-    [@TraitClause3]: Destruct<A>,
+    [@TraitClause2]: Destruct<A>,
 = <opaque>
 
 // Full name: UNIT_METADATA
@@ -241,7 +231,7 @@ fn UNIT_METADATA()
 // Full name: UNIT_METADATA
 const UNIT_METADATA: () = UNIT_METADATA()
 
-pub fn test_crate::swap<'a, T>(_1: &'a mut T, _2: &'a mut T)
+pub fn test_crate::swap<'a, T>(x_1: &'a mut T, y_2: &'a mut T)
 where
     [@TraitClause0]: Sized<T>,
 {
@@ -263,7 +253,7 @@ where
 }
 
 // Full name: test_crate::test_new_non_zero_u32
-pub fn test_new_non_zero_u32(_1: u32) -> NonZero<u32>[{built_in impl Sized for u32}, {impl ZeroablePrimitive for u32}]
+pub fn test_new_non_zero_u32(x_1: u32) -> NonZero<u32>[{built_in impl Sized for u32}, {impl ZeroablePrimitive for u32}]
 {
     let _0: NonZero<u32>[{built_in impl Sized for u32}, {impl ZeroablePrimitive for u32}]; // return
     let x_1: u32; // arg #1
@@ -298,13 +288,13 @@ pub fn test_vec_push()
     storage_dead(_3)
     storage_dead(_2)
     _0 = ()
-    conditional_drop[{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1]}<u32, Global>[{built_in impl Sized for u32}, {built_in impl Sized for Global}]] v_1
+    conditional_drop[{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1]}::drop_in_place<u32, Global>[{built_in impl Sized for u32}, {built_in impl Sized for Global}]] v_1
     storage_dead(v_1)
     return
 }
 
 // Full name: test_crate::use_get
-pub fn use_get<'_0>(_1: &'_0 Cell<u32>[{built_in impl MetaSized for u32}]) -> u32
+pub fn use_get<'_0>(rc_1: &'_0 Cell<u32>[{built_in impl MetaSized for u32}]) -> u32
 {
     let _0: u32; // return
     let rc_1: &'1 Cell<u32>[{built_in impl MetaSized for u32}]; // arg #1
@@ -318,7 +308,7 @@ pub fn use_get<'_0>(_1: &'_0 Cell<u32>[{built_in impl MetaSized for u32}]) -> u3
 }
 
 // Full name: test_crate::incr
-pub fn incr<'_0>(_1: &'_0 mut Cell<u32>[{built_in impl MetaSized for u32}])
+pub fn incr<'_0>(rc_1: &'_0 mut Cell<u32>[{built_in impl MetaSized for u32}])
 {
     let _0: (); // return
     let rc_1: &'1 mut Cell<u32>[{built_in impl MetaSized for u32}]; // arg #1

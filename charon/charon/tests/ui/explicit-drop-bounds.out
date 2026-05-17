@@ -51,7 +51,7 @@ trait Trait<Self, T>
     non-dyn-compatible
 }
 
-fn test_crate::Trait::foo<Self, T, U>(_1: U)
+fn test_crate::Trait::foo<Self, T, U>(x_1: U)
 where
     [@TraitClause0]: Trait<Self, T>,
     [@TraitClause1]: Sized<U>,
@@ -62,12 +62,12 @@ where
 
     _0 = ()
     _0 = ()
-    drop[@TraitClause2] x_1
+    drop[@TraitClause2::drop_in_place] x_1
     return
 }
 
 // Full name: test_crate::{impl Trait<u32> for ()}::foo
-fn {impl Trait<u32> for ()}::foo<U>(_1: U)
+fn {impl Trait<u32> for ()}::foo<U>(x_1: U)
 where
     [@TraitClause0]: Sized<U>,
     [@TraitClause1]: Destruct<U>,
@@ -77,7 +77,7 @@ where
 
     _0 = ()
     _0 = ()
-    drop[@TraitClause1] x_1
+    drop[@TraitClause1::drop_in_place] x_1
     return
 }
 
@@ -95,7 +95,7 @@ impl Trait<u32> for () {
 }
 
 // Full name: test_crate::use_trait
-fn use_trait<T, X>(_1: T, _2: X)
+fn use_trait<T, X>(_x_1: T, _y_2: X)
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Sized<X>,
@@ -109,8 +109,8 @@ where
 
     _0 = ()
     _0 = ()
-    drop[@TraitClause4] _y_2
-    drop[@TraitClause3] _x_1
+    drop[@TraitClause4::drop_in_place] _y_2
+    drop[@TraitClause3::drop_in_place] _x_1
     return
 }
 

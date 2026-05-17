@@ -102,7 +102,7 @@ where
     T : 'a,
 
 // Full name: core::slice::iter::{impl Iterator for Iter<'a, T>[@TraitClause0]}::next
-pub fn {impl Iterator for Iter<'a, T>[@TraitClause0]}::next<'a, '_1, T>(_1: &'_1 mut Iter<'a, T>[@TraitClause0]) -> Option<&'a T>[{built_in impl Sized for &'_ T}]
+pub fn {impl Iterator for Iter<'a, T>[@TraitClause0]}::next<'a, '_1, T>(_1: &'_1 mut Iter<'a, T>[@TraitClause0]) -> Option<&'a T>[{built_in impl Sized for &'a T}]
 where
     [@TraitClause0]: Sized<T>,
 = <opaque>
@@ -130,7 +130,7 @@ fn UNIT_METADATA()
 const UNIT_METADATA: () = UNIT_METADATA()
 
 // Full name: test_crate::debug_slice
-fn debug_slice<'_0, T>(_1: &'_0 [T])
+fn debug_slice<'_0, T>(slice_1: &'_0 [T])
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Debug<T>,

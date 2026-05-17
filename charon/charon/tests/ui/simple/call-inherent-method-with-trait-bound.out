@@ -62,7 +62,7 @@ where
 }
 
 // Full name: test_crate::{HashMap<S>[@TraitClause0]}::get
-pub fn get<S, Q, Clause2_Type>(_1: HashMap<S>[@TraitClause0], _2: Q)
+pub fn get<S, Q, Clause2_Type>(_x_1: HashMap<S>[@TraitClause0], _k_2: Q)
 where
     [@TraitClause0]: Sized<S>,
     [@TraitClause1]: Sized<Q>,
@@ -74,13 +74,13 @@ where
 
     _0 = ()
     _0 = ()
-    conditional_drop[{built_in impl Destruct for Q}] _k_2
-    conditional_drop[{impl Destruct for HashMap<S>[@TraitClause0]}<S>[@TraitClause0]] _x_1
+    conditional_drop[{built_in impl Destruct for Q}::drop_in_place] _k_2
+    conditional_drop[{impl Destruct for HashMap<S>[@TraitClause0]}::drop_in_place<S>[@TraitClause0]] _x_1
     return
 }
 
 // Full name: test_crate::top_level_get
-pub fn top_level_get<S, Q, Clause2_Type>(_1: HashMap<S>[@TraitClause0], _2: Q)
+pub fn top_level_get<S, Q, Clause2_Type>(_x_1: HashMap<S>[@TraitClause0], _k_2: Q)
 where
     [@TraitClause0]: Sized<S>,
     [@TraitClause1]: Sized<Q>,
@@ -92,13 +92,13 @@ where
 
     _0 = ()
     _0 = ()
-    conditional_drop[{built_in impl Destruct for Q}] _k_2
-    conditional_drop[{impl Destruct for HashMap<S>[@TraitClause0]}<S>[@TraitClause0]] _x_1
+    conditional_drop[{built_in impl Destruct for Q}::drop_in_place] _k_2
+    conditional_drop[{impl Destruct for HashMap<S>[@TraitClause0]}::drop_in_place<S>[@TraitClause0]] _x_1
     return
 }
 
 // Full name: test_crate::test1
-pub fn test1(_1: HashMap<()>[{built_in impl Sized for ()}])
+pub fn test1(map_1: HashMap<()>[{built_in impl Sized for ()}])
 {
     let _0: (); // return
     let map_1: HashMap<()>[{built_in impl Sized for ()}]; // arg #1
@@ -121,7 +121,7 @@ pub fn test1(_1: HashMap<()>[{built_in impl Sized for ()}])
 }
 
 // Full name: test_crate::test2
-pub fn test2(_1: HashMap<()>[{built_in impl Sized for ()}])
+pub fn test2(map_1: HashMap<()>[{built_in impl Sized for ()}])
 {
     let _0: (); // return
     let map_1: HashMap<()>[{built_in impl Sized for ()}]; // arg #1

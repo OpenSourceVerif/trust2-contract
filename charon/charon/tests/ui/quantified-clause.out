@@ -157,7 +157,7 @@ where
 }
 
 // Full name: test_crate::foo
-fn foo<F>(_1: F)
+fn foo<F>(_f_1: F)
 where
     [@TraitClause0]: Sized<F>,
     [@TraitClause1]: for<'a> FnMut<F, (&'a (),)>,
@@ -168,7 +168,7 @@ where
 
     _0 = ()
     _0 = ()
-    conditional_drop[{built_in impl Destruct for F}] _f_1
+    conditional_drop[{built_in impl Destruct for F}::drop_in_place] _f_1
     return
 }
 

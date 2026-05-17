@@ -29,7 +29,7 @@ unsafe fn drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
 // Full name: test_crate::foo
-fn foo<M>(_1: M)
+fn foo<M>(_msg_1: M)
 where
     [@TraitClause0]: Sized<M>,
     [@TraitClause1]: Send<M>,
@@ -39,7 +39,7 @@ where
 
     _0 = ()
     _0 = ()
-    conditional_drop[{built_in impl Destruct for M}] _msg_1
+    conditional_drop[{built_in impl Destruct for M}::drop_in_place] _msg_1
     return
 }
 

@@ -286,7 +286,7 @@ impl ExprBody {
     /// abort block (ie. a block with no statements and an [TerminatorKind::Abort] terminator).
     pub fn as_abort_map(&self) -> HashMap<BlockId, AbortKind> {
         self.body
-            .iter_indexed()
+            .iter_enumerated()
             .filter_map(|(bid, block)| block.as_abort().map(|abort| (bid, abort)))
             .collect()
     }
@@ -295,7 +295,7 @@ impl ExprBody {
     where
         F: FnMut(BlockId, &mut Locals, &mut [Statement]) -> Vec<(usize, Vec<Statement>)>,
     {
-        for (id, block) in &mut self.body.iter_mut_indexed() {
+        for (id, block) in &mut self.body.iter_mut_enumerated() {
             block.transform_sequences_fwd(|seq| f(id, &mut self.locals, seq));
         }
     }
@@ -417,7 +417,7 @@ impl BodyBuilder {
         self.current_block = next_block;
     }
 
-    pub fn insert_drop(&mut self, place: Place, tref: TraitRef) {
+    pub fn insert_drop(&mut self, place: Place, fn_ptr: FnPtr) {
         let next_block = self
             .body
             .body
@@ -425,7 +425,7 @@ impl BodyBuilder {
         let term = TerminatorKind::Drop {
             kind: DropKind::Precise,
             place,
-            tref,
+            fn_ptr,
             target: next_block,
             on_unwind: self.unwind_block(),
         };

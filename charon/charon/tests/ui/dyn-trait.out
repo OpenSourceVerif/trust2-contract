@@ -150,7 +150,7 @@ where
 = <opaque>
 
 // Full name: test_crate::construct
-fn construct<T>(_1: T) -> alloc::boxed::Box<(dyn Display + 'static)>[{built_in impl MetaSized for (dyn Display)}, {built_in impl Sized for Global}]
+fn construct<T>(_1: T) -> alloc::boxed::Box<(dyn Display + 'static)>[{built_in impl MetaSized for (dyn Display + 'static)}, {built_in impl Sized for Global}]
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Display<T>,
@@ -158,7 +158,7 @@ where
 = <opaque>
 
 // Full name: test_crate::destruct
-fn destruct<'_0>(_1: &'_0 (dyn Display + '_0)) -> String
+fn destruct<'_0>(x_1: &'_0 (dyn Display + '_0)) -> String
 {
     let _0: String; // return
     let x_1: &'3 (dyn Display + '4); // arg #1

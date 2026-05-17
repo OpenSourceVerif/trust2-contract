@@ -50,7 +50,7 @@ where
 }
 
 // Full name: test_crate::assert_is_iterator
-fn assert_is_iterator<I>(_1: I)
+fn assert_is_iterator<I>(it_1: I)
 where
     [@TraitClause0]: Sized<I>,
     [@TraitClause1]: IsIterator<I>,
@@ -60,7 +60,7 @@ where
 
     _0 = ()
     _0 = ()
-    conditional_drop[{built_in impl Destruct for I}] it_1
+    conditional_drop[{built_in impl Destruct for I}::drop_in_place] it_1
     return
 }
 
@@ -75,7 +75,7 @@ pub trait IntoIterator<Self, Self_Item, Self_IntoIter>
 }
 
 // Full name: test_crate::check
-fn check<I, Clause1_Item, Clause1_IntoIter>(_1: Clause1_IntoIter)
+fn check<I, Clause1_Item, Clause1_IntoIter>(it_1: Clause1_IntoIter)
 where
     [@TraitClause0]: Sized<I>,
     [@TraitClause1]: IntoIterator<I, Clause1_Item, Clause1_IntoIter>,
@@ -93,7 +93,7 @@ where
     storage_dead(_3)
     storage_dead(_2)
     _0 = ()
-    conditional_drop[{built_in impl Destruct for Clause1_IntoIter}] it_1
+    conditional_drop[{built_in impl Destruct for Clause1_IntoIter}::drop_in_place] it_1
     return
 }
 

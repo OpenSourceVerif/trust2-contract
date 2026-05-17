@@ -98,7 +98,7 @@ fn UNIT_METADATA()
 const UNIT_METADATA: () = UNIT_METADATA()
 
 // Full name: test_crate::takes_fn
-fn takes_fn<'_0>(_1: &'_0 (dyn for<'a> Fn<(&'a mut u32,), parent_clause1::parent_clause1::Output = bool> + '_0))
+fn takes_fn<'_0>(f_1: &'_0 (dyn for<'a> Fn<(&'a mut u32,), parent_clause1::parent_clause1::Output = bool> + '_0))
 {
     let _0: (); // return
     let f_1: &'10 (dyn for<'a> Fn<(&'a mut u32,), parent_clause1::parent_clause1::Output = bool> + '11); // arg #1
@@ -144,7 +144,7 @@ fn takes_fn<'_0>(_1: &'_0 (dyn for<'a> Fn<(&'a mut u32,), parent_clause1::parent
 struct closure {}
 
 // Full name: test_crate::gives_fn::{impl Fn<(&'_ mut u32,)> for closure}::call
-fn {impl Fn<(&'_ mut u32,)> for closure}::call<'_0, '_1>(_1: &'_1 closure, _2: (&'_0 mut u32,)) -> bool
+fn {impl Fn<(&'_ mut u32,)> for closure}::call<'_0, '_1>(_1: &'_1 closure, tupled_args_2: (&'_0 mut u32,)) -> bool
 {
     let _0: bool; // return
     let _1: &'1 closure; // arg #1
@@ -162,7 +162,7 @@ fn {impl Fn<(&'_ mut u32,)> for closure}::call<'_0, '_1>(_1: &'_1 closure, _2: (
 }
 
 // Full name: test_crate::gives_fn::{impl FnMut<(&'_ mut u32,)> for closure}::call_mut
-fn {impl FnMut<(&'_ mut u32,)> for closure}::call_mut<'_0, '_1>(_1: &'_1 mut closure, _2: (&'_0 mut u32,)) -> bool
+fn {impl FnMut<(&'_ mut u32,)> for closure}::call_mut<'_0, '_1>(state_1: &'_1 mut closure, args_2: (&'_0 mut u32,)) -> bool
 {
     let _0: bool; // return
     let state_1: &'_1 mut closure; // arg #1
@@ -179,12 +179,6 @@ fn {impl FnMut<(&'_ mut u32,)> for closure}::call_mut<'_0, '_1>(_1: &'_1 mut clo
 unsafe fn {impl Destruct for closure}::drop_in_place(_1: *mut closure)
 = <missing>
 
-// Full name: test_crate::gives_fn::closure::{impl Destruct for closure}
-impl Destruct for closure {
-    fn drop_in_place = {impl Destruct for closure}::drop_in_place
-    non-dyn-compatible
-}
-
 // Full name: test_crate::gives_fn::{impl FnOnce<(&'_ mut u32,)> for closure}::call_once
 fn {impl FnOnce<(&'_ mut u32,)> for closure}::call_once<'_0>(_1: closure, _2: (&'_0 mut u32,)) -> bool
 {
@@ -196,7 +190,7 @@ fn {impl FnOnce<(&'_ mut u32,)> for closure}::call_once<'_0>(_1: closure, _2: (&
     storage_live(_3)
     _3 = &mut _1
     _0 = {impl FnMut<(&'_ mut u32,)> for closure}::call_mut<'_0, '8>(move _3, move _2)
-    drop[{impl Destruct for closure}] _1
+    drop[{impl Destruct for closure}::drop_in_place] _1
     return
 }
 
@@ -260,6 +254,12 @@ fn gives_fn()
     storage_dead(_1)
     storage_dead(_3)
     return
+}
+
+// Full name: test_crate::gives_fn::closure::{impl Destruct for closure}
+impl Destruct for closure {
+    fn drop_in_place = {impl Destruct for closure}::drop_in_place
+    non-dyn-compatible
 }
 
 

@@ -70,7 +70,7 @@ trait Trait<Self>
 }
 
 // Full name: test_crate::lifetime_gat_bound
-fn lifetime_gat_bound<'_0, X>(_1: @TraitClause1::LifetimeGat)
+fn lifetime_gat_bound<'_0, X>(x_1: @TraitClause1::LifetimeGat)
 where
     [@TraitClause0]: Sized<X>,
     [@TraitClause1]: Trait<X>,
@@ -86,15 +86,15 @@ where
     _3 = &x_1
     _2 = (@TraitClause1::LifetimeGat::[@TraitClause1])::clone<'3>(move _3)
     storage_dead(_3)
-    conditional_drop[{built_in impl Destruct for @TraitClause1::LifetimeGat}] _2
+    conditional_drop[{built_in impl Destruct for @TraitClause1::LifetimeGat}::drop_in_place] _2
     storage_dead(_2)
     _0 = ()
-    conditional_drop[{built_in impl Destruct for @TraitClause1::LifetimeGat}] x_1
+    conditional_drop[{built_in impl Destruct for @TraitClause1::LifetimeGat}::drop_in_place] x_1
     return
 }
 
 // Full name: test_crate::non_lifetime_gat_bound
-fn non_lifetime_gat_bound<X>(_1: @TraitClause1::NonLifetimeGat)
+fn non_lifetime_gat_bound<X>(x_1: @TraitClause1::NonLifetimeGat)
 where
     [@TraitClause0]: Sized<X>,
     [@TraitClause1]: Trait<X>,
@@ -110,10 +110,10 @@ where
     _3 = &x_1
     _2 = (@TraitClause1::NonLifetimeGat::[@TraitClause1])::clone<'3>(move _3)
     storage_dead(_3)
-    conditional_drop[{built_in impl Destruct for @TraitClause1::NonLifetimeGat}] _2
+    conditional_drop[{built_in impl Destruct for @TraitClause1::NonLifetimeGat}::drop_in_place] _2
     storage_dead(_2)
     _0 = ()
-    conditional_drop[{built_in impl Destruct for @TraitClause1::NonLifetimeGat}] x_1
+    conditional_drop[{built_in impl Destruct for @TraitClause1::NonLifetimeGat}::drop_in_place] x_1
     return
 }
 

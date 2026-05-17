@@ -1,5 +1,6 @@
+use crate::hax;
+use crate::hax::{AssocItemContainer, GenericArg, TraitPredicate};
 use charon_lib::ast::ullbc_ast_utils::BodyBuilder;
-use hax::{AssocItemContainer, GenericArg, TraitPredicate};
 use itertools::Itertools;
 use rustc_span::kw;
 use std::mem;
@@ -8,7 +9,7 @@ use super::{
     translate_crate::TransItemSourceKind, translate_ctx::*, translate_generics::BindingLevel,
 };
 use charon_lib::formatter::IntoFormatter;
-use charon_lib::ids::{IndexMap, IndexVec};
+use charon_lib::ids::IndexVec;
 use charon_lib::pretty::FmtWithCtx;
 use charon_lib::ullbc_ast::*;
 
@@ -184,7 +185,7 @@ pub enum TrVTableField {
 
 pub struct VTableData {
     pub fields: IndexVec<FieldId, TrVTableField>,
-    pub supertrait_map: IndexMap<TraitClauseId, Option<FieldId>>,
+    pub supertrait_map: IndexVec<TraitClauseId, Option<FieldId>>,
 }
 
 /// Generate the vtable struct.
@@ -292,7 +293,7 @@ impl ItemTransCtx<'_, '_> {
         trait_def: &hax::FullDef,
         implied_predicates: &hax::GenericPredicates,
     ) -> Result<VTableData, Error> {
-        let mut supertrait_map: IndexMap<TraitClauseId, _> =
+        let mut supertrait_map: IndexVec<TraitClauseId, _> =
             (0..implied_predicates.predicates.len())
                 .map(|_| None)
                 .collect();
@@ -577,7 +578,7 @@ impl ItemTransCtx<'_, '_> {
         );
 
         let mut field_map = IndexVec::new();
-        let mut supertrait_map: IndexMap<TraitClauseId, _> =
+        let mut supertrait_map: IndexVec<TraitClauseId, _> =
             (0..implied_predicates.predicates.len())
                 .map(|_| None)
                 .collect();
@@ -1294,24 +1295,13 @@ impl ItemTransCtx<'_, '_> {
         );
         builder.push_statement(StatementKind::Assign(target_self.clone(), rval));
 
-        // Build a reference to `impl Destruct for T`. Given the
-        // target_receiver type `T`, use Hax to solve `T: Destruct`
-        // and translate the resolved result to `TraitRef` of the
-        // `drop_in_place`
-        let destruct_trait = self.tcx.lang_items().destruct_trait().unwrap();
-        let impl_expr: hax::ImplExpr = {
-            let s = self.hax_state_with_id();
-            let rustc_trait_args = trait_pred.trait_ref.rustc_args(s);
-            let generics = self.tcx.mk_args(&rustc_trait_args[..1]); // keep only the `Self` type
-            let tref =
-                rustc_middle::ty::TraitRef::new_from_args(self.tcx, destruct_trait, generics);
-            hax::solve_trait(s, rustc_middle::ty::Binder::dummy(tref))
-        };
-        let tref = self.translate_trait_impl_expr(span, &impl_expr)?;
+        let rustc_trait_args = trait_pred.trait_ref.rustc_args(self.hax_state_with_id());
+        let rustc_self_ty = rustc_trait_args[0].as_type().unwrap();
+        let fn_ptr = self.translate_drop_in_place_method_call(span, rustc_self_ty)?;
 
         // Drop(*target_self)
         let drop_arg = target_self.clone().deref();
-        builder.insert_drop(drop_arg, tref);
+        builder.insert_drop(drop_arg, fn_ptr);
 
         Ok(Body::Unstructured(builder.build()))
     }

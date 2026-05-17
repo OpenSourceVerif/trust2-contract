@@ -34,16 +34,6 @@ where
     [@TraitClause1]: Sized<A>,
 = <opaque>
 
-// Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}
-impl<T, A> Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]
-where
-    [@TraitClause0]: MetaSized<T>,
-    [@TraitClause1]: Sized<A>,
-{
-    fn drop_in_place = {impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop_in_place<T, A>[@TraitClause0, @TraitClause1]
-    non-dyn-compatible
-}
-
 // Full name: alloc::boxed::{impl Deref for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::deref
 pub fn {impl Deref for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::deref<'_0, T, A>(_1: &'_0 alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]) -> &'_0 T
 where
@@ -147,7 +137,7 @@ where
 }
 
 // Full name: test_crate::use_tuple_struct
-pub fn use_tuple_struct<'_0>(_1: &'_0 mut Tuple<u32, u32>[{built_in impl Sized for u32}, {built_in impl Sized for u32}])
+pub fn use_tuple_struct<'_0>(x_1: &'_0 mut Tuple<u32, u32>[{built_in impl Sized for u32}, {built_in impl Sized for u32}])
 {
     let _0: (); // return
     let x_1: &'1 mut Tuple<u32, u32>[{built_in impl Sized for u32}, {built_in impl Sized for u32}]; // arg #1
@@ -159,7 +149,7 @@ pub fn use_tuple_struct<'_0>(_1: &'_0 mut Tuple<u32, u32>[{built_in impl Sized f
 }
 
 // Full name: test_crate::create_tuple_struct
-pub fn create_tuple_struct(_1: u32, _2: u64) -> Tuple<u32, u64>[{built_in impl Sized for u32}, {built_in impl Sized for u64}]
+pub fn create_tuple_struct(x_1: u32, y_2: u64) -> Tuple<u32, u64>[{built_in impl Sized for u32}, {built_in impl Sized for u64}]
 {
     let _0: Tuple<u32, u64>[{built_in impl Sized for u32}, {built_in impl Sized for u64}]; // return
     let x_1: u32; // arg #1
@@ -178,7 +168,7 @@ pub fn create_tuple_struct(_1: u32, _2: u64) -> Tuple<u32, u64>[{built_in impl S
 }
 
 // Full name: test_crate::create_pair
-pub fn create_pair(_1: u32, _2: u64) -> Pair<u32, u64>[{built_in impl Sized for u32}, {built_in impl Sized for u64}]
+pub fn create_pair(x_1: u32, y_2: u64) -> Pair<u32, u64>[{built_in impl Sized for u32}, {built_in impl Sized for u64}]
 {
     let _0: Pair<u32, u64>[{built_in impl Sized for u32}, {built_in impl Sized for u64}]; // return
     let x_1: u32; // arg #1
@@ -220,7 +210,7 @@ where
 }
 
 // Full name: test_crate::use_id_type
-pub fn use_id_type<T>(_1: IdType<T>[@TraitClause0]) -> T
+pub fn use_id_type<T>(x_1: IdType<T>[@TraitClause0]) -> T
 where
     [@TraitClause0]: Sized<T>,
 {
@@ -228,12 +218,12 @@ where
     let x_1: IdType<T>[@TraitClause0]; // arg #1
 
     _0 = move (x_1).0
-    conditional_drop[{impl Destruct for IdType<T>[@TraitClause0]}<T>[@TraitClause0]] x_1
+    conditional_drop[{impl Destruct for IdType<T>[@TraitClause0]}::drop_in_place<T>[@TraitClause0]] x_1
     return
 }
 
 // Full name: test_crate::create_id_type
-pub fn create_id_type<T>(_1: T) -> IdType<T>[@TraitClause0]
+pub fn create_id_type<T>(x_1: T) -> IdType<T>[@TraitClause0]
 where
     [@TraitClause0]: Sized<T>,
 {
@@ -244,14 +234,14 @@ where
     storage_live(_2)
     _2 = move x_1
     _0 = IdType { 0: move _2 }
-    conditional_drop[{built_in impl Destruct for T}] _2
+    conditional_drop[{built_in impl Destruct for T}::drop_in_place] _2
     storage_dead(_2)
-    conditional_drop[{built_in impl Destruct for T}] x_1
+    conditional_drop[{built_in impl Destruct for T}::drop_in_place] x_1
     return
 }
 
 // Full name: test_crate::cast_u32_to_i32
-pub fn cast_u32_to_i32(_1: u32) -> i32
+pub fn cast_u32_to_i32(x_1: u32) -> i32
 {
     let _0: i32; // return
     let x_1: u32; // arg #1
@@ -265,7 +255,7 @@ pub fn cast_u32_to_i32(_1: u32) -> i32
 }
 
 // Full name: test_crate::cast_bool_to_i32
-pub fn cast_bool_to_i32(_1: bool) -> i32
+pub fn cast_bool_to_i32(x_1: bool) -> i32
 {
     let _0: i32; // return
     let x_1: bool; // arg #1
@@ -279,7 +269,7 @@ pub fn cast_bool_to_i32(_1: bool) -> i32
 }
 
 // Full name: test_crate::cast_bool_to_bool
-pub fn cast_bool_to_bool(_1: bool) -> bool
+pub fn cast_bool_to_bool(x_1: bool) -> bool
 {
     let _0: bool; // return
     let x_1: bool; // arg #1
@@ -354,7 +344,7 @@ pub fn test2()
 }
 
 // Full name: test_crate::get_max
-pub fn get_max(_1: u32, _2: u32) -> u32
+pub fn get_max(x_1: u32, y_2: u32) -> u32
 {
     let _0: u32; // return
     let x_1: u32; // arg #1
@@ -398,10 +388,10 @@ pub fn test_list1()
     _2 = @BoxNew<List<i32>[{built_in impl Sized for i32}]>[{built_in impl Sized for List<i32>[{built_in impl Sized for i32}]}](move _3)
     storage_dead(_3)
     l_1 = List::Cons { 0: const 0 : i32, 1: move _2 }
-    conditional_drop[{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}<List<i32>[{built_in impl Sized for i32}], Global>[{built_in impl MetaSized for List<i32>[{built_in impl Sized for i32}]}, {built_in impl Sized for Global}]] _2
+    conditional_drop[{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop_in_place<List<i32>[{built_in impl Sized for i32}], Global>[{built_in impl MetaSized for List<i32>[{built_in impl Sized for i32}]}, {built_in impl Sized for Global}]] _2
     storage_dead(_2)
     _0 = ()
-    conditional_drop[{impl Destruct for List<T>[@TraitClause0]}<i32>[{built_in impl Sized for i32}]] l_1
+    conditional_drop[{impl Destruct for List<T>[@TraitClause0]}::drop_in_place<i32>[{built_in impl Sized for i32}]] l_1
     storage_dead(l_1)
     return
 }
@@ -446,13 +436,13 @@ pub fn test_box1()
     _0 = ()
     storage_dead(x_4)
     storage_dead(x_2)
-    conditional_drop[{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}<i32, Global>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}]] b_1
+    conditional_drop[{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop_in_place<i32, Global>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}]] b_1
     storage_dead(b_1)
     return
 }
 
 // Full name: test_crate::copy_int
-pub fn copy_int(_1: i32) -> i32
+pub fn copy_int(x_1: i32) -> i32
 {
     let _0: i32; // return
     let x_1: i32; // arg #1
@@ -462,7 +452,7 @@ pub fn copy_int(_1: i32) -> i32
 }
 
 // Full name: test_crate::test_unreachable
-pub fn test_unreachable(_1: bool)
+pub fn test_unreachable(b_1: bool)
 {
     let _0: (); // return
     let b_1: bool; // arg #1
@@ -478,7 +468,7 @@ pub fn test_unreachable(_1: bool)
 }
 
 // Full name: test_crate::is_cons
-pub fn is_cons<'_0, T>(_1: &'_0 List<T>[@TraitClause0]) -> bool
+pub fn is_cons<'_0, T>(l_1: &'_0 List<T>[@TraitClause0]) -> bool
 where
     [@TraitClause0]: Sized<T>,
 {
@@ -498,7 +488,7 @@ where
 }
 
 // Full name: test_crate::split_list
-pub fn split_list<T>(_1: List<T>[@TraitClause0]) -> (T, List<T>[@TraitClause0])
+pub fn split_list<T>(l_1: List<T>[@TraitClause0]) -> (T, List<T>[@TraitClause0])
 where
     [@TraitClause0]: Sized<T>,
 {
@@ -525,15 +515,15 @@ where
     storage_live(_5)
     _5 = move (*tl_3)
     _0 = (move _4, move _5)
-    conditional_drop[{impl Destruct for List<T>[@TraitClause0]}<T>[@TraitClause0]] _5
+    conditional_drop[{impl Destruct for List<T>[@TraitClause0]}::drop_in_place<T>[@TraitClause0]] _5
     storage_dead(_5)
-    conditional_drop[{built_in impl Destruct for T}] _4
+    conditional_drop[{built_in impl Destruct for T}::drop_in_place] _4
     storage_dead(_4)
-    conditional_drop[{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}<List<T>[@TraitClause0], Global>[{built_in impl MetaSized for List<T>[@TraitClause0]}, {built_in impl Sized for Global}]] tl_3
+    conditional_drop[{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop_in_place<List<T>[@TraitClause0], Global>[{built_in impl MetaSized for List<T>[@TraitClause0]}, {built_in impl Sized for Global}]] tl_3
     storage_dead(tl_3)
-    conditional_drop[{built_in impl Destruct for T}] hd_2
+    conditional_drop[{built_in impl Destruct for T}::drop_in_place] hd_2
     storage_dead(hd_2)
-    conditional_drop[{impl Destruct for List<T>[@TraitClause0]}<T>[@TraitClause0]] l_1
+    conditional_drop[{impl Destruct for List<T>[@TraitClause0]}::drop_in_place<T>[@TraitClause0]] l_1
     return
 }
 
@@ -565,7 +555,7 @@ where
 }
 
 // Full name: test_crate::even
-pub fn even(_1: u32) -> bool
+pub fn even(x_1: u32) -> bool
 {
     let _0: bool; // return
     let x_1: u32; // arg #1
@@ -599,7 +589,7 @@ pub fn even(_1: u32) -> bool
 }
 
 // Full name: test_crate::odd
-pub fn odd(_1: u32) -> bool
+pub fn odd(x_1: u32) -> bool
 {
     let _0: bool; // return
     let x_1: u32; // arg #1
@@ -735,7 +725,7 @@ pub fn new_pair1() -> StructWithPair<u32, u32>[{built_in impl Sized for u32}, {b
 }
 
 // Full name: test_crate::incr
-pub fn incr<'_0>(_1: &'_0 mut u32)
+pub fn incr<'_0>(x_1: &'_0 mut u32)
 {
     let _0: (); // return
     let x_1: &'1 mut u32; // arg #1
@@ -750,7 +740,7 @@ pub fn incr<'_0>(_1: &'_0 mut u32)
 }
 
 // Full name: test_crate::read_then_incr
-pub fn read_then_incr<'_0>(_1: &'_0 mut u32) -> u32
+pub fn read_then_incr<'_0>(x_1: &'_0 mut u32) -> u32
 {
     let _0: u32; // return
     let x_1: &'1 mut u32; // arg #1

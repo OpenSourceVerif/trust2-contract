@@ -228,7 +228,7 @@ impl CfgInfo {
 
         // Build the node graph (we ignore unwind paths for now).
         let mut cfg = Cfg::new();
-        for (block_id, block) in body.iter_indexed() {
+        for (block_id, block) in body.iter_enumerated() {
             cfg.add_node(block_id);
             for tgt in block.targets_ignoring_unwind() {
                 cfg.add_edge(block_id, tgt, ());
@@ -1001,14 +1001,14 @@ impl<'a> ReconstructCtx<'a> {
             src::TerminatorKind::Drop {
                 kind,
                 place,
-                tref,
+                fn_ptr,
                 target,
                 on_unwind: _,
             } => {
                 // TODO: Have unwinds in the LLBC
                 let st = tgt::Statement::new(
                     src_span,
-                    tgt::StatementKind::Drop(place.clone(), tref.clone(), *kind),
+                    tgt::StatementKind::Drop(place.clone(), fn_ptr.clone(), *kind),
                 );
                 let mut block = self.translate_jump(terminator.span, *target);
                 block.statements.insert(0, st);

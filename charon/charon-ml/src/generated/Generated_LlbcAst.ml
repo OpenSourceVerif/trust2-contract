@@ -1,8 +1,8 @@
-open GAst
-open Types
-open Values
-open Expressions
-open Meta
+open Generated_GAst
+open Generated_Types
+open Generated_Values
+open Generated_Expressions
+open Generated_Meta
 open Identifiers
 module StatementId = IdGen ()
 
@@ -53,7 +53,7 @@ and statement_kind =
           valid though, so this statement is not a no-op: it can trigger UB if
           the place's projections are not valid (e.g. because they go out of
           bounds). *)
-  | Drop of place * trait_ref * drop_kind
+  | Drop of place * fn_ptr * drop_kind
       (** Drop the value at the given place.
 
           Depending on [DropKind], this may be a real call to [drop_in_place],

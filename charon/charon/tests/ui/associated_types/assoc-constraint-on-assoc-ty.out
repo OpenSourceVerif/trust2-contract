@@ -33,7 +33,7 @@ trait Trait<Self, Self_Assoc>
 }
 
 // Full name: test_crate::takes_trait
-fn takes_trait<I, Clause1_Assoc>(_1: I)
+fn takes_trait<I, Clause1_Assoc>(it_1: I)
 where
     [@TraitClause0]: Sized<I>,
     [@TraitClause1]: Trait<I, Clause1_Assoc>,
@@ -43,7 +43,7 @@ where
 
     _0 = ()
     _0 = ()
-    conditional_drop[{built_in impl Destruct for I}] it_1
+    conditional_drop[{built_in impl Destruct for I}::drop_in_place] it_1
     return
 }
 
@@ -57,7 +57,7 @@ trait IntoIterator<Self, Self_IntoIter>
 }
 
 // Full name: test_crate::collect
-fn collect<I, Clause1_IntoIter>(_1: Clause1_IntoIter)
+fn collect<I, Clause1_IntoIter>(it_1: Clause1_IntoIter)
 where
     [@TraitClause0]: Sized<I>,
     [@TraitClause1]: IntoIterator<I, Clause1_IntoIter>,
@@ -71,7 +71,7 @@ where
     _2 = move it_1
     _0 = takes_trait<Clause1_IntoIter, ()>[@TraitClause1::parent_clause1, @TraitClause1::parent_clause2](move _2)
     storage_dead(_2)
-    conditional_drop[{built_in impl Destruct for Clause1_IntoIter}] it_1
+    conditional_drop[{built_in impl Destruct for Clause1_IntoIter}::drop_in_place] it_1
     return
 }
 

@@ -36,7 +36,7 @@ fn main() -> Result<()> {
 
     if config.charon_pretty_print {
         for (crate_name, crate_) in &crates {
-            println!("{:=^80}", format!(" {} ", crate_name).cyan().bold());
+            println!("{:=^80}", format!(" {crate_name} ").cyan().bold());
             println!("{crate_}");
         }
     }

@@ -43,8 +43,8 @@ pub opaque type Vec<T>
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Sized<type_error("removed allocator parameter")>,
-    [@TraitClause3]: Destruct<T>,
-    [@TraitClause4]: Destruct<type_error("removed allocator parameter")>,
+    [@TraitClause2]: Destruct<T>,
+    [@TraitClause3]: Destruct<type_error("removed allocator parameter")>,
 
 // Full name: alloc::string::String
 #[lang_item("String")]
@@ -64,26 +64,14 @@ fn UNIT_METADATA()
 // Full name: UNIT_METADATA
 const UNIT_METADATA: () = UNIT_METADATA()
 
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4]}::drop_in_place
-unsafe fn {impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4]}::drop_in_place<T, A>(_1: *mut Vec<T>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4])
+// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause2, @TraitClause3]}::drop_in_place
+unsafe fn {impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause2, @TraitClause3]}::drop_in_place<T, A>(_1: *mut Vec<T>[@TraitClause0, @TraitClause1, @TraitClause2, @TraitClause3])
 where
     [@TraitClause0]: Sized<T>,
     [@TraitClause1]: Sized<A>,
-    [@TraitClause3]: Destruct<T>,
-    [@TraitClause4]: Destruct<A>,
+    [@TraitClause2]: Destruct<T>,
+    [@TraitClause3]: Destruct<A>,
 = <opaque>
-
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4]}
-impl<T, A> Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4]
-where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Sized<A>,
-    [@TraitClause3]: Destruct<T>,
-    [@TraitClause4]: Destruct<A>,
-{
-    fn drop_in_place = {impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4]}::drop_in_place<T, A>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4]
-    non-dyn-compatible
-}
 
 // Full name: alloc::string::String::{impl Destruct for String}::drop_in_place
 unsafe fn {impl Destruct for String}::drop_in_place(_1: *mut String)
@@ -95,14 +83,8 @@ unsafe fn {impl Destruct for String}::drop_in_place(_1: *mut String)
     storage_live(_2)
     _0 = ()
     _2 = &mut (*_1)
-    drop[{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause3, @TraitClause4]}<u8, Global>[{built_in impl Sized for u8}, {built_in impl Sized for Global}, {built_in impl Destruct for u8}, {impl Destruct for Global}]] ((*_2)).vec
+    drop[{impl Destruct for Vec<T>[@TraitClause0, @TraitClause1, @TraitClause2, @TraitClause3]}::drop_in_place<u8, Global>[{built_in impl Sized for u8}, {built_in impl Sized for Global}, {built_in impl Destruct for u8}, {impl Destruct for Global}]] ((*_2)).vec
     return
-}
-
-// Full name: alloc::string::String::{impl Destruct for String}
-impl Destruct for String {
-    fn drop_in_place = {impl Destruct for String}::drop_in_place
-    non-dyn-compatible
 }
 
 // Full name: alloc::string::{String}::new
@@ -118,7 +100,7 @@ fn use_string(_1: String)
 
     _0 = ()
     _0 = ()
-    drop[{impl Destruct for String}] _1
+    drop[{impl Destruct for String}::drop_in_place] _1
     return
 }
 
@@ -134,11 +116,11 @@ fn main()
     s_1 = new()
     storage_live(_2)
     _2 = new()
-    drop[{impl Destruct for String}] s_1
+    drop[{impl Destruct for String}::drop_in_place] s_1
     s_1 = move _2
     storage_dead(_2)
     _0 = ()
-    drop[{impl Destruct for String}] s_1
+    drop[{impl Destruct for String}::drop_in_place] s_1
     storage_dead(s_1)
     return
 }

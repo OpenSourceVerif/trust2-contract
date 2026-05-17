@@ -16,6 +16,10 @@ impl PathElem {
         let binder = self.as_instantiated()?;
         binder.params.is_empty().then_some(&binder.skip_binder)
     }
+    pub fn as_monomorphized_mut(&mut self) -> Option<&mut GenericArgs> {
+        let binder = self.as_instantiated_mut()?;
+        binder.params.is_empty().then_some(&mut binder.skip_binder)
+    }
     pub fn is_monomorphized(&self) -> bool {
         self.as_monomorphized().is_some()
     }
@@ -41,6 +45,10 @@ impl Name {
     /// If this item comes from monomorphization, return the arguments used.
     pub fn mono_args(&self) -> Option<&GenericArgs> {
         self.name.last()?.as_monomorphized()
+    }
+    /// If this item comes from monomorphization, return the arguments used.
+    pub fn mono_args_mut(&mut self) -> Option<&mut GenericArgs> {
+        self.name.last_mut()?.as_monomorphized_mut()
     }
 
     /// Strip the trailing `PathElem::Target` from a name, if any.
@@ -94,5 +102,11 @@ impl Name {
             self.name.push(PathElem::Instantiated(Box::new(binder)));
         }
         self
+    }
+
+    /// Get the last identifier of the name, if any. This is useful for error messages and such.
+    /// Panics if the name is empty or if the last element is not an identifier.
+    pub fn short_str(&self) -> &String {
+        self.name.last().unwrap().as_ident().unwrap().0
     }
 }
