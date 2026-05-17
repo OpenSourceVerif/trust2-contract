@@ -1,19 +1,54 @@
-use charon_lib::ast::TranslatedCrate;
+use crate::{spec_ast::Spec as PSpec, spec_lower};
+
+use charon_lib::ast::{FunDeclId, TranslatedCrate};
 use proc_macro_crate::FoundCrate;
 
 use anyhow::{Context, Result, bail};
 
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     ffi::{OsStr, OsString},
+    fmt::{self, Display, Formatter},
     fs, iter,
     path::PathBuf,
 };
 
+/// A translated crate plus cargo-verify-specific spec lowering output.
+pub struct TranslatedCrateBundle {
+    pub translated: TranslatedCrate,
+    pub lowered_specs: BTreeMap<FunDeclId, PSpec>,
+}
+
+impl Display for TranslatedCrateBundle {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.translated)?;
+        if self.lowered_specs.is_empty() {
+            return Ok(());
+        }
+
+        writeln!(f)?;
+        writeln!(f, "lowered_specs:")?;
+        for (fun_id, fun_decl) in self.translated.fun_decls.iter_indexed_values() {
+            let Some(spec) = self.lowered_specs.get(&fun_id) else {
+                continue;
+            };
+            writeln!(
+                f,
+                "  {}:",
+                spec_lower::name_to_string(&fun_decl.item_meta.name)
+            )?;
+            for line in spec.to_string().lines() {
+                writeln!(f, "    {line}")?;
+            }
+        }
+        Ok(())
+    }
+}
+
 pub fn translate_crates(
     charon_out_dir: Option<PathBuf>,
     cargo_build_args: Vec<OsString>,
-) -> Result<HashMap<String, TranslatedCrate>> {
+) -> Result<HashMap<String, TranslatedCrateBundle>> {
     let mut crates = HashMap::new();
 
     let feature_args: Box<dyn Iterator<Item = OsString>> = {
@@ -49,9 +84,15 @@ pub fn translate_crates(
         for dir_entry in fs::read_dir(&charon_out_dir)? {
             let llbc_file = dir_entry?.path();
             if llbc_file.is_file() && llbc_file.extension() == Some(OsStr::new("llbc")) {
-                let crate_ = charon_lib::deserialize_llbc(&llbc_file)?;
-                if let Some(crate_) = crates.insert(crate_.crate_name.clone(), crate_) {
-                    bail!("duplicate crate name: {}", crate_.crate_name);
+                let translated = charon_lib::deserialize_llbc(&llbc_file)?;
+                let lowered_specs = spec_lower::lower_crate_specs(&translated)?;
+                let crate_name = translated.crate_name.clone();
+                let crate_ = TranslatedCrateBundle {
+                    translated,
+                    lowered_specs,
+                };
+                if crates.insert(crate_name.clone(), crate_).is_some() {
+                    bail!("duplicate crate name: {crate_name}");
                 }
             }
         }

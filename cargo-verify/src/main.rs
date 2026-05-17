@@ -3,9 +3,9 @@ use clap::Parser;
 use clap_cargo::style::CLAP_STYLING;
 use yansi::{Condition, Paint};
 
-use std::{ffi::OsString, path::PathBuf};
+use cargo_verify::rust_to_llbc;
 
-mod rust_to_llbc;
+use std::{ffi::OsString, path::PathBuf};
 
 #[derive(Parser)]
 #[command(bin_name("cargo"), styles(CLAP_STYLING), help_expected(true))]
