@@ -13,5 +13,12 @@ utils = { path = "../utils" }
 anyhow = "1.0.81"
 clap = { version = "4.5.50", features = ["derive"] }
 clap-cargo = "0.18.3"
+itertools = "0.14.0"
+malachite = { version = "0.9.1", default-features = false, features = ["naturals_and_integers", "std"] }
+ocaml-format = { git = "https://github.com/temp66/ocaml-format-rust.git", version = "0.1.0" }
+rustc_apfloat = "0.2.3"
 tempfile = "3.24.0"
+why3-ptree = { git = "https://github.com/temp66/why3-ptree-rust.git", version = "0.1.0" }
 yansi = { version = "1.0.1", features = ["detect-tty", "detect-env"] }
+bumpalo = "3.20.2"
+include_dir = "0.7.4"
