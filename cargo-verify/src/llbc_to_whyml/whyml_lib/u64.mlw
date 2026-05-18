@@ -1,0 +1,115 @@
+module U64
+    use int.Int
+    use int.ComputerDivision as Computer
+    use int.EuclideanDivision as Euclidean
+
+    type t = <range 0 0xFFFF_FFFF_FFFF_FFFF>
+
+    clone mach.int.Bounded_int as BoundedInt with
+        type t = t,
+        constant min = t'minInt,
+        constant max = t'maxInt,
+        function to_int = t'int,
+        lemma to_int_in_bounds,
+        axiom extensionality
+
+    constant bits : int = 64
+
+    constant two_power_bits : int = 0x1_0000_0000_0000_0000
+
+    constant two_power_bits_minus_one : int = 0x8000_0000_0000_0000
+
+    constant zeros : t = 0
+
+    constant one : t = 1
+
+    constant ones : t = 0xFFFF_FFFF_FFFF_FFFF
+
+    clone bv.BV_Gen as BV with
+        type t = t,
+        function to_uint = t'int,
+        constant size = bits,
+        constant two_power_size = two_power_bits,
+        constant two_power_size_minus_one = two_power_bits_minus_one,
+        constant max_int = t'maxInt,
+        constant zeros,
+        constant one,
+        constant ones,
+        goal size_pos,
+        goal two_power_size_val,
+        goal two_power_size_minus_one_val,
+        goal max_int_val,
+        axiom .
+
+    let function of_int = BoundedInt.of_int
+    let function to_int = BoundedInt.to_int
+
+    let function add_strict = BoundedInt.(+)
+    let function sub_strict = BoundedInt.(-)
+    let function mul_strict = BoundedInt.(*)
+
+    let function div_strict (a : t) (b : t) : t
+        requires { [@expl:division by zero] b <> 0 }
+        requires { [@expl:integer overflow] BoundedInt.in_bounds (Computer.div a b) }
+        requires { not (a = t'minInt /\ b = -1) }
+    = BoundedInt.(a / b)
+    let function rem_strict (a : t) (b : t) : t
+        requires { [@expl:division by zero] b <> 0 }
+        requires { [@expl:integer overflow] BoundedInt.in_bounds (Computer.mod a b) }
+        requires { not (a = t'minInt /\ b = -1) }
+    = BoundedInt.(a % b)
+
+    let function add_wrapping (a : t) (b : t) : t =
+        BV.add a b
+    let function sub_wrapping (a : t) (b : t) : t =
+        BV.sub a b
+    let function mul_wrapping (a : t) (b : t) : t =
+        BV.mul a b
+
+    val function add_overflowing (a : t) (b : t) : (t, bool)
+        ensures { result =
+            (add_wrapping a b, not BoundedInt.in_bounds (t'int a + t'int b))
+        }
+    val function sub_overflowing (a : t) (b : t) : (t, bool)
+        ensures { result =
+            (sub_wrapping a b, not BoundedInt.in_bounds (t'int a + t'int b))
+        }
+    val function mul_overflowing (a : t) (b : t) : (t, bool)
+        ensures { result =
+            (mul_wrapping a b, not BoundedInt.in_bounds (t'int a + t'int b))
+        }
+
+    let (=) = BoundedInt.(=)
+    let (<) = BoundedInt.(<)
+    let (<=) = BoundedInt.(<=)
+    let (>) = BoundedInt.(>)
+    let (>=) = BoundedInt.(>=)
+
+    let function bit_xor = BV.bw_xor
+    let function bit_and = BV.bw_and
+    let function bit_or = BV.bw_or
+
+    let function shl_strict (a : t) (b : int) : t
+        requires { 0 <= b < bits }
+    =
+        BV.lsl a b
+    let function shr_strict (a : t) (b : int) : t
+        requires { 0 <= b < bits }
+    =
+        BV.asr a b
+
+    val function shl_unbounded (a : t) (b : int) : t
+        ensures { result =
+            BV.lsl a (Euclidean.mod b bits)
+        }
+    val function shr_unbounded (a : t) (b : int) : t
+        ensures { result =
+            BV.asr a (Euclidean.mod b bits)
+        }
+
+    type i8 = <range -0x80 0x7F>
+    let function cmp (a : t) (b : t) : i8 =
+        if a < b then -1 else if a = b then 0 else 1
+
+    let function bit_not = BV.bw_not
+end

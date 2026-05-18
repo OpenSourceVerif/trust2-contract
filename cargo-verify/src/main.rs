@@ -1,12 +1,13 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use clap::Parser;
 use clap_cargo::style::CLAP_STYLING;
 use yansi::{Condition, Paint};
 
-use std::{ffi::OsString, path::PathBuf};
+use std::{ffi::OsString, fs, path::PathBuf};
 
 mod llbc_to_whyml;
 mod rust_to_llbc;
+// mod whyml_verify;
 
 #[derive(Parser)]
 #[command(bin_name("cargo"), styles(CLAP_STYLING), help_expected(true))]
@@ -17,6 +18,9 @@ enum Cli {
 
 #[derive(Parser)]
 struct CliConfig {
+    /// Why3 WhyML output directory. If not provided, a temporary directory is used and then deleted.
+    #[arg(long)]
+    why3_out_dir: Option<PathBuf>,
     /// Charon LLBC output directory. If not provided, a temporary directory is used and then deleted.
     #[arg(long)]
     charon_out_dir: Option<PathBuf>,
@@ -33,7 +37,10 @@ fn main() -> Result<()> {
 
     let Cli::Verify(config) = Cli::parse();
 
-    let crates = rust_to_llbc::translate_crates(config.charon_out_dir, config.cargo_build_args)?;
+    let mut crates = run_with_dir(
+        |charon_out_dir| rust_to_llbc::translate_crates(charon_out_dir, config.cargo_build_args),
+        config.charon_out_dir,
+    )??;
 
     if config.charon_pretty_print {
         for (crate_name, crate_) in &crates {
@@ -42,7 +49,31 @@ fn main() -> Result<()> {
         }
     }
 
-    Ok(())
+    run_with_dir(
+        |why3_out_dir| {
+            llbc_to_whyml::translate_crates(&mut crates, &why3_out_dir)?;
+
+            Ok(())
+            // whyml_verify::verify(why3_out_dir, &crates)
+        },
+        config.why3_out_dir,
+    )?
+}
+
+fn run_with_dir<T>(f: impl FnOnce(PathBuf) -> T, dir: Option<PathBuf>) -> Result<T> {
+    Ok(if let Some(dir) = dir {
+        fs::create_dir_all(&dir)?;
+        f(dir)
+    } else {
+        let temp_dir = tempfile::tempdir()?;
+        let result = f(temp_dir.path().into());
+        let err_msg = format!(
+            "failed to delete temporary directory: {}",
+            temp_dir.path().display(),
+        );
+        temp_dir.close().context(err_msg)?;
+        result
+    })
 }
 
 #[cfg(test)]

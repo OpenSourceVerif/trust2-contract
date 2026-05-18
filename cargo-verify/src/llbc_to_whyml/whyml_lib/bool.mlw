@@ -1,0 +1,32 @@
+module Bool
+    use bool.Bool as Bool
+
+    type t = bool
+
+    let (=) = Bool.(=)
+    let (<) (a : t) (b : t) : bool =
+        match a with
+        | False -> b
+        | True -> False
+        end
+    let (<=) (a : t) (b : t) : bool =
+        match a with
+        | False -> True
+        | True -> b
+        end
+    let (>) (a : t) (b : t) : bool =
+        match b with
+        | False -> a
+        | True -> False
+        end
+    let (>=) (a : t) (b : t) : bool =
+        match b with
+        | False -> True
+        | True -> a
+        end
+
+    let function bit_xor = Bool.xorb
+    let function bit_and = Bool.andb
+    let function bit_or = Bool.orb
+    let function bit_not = Bool.notb
+end

@@ -1,0 +1,7 @@
+module Builtin
+    let box_new x = x
+
+    let ptr_from_parts_shared x _metadata = x
+
+    let ptr_from_parts_mut (x : 'a) _metadata = (x, any 'a)
+end
