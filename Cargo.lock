@@ -256,7 +256,7 @@ dependencies = [
  "env_logger",
  "extension-traits",
  "fraction",
- "hashbrown 0.15.5",
+ "hashbrown 0.17.1",
  "hax-adt-into",
  "index_vec",
  "indexmap",
