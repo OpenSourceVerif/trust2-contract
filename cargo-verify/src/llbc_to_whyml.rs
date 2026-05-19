@@ -29,15 +29,16 @@ use rustc_apfloat::{
 };
 use why3_ptree::{
     constant::Constant,
-    expr::{AssertionKind, RsKind},
+    expr::RsKind,
     ident::{self, OP_EQU},
     ity::Mask,
     loc::Position,
     mlw_printer,
     number::{IntConstant, IntLiteralKind, RealConstant, RealLiteralKind, RealValue},
+    pmodule::REF_ATTR,
     ptree::{
-        self, Decl, Expr, ExprDesc, Fundef, Ghost, Ident, MlwFile, Param, PatDesc, Pattern, Pty,
-        Qualid, Spec, TermDesc, TypeDef, Visibility,
+        self, Attr, Decl, Expr, ExprDesc, Fundef, Ghost, Ident, MlwFile, Param, PatDesc, Pattern,
+        Pty, Qualid, Spec, TypeDef, Visibility,
     },
     ptree_helpers,
 };
@@ -192,6 +193,7 @@ fn translate_crate(crate_: &mut TranslatedCrate) -> Result<(MlwFile, HashSet<(us
 
     let mut whyml_decls = Vec::new();
     whyml_decls.push(IMPORTS.clone());
+    whyml_decls.push(IMPORT_REF.clone());
 
     let mut ctx = Ctx {
         crate_,
@@ -638,45 +640,9 @@ impl<'a> Ctx<'a> {
         }
 
         fn translate_assign(self_: &mut Ctx, trailing_expr: Expr, dst: &Place, expr: Expr) -> Expr {
-            let dst_ident = local_temp_ident(0);
-            let expr_ident = local_temp_ident(1);
             let expr = ptree_helpers::expr(
                 Position::default(),
-                ExprDesc::Let(
-                    dst_ident.clone(),
-                    false,
-                    RsKind::None,
-                    Box::new(self_.translate_place(dst)),
-                    Box::new(ptree_helpers::expr(
-                        Position::default(),
-                        ExprDesc::Let(
-                            expr_ident.clone(),
-                            false,
-                            RsKind::None,
-                            Box::new(expr),
-                            Box::new(ptree_helpers::expr(
-                                Position::default(),
-                                ExprDesc::Assert(
-                                    AssertionKind::Assume,
-                                    ptree_helpers::term(
-                                        Position::default(),
-                                        TermDesc::Infix(
-                                            Box::new(ptree_helpers::tvar(
-                                                Position::default(),
-                                                Qualid(Box::new([dst_ident])),
-                                            )),
-                                            EQUAL.clone(),
-                                            Box::new(ptree_helpers::tvar(
-                                                Position::default(),
-                                                Qualid(Box::new([expr_ident])),
-                                            )),
-                                        ),
-                                    ),
-                                ),
-                            )),
-                        ),
-                    )),
-                ),
+                ExprDesc::Assign(Box::new([(self_.translate_place(dst), None, expr)])),
             );
             sequence_expr(trailing_expr, expr)
         }
@@ -1162,6 +1128,14 @@ impl<'a> Ctx<'a> {
             )
         }
 
+        fn translate_bool_literal(bool_literal: bool) -> Expr {
+            if bool_literal {
+                TRUE.clone()
+            } else {
+                FALSE.clone()
+            }
+        }
+
         fn translate_char_literal(char_literal: char) -> Expr {
             ptree_helpers::expr(
                 Position::default(),
@@ -1170,14 +1144,6 @@ impl<'a> Ctx<'a> {
                     int: u32::from(char_literal).into(),
                 })),
             )
-        }
-
-        fn translate_bool_literal(bool_literal: bool) -> Expr {
-            if bool_literal {
-                TRUE.clone()
-            } else {
-                FALSE.clone()
-            }
         }
 
         fn translate_str_literal(str_literal: &str) -> Expr {
@@ -1617,7 +1583,10 @@ impl<'a> Ctx<'a> {
                         Ok(ptree_helpers::expr(
                             Position::default(),
                             ExprDesc::Let(
-                                local_idents[local_id].clone(),
+                                Ident {
+                                    ats: Box::new([Attr::Str(REF_ATTR.clone())]),
+                                    ..local_idents[local_id].clone()
+                                },
                                 false,
                                 RsKind::None,
                                 Box::new(ptree_helpers::expr(
@@ -1625,7 +1594,9 @@ impl<'a> Ctx<'a> {
                                     ExprDesc::Any(
                                         Box::new([]),
                                         RsKind::None,
-                                        Some(self_.translate_type(&body.locals[local_id].ty)?),
+                                        Some(Pty::Ref(Box::new([
+                                            self_.translate_type(&body.locals[local_id].ty)?
+                                        ]))),
                                         WILDCARD.clone(),
                                         Mask::Visible,
                                         ptree_helpers::empty_spec(),
@@ -1871,6 +1842,17 @@ static IMPORTS: LazyLock<Decl> = LazyLock::new(|| {
             )
         })
         .collect(),
+    )
+});
+
+static IMPORT_REF: LazyLock<Decl> = LazyLock::new(|| {
+    Decl::Useimport(
+        Position::default(),
+        false,
+        Box::new([(
+            ptree_helpers::qualid(Box::new(["ref".into(), "Ref".into()])),
+            None,
+        )]),
     )
 });
 
