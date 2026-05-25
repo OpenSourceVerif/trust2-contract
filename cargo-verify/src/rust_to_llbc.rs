@@ -8,11 +8,11 @@ use std::{
     collections::HashMap,
     ffi::{OsStr, OsString},
     fs, iter,
-    path::PathBuf,
+    path::Path,
 };
 
 pub fn translate_crates(
-    charon_out_dir: PathBuf,
+    charon_out_dir: &Path,
     cargo_build_args: Vec<OsString>,
 ) -> Result<HashMap<String, TranslatedCrate>> {
     let mut crates = HashMap::new();
@@ -46,7 +46,7 @@ pub fn translate_crates(
             "--hide-allocator".into(),
             "--hide-marker-traits".into(),
             "--dest".into(),
-            charon_out_dir.clone().into(),
+            charon_out_dir.into(),
             "--".into(),
         ]
         .into_iter()
@@ -54,12 +54,15 @@ pub fn translate_crates(
         .chain(feature_args),
     )?;
 
-    for dir_entry in fs::read_dir(&charon_out_dir)? {
-        let llbc_file = dir_entry?.path();
-        if llbc_file.is_file() && llbc_file.extension() == Some(OsStr::new("llbc")) {
-            let crate_ = charon_lib::deserialize_llbc(&llbc_file)?;
-            if let Some(crate_) = crates.insert(crate_.crate_name.clone(), crate_) {
-                bail!("duplicate crate name: {}", crate_.crate_name);
+    for dir_entry in fs::read_dir(charon_out_dir)? {
+        let dir_entry = dir_entry?;
+        if dir_entry.file_type()?.is_file() {
+            let llbc_path = dir_entry.path();
+            if llbc_path.extension() == Some(OsStr::new("llbc")) {
+                let crate_ = charon_lib::deserialize_llbc(&llbc_path)?;
+                if let Some(crate_) = crates.insert(crate_.crate_name.clone(), crate_) {
+                    bail!("duplicate crate name: {}", crate_.crate_name);
+                }
             }
         }
     }

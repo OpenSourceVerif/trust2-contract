@@ -7,7 +7,7 @@ use std::{ffi::OsString, fs, path::PathBuf};
 
 mod llbc_to_whyml;
 mod rust_to_llbc;
-// mod whyml_verify;
+mod whyml_verify;
 
 #[derive(Parser)]
 #[command(bin_name("cargo"), styles(CLAP_STYLING), help_expected(true))]
@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     let Cli::Verify(config) = Cli::parse();
 
     let mut crates = run_with_dir(
-        |charon_out_dir| rust_to_llbc::translate_crates(charon_out_dir, config.cargo_build_args),
+        |charon_out_dir| rust_to_llbc::translate_crates(&charon_out_dir, config.cargo_build_args),
         config.charon_out_dir,
     )??;
 
@@ -53,8 +53,7 @@ fn main() -> Result<()> {
         |why3_out_dir| {
             llbc_to_whyml::translate_crates(&mut crates, &why3_out_dir)?;
 
-            Ok(())
-            // whyml_verify::verify(why3_out_dir, &crates)
+            whyml_verify::verify(&why3_out_dir, &crates)
         },
         config.why3_out_dir,
     )?

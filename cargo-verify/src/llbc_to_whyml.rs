@@ -1173,9 +1173,8 @@ impl<'a> Ctx<'a> {
                 BuiltinFunId::SpecForall
                 | BuiltinFunId::SpecExists
                 | BuiltinFunId::SpecImplies
-                | BuiltinFunId::SpecOld
-                | BuiltinFunId::SpecAssert
-                | BuiltinFunId::SpecAssume => todo!(),
+                | BuiltinFunId::SpecOld => todo!(),
+                BuiltinFunId::SpecAssert | BuiltinFunId::SpecAssume => todo!(),
                 BuiltinFunId::ArrayToSliceShared => todo!(),
                 BuiltinFunId::ArrayToSliceMut => todo!(),
                 BuiltinFunId::ArrayRepeat => todo!(),
