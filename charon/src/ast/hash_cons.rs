@@ -27,7 +27,8 @@ impl<T> HashConsed<T> {
     }
 }
 
-pub trait HashConsable = Hash + PartialEq + Eq + Clone + Mappable;
+pub trait HashConsable: Hash + PartialEq + Eq + Clone + Mappable {}
+impl<T> HashConsable for T where T: Hash + PartialEq + Eq + Clone + Mappable {}
 
 /// Unique id identifying a hashconsed value amongst all hashconsed values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -39,7 +40,7 @@ pub struct HashConsId(u64);
 // direct dependency and as a dylib, then the static will be duplicated, causing hashing and
 // equality on `HashCons` to be broken.
 mod intern_table {
-    use indexmap::IndexMap as SeqHashMap;
+    use rustc_hash::FxBuildHasher;
     use std::borrow::Borrow;
     use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::{Arc, LazyLock, RwLock};
@@ -47,6 +48,8 @@ mod intern_table {
     use super::{HashConsId, HashConsable, HashConsed};
     use crate::common::hash_by_addr::HashByAddr;
     use crate::common::type_map::{Mappable, Mapper, TypeMap};
+
+    type SeqHashMap<K, V> = indexmap::IndexMap<K, V, FxBuildHasher>;
 
     // Only way we create a `HashConsId`.
     fn fresh_id() -> HashConsId {
@@ -76,7 +79,6 @@ mod intern_table {
         U: indexmap::Equivalent<Arc<T>>,
     {
         // Fast read-only check.
-        #[expect(irrefutable_let_patterns)] // https://github.com/rust-lang/rust/issues/139369
         let arc = if let read_guard = INTERNED.read().unwrap()
             && let Some(map) = read_guard.get::<T>()
             && let Some((arc, _id)) = map.get_key_value(&inner)

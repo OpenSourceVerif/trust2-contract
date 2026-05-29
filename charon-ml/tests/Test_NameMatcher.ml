@@ -34,6 +34,8 @@ let parse_tests () =
       "{fn (@T, @U) -> u32}";
       "{*const @T}";
       "{*mut @T}";
+      "x::y::x86_64-apple-darwin";
+      "test_crate::foo::aarch64-unknown-linux-gnu";
     ]
   in
   let _ = List.map parse_pattern patterns in
@@ -222,9 +224,8 @@ end
 let annotated_rust_tests test_file =
   (* We read the llbc file generated from the annotated rust file. *)
   log#ldebug (lazy ("Deserializing LLBC file: " ^ test_file));
-  let json = Yojson.Basic.from_file test_file in
   let (crate : crate) =
-    match OfJson.crate_of_json json with
+    match OfJson.crate_of_json_file test_file with
     | Error s ->
         log#error "Error when deserializing file %s: %s\n" test_file s;
         exit 1

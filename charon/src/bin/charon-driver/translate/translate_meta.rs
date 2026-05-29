@@ -39,6 +39,17 @@ impl<'tcx> TranslateCtx<'tcx> {
             rustc_span::FileName::Real(name) => {
                 match name.local_path() {
                     Some(path) => {
+                        // Normalize path separators: cross-compiling to Windows uses `\` as path
+                        // separators.
+                        let path: PathBuf = {
+                            let mut normalized = PathBuf::new();
+                            for comp in path.components() {
+                                for segment in comp.as_os_str().to_string_lossy().split("\\") {
+                                    normalized.push(segment);
+                                }
+                            }
+                            normalized
+                        };
                         let path = if let Ok(path) = path.strip_prefix(&self.sysroot) {
                             // The path to files in the standard library may be full paths to somewhere
                             // in the sysroot. This may depend on how the toolchain is installed
@@ -70,7 +81,7 @@ impl<'tcx> TranslateCtx<'tcx> {
                                 rewritten_path.extend(path);
                                 rewritten_path
                             } else {
-                                path.into()
+                                path
                             }
                         };
                         FileName::Local(path)
@@ -377,7 +388,8 @@ impl<'tcx> TranslateCtx<'tcx> {
                 let impl_id = self.register_and_enqueue(&None, src.clone()).unwrap();
                 name.name.push(PathElem::Impl(ImplElem::Trait(impl_id)));
             }
-            TransItemSourceKind::DefaultedMethod(_, method_name) => {
+            TransItemSourceKind::DefaultedMethod(_, trait_id, method_id) => {
+                let method_name = self.translated.assoc_item_name(*trait_id, *method_id);
                 name.name.push(PathElem::Ident(
                     method_name.to_string(),
                     Disambiguator::ZERO,
@@ -416,22 +428,6 @@ impl<'tcx> TranslateCtx<'tcx> {
                     Disambiguator::ZERO,
                 ));
             }
-            TransItemSourceKind::VTableDropPreShim => {
-                name.name.push(PathElem::Ident(
-                    "{vtable_drop_preshim}".into(),
-                    Disambiguator::ZERO,
-                ));
-            }
-            TransItemSourceKind::VTableMethodPreShim(_, method_name) => {
-                name.name.push(PathElem::Ident(
-                    method_name.to_string(),
-                    Disambiguator::ZERO,
-                ));
-                name.name.push(PathElem::Ident(
-                    "{vtable_method_preshim}".into(),
-                    Disambiguator::ZERO,
-                ));
-            }
         }
         Ok(name)
     }
@@ -449,62 +445,13 @@ impl<'tcx> TranslateCtx<'tcx> {
             let span = self.def_span(&item_ref.def_id);
             let mut bt_ctx = ItemTransCtx::new(src.clone(), trans_id, self);
             let binder = bt_ctx.inside_binder(BinderKind::Other, |bt_ctx| {
-                let mut args = bt_ctx.translate_generic_args(
-                    span,
-                    &item_ref.generic_args,
-                    &item_ref.impl_exprs,
-                )?;
-                // Preshim functions in mono mode take the same arguments as the corresponding
-                // trait, but in practice are only ever instantiated with `dyn Trait` as self type.
-                // We pretend they take trait args (with no `Self`) + values for each assoc type
-                // instead.
-                if matches!(
-                    src.kind,
-                    TransItemSourceKind::VTableDropPreShim
-                        | TransItemSourceKind::VTableMethodPreShim(..)
-                ) {
-                    // Remove the `Self` type variable from the generic parameters.
-                    args.types.remove_and_shift_ids(TypeVarId::ZERO);
-                    // Append the assoc types.
-                    for ty in item_ref.trait_associated_types(bt_ctx.hax_state_with_id()) {
-                        let ty = bt_ctx.translate_ty(span, &ty)?;
-                        args.types.push(ty);
-                    }
-                };
-                Ok(args)
+                bt_ctx.translate_generic_args(span, &item_ref.generic_args, &item_ref.impl_exprs)
             })?;
             if !binder.skip_binder.is_empty() {
                 name.name.push(PathElem::Instantiated(Box::new(binder)));
             }
         }
         Ok(name)
-    }
-
-    /// Remark: this **doesn't** register the def id (on purpose)
-    pub(crate) fn translate_trait_item_name(
-        &mut self,
-        def_id: &hax::DefId,
-    ) -> Result<TraitItemName, Error> {
-        let def = self.poly_hax_def(def_id)?;
-        let assoc = match def.kind() {
-            hax::FullDefKind::AssocTy {
-                associated_item, ..
-            }
-            | hax::FullDefKind::AssocConst {
-                associated_item, ..
-            }
-            | hax::FullDefKind::AssocFn {
-                associated_item, ..
-            } => associated_item,
-            _ => panic!("Unexpected def for associated item: {def:?}"),
-        };
-        Ok(TraitItemName(
-            assoc
-                .name
-                .as_ref()
-                .map(|n| n.to_string().into())
-                .unwrap_or_default(),
-        ))
     }
 
     pub(crate) fn opacity_for_name(&self, name: &Name) -> ItemOpacity {
@@ -655,7 +602,7 @@ impl<'tcx> TranslateCtx<'tcx> {
         }
     }
 
-    pub(crate) fn translate_inline(&self, def: &hax::FullDef) -> Option<InlineAttr> {
+    pub(crate) fn translate_inline(&self, def: &hax::FullDef<'tcx>) -> Option<InlineAttr> {
         match def.kind() {
             hax::FullDefKind::Fn { inline, .. }
             | hax::FullDefKind::AssocFn { inline, .. }
@@ -670,7 +617,7 @@ impl<'tcx> TranslateCtx<'tcx> {
         }
     }
 
-    pub(crate) fn translate_attr_info(&mut self, def: &hax::FullDef) -> AttrInfo {
+    pub(crate) fn translate_attr_info(&mut self, def: &hax::FullDef<'tcx>) -> AttrInfo {
         // Default to `false` for impl blocks and closures.
         let public = def.visibility.unwrap_or(false);
         let inline = self.translate_inline(def);
@@ -707,14 +654,14 @@ impl<'tcx> TranslateCtx<'tcx> {
 // `ItemMeta`
 impl<'tcx> TranslateCtx<'tcx> {
     /// Whether this item is in an `extern { .. }` block, in which case it has no body.
-    pub(crate) fn is_extern_item(&mut self, def: &hax::FullDef) -> bool {
+    pub(crate) fn is_extern_item(&mut self, def: &hax::FullDef<'tcx>) -> bool {
         def.def_id()
             .parent(&self.hax_state)
             .is_some_and(|parent| matches!(parent.kind, hax::DefKind::ForeignMod))
     }
 
     /// If this is an item declared in an `extern { .. }` block, return its symbol name.
-    pub(crate) fn extern_item_symbol_name(&mut self, def: &hax::FullDef) -> Option<String> {
+    pub(crate) fn extern_item_symbol_name(&mut self, def: &hax::FullDef<'tcx>) -> Option<String> {
         if !self.is_extern_item(def) {
             return None;
         }
@@ -730,7 +677,7 @@ impl<'tcx> TranslateCtx<'tcx> {
     /// Compute the meta information for a Rust item.
     pub(crate) fn translate_item_meta(
         &mut self,
-        def: &hax::FullDef,
+        def: &hax::FullDef<'tcx>,
         item_src: &TransItemSource,
         name: Name,
         name_opacity: ItemOpacity,

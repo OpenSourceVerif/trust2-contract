@@ -22,7 +22,7 @@ pub struct Local {
     /// Span of the variable declaration.
     pub span: Span,
     /// The variable type
-    #[charon::rename("local_ty")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("local_ty"))]
     pub ty: Ty,
 }
 #[deprecated(note = "use `Local` intead")]
@@ -50,7 +50,7 @@ pub struct Locals {
 /// TODO: arg_count should be stored in GFunDecl below. But then,
 ///       the print is obfuscated and Aeneas may need some refactoring.
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-#[charon::rename("GexprBody")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("GexprBody"))]
 pub struct GExprBody<T> {
     pub span: Span,
     /// The number of regions existentially bound in this body. We introduce fresh such regions
@@ -63,7 +63,7 @@ pub struct GExprBody<T> {
     pub body: T,
     /// For each line inside the body, we record any whole-line `//` comments found before it. They
     /// are added to statements in the late `recover_body_comments` pass.
-    #[charon::opaque]
+    #[cfg_attr(feature = "charon_on_charon", charon::opaque)]
     #[drive(skip)]
     pub comments: Vec<(usize, Vec<String>)>,
 }
@@ -83,7 +83,7 @@ pub struct GExprBody<T> {
     EnumToGetters,
 )]
 #[serde_state(state_implements = HashConsSerializerState)]
-#[charon::variants_suffix("Body")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_suffix("Body"))]
 pub enum Body {
     /// Body represented as a CFG. This is what ullbc is made of, and what we get after translating MIR.
     Unstructured(ullbc_ast::ExprBody),
@@ -146,7 +146,7 @@ pub enum Body {
 /// }
 /// ```
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut, PartialEq, Eq)]
-#[charon::variants_suffix("Item")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_suffix("Item"))]
 pub enum ItemSource {
     /// This item stands on its own.
     TopLevel,
@@ -159,10 +159,9 @@ pub enum ItemSource {
     TraitDecl {
         /// The trait declaration this item belongs to.
         trait_ref: TraitDeclRef,
-        /// The name of the item.
+        /// The associated item this corresponds to.
         // TODO: also include method generics so we can recover a full `FnPtr::TraitMethod`
-        #[drive(skip)]
-        item_name: TraitItemName,
+        item_id: AssocItemId,
         /// Whether the trait declaration provides a default implementation.
         #[drive(skip)]
         has_default: bool,
@@ -173,14 +172,18 @@ pub enum ItemSource {
         impl_ref: TraitImplRef,
         /// The trait declaration that the impl block implements.
         trait_ref: TraitDeclRef,
-        /// The name of the item
+        /// The associated item this corresponds to.
         // TODO: also include method generics so we can recover a full `FnPtr::TraitMethod`
-        #[drive(skip)]
-        item_name: TraitItemName,
+        item_id: AssocItemId,
         /// True if the trait decl had a default implementation for this function/const and this
         /// item is a copy of the default item.
         #[drive(skip)]
         reuses_default: bool,
+    },
+    /// This function is a target-specific variant behind a `TargetDispatch` façade. The dispatcher
+    /// is the function with the `Body::TargetDispatch` body that dispatches to this function.
+    TargetDependent {
+        dispatcher: FunDeclRef,
     },
     /// This is a vtable struct for a trait.
     VTableTy {
@@ -201,16 +204,15 @@ pub enum ItemSource {
     /// calls the real method.
     VTableMethodShim,
     VTableInstanceMono,
-    VTableMethodPreShim(TraitDeclId, TraitItemName, Vec<Ty>),
 }
 
 #[derive(Debug, Clone, SerializeState, DeserializeState, Drive, DriveMut, PartialEq, Eq)]
-#[charon::variants_prefix("VTable")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("VTable"))]
 pub enum VTableField {
     Size,
     Align,
     Drop,
-    Method(TraitItemName),
+    Method(TraitMethodId),
     SuperTrait(TraitClauseId),
 }
 
@@ -221,9 +223,8 @@ pub struct FunDecl {
     /// The meta data associated with the declaration.
     pub item_meta: ItemMeta,
     pub generics: GenericParams,
-    /// The signature contains the inputs/output types *with* non-erased regions.
-    /// It also contains the list of region and type parameters.
-    pub signature: FunSig,
+    /// The signature contains the inputs/output types and ABI details.
+    pub signature: Box<FunSig>,
     /// The function kind: "regular" function, trait method declaration, etc.
     pub src: ItemSource,
     /// Whether this function is in fact the body of a constant/static that we turned into an
@@ -245,6 +246,8 @@ pub struct FunDeclRef {
 pub enum GlobalKind {
     /// A static.
     Static,
+    /// A thread-local static.
+    ThreadLocal,
     /// A const with a name (either top-level or an associated const in a trait).
     NamedConst,
     /// A const without a name:
@@ -296,6 +299,10 @@ pub struct GlobalDeclRef {
 #[drive(skip)]
 #[serde_state(stateless)]
 pub struct TraitItemName(pub ustr::Ustr);
+
+generate_index_type!(TraitMethodId, "TraitMethod");
+generate_index_type!(AssocTypeId, "AssocType");
+generate_index_type!(AssocConstId, "AssocConst");
 
 /// A trait **declaration**.
 ///
@@ -350,11 +357,11 @@ pub struct TraitDecl {
     /// trait declarations are parent clauses.
     pub implied_clauses: IndexVec<TraitClauseId, TraitParam>,
     /// The associated constants declared in the trait.
-    pub consts: Vec<TraitAssocConst>,
+    pub consts: IndexMap<AssocConstId, TraitAssocConst>,
     /// The associated types declared in the trait. The binder binds the generic parameters of the
     /// type if it is a GAT (Generic Associated Type). For a plain associated type the binder binds
     /// nothing.
-    pub types: Vec<Binder<TraitAssocTy>>,
+    pub types: IndexMap<AssocTypeId, Binder<TraitAssocTy>>,
     /// The methods declared by the trait. The binder binds the generic parameters of the method.
     ///
     /// ```rust
@@ -363,7 +370,7 @@ pub struct TraitDecl {
     ///   fn method<'a, U>(x: &'a U);
     /// }
     /// ```
-    pub methods: Vec<Binder<TraitMethod>>,
+    pub methods: IndexMap<TraitMethodId, Binder<TraitMethod>>,
     /// The virtual table struct for this trait, if it has one.
     /// It is guaranteed that the trait has a vtable iff it is dyn-compatible.
     pub vtable: Option<TypeDeclRef>,
@@ -399,6 +406,7 @@ pub struct TraitMethod {
     #[drive(skip)]
     #[serde_state(stateless)]
     pub attr_info: AttrInfo,
+    pub signature: FunSig,
     /// Each method declaration is represented by a function item. That function contains the
     /// signature of the method as well as information like attributes. It has a body iff the
     /// method declaration has a default implementation; otherwise it has an `Opaque` body.
@@ -427,11 +435,11 @@ pub struct TraitImpl {
     /// The trait references for the parent clauses (see [TraitDecl]).
     pub implied_trait_refs: IndexVec<TraitClauseId, TraitRef>,
     /// The implemented associated constants.
-    pub consts: Vec<(TraitItemName, GlobalDeclRef)>,
+    pub consts: IndexMap<AssocConstId, GlobalDeclRef>,
     /// The implemented associated types.
-    pub types: Vec<(TraitItemName, Binder<TraitAssocTyImpl>)>,
+    pub types: IndexMap<AssocTypeId, Binder<TraitAssocTyImpl>>,
     /// The implemented methods
-    pub methods: Vec<(TraitItemName, Binder<FunDeclRef>)>,
+    pub methods: IndexMap<TraitMethodId, Binder<FunDeclRef>>,
     /// The virtual table instance for this trait implementation. This is `Some` iff the trait is
     /// dyn-compatible.
     pub vtable: Option<GlobalDeclRef>,
@@ -443,7 +451,7 @@ pub struct TraitAssocTyImpl {
     pub value: Ty,
     /// This matches the corresponding vector in `TraitAssocTy`. In the same way, this is empty
     /// after the `lift_associated_item_clauses` pass.
-    #[charon::opaque]
+    #[cfg_attr(feature = "charon_on_charon", charon::opaque)]
     pub implied_trait_refs: IndexVec<TraitClauseId, TraitRef>,
 }
 
@@ -451,7 +459,7 @@ pub struct TraitAssocTyImpl {
 /// It either designates a top-level function, or a place in case
 /// we are using function pointers stored in local variables.
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-#[charon::variants_prefix("FnOp")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("FnOp"))]
 pub enum FnOperand {
     /// Regular case: call to a top-level function, trait method, etc.
     Regular(FnPtr),
@@ -487,6 +495,9 @@ pub enum BuiltinAssertKind {
     MisalignedPointerDereference { required: Operand, found: Operand },
     NullPointerDereference,
     InvalidEnumConstruction(Operand),
+    ResumedAfterReturn,
+    ResumedAfterPanic,
+    ResumedAfterDrop,
 }
 
 /// (U)LLBC is a language with side-effects: a statement may abort in a way that isn't tracked by
@@ -541,7 +552,7 @@ pub enum DropKind {
 /// because they're implicit in the semantics of our array accesses etc. Finally we introduce new asserts in
 /// [crate::transform::resugar::reconstruct_asserts].
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-#[charon::rename("Assertion")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("Assertion"))]
 pub struct Assert {
     pub cond: Operand,
     /// The value that the operand should evaluate to for the assert to succeed.

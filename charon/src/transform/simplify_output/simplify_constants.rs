@@ -13,7 +13,7 @@
 use itertools::Itertools;
 
 use crate::transform::TransformCtx;
-use crate::transform::ctx::{BodyTransformCtx, FusedUllbcPass, UllbcStatementTransformCtx};
+use crate::transform::ctx::{BodyTransformCtx, UllbcPass, UllbcStatementTransformCtx};
 use crate::ullbc_ast::*;
 
 /// If the constant value is a constant ADT, push `Assign::Aggregate` statements
@@ -94,6 +94,10 @@ fn transform_constant_expr(
                 }
             }
         }
+        ConstantExprKind::Adt(..) if val.ty.is_unit() => {
+            // Keep unit constants to avoid adding countless unit locals.
+            return Operand::Const(val);
+        }
         ConstantExprKind::Adt(variant, fields) => {
             let fields = fields
                 .into_iter()
@@ -157,7 +161,7 @@ fn transform_operand(ctx: &mut UllbcStatementTransformCtx<'_>, op: &mut Operand)
 }
 
 pub struct Transform;
-impl FusedUllbcPass for Transform {
+impl UllbcPass for Transform {
     fn should_run(&self, options: &crate::options::TranslateOptions) -> bool {
         !options.raw_consts
     }
@@ -175,6 +179,9 @@ impl FusedUllbcPass for Transform {
                                 && let Ok(op) = fields.iter().dedup().exactly_one() =>
                         {
                             Rvalue::Repeat(op.clone(), ty.clone(), len)
+                        }
+                        Rvalue::Use(Operand::Const(e)) if e.kind.is_adt() && e.ty.is_unit() => {
+                            Rvalue::unit_value()
                         }
                         _ => rvalue,
                     });

@@ -64,6 +64,90 @@ fn test_crate_data(crate_data: &TranslatedCrate) -> anyhow::Result<()> {
 }
 
 #[test]
+fn test_partial_mono_name_matcher() -> anyhow::Result<()> {
+    let code = r#"
+        fn identity<T>(x: T) -> T {
+            x
+        }
+
+        fn use_id_mut<A, B>(mut x: A, mut y: B) {
+            let _ = identity(&mut x);
+            let _ = identity(Some(&mut x));
+            let _ = identity((&mut x, &mut y));
+        }
+    "#;
+    let crate_data = util::translate_rust_text(
+        code,
+        &[
+            "--monomorphize-mut=except-types",
+            "--remove-adt-clauses",
+            "--remove-associated-types=*",
+        ],
+    )?;
+
+    let identity_instantiations = crate_data.fun_decls.iter().filter(|decl| {
+        let name = &decl.item_meta.name.name;
+        matches!(
+            name.as_slice(),
+            [.., PathElem::Ident(ident, _), PathElem::Instantiated(_)] if ident == "identity"
+        )
+    });
+    let ref_pat = Pattern::parse("test_crate::identity<&mut _>").unwrap();
+    let option_ref_pat =
+        Pattern::parse("test_crate::identity<core::option::Option<&mut _>>").unwrap();
+    let mut_ref_tuple_instantiation = |decl: &FunDecl| {
+        let [
+            ..,
+            PathElem::Ident(ident, _),
+            PathElem::Instantiated(instantiation),
+        ] = decl.item_meta.name.name.as_slice()
+        else {
+            return false;
+        };
+        if ident != "identity" {
+            return false;
+        }
+        let Ok(ty) = instantiation.skip_binder.types.iter().exactly_one() else {
+            return false;
+        };
+        let Some(fields) = ty.as_tuple() else {
+            return false;
+        };
+        fields.len() == 2
+            && fields
+                .iter()
+                .all(|field| matches!(field.kind(), TyKind::Ref(_, _, RefKind::Mut)))
+    };
+    let matched = identity_instantiations
+        .map(|decl| {
+            let item = ItemRef::Fun(decl);
+            (
+                ref_pat.matches_item(&crate_data, item),
+                option_ref_pat.matches_item(&crate_data, item),
+                mut_ref_tuple_instantiation(decl),
+            )
+        })
+        .fold((false, false, false), |acc, matched| {
+            (acc.0 || matched.0, acc.1 || matched.1, acc.2 || matched.2)
+        });
+
+    assert!(
+        matched.0,
+        "no partial-monomorphized `identity<&mut _>` matched"
+    );
+    assert!(
+        matched.1,
+        "no partial-monomorphized `identity<Option<&mut _>>` matched"
+    );
+    assert!(
+        matched.2,
+        "no partial-monomorphized `identity<(&mut _, &mut _)>` matched"
+    );
+
+    Ok(())
+}
+
+#[test]
 fn test_name_matcher() -> anyhow::Result<()> {
     let code = &std::fs::read_to_string(TEST_FILE)?;
     let crate_data = util::translate_rust_text(code, &[])?;

@@ -10,10 +10,10 @@ use itertools::Itertools;
 use snapbox::filter::Filter;
 use std::fmt::Display;
 use std::path::Path;
-use std::{fs::File, io::BufReader, process::Command};
+use std::{fs::File, process::Command};
 
 use charon_lib::ast::*;
-use charon_lib::{export::CrateData, logger};
+use charon_lib::{export::CrateData, logger, options::SerializationFormat};
 
 #[derive(Clone, Copy)]
 pub enum Action {
@@ -83,6 +83,7 @@ pub fn translate_rust_text(
     let output_path = tmp_dir.path().join("test_crate.llbc");
     Command::cargo_bin("charon")?
         .arg("rustc")
+        .arg("--abort-on-error")
         .arg("--dest-file")
         .arg(&output_path)
         .args(options)
@@ -94,11 +95,7 @@ pub fn translate_rust_text(
         .try_success()?;
 
     // Extract the computed crate data.
-    let crate_data: CrateData = {
-        let file = File::open(output_path)?;
-        let reader = BufReader::new(file);
-        serde_json::from_reader(reader)?
-    };
+    let crate_data = CrateData::deserialize_from_file(&output_path, SerializationFormat::Json)?;
 
     Ok(crate_data.translated)
 }

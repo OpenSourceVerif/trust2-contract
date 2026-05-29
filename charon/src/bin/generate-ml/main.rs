@@ -6,11 +6,11 @@
 //!
 //! To run it, call `cargo run --bin generate-ml`. It is also run by `make generate-ml` in the
 //! crate root. Don't forget to format the output code after regenerating.
-#![feature(if_let_guard)]
 
 use anyhow::{Context, Result, bail};
 use assert_cmd::cargo::CommandCargoExt;
 use charon_lib::ast::*;
+use charon_lib::options::SerializationFormat;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -21,6 +21,7 @@ use crate::to_ocaml_ty::DeriveVisitors;
 use crate::util::*;
 
 mod of_json;
+mod of_postcard;
 mod to_ocaml_ty;
 mod util;
 
@@ -36,9 +37,6 @@ struct GenerateCtx<'a> {
     current_module: Option<String>,
     /// The list of types currently being generated.
     current_ids: Vec<TypeDeclId>,
-    /// The OCaml ident for the item currently being generated; this matters for
-    /// TranslatedCrate, where we treat IndexMap differently.
-    current_item: Option<String>,
 }
 
 impl<'a> GenerateCtx<'a> {
@@ -48,7 +46,7 @@ impl<'a> GenerateCtx<'a> {
         for ty in &crate_data.type_decls {
             let long_name = repr_name(&ty.item_meta.name);
             if long_name.starts_with("charon_lib") {
-                let short_name = ty.item_meta.name.short_str().clone();
+                let short_name = ty.item_meta.name.short_str().unwrap().to_string();
                 name_to_type.insert(short_name, ty);
             }
             name_to_type.insert(long_name, ty);
@@ -67,7 +65,6 @@ impl<'a> GenerateCtx<'a> {
             ambiguous_types: Default::default(),
             current_module: None,
             current_ids: vec![],
-            current_item: None,
         };
 
         ctx.ambiguous_types = ambiguous_types
@@ -83,6 +80,7 @@ impl<'a> GenerateCtx<'a> {
 #[derive(Clone, Copy)]
 enum GenerationKind {
     OfJson,
+    OfPostcard,
     TypeDecl(Option<DeriveVisitors>),
 }
 
@@ -112,11 +110,12 @@ impl GenerateCodeFor {
             let tys = names
                 .iter()
                 .map(|&id| &ctx.crate_data[id])
-                .sorted_by_key(|tdecl| (tdecl.item_meta.name.short_str(), tdecl.def_id))
+                .sorted_by_key(|tdecl| (tdecl.item_meta.name.short_str().unwrap(), tdecl.def_id))
                 .collect::<Vec<_>>();
             ctx.current_ids = names.iter().copied().collect();
             let generated = match kind {
                 GenerationKind::OfJson => ctx.type_decls_to_json(tys),
+                GenerationKind::OfPostcard => ctx.type_decls_to_postcard(tys),
                 GenerationKind::TypeDecl(visitors) => ctx.type_decls_to_ocaml(visitors, tys),
             };
             let placeholder = format!("(* __REPLACE{i}__ *)");
@@ -149,6 +148,8 @@ fn main() -> Result<()> {
         cmd.arg(&charon_llbc);
         cmd.arg("--");
         cmd.arg("--lib");
+        cmd.arg("--features");
+        cmd.arg("charon_on_charon");
         let output = cmd.output()?;
 
         if !output.status.success() {
@@ -157,7 +158,8 @@ fn main() -> Result<()> {
         }
     }
 
-    let crate_data: TranslatedCrate = charon_lib::deserialize_llbc(&charon_llbc)?;
+    let crate_data: TranslatedCrate =
+        charon_lib::deserialize_llbc_with_format(&charon_llbc, SerializationFormat::Json)?;
     let output_dir = if std::env::var("IN_CI").as_deref() == Ok("1") {
         dir.join("generated")
     } else {
@@ -201,6 +203,7 @@ fn generate_ml(
     {
         let mut all_types: HashSet<_> = ctx.children_of("TranslatedCrate");
         all_types.insert(ctx.id_from_name("indexmap::map::IndexMap")); // Add this one foreign type
+        all_types.remove(&ctx.id_from_name("charon_lib::ids::index_map::IndexMap"));
         let all_llbc_types: HashSet<_> =
             ctx.children_of_many(&["charon_lib::ast::llbc_ast::Block"]);
         let all_ullbc_types: HashSet<_> = ctx.children_of_many(&[
@@ -262,7 +265,7 @@ fn generate_ml(
                     ancestors: &["big_int"],
                     name: "literal",
                     reduce: true,
-                    extra_types: &[],
+                    extra_types: &["char_value"],
                 })), &[
                     "Literal",
                     "IntegerTy",
@@ -288,10 +291,10 @@ fn generate_ml(
                 // Can't merge into above because aeneas uses the above alongside their own partial
                 // copy of `ty`, which causes method type clashes.
                 (GenerationKind::TypeDecl(Some(DeriveVisitors {
-                    ancestors: &["type_vars"],
+                    ancestors: &["ty_base"],
                     name: "ty",
                     reduce: false,
-                    extra_types: &["span"],
+                    extra_types: &[],
                 })), &[
                     "ConstantExpr",
                     "TyKind",
@@ -357,7 +360,7 @@ fn generate_ml(
                     "GlobalDecl",
                 ]),
                 (GenerationKind::TypeDecl(Some(DeriveVisitors {
-                    ancestors: &["global_decl"],
+                    ancestors: &["trait_decl_base"],
                     name: "trait_decl",
                     reduce: false,
                     extra_types: &[],
@@ -420,10 +423,20 @@ fn generate_ml(
             template: template_dir.join("OfJson.ml"),
             target: output_dir.join("Generated_OfJson.ml"),
             markers: vec![
-                (GenerationKind::OfJson, gast_types),
-                (GenerationKind::OfJson, ullbc_types),
-                (GenerationKind::OfJson, llbc_types),
-                (GenerationKind::OfJson, full_ast_types),
+                (GenerationKind::OfJson, gast_types.clone()),
+                (GenerationKind::OfJson, ullbc_types.clone()),
+                (GenerationKind::OfJson, llbc_types.clone()),
+                (GenerationKind::OfJson, full_ast_types.clone()),
+            ],
+        },
+        GenerateCodeFor {
+            template: template_dir.join("OfPostcard.ml"),
+            target: output_dir.join("Generated_OfPostcard.ml"),
+            markers: vec![
+                (GenerationKind::OfPostcard, gast_types),
+                (GenerationKind::OfPostcard, ullbc_types),
+                (GenerationKind::OfPostcard, llbc_types),
+                (GenerationKind::OfPostcard, full_ast_types),
             ],
         },
     ];

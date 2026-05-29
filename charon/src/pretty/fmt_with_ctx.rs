@@ -83,6 +83,12 @@ impl<C: AstFormatter> FmtWithCtx<C> for AbortKind {
     }
 }
 
+impl<C: AstFormatter> FmtWithCtx<C> for Abi {
+    fn fmt_with_ctx(&self, _ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.rust_name())
+    }
+}
+
 impl<C: AstFormatter> FmtWithCtx<C> for BuiltinAssertKind {
     fn fmt_with_ctx(&self, _ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -98,18 +104,18 @@ impl<C: AstFormatter> FmtWithCtx<C> for BuiltinAssertKind {
             BuiltinAssertKind::InvalidEnumConstruction(..) => {
                 write!(f, "invalid_enum_construction")
             }
+            BuiltinAssertKind::ResumedAfterReturn => write!(f, "resumed_after_return"),
+            BuiltinAssertKind::ResumedAfterDrop => write!(f, "resumed_after_drop"),
+            BuiltinAssertKind::ResumedAfterPanic => write!(f, "resumed_after_panic"),
         }
     }
 }
 
 impl<C: AstFormatter> FmtWithCtx<C> for ItemId {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match ctx
-            .get_crate()
-            .and_then(|translated| translated.item_short_name(*self))
-        {
+        match ctx.get_crate() {
             None => write!(f, "{self}"),
-            Some(name) => name.fmt_with_ctx(ctx, f),
+            Some(translated) => translated.item_short_name(*self).fmt_with_ctx(ctx, f),
         }
     }
 }
@@ -359,13 +365,6 @@ impl<C: AstFormatter> FmtWithCtx<C> for ClauseDbVar {
     }
 }
 
-impl_display_via_ctx!(ConstantExpr);
-impl<C: AstFormatter> FmtWithCtx<C> for ConstantExpr {
-    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.kind.with_ctx(ctx))
-    }
-}
-
 impl<C: AstFormatter> FmtWithCtx<C> for ConstGenericDbVar {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         ctx.format_bound_var(f, *self, "@ConstGeneric", |v| Some(v.name.clone()))
@@ -446,13 +445,18 @@ impl<C: AstFormatter> FmtWithCtx<C> for DynPredicate {
                         _ => unreachable!(),
                     }
                 }
-                let ty = cstr.ty.to_string_with_ctx(ctx);
-                let path = path
-                    .into_iter()
-                    .map(Either::Left)
-                    .chain([Either::Right(cstr.type_name)])
-                    .format("::");
-                format!("{path} = {ty}")
+                let ty = cstr.ty.with_ctx(ctx);
+                let path_fmt = path.iter().format("::");
+                std::fmt::from_fn(|f| {
+                    write!(f, "{path_fmt}")?;
+                    if !path.is_empty() {
+                        write!(f, "::")?;
+                    }
+                    ctx.format_assoc_type_name(f, cstr.trait_ref.trait_id(), cstr.type_id)?;
+                    write!(f, " = {ty}")?;
+                    Ok(())
+                })
+                .to_string()
             });
             if let Some(cstrs) = cstrs_per_clause.get_mut(tgt_clause.unwrap()) {
                 cstrs.push(cstr);
@@ -550,7 +554,8 @@ impl<C: AstFormatter> FmtWithCtx<C> for FnPtr {
             FnPtrKind::Fun(FunId::Regular(def_id)) => write!(f, "{}", def_id.with_ctx(ctx))?,
             FnPtrKind::Fun(FunId::Builtin(builtin)) => write!(f, "@{}", builtin)?,
             FnPtrKind::Trait(trait_ref, method_id, _) => {
-                write!(f, "{}::{}", trait_ref.with_ctx(ctx), &method_id.0)?
+                write!(f, "{}::", trait_ref.with_ctx(ctx))?;
+                ctx.format_method_name(f, trait_ref.trait_id(), *method_id)?;
             }
         };
         write!(f, "{}", self.generics.with_ctx(ctx))
@@ -559,13 +564,16 @@ impl<C: AstFormatter> FmtWithCtx<C> for FnPtr {
 
 impl<C: AstFormatter> FmtWithCtx<C> for FunDecl {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let keyword = if self.signature.is_unsafe {
-            "unsafe fn"
-        } else {
-            "fn"
-        };
+        let mut keyword = String::new();
+        if self.signature.is_unsafe {
+            keyword.push_str("unsafe ");
+        }
+        if !self.signature.abi.is_rust() {
+            keyword.push_str(&format!("extern \"{}\" ", self.signature.abi.with_ctx(ctx)));
+        }
+        keyword.push_str("fn");
         self.item_meta
-            .fmt_item_intro(f, ctx, keyword, self.def_id)?;
+            .fmt_item_intro(f, ctx, &keyword, self.def_id)?;
 
         // Update the context
         let ctx = &ctx.set_generics(&self.generics);
@@ -646,12 +654,17 @@ impl<C: AstFormatter> FmtWithCtx<C> for RegionBinder<FunSig> {
         let ctx = &ctx.push_bound_regions(&self.regions);
         let FunSig {
             is_unsafe,
+            abi,
             inputs,
             output,
         } = &self.skip_binder;
 
         if *is_unsafe {
             write!(f, "unsafe ")?;
+        }
+
+        if !abi.is_rust() {
+            write!(f, "extern \"{}\" ", abi.with_ctx(ctx))?;
         }
 
         write!(f, "fn")?;
@@ -904,6 +917,7 @@ where
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let keyword = match self.global_kind {
             GlobalKind::Static => "static",
+            GlobalKind::ThreadLocal => "thread_local",
             GlobalKind::AnonConst | GlobalKind::NamedConst => "const",
         };
         self.item_meta
@@ -1287,20 +1301,52 @@ impl<C: AstFormatter> FmtWithCtx<C> for Byte {
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for ConstantExprKind {
+impl_display_via_ctx!(ConstantExpr);
+impl<C: AstFormatter> FmtWithCtx<C> for ConstantExpr {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
+        match &self.kind {
             ConstantExprKind::Literal(c) => write!(f, "{}", c),
             ConstantExprKind::Adt(variant_id, values) => {
-                // It is a bit annoying: in order to properly format the value,
-                // we need the type (which contains the type def id).
-                // Anyway, the printing utilities are mostly for debugging.
-                let variant_id = match variant_id {
-                    Some(id) => format!("Some({id})"),
-                    None => "None".to_string(),
-                };
-                let values = values.iter().map(|v| v.with_ctx(ctx)).format(", ");
-                write!(f, "ConstAdt {} [{}]", variant_id, values)
+                let values = values.iter().map(|v| v.with_ctx(ctx));
+                match self.ty.as_adt() {
+                    Some(ty_ref) => match ty_ref.id {
+                        TypeId::Tuple => {
+                            let trailing_comma = if values.len() == 1 { "," } else { "" };
+                            let values = values.format(", ");
+                            write!(f, "({values}{trailing_comma})")
+                        }
+                        TypeId::Builtin(BuiltinTy::Box) => {
+                            let values = values.format(", ");
+                            write!(f, "Box({values})")
+                        }
+                        TypeId::Builtin(BuiltinTy::Str) => {
+                            let values = values.format(", ");
+                            write!(f, "[{values}]")
+                        }
+                        TypeId::Adt(ty_id) => {
+                            match variant_id {
+                                None => ty_id.fmt_with_ctx(ctx, f)?,
+                                Some(variant_id) => {
+                                    ctx.format_enum_variant(f, ty_id, *variant_id)?
+                                }
+                            }
+                            write!(f, " {{ ")?;
+                            for (comma, (i, val)) in
+                                repeat_except_first(", ").zip(values.enumerate())
+                            {
+                                write!(f, "{}", comma.unwrap_or_default())?;
+                                let field_id = FieldId::new(i);
+                                ctx.format_field_name(f, ty_id, *variant_id, field_id)?;
+                                write!(f, ": {}", val)?;
+                            }
+                            write!(f, " }}")
+                        }
+                    },
+                    None => {
+                        let values = values.format(", ");
+                        write!(f, "ConstAdt [{values}]")
+                    }
+                }
             }
             ConstantExprKind::Array(values) => {
                 let values = values.iter().map(|v| v.with_ctx(ctx)).format(", ");
@@ -1309,8 +1355,10 @@ impl<C: AstFormatter> FmtWithCtx<C> for ConstantExprKind {
             ConstantExprKind::Global(global_ref) => {
                 write!(f, "{}", global_ref.with_ctx(ctx))
             }
-            ConstantExprKind::TraitConst(trait_ref, name) => {
-                write!(f, "{}::{name}", trait_ref.with_ctx(ctx),)
+            ConstantExprKind::TraitConst(trait_ref, const_id) => {
+                write!(f, "{}::", trait_ref.with_ctx(ctx),)?;
+                ctx.format_assoc_const_name(f, trait_ref.trait_id(), *const_id)?;
+                Ok(())
             }
             ConstantExprKind::VTableRef(trait_ref) => {
                 write!(f, "&vtable_of({})", trait_ref.with_ctx(ctx),)
@@ -1575,14 +1623,6 @@ impl<C: AstFormatter> FmtWithCtx<C> for Rvalue {
             Rvalue::Repeat(op, _ty, cg) => {
                 write!(f, "[{}; {}]", op.with_ctx(ctx), cg.with_ctx(ctx))
             }
-            Rvalue::ShallowInitBox(op, ty) => {
-                write!(
-                    f,
-                    "shallow_init_box::<{}>({})",
-                    ty.with_ctx(ctx),
-                    op.with_ctx(ctx)
-                )
-            }
         }
     }
 }
@@ -1613,14 +1653,14 @@ impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
                 place.with_ctx(ctx),
                 variant_id
             ),
-            StatementKind::CopyNonOverlapping(box CopyNonOverlapping { src, dst, count }) => {
+            StatementKind::CopyNonOverlapping(cno) => {
                 write!(
                     f,
                     "{}copy_nonoverlapping({}, {}, {})",
                     tab,
-                    src.with_ctx(ctx),
-                    dst.with_ctx(ctx),
-                    count.with_ctx(ctx),
+                    cno.src.with_ctx(ctx),
+                    cno.dst.with_ctx(ctx),
+                    cno.count.with_ctx(ctx),
                 )
             }
             StatementKind::StorageLive(var_id) => {
@@ -1660,13 +1700,13 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
             StatementKind::SetDiscriminant(place, variant_id) => {
                 write!(f, "@discriminant({}) = {}", place.with_ctx(ctx), variant_id)
             }
-            StatementKind::CopyNonOverlapping(box CopyNonOverlapping { src, dst, count }) => {
+            StatementKind::CopyNonOverlapping(cno) => {
                 write!(
                     f,
                     "copy_nonoverlapping({}, {}, {})",
-                    src.with_ctx(ctx),
-                    dst.with_ctx(ctx),
-                    count.with_ctx(ctx),
+                    cno.src.with_ctx(ctx),
+                    cno.dst.with_ctx(ctx),
+                    cno.count.with_ctx(ctx),
                 )
             }
             StatementKind::StorageLive(var_id) => {
@@ -1692,6 +1732,30 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
                     assert.with_ctx(ctx),
                     on_failure.with_ctx(ctx)
                 )
+            }
+            StatementKind::InlineAsm { asm, targets } => {
+                write!(f, "asm!({asm:?})")?;
+                if let [target] = targets.as_slice() {
+                    for statement in &target.statements {
+                        write!(f, "\n{}", statement.with_ctx(ctx))?;
+                    }
+                    return Ok(());
+                }
+                if !targets.is_empty() {
+                    write!(f, " {{")?;
+                    let ctx1 = &ctx.increase_indent();
+                    let tab1 = ctx1.indent();
+                    let ctx2 = &ctx1.increase_indent();
+                    for (i, target) in targets.iter().enumerate() {
+                        write!(
+                            f,
+                            "\n{tab1}target {i} => {{\n{}{tab1}}}",
+                            target.with_ctx(ctx2)
+                        )?;
+                    }
+                    write!(f, "\n{tab}}}")?;
+                }
+                Ok(())
             }
             StatementKind::Call(call) => {
                 write!(f, "{}", call.with_ctx(ctx))
@@ -1841,6 +1905,19 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
                     assert.with_ctx(ctx),
                 )
             }
+            TerminatorKind::InlineAsm {
+                asm,
+                targets,
+                on_unwind,
+            } => {
+                let targets = targets
+                    .iter()
+                    .enumerate()
+                    .map(|(i, target)| format!("target {i}: bb{target}"))
+                    .chain([format!("unwind: bb{on_unwind}")])
+                    .format(", ");
+                write!(f, "asm!({asm:?}) -> {targets}")
+            }
             TerminatorKind::Abort(kind) => write!(f, "{}", kind.with_ctx(ctx)),
             TerminatorKind::Return => write!(f, "return"),
             TerminatorKind::UnwindResume => write!(f, "unwind_continue"),
@@ -1968,6 +2045,7 @@ impl TraitDeclRef {
 
 impl<C: AstFormatter> FmtWithCtx<C> for TraitImpl {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let trait_id = self.impl_trait.id;
         let full_name = self.item_meta.name.with_ctx(ctx);
         writeln!(f, "// Full name: {full_name}")?;
 
@@ -1984,30 +2062,35 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitImpl {
         } else {
             "\n".to_string()
         };
-        write!(f, "{newline}{{")?;
+        writeln!(f, "{newline}{{")?;
 
         let any_item = !self.implied_trait_refs.is_empty()
             || !self.consts.is_empty()
             || !self.types.is_empty()
             || !self.methods.is_empty();
         if any_item {
-            writeln!(f)?;
             for (i, c) in self.implied_trait_refs.iter().enumerate() {
                 let i = TraitClauseId::new(i);
                 writeln!(f, "{TAB_INCR}parent_clause{i} = {}", c.with_ctx(ctx))?;
             }
-            for (name, global) in &self.consts {
-                writeln!(f, "{TAB_INCR}const {name} = {}", global.with_ctx(ctx))?;
+            for (const_id, global) in self.consts.iter_enumerated() {
+                write!(f, "{TAB_INCR}const ")?;
+                ctx.format_assoc_const_name(f, trait_id, const_id)?;
+                writeln!(f, " = {}", global.with_ctx(ctx))?;
             }
-            for (name, assoc_ty) in &self.types {
+            for (type_id, assoc_ty) in self.types.iter_enumerated() {
                 // TODO: implied trait refs
                 let (params, ty) = assoc_ty
                     .fmt_split_with(ctx, |ctx, assoc_ty| assoc_ty.value.to_string_with_ctx(ctx));
-                writeln!(f, "{TAB_INCR}type {name}{params} = {ty}",)?;
+                write!(f, "{TAB_INCR}type ")?;
+                ctx.format_assoc_type_name(f, trait_id, type_id)?;
+                writeln!(f, "{params} = {ty}",)?;
             }
-            for (name, bound_fn) in self.methods() {
+            for (method_id, bound_fn) in self.methods.iter_enumerated() {
                 let (params, fn_ref) = bound_fn.fmt_split(ctx);
-                writeln!(f, "{TAB_INCR}fn {name}{params} = {fn_ref}")?;
+                write!(f, "{TAB_INCR}fn ")?;
+                ctx.format_method_name(f, trait_id, method_id)?;
+                writeln!(f, "{params} = {fn_ref}")?;
             }
         }
         if let Some(vtb_ref) = &self.vtable {
@@ -2048,12 +2131,12 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitRef {
                 let sub = sub.with_ctx(ctx);
                 write!(f, "{sub}::parent_clause{clause_id}")
             }
-            TraitRefKind::ItemClause(sub, type_name, clause_id) => {
-                let sub = sub.with_ctx(ctx);
+            TraitRefKind::ItemClause(sub, type_id, clause_id) => {
+                write!(f, "({}::", sub.with_ctx(ctx))?;
+                ctx.format_assoc_type_name(f, sub.trait_id(), *type_id)?;
                 // Using on purpose `to_pretty_string` instead of `with_ctx`: the clause is local
                 // to the associated type, so it should not be referenced in the current context.
-                let clause = clause_id.to_pretty_string();
-                write!(f, "({sub}::{type_name}::[{clause}])")
+                write!(f, "::[{}])", clause_id.to_pretty_string())
             }
             TraitRefKind::TraitImpl(impl_ref) => {
                 write!(f, "{}", impl_ref.with_ctx(ctx))
@@ -2066,11 +2149,15 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitRef {
                     .skip_binder
                     .format_as_impl(bound_ctx, f)?;
                 if !types.is_empty() {
+                    let trait_id = self.trait_decl_ref.skip_binder.id;
                     let types = types
-                        .iter()
-                        .map(|(name, assoc_ty)| {
-                            let ty = assoc_ty.value.with_ctx(ctx);
-                            format!("{name}  = {ty}")
+                        .iter_indexed()
+                        .map(|(type_id, assoc_ty)| {
+                            std::fmt::from_fn(move |f| {
+                                ctx.format_assoc_type_name(f, trait_id, type_id)?;
+                                let ty = assoc_ty.value.with_ctx(ctx);
+                                write!(f, "  = {ty}")
+                            })
                         })
                         .join(", ");
                     write!(f, " where {types}")?;
@@ -2088,7 +2175,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for TraitTypeConstraint {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let trait_ref = self.trait_ref.with_ctx(ctx);
         let ty = self.ty.with_ctx(ctx);
-        write!(f, "{}::{} = {}", trait_ref, self.type_name, ty)
+        write!(f, "{trait_ref}::")?;
+        ctx.format_assoc_type_name(f, self.trait_ref.trait_id(), self.type_id)?;
+        write!(f, " = {ty}")
     }
 }
 
@@ -2110,6 +2199,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
             TyKind::TypeVar(id) => write!(f, "{}", id.with_ctx(ctx)),
             TyKind::Literal(kind) => write!(f, "{kind}"),
             TyKind::Never => write!(f, "!"),
+            TyKind::Pattern(ty, pat) => write!(f, "{} is {}", ty.with_ctx(ctx), pat.with_ctx(ctx)),
             TyKind::Ref(r, ty, kind) => {
                 write!(f, "&{} ", r.with_ctx(ctx))?;
                 if let RefKind::Mut = kind {
@@ -2131,8 +2221,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
             TyKind::Slice(ty) => {
                 write!(f, "[{}]", ty.with_ctx(ctx))
             }
-            TyKind::TraitType(trait_ref, name) => {
-                write!(f, "{}::{name}", trait_ref.with_ctx(ctx),)
+            TyKind::TraitType(trait_ref, type_id) => {
+                write!(f, "{}::", trait_ref.with_ctx(ctx))?;
+                ctx.format_assoc_type_name(f, trait_ref.trait_id(), *type_id)
             }
             TyKind::DynTrait(pred) => {
                 write!(f, "(dyn {})", pred.with_ctx(ctx))
@@ -2151,6 +2242,24 @@ impl<C: AstFormatter> FmtWithCtx<C> for Ty {
                 write!(f, "PtrMetadata<{}>", ty.with_ctx(ctx))
             }
             TyKind::Error(msg) => write!(f, "type_error(\"{msg}\")"),
+        }
+    }
+}
+
+impl<C: AstFormatter> FmtWithCtx<C> for TypePattern {
+    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TypePattern::Range(start, end) => {
+                write!(f, "{}..={}", start.with_ctx(ctx), end.with_ctx(ctx))
+            }
+            TypePattern::OrPattern(patterns) => {
+                write!(
+                    f,
+                    "({})",
+                    patterns.iter().map(|pat| pat.with_ctx(ctx)).format(" | ")
+                )
+            }
+            TypePattern::NotNull => write!(f, "!null"),
         }
     }
 }

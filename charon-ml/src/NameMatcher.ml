@@ -450,31 +450,53 @@ let match_literal (pl : literal) (l : Values.literal) : bool =
   | LChar pv, VChar v -> Uchar.of_char pv = v
   | _ -> false
 
+let generic_args_match_params (params : T.generic_params)
+    (args : T.generic_args) : bool =
+  let pr, pt, pc, ptr = TypesUtils.generic_params_lengths params in
+  let ar, at, ac, atr = TypesUtils.generic_args_lengths args in
+  pr = ar && pt = at && pc = ac && ptr = atr
+
+(* Instantiate the provided generics with the given binder, if any. *)
+let instantiate_name_generics (binder : T.generic_args T.binder)
+    (g : T.generic_args) : T.generic_args =
+  if binder.binder_params = TypesUtils.empty_generic_params then begin
+    (* HACK: Monomorphization doesn't handle late-bound regions properly, so we
+       append them here manually. *)
+    let regions_count, types_count, const_generics_count, trait_refs_count =
+      TypesUtils.generic_args_lengths g
+    in
+    (* We additionally append the regions from `g` to the monomorphized args, so that we can match against them. *)
+    assert (types_count = 0 && const_generics_count = 0 && trait_refs_count = 0);
+    {
+      binder.binder_value with
+      (* Late-bound regions are appended after the monomorphized ones. *)
+      regions = binder.binder_value.regions @ g.regions;
+    }
+  end
+  else if g = TypesUtils.empty_generic_args then
+    (* The caller did not provide generics for the instantiated item, we keep that so. *)
+    g
+  else begin
+    if not (generic_args_match_params binder.binder_params g) then
+      failwith
+        "(partially) monomorphized generic parameters do not match the \
+         supplied generic arguments";
+    Substitute.apply_args_to_binder g
+      Substitute.st_substitute_visitor#visit_generic_args binder
+  end
+
 let rec match_name_with_generics (ctx : ctx) (c : match_config)
     ?(m : maps = mk_empty_maps ()) (p : pattern) (n : T.name)
     (g : T.generic_args) : bool =
-  (* Handle monomorphized matching: if the name ends with a PeInstantiated
-     element, use the monomorphized args and continue matching without that
-     element *)
+  (* A [PeInstantiated] suffix is appended when the generics of an item are
+     modified; it records the map from the new generics to the old ones. Name
+     matching is expressed over the original item, so translate the generics of
+     the instantiated item back to the original generics before matching. *)
   let n, g =
     match List.rev n with
     | PeInstantiated binder :: rest_rev ->
-        let mono_args = binder.binder_value in
-        (* In this case, we may still have some late-bound generics in `g`, this could ONLY happen for regions *)
-        let regions_count, types_count, const_generics_count, trait_refs_count =
-          TypesUtils.generic_args_lengths g
-        in
-        assert (
-          types_count = 0 && const_generics_count = 0 && trait_refs_count = 0);
-        (* We additionally append the regions from `g` to the monomorphized args, so that we can match against them. *)
-        let merged_args =
-          if regions_count > 0 then begin
-            (* Late-bound regions are appended after the monomorphized ones. *)
-            { mono_args with regions = mono_args.regions @ g.regions }
-          end
-          else mono_args
-        in
-        (List.rev rest_rev, merged_args)
+        let g = instantiate_name_generics binder g in
+        (List.rev rest_rev, g)
     | _ -> (n, g)
   in
   match (p, n) with
@@ -492,6 +514,8 @@ let rec match_name_with_generics (ctx : ctx) (c : match_config)
       pid = id
       && T.Disambiguator.of_int pd = d
       && match_generic_args ctx c m pg g
+  | [ PIdent (pid, pd, pg) ], [ PeTarget target ] ->
+      pid = target && pd = 0 && match_generic_args ctx c m pg g
   | [ PImpl pty ], [ PeImpl impl ] -> (
       (* We can get there when matching a prefix of the name with a pattern *)
       (* We have to distinguish two cases:
@@ -512,6 +536,8 @@ let rec match_name_with_generics (ctx : ctx) (c : match_config)
       && T.Disambiguator.of_int pd = d
       && pg = []
       && match_name_with_generics ctx c p n g
+  | PIdent (pid, pd, pg) :: p, PeTarget target :: n ->
+      pid = target && pd = 0 && pg = [] && match_name_with_generics ctx c p n g
   | PImpl pty :: p, PeImpl impl :: n -> (
       (* We have to distinguish two cases:
          - the impl is an inherent impl (linked to a type)
@@ -600,8 +626,8 @@ and match_expr_with_ty (ctx : ctx) (c : match_config) (m : maps) (pty : expr)
       && match_expr_with_ty ctx c m pty ty
       && match_ref_kind prk rk
   | EVar v, _ -> opt_update_tmap c m v ty
-  | EComp pid, TTraitType (trait_ref, type_name) ->
-      match_trait_type ctx c m pid trait_ref type_name
+  | EComp pid, TTraitType (trait_ref, type_id) ->
+      match_trait_type ctx c m pid trait_ref type_id
   | EArrow (pinputs, pout), TFnPtr binder -> begin
       (* Push a region group in the map, if necessary - TODO: make this more precise *)
       let m =
@@ -644,8 +670,8 @@ and match_trait_decl_ref (ctx : ctx) (c : match_config) (m : maps)
     tr.binder_value.generics
 
 and match_trait_decl_ref_item (ctx : ctx) (c : match_config) (m : maps)
-    (pid : pattern) (tr : T.trait_decl_ref T.region_binder) (item_name : string)
-    (generics : T.generic_args) : bool =
+    (pid : pattern) (tr : T.trait_decl_ref T.region_binder)
+    (item_id : T.assoc_item_id) (generics : T.generic_args) : bool =
   if c.match_with_trait_decl_refs then
     (* We match the trait decl ref *)
     (* We split the pattern between the trait decl ref and the associated item name *)
@@ -656,6 +682,9 @@ and match_trait_decl_ref_item (ctx : ctx) (c : match_config) (m : maps)
     (* Match the item name *)
     match pitem_name with
     | PIdent (pitem_name, pd, pgenerics) ->
+        let item_name =
+          GAstUtils.get_assoc_item_name ctx.crate tr.binder_value.id item_id
+        in
         pitem_name = item_name && pd = 0
         && match_generic_args ctx c (mk_empty_maps ()) pgenerics generics
     | PWild -> true
@@ -663,8 +692,8 @@ and match_trait_decl_ref_item (ctx : ctx) (c : match_config) (m : maps)
   else raise (Failure "Unimplemented")
 
 and match_trait_type (ctx : ctx) (c : match_config) (m : maps) (pid : pattern)
-    (tr : T.trait_ref) (type_name : string) : bool =
-  match_trait_decl_ref_item ctx c m pid tr.trait_decl_ref type_name
+    (tr : T.trait_ref) (type_id : T.assoc_type_id) : bool =
+  match_trait_decl_ref_item ctx c m pid tr.trait_decl_ref (AssocIdType type_id)
     TypesUtils.empty_generic_args
 
 and match_generic_args (ctx : ctx) (c : match_config) (m : maps)
@@ -776,7 +805,7 @@ let match_fn_ptr (ctx : ctx) (c : match_config) (p : pattern) (func : T.fn_ptr)
       (* Match the pattern on the trait implementation and method name, if applicable. *)
       let match_trait_ref =
         match d.src with
-        | TraitImplItem (_, trait_ref, method_name, _)
+        | TraitImplItem (_, trait_ref, item_id, _)
           when c.match_with_trait_decl_refs ->
             let subst =
               Substitute.make_subst_from_generics d.generics func.generics Self
@@ -788,13 +817,13 @@ let match_fn_ptr (ctx : ctx) (c : match_config) (p : pattern) (func : T.fn_ptr)
             let method_generics = TypesUtils.empty_generic_args in
             match_trait_decl_ref_item ctx c (mk_empty_maps ()) p
               { binder_value = trait_ref; binder_regions = [] }
-              method_name method_generics
+              item_id method_generics
         | _ -> false
       in
       match_function_name || match_trait_ref
-  | TraitMethod (tr, method_name, _) ->
+  | TraitMethod (tr, method_id, _) ->
       match_trait_decl_ref_item ctx c (mk_empty_maps ()) p tr.trait_decl_ref
-        method_name func.generics
+        (AssocIdMethod method_id) func.generics
 
 let mk_name_with_generics_matcher (ctx : ctx) (c : match_config) (pat : string)
     : T.name -> T.generic_args -> bool =
@@ -974,7 +1003,12 @@ and path_elem_with_generic_args_to_pattern (ctx : ctx) (c : to_pat_config)
       | Some args -> [ PIdent (s, d, args) ]
     end
   | PeImpl impl -> [ impl_elem_to_pattern ctx c impl ]
-  | PeInstantiated _ | PeTarget _ ->
+  | PeTarget tgt -> begin
+      match generics with
+      | None -> [ PIdent (tgt, 0, []) ]
+      | Some args -> [ PIdent (tgt, 0, args) ]
+    end
+  | PeInstantiated _ ->
       (* In pattern generation, we skip monomorphized elements since patterns
          are meant to match the logical structure, not the instantiation details *)
       []
@@ -1021,7 +1055,11 @@ and ty_to_pattern_aux (ctx : ctx) (c : to_pat_config) (m : constraints)
         ( region_to_pattern m r,
           ty_to_pattern_aux ctx c m ty,
           ref_kind_to_pattern rk )
-  | TTraitType (trait_ref, type_name) ->
+  | TTraitType (trait_ref, type_id) ->
+      let type_name =
+        GAstUtils.get_assoc_type_name ctx.crate
+          trait_ref.trait_decl_ref.binder_value.id type_id
+      in
       let name =
         trait_ref_item_with_generics_to_pattern ctx c m trait_ref type_name
           TypesUtils.empty_generic_args
@@ -1194,7 +1232,11 @@ let fn_ptr_to_pattern (ctx : ctx) (c : to_pat_config)
     | FunId (FRegular fid) ->
         let d = Types.FunDeclId.Map.find fid ctx.crate.fun_decls in
         name_with_generic_args_to_pattern_aux ctx c d.item_meta.name (Some args)
-    | TraitMethod (tr, method_name, _) ->
+    | TraitMethod (tr, method_id, _) ->
+        let method_name =
+          GAstUtils.get_method_name ctx.crate tr.trait_decl_ref.binder_value.id
+            method_id
+        in
         trait_ref_item_with_generics_to_pattern ctx c m tr method_name
           func.generics
   in
@@ -1484,13 +1526,20 @@ module NameMatcherMap = struct
   let match_name_with_generics_prefix (ctx : ctx) (c : match_config)
       (p : pattern) (n : T.name) (g : T.generic_args) :
       (T.name * T.generic_args) option =
-    if List.length p = List.length n then
+    let logical_name, instantiation_suffix =
+      match List.rev n with
+      | (PeInstantiated _ as suffix) :: rest_rev ->
+          (List.rev rest_rev, [ suffix ])
+      | _ -> (n, [])
+    in
+    if List.length p = List.length logical_name then
       if match_name_with_generics ctx c p n g then
         Some ([], TypesUtils.empty_generic_args)
       else None
-    else if List.length p < List.length n then
-      let npre, nend = Collections.List.split_at n (List.length p) in
-      if match_name ctx c p npre then Some (nend, g) else None
+    else if List.length p < List.length logical_name then
+      let npre, nend = Collections.List.split_at logical_name (List.length p) in
+      if match_name ctx c p npre then Some (nend @ instantiation_suffix, g)
+      else None
     else None
 
   let rec find_with_generics_opt (ctx : ctx) (c : match_config)

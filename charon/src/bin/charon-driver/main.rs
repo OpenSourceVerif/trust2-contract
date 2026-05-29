@@ -1,16 +1,18 @@
 //! The Charon driver, which calls Rustc with callbacks to compile some Rust
 //! crate to LLBC.
+// For rustdoc: prevents overflows
+#![recursion_limit = "256"]
 #![feature(rustc_private)]
-#![allow(clippy::useless_format)]
+#![allow(clippy::arc_with_non_send_sync)]
+#![allow(clippy::borrowed_box)]
+#![allow(clippy::derivable_impls)]
+#![allow(clippy::field_reassign_with_default)]
 #![allow(clippy::manual_map)]
 #![allow(clippy::mem_replace_with_default)]
-#![allow(clippy::derivable_impls)]
-#![allow(clippy::borrowed_box)]
-#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::useless_format)]
 #![expect(incomplete_features)]
 #![feature(box_patterns)]
 #![feature(deref_patterns)]
-#![feature(if_let_guard)]
 #![feature(iter_array_chunks)]
 #![feature(iterator_try_collect)]
 #![feature(macro_metavar_expr)]
@@ -50,14 +52,7 @@ mod driver;
 pub mod hax;
 mod translate;
 
-use charon_lib::{
-    export, logger,
-    options::CliOpts,
-    transform::{
-        FINAL_CLEANUP_PASSES, INITIAL_CLEANUP_PASSES, LLBC_PASSES, Pass, PrintCtxPass,
-        SHARED_FINALIZING_PASSES, ULLBC_PASSES,
-    },
-};
+use charon_lib::{export, logger, transform::run_transformation_passes};
 use std::{fmt, panic};
 
 pub enum CharonFailure {
@@ -83,50 +78,6 @@ impl fmt::Display for CharonFailure {
     }
 }
 
-/// Calculate the list of passes we will run on the crate before outputting it.
-pub fn transformation_passes(options: &CliOpts) -> Vec<Pass> {
-    let mut passes: Vec<Pass> = vec![];
-
-    passes.push(Pass::NonBody(PrintCtxPass::new(
-        options.print_original_ullbc,
-        "# ULLBC after translation from MIR".to_string(),
-    )));
-
-    passes.extend(INITIAL_CLEANUP_PASSES);
-    passes.extend(ULLBC_PASSES);
-
-    if !options.ullbc {
-        // If we're reconstructing control-flow, print the ullbc here.
-        passes.push(Pass::NonBody(PrintCtxPass::new(
-            options.print_ullbc,
-            "# Final ULLBC before control-flow reconstruction".to_string(),
-        )));
-    }
-
-    if !options.ullbc {
-        passes.extend(LLBC_PASSES);
-    }
-    passes.extend(SHARED_FINALIZING_PASSES);
-
-    if options.ullbc {
-        // If we're not reconstructing control-flow, print the ullbc after finalizing passes.
-        passes.push(Pass::NonBody(PrintCtxPass::new(
-            options.print_ullbc,
-            "# Final ULLBC before serialization".to_string(),
-        )));
-    } else {
-        passes.push(Pass::NonBody(PrintCtxPass::new(
-            options.print_llbc,
-            "# Final LLBC before serialization".to_string(),
-        )));
-    }
-
-    // Run the final passes after pretty-printing so that we get some output even if check_generics
-    // fails.
-    passes.extend(FINAL_CLEANUP_PASSES);
-    passes
-}
-
 /// Run charon. Returns the number of warnings generated.
 fn run_charon() -> Result<usize, CharonFailure> {
     // Run the driver machinery.
@@ -137,20 +88,16 @@ fn run_charon() -> Result<usize, CharonFailure> {
 
     // The bulk of the translation is done, we no longer need to interact with rustc internals. We
     // run several passes that simplify the items and cleanup the bodies.
-    for pass in transformation_passes(&options) {
-        pass.run(&mut ctx);
-    }
+    run_transformation_passes(&options, &mut ctx);
 
     let error_count = ctx.errors.borrow().error_count;
 
     // # Final step: generate the files.
-    if !options.no_serialize {
-        let dest_file = options.target_filename(&ctx.translated.crate_name);
-        trace!("Target file: {:?}", dest_file);
-        export::CrateData::new(ctx)
-            .serialize_to_file(&dest_file)
-            .map_err(|()| CharonFailure::Serialize)?;
-    }
+    let targets = options.targets(&ctx.translated.crate_name);
+    trace!("Targets: {:?}", targets);
+    export::CrateData::new(ctx)
+        .serialize_to_files(targets)
+        .map_err(|()| CharonFailure::Serialize)?;
 
     if options.error_on_warnings && error_count != 0 {
         return Err(CharonFailure::CharonError(error_count));

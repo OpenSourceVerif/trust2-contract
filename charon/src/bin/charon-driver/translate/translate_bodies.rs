@@ -23,6 +23,7 @@ use charon_lib::ast::*;
 use charon_lib::formatter::FmtCtx;
 use charon_lib::formatter::IntoFormatter;
 use charon_lib::ids::IndexMap;
+use charon_lib::name_matcher::NamePattern;
 use charon_lib::pretty::FmtWithCtx;
 use charon_lib::ullbc_ast::*;
 
@@ -112,53 +113,59 @@ impl<'tcx, 'tctx, 'ictx, 'bctx> DerefMut for BlockTransCtx<'tcx, 'tctx, 'ictx, '
     }
 }
 
-pub fn translate_variant_id(id: hax::VariantIdx) -> VariantId {
-    VariantId::new(id.as_usize())
-}
+impl<'tcx> TranslateCtx<'tcx> {
+    pub fn translate_variant_id(&self, id: hax::VariantIdx) -> VariantId {
+        VariantId::new(id.as_usize())
+    }
 
-pub fn translate_field_id(id: hax::FieldIdx) -> FieldId {
-    FieldId::new(id.index())
-}
+    pub fn translate_field_id(&self, id: hax::FieldIdx) -> FieldId {
+        FieldId::new(id.index())
+    }
 
-/// Translate a `BorrowKind`
-fn translate_borrow_kind(borrow_kind: mir::BorrowKind) -> BorrowKind {
-    match borrow_kind {
-        mir::BorrowKind::Shared => BorrowKind::Shared,
-        mir::BorrowKind::Mut { kind } => match kind {
-            mir::MutBorrowKind::Default => BorrowKind::Mut,
-            mir::MutBorrowKind::TwoPhaseBorrow => BorrowKind::TwoPhaseMut,
-            mir::MutBorrowKind::ClosureCapture => BorrowKind::UniqueImmutable,
-        },
-        mir::BorrowKind::Fake(mir::FakeBorrowKind::Shallow) => BorrowKind::Shallow,
-        // This one is used only in deref patterns.
-        mir::BorrowKind::Fake(mir::FakeBorrowKind::Deep) => unimplemented!(),
+    fn translate_borrow_kind(&self, borrow_kind: mir::BorrowKind) -> BorrowKind {
+        match borrow_kind {
+            mir::BorrowKind::Shared => BorrowKind::Shared,
+            mir::BorrowKind::Mut { kind } => match kind {
+                mir::MutBorrowKind::Default => BorrowKind::Mut,
+                mir::MutBorrowKind::TwoPhaseBorrow => BorrowKind::TwoPhaseMut,
+                mir::MutBorrowKind::ClosureCapture => BorrowKind::UniqueImmutable,
+            },
+            mir::BorrowKind::Fake(mir::FakeBorrowKind::Shallow) => BorrowKind::Shallow,
+            // This one is used only in deref patterns.
+            mir::BorrowKind::Fake(mir::FakeBorrowKind::Deep) => unimplemented!(),
+        }
     }
 }
 
 impl<'tcx> ItemTransCtx<'tcx, '_> {
     /// Translate the MIR body of this definition if it has one. Catches any error and returns
     /// `Body::Error` instead
-    pub fn translate_def_body(&mut self, span: Span, def: &hax::FullDef) -> Body {
+    pub fn translate_def_body(&mut self, span: Span, def: &hax::FullDef<'tcx>) -> Body {
         match self.translate_def_body_inner(span, def) {
             Ok(body) => body,
             Err(e) => Body::Error(e),
         }
     }
 
-    fn translate_def_body_inner(&mut self, span: Span, def: &hax::FullDef) -> Result<Body, Error> {
+    fn translate_def_body_inner(
+        &mut self,
+        span: Span,
+        def: &hax::FullDef<'tcx>,
+    ) -> Result<Body, Error> {
         // Retrieve the body
         if let Some(body) = self.get_mir(def.this(), span)? {
             Ok(self.translate_body(span, body, &def.source_text))
         } else {
-            if let hax::FullDefKind::Const { value, .. }
-            | hax::FullDefKind::AssocConst { value, .. } = def.kind()
-                && let Some(value) = value
+            if matches!(
+                def.kind(),
+                hax::FullDefKind::Const { .. } | hax::FullDefKind::AssocConst { .. }
+            ) && let Some(value) = def.const_value(self.hax_state_with_id())
             {
                 // For globals we can generate a body by evaluating the global.
                 // TODO: we lost the MIR of some consts on a rustc update. A trait assoc const
                 // default value no longer has a cross-crate MIR so it's unclear how to retreive
                 // the value. See the `trait-default-const-cross-crate` test.
-                let c = self.translate_constant_expr(span, value)?;
+                let c = self.translate_constant_expr(span, &value)?;
                 let mut bb = BodyBuilder::new(span, 0);
                 let ret = bb.new_var(None, c.ty.clone());
                 bb.push_statement(StatementKind::Assign(
@@ -202,6 +209,258 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                 Body::Error(e)
             }
         }
+    }
+
+    fn translate_unsizing_metadata(
+        &mut self,
+        span: Span,
+        meta: hax::UnsizingMetadata,
+    ) -> Result<UnsizingMetadata, Error> {
+        Ok(match &meta {
+            hax::UnsizingMetadata::Length(len) => {
+                let len = self.translate_constant_expr(span, len)?;
+                UnsizingMetadata::Length(Box::new(len))
+            }
+            hax::UnsizingMetadata::DirectVTable(impl_expr) => {
+                let tref = self.translate_trait_impl_expr(span, impl_expr)?;
+                let vtable = self.translate_vtable_instance_const(span, impl_expr)?;
+                UnsizingMetadata::VTable(tref, vtable)
+            }
+            hax::UnsizingMetadata::NestedVTable(dyn_impl_expr) => {
+                // This binds a fake `T: SrcTrait` variable.
+                let binder =
+                    self.translate_dyn_binder(span, dyn_impl_expr, |ctx, _, impl_expr| {
+                        ctx.translate_trait_impl_expr(span, impl_expr)
+                    })?;
+
+                // Compute the supertrait path from the source tref to the target
+                // tref.
+                let mut target_tref = &binder.skip_binder;
+                let mut clause_path: Vec<(TraitDeclId, TraitClauseId)> = vec![];
+                while let TraitRefKind::ParentClause(tref, id) = &target_tref.kind {
+                    clause_path.push((tref.trait_decl_ref.skip_binder.id, *id));
+                    target_tref = tref;
+                }
+
+                let mut field_path = vec![];
+                for &(trait_id, clause_id) in &clause_path {
+                    if let Ok(ItemRef::TraitDecl(tdecl)) = self.get_or_translate(trait_id.into())
+                        && let &vtable_decl_id = tdecl.vtable.as_ref().unwrap().id.as_adt().unwrap()
+                        && let Ok(ItemRef::Type(vtable_decl)) =
+                            self.get_or_translate(vtable_decl_id.into())
+                    {
+                        let ItemSource::VTableTy { supertrait_map, .. } = &vtable_decl.src else {
+                            unreachable!()
+                        };
+                        field_path.push(supertrait_map[clause_id].unwrap());
+                    } else {
+                        break;
+                    }
+                }
+
+                if field_path.len() == clause_path.len() {
+                    UnsizingMetadata::VTableUpcast(field_path)
+                } else {
+                    UnsizingMetadata::Unknown
+                }
+            }
+            hax::UnsizingMetadata::Unknown => UnsizingMetadata::Unknown,
+        })
+    }
+
+    /// Generate a fake function body for ADT constructors.
+    pub(crate) fn build_ctor_body(
+        &mut self,
+        span: Span,
+        def: &hax::FullDef<'tcx>,
+    ) -> Result<Body, Error> {
+        let hax::FullDefKind::Ctor {
+            adt_def_id,
+            ctor_of,
+            variant_id,
+            fields,
+            output_ty,
+        } = def.kind()
+        else {
+            unreachable!()
+        };
+        let tref = self
+            .translate_type_decl_ref(span, &def.this().with_def_id(self.hax_state(), adt_def_id))?;
+        let output_ty = self.translate_ty(span, output_ty)?;
+
+        let mut builder = BodyBuilder::new(span, fields.len());
+        let return_place = builder.new_var(None, output_ty);
+        let args: Vec<_> = fields
+            .iter()
+            .map(|field| -> Result<Operand, Error> {
+                let ty = self.translate_ty(span, &field.ty)?;
+                let place = builder.new_var(None, ty);
+                Ok(Operand::Move(place))
+            })
+            .try_collect()?;
+        let variant = match ctor_of {
+            hax::CtorOf::Struct => None,
+            hax::CtorOf::Variant => Some(self.translate_variant_id(*variant_id)),
+        };
+        builder.push_statement(StatementKind::Assign(
+            return_place,
+            Rvalue::Aggregate(AggregateKind::Adt(tref, variant, None), args),
+        ));
+        Ok(Body::Unstructured(builder.build()))
+    }
+
+    /// FIXME(#865): Generate a function body for the `box_assume_init_into_vec_unsafe` function,
+    /// because the MIR we get for it is too optimized to be usable.
+    pub(crate) fn build_box_assume_init_into_vec_unsafe(
+        &mut self,
+        span: Span,
+        def: &hax::FullDef<'tcx>,
+    ) -> Result<Body, Error> {
+        // pub fn box_assume_init_into_vec_unsafe<T, const N: usize>(
+        //     b: Box<MaybeUninit<[T; N]>>,
+        // ) -> Vec<T> {
+        //     let x: Box<[T; N]> = unsafe { Box::assume_init(b) };
+        //     let y = x as Box<[T]>;
+        //     core::slice::into_vec(y)
+        // }
+        let tcx = self.tcx;
+        let hax::FullDefKind::Fn { sig: hax_sig, .. } = def.kind() else {
+            unreachable!()
+        };
+        let hax_sig = hax_sig.hax_skip_binder_ref();
+        let sig = self.translate_fun_sig(span, hax_sig)?;
+
+        // Get the `[T; N]` and `A` parameters.
+        let (array_rust_ty, alloc_rust_ty) = {
+            let input_box_rust_args = {
+                let hax::TyKind::Adt(input_box_item) = hax_sig.inputs[0].kind() else {
+                    raise_error!(self, span, "expected a boxed input in the hax signature");
+                };
+                input_box_item.rustc_args(self.hax_state_with_id())
+            };
+            let maybe_uninit_array_rust_ty = input_box_rust_args[0].as_type().unwrap();
+            let alloc_rust_ty = input_box_rust_args[1].as_type().unwrap();
+            let ty::Adt(_, maybe_uninit_rust_args) = maybe_uninit_array_rust_ty.kind() else {
+                raise_error!(
+                    self,
+                    span,
+                    "expected `MaybeUninit<[T; N]>` in the hax signature"
+                );
+            };
+            let Some(array_rust_ty) = maybe_uninit_rust_args[0].as_type() else {
+                raise_error!(
+                    self,
+                    span,
+                    "expected the first `MaybeUninit` parameter to be a type"
+                );
+            };
+            (array_rust_ty, alloc_rust_ty)
+        };
+        // `T`
+        let elem_rust_ty = array_rust_ty.builtin_index().unwrap();
+        // `[T]`
+        let slice_rust_ty = ty::Ty::new_slice(tcx, elem_rust_ty);
+        // `Box<[T; N]>`
+        let box_array_rust_ty = ty::Ty::new_box(tcx, array_rust_ty);
+        let box_array_ty = self.translate_rustc_ty(span, &box_array_rust_ty)?;
+        // `Box<[T]>`
+        let box_slice_rust_ty = ty::Ty::new_box(tcx, slice_rust_ty);
+        let box_slice_ty = self.translate_rustc_ty(span, &box_slice_rust_ty)?;
+
+        if !self.monomorphize() {
+            // Make `Box::write` available to a later construction pass.
+            let path = NamePattern::parse(builtins::BOX_WRITE).unwrap();
+            let box_write_def_id = self
+                .resolve_path(span, &path, true)?
+                .into_iter()
+                .exactly_one()
+                .unwrap();
+            let box_write_args = tcx.mk_args(&[array_rust_ty.into(), alloc_rust_ty.into()]);
+            let box_write_item =
+                hax::ItemRef::translate(self.hax_state_with_id(), box_write_def_id, box_write_args);
+            let _ = self.translate_fn_ptr(span, &box_write_item, TransItemSourceKind::Fun)?;
+        }
+
+        let body = {
+            let mut builder = BodyBuilder::new(span, sig.inputs.len());
+            let return_place = builder.new_var(Some("ret".to_string()), sig.output.clone());
+            let input = builder.new_var(Some("b".to_string()), sig.inputs[0].clone());
+            let initialized_box = builder.new_var(Some("x".to_string()), box_array_ty.clone());
+            let box_slice = builder.new_var(Some("y".to_string()), box_slice_ty.clone());
+
+            builder.call({
+                let assume_init_fn = {
+                    let path = NamePattern::parse("alloc::boxed::Box::assume_init").unwrap();
+                    let assume_init_def_id = self
+                        .resolve_path(span, &path, true)?
+                        .into_iter()
+                        // There's `assume_init` on `Box<MU<T>>` and `Box<[MU<T>]>`, we want the former.
+                        .filter(|&def_id| {
+                            let sig = self.tcx.fn_sig(def_id);
+                            !sig.skip_binder().inputs().skip_binder()[0]
+                                .expect_boxed_ty()
+                                .is_slice()
+                        })
+                        .exactly_one()
+                        .unwrap();
+                    let assume_init_args =
+                        tcx.mk_args(&[array_rust_ty.into(), alloc_rust_ty.into()]);
+                    let assume_init_item = hax::ItemRef::translate(
+                        self.hax_state_with_id(),
+                        assume_init_def_id,
+                        assume_init_args,
+                    );
+                    self.translate_fn_ptr(span, &assume_init_item, TransItemSourceKind::Fun)?
+                };
+                Call {
+                    func: FnOperand::Regular(assume_init_fn),
+                    args: vec![Operand::Move(input)],
+                    dest: initialized_box.clone(),
+                }
+            });
+
+            builder.push_statement({
+                let meta = hax::compute_unsizing_metadata(
+                    &self.hax_state,
+                    box_array_rust_ty,
+                    box_slice_rust_ty,
+                );
+                let meta = self.translate_unsizing_metadata(span, meta)?;
+                StatementKind::Assign(
+                    box_slice.clone(),
+                    Rvalue::UnaryOp(
+                        UnOp::Cast(CastKind::Unsize(box_array_ty, box_slice_ty, meta)),
+                        Operand::Move(initialized_box),
+                    ),
+                )
+            });
+
+            builder.call({
+                let into_vec_fn = {
+                    let path = NamePattern::parse("slice::into_vec").unwrap();
+                    let into_vec_def_id = self
+                        .resolve_path(span, &path, true)?
+                        .into_iter()
+                        .exactly_one()
+                        .unwrap();
+                    let into_vec_args = tcx.mk_args(&[elem_rust_ty.into(), alloc_rust_ty.into()]);
+                    let into_vec_item = hax::ItemRef::translate(
+                        self.hax_state_with_id(),
+                        into_vec_def_id,
+                        into_vec_args,
+                    );
+                    self.translate_fn_ptr(span, &into_vec_item, TransItemSourceKind::Fun)?
+                };
+                Call {
+                    func: FnOperand::Regular(into_vec_fn),
+                    args: vec![Operand::Move(box_slice)],
+                    dest: return_place,
+                }
+            });
+            builder.build()
+        };
+
+        Ok(Body::Unstructured(body))
     }
 }
 
@@ -359,6 +618,61 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
 }
 
 impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
+    fn missing_ptr_metadata() -> Operand {
+        Operand::Const(Box::new(ConstantExpr {
+            kind: ConstantExprKind::Opaque("Missing metadata".to_string()),
+            ty: Ty::mk_unit(),
+        }))
+    }
+
+    fn translate_thread_local_ref(
+        &mut self,
+        span: Span,
+        def_id: rustc_hir::def_id::DefId,
+    ) -> Result<Rvalue, Error> {
+        let args = ty::GenericArgs::empty();
+        let item = hax::translate_item_ref(&self.hax_state, def_id, args);
+        let global_ref = self.translate_global_decl_ref(span, &item)?;
+
+        let ptr_ty = self.tcx.thread_local_ptr_ty(def_id);
+        let ty = ptr_ty.builtin_deref(true).unwrap();
+        let ty = self.translate_rustc_ty(span, &ty)?;
+        let place = Place::new_global(global_ref, ty);
+        match ptr_ty.kind() {
+            ty::TyKind::Ref(_, _, mutability) => {
+                let kind = if mutability.is_mut() {
+                    BorrowKind::Mut
+                } else {
+                    BorrowKind::Shared
+                };
+                Ok(Rvalue::Ref {
+                    place,
+                    kind,
+                    // Will be fixed by the cleanup pass `insert_ptr_metadata`.
+                    ptr_metadata: Self::missing_ptr_metadata(),
+                })
+            }
+            ty::TyKind::RawPtr(_, mutability) => {
+                let kind = if mutability.is_mut() {
+                    RefKind::Mut
+                } else {
+                    RefKind::Shared
+                };
+                Ok(Rvalue::RawPtr {
+                    place,
+                    kind,
+                    // Will be fixed by the cleanup pass `insert_ptr_metadata`.
+                    ptr_metadata: Self::missing_ptr_metadata(),
+                })
+            }
+            _ => raise_error!(
+                self,
+                span,
+                "unexpected type for thread-local reference: {ptr_ty:?}"
+            ),
+        }
+    }
+
     fn translate_binaryop_kind(&mut self, _span: Span, binop: mir::BinOp) -> Result<BinOp, Error> {
         Ok(match binop {
             mir::BinOp::BitXor => BinOp::BitXor,
@@ -427,11 +741,11 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
                             next_place_ty.with_ctx(&self.into_fmt())
                         )
                     };
-                    let field_id = translate_field_id(*index);
+                    let field_id = self.translate_field_id(*index);
                     match place_ty.ty.kind() {
                         ty::Adt(adt_def, _) => {
                             let variant = place_ty.variant_index;
-                            let variant_id = variant.map(translate_variant_id);
+                            let variant_id = variant.map(|id| self.translate_variant_id(id));
                             let generics = &tref.generics;
                             match tref.id {
                                 TypeId::Adt(type_id) => {
@@ -611,15 +925,12 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
             }
             mir::Rvalue::Ref(_region, borrow_kind, place) => {
                 let place = self.translate_place(span, place)?;
-                let borrow_kind = translate_borrow_kind(*borrow_kind);
+                let borrow_kind = self.translate_borrow_kind(*borrow_kind);
                 Ok(Rvalue::Ref {
                     place,
                     kind: borrow_kind,
                     // Will be fixed by the cleanup pass `insert_ptr_metadata`.
-                    ptr_metadata: Operand::Const(Box::new(ConstantExpr {
-                        kind: ConstantExprKind::Opaque("Missing metadata".to_string()),
-                        ty: Ty::mk_unit(),
-                    })),
+                    ptr_metadata: Self::missing_ptr_metadata(),
                 })
             }
             mir::Rvalue::RawPtr(mtbl, place) => {
@@ -633,10 +944,7 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
                     place,
                     kind: mtbl,
                     // Will be fixed by the cleanup pass `insert_ptr_metadata`.
-                    ptr_metadata: Operand::Const(Box::new(ConstantExpr {
-                        kind: ConstantExprKind::Opaque("Missing metadata".to_string()),
-                        ty: Ty::mk_unit(),
-                    })),
+                    ptr_metadata: Self::missing_ptr_metadata(),
                 })
             }
             mir::Rvalue::Cast(cast_kind, mir_operand, rust_tgt_ty) => {
@@ -702,64 +1010,7 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
                     mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, ..) => {
                         let meta =
                             hax::compute_unsizing_metadata(&self.hax_state, op_ty, *rust_tgt_ty);
-                        let meta = match &meta {
-                            hax::UnsizingMetadata::Length(len) => {
-                                let len = self.translate_constant_expr(span, len)?;
-                                UnsizingMetadata::Length(Box::new(len))
-                            }
-                            hax::UnsizingMetadata::DirectVTable(impl_expr) => {
-                                let tref = self.translate_trait_impl_expr(span, impl_expr)?;
-                                let vtable =
-                                    self.translate_vtable_instance_const(span, impl_expr)?;
-                                UnsizingMetadata::VTable(tref, vtable)
-                            }
-                            hax::UnsizingMetadata::NestedVTable(dyn_impl_expr) => {
-                                // This binds a fake `T: SrcTrait` variable.
-                                let binder = self.translate_dyn_binder(
-                                    span,
-                                    dyn_impl_expr,
-                                    |ctx, _, impl_expr| {
-                                        ctx.translate_trait_impl_expr(span, impl_expr)
-                                    },
-                                )?;
-
-                                // Compute the supertrait path from the source tref to the target
-                                // tref.
-                                let mut target_tref = &binder.skip_binder;
-                                let mut clause_path: Vec<(TraitDeclId, TraitClauseId)> = vec![];
-                                while let TraitRefKind::ParentClause(tref, id) = &target_tref.kind {
-                                    clause_path.push((tref.trait_decl_ref.skip_binder.id, *id));
-                                    target_tref = tref;
-                                }
-
-                                let mut field_path = vec![];
-                                for &(trait_id, clause_id) in &clause_path {
-                                    if let Ok(ItemRef::TraitDecl(tdecl)) =
-                                        self.get_or_translate(trait_id.into())
-                                        && let &vtable_decl_id =
-                                            tdecl.vtable.as_ref().unwrap().id.as_adt().unwrap()
-                                        && let Ok(ItemRef::Type(vtable_decl)) =
-                                            self.get_or_translate(vtable_decl_id.into())
-                                    {
-                                        let ItemSource::VTableTy { supertrait_map, .. } =
-                                            &vtable_decl.src
-                                        else {
-                                            unreachable!()
-                                        };
-                                        field_path.push(supertrait_map[clause_id].unwrap());
-                                    } else {
-                                        break;
-                                    }
-                                }
-
-                                if field_path.len() == clause_path.len() {
-                                    UnsizingMetadata::VTableUpcast(field_path)
-                                } else {
-                                    UnsizingMetadata::Unknown
-                                }
-                            }
-                            hax::UnsizingMetadata::Unknown => UnsizingMetadata::Unknown,
-                        };
+                        let meta = self.translate_unsizing_metadata(span, meta)?;
                         CastKind::Unsize(src_ty, tgt_ty.clone(), meta)
                     }
                 };
@@ -860,11 +1111,11 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
                         let tref = self.translate_type_decl_ref(span, &item)?;
                         let variant_id = match adt_kind {
                             AdtKind::Struct | AdtKind::Union => None,
-                            AdtKind::Enum => Some(translate_variant_id(*variant_idx)),
+                            AdtKind::Enum => Some(self.translate_variant_id(*variant_idx)),
                         };
                         let field_id = match adt_kind {
                             AdtKind::Struct | AdtKind::Enum => None,
-                            AdtKind::Union => Some(translate_field_id(field_index.unwrap())),
+                            AdtKind::Union => Some(self.translate_field_id(field_index.unwrap())),
                         };
 
                         let akind = AggregateKind::Adt(tref, variant_id, field_id);
@@ -895,18 +1146,7 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
                     }
                 }
             }
-            mir::Rvalue::ShallowInitBox(op, ty) => {
-                let op = self.translate_operand(span, op)?;
-                let ty = self.translate_rustc_ty(span, ty)?;
-                Ok(Rvalue::ShallowInitBox(op, ty))
-            }
-            mir::Rvalue::ThreadLocalRef(_) => {
-                raise_error!(
-                    self,
-                    span,
-                    "charon does not support thread local references"
-                );
-            }
+            mir::Rvalue::ThreadLocalRef(def_id) => self.translate_thread_local_ref(span, *def_id),
             mir::Rvalue::WrapUnsafeBinder { .. } => {
                 raise_error!(
                     self,
@@ -939,7 +1179,7 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
                 variant_index,
             } => {
                 let t_place = self.translate_place(span, place)?;
-                let variant_id = translate_variant_id(*variant_index);
+                let variant_id = self.translate_variant_id(*variant_index);
                 Some(StatementKind::SetDiscriminant(t_place, variant_id))
             }
             mir::StatementKind::StorageLive(local) => {
@@ -1096,8 +1336,23 @@ impl<'tcx> BlockTransCtx<'tcx, '_, '_, '_> {
                 let target = self.translate_basic_block_id(*real_target);
                 ullbc_ast::TerminatorKind::Goto { target }
             }
-            TerminatorKind::InlineAsm { .. } => {
-                raise_error!(self, span, "Inline assembly is not supported");
+            TerminatorKind::InlineAsm {
+                template,
+                targets,
+                unwind,
+                ..
+            } => {
+                let asm = rustc_ast::ast::InlineAsmTemplatePiece::to_string(template);
+                let targets = targets
+                    .iter()
+                    .map(|target| self.translate_basic_block_id(*target))
+                    .collect();
+                let on_unwind = self.translate_unwind_action(span, unwind);
+                ullbc_ast::TerminatorKind::InlineAsm {
+                    asm,
+                    targets,
+                    on_unwind,
+                }
             }
             TerminatorKind::CoroutineDrop
             | TerminatorKind::TailCall { .. }

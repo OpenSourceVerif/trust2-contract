@@ -60,6 +60,7 @@ macro_rules! mk {
 mod types {
     use crate::hax::prelude::*;
     use rustc_middle::ty;
+    use rustc_trait_elaboration::ElaborationCtx;
     use std::{cell::RefCell, sync::Arc};
 
     pub struct LocalContextS {
@@ -103,13 +104,11 @@ mod types {
         /// and the base one represented by `None`. Moreover we can instantiate definitions with
         /// generic arguments.
         pub full_defs:
-            HashMap<(Option<PromotedId>, Option<ty::GenericArgsRef<'tcx>>), Arc<FullDef>>,
+            HashMap<(Option<PromotedId>, Option<ty::GenericArgsRef<'tcx>>), Arc<FullDef<'tcx>>>,
         /// Cache the `Ty` translations.
         pub tys: HashMap<ty::Ty<'tcx>, Ty>,
         /// Cache the `ItemRef` translations. This is fast because `GenericArgsRef` is interned.
-        pub item_refs: HashMap<(DefId, ty::GenericArgsRef<'tcx>), ItemRef>,
-        /// Cache the trait resolution engine for each item.
-        pub predicate_searcher: Option<crate::hax::traits::PredicateSearcher<'tcx>>,
+        pub item_refs: HashMap<(DefId, ty::GenericArgsRef<'tcx>, bool), ItemRef>,
         /// Cache of trait refs to resolved impl expressions.
         pub impl_exprs: HashMap<ty::PolyTraitRef<'tcx>, crate::hax::traits::ImplExpr>,
     }
@@ -120,6 +119,7 @@ mod types {
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub cache: Rc<RefCell<GlobalCache<'tcx>>>,
+        pub elab_ctx: crate::hax::traits::ElaborationCtx<'tcx>,
         pub tcx: ty::TyCtxt<'tcx>,
     }
 
@@ -127,6 +127,7 @@ mod types {
         pub fn new(
             tcx: rustc_middle::ty::TyCtxt<'tcx>,
             options: crate::hax::options::Options,
+            bounds_options: crate::hax::options::BoundsOptions,
         ) -> Self {
             Self {
                 tcx,
@@ -136,6 +137,7 @@ mod types {
                 // `opt_def_id` is used in `utils` for error reporting
                 opt_def_id: None,
                 local_ctx: Rc::new(RefCell::new(LocalContextS::new())),
+                elab_ctx: ElaborationCtx::new(tcx, bounds_options),
             }
         }
     }
@@ -158,9 +160,13 @@ pub type StateWithOwner<'tcx> = State<Base<'tcx>, DefId, ()>;
 pub type StateWithBinder<'tcx> = State<Base<'tcx>, DefId, types::UnitBinder<'tcx>>;
 
 impl<'tcx> StateWithBase<'tcx> {
-    pub fn new(tcx: rustc_middle::ty::TyCtxt<'tcx>, options: crate::hax::options::Options) -> Self {
+    pub fn new(
+        tcx: rustc_middle::ty::TyCtxt<'tcx>,
+        options: crate::hax::options::Options,
+        bounds_options: crate::hax::options::BoundsOptions,
+    ) -> Self {
         Self {
-            base: Base::new(tcx, options),
+            base: Base::new(tcx, options, bounds_options),
             owner: (),
             binder: (),
         }
@@ -238,15 +244,9 @@ pub trait WithItemCacheExt<'tcx>: UnderOwnerState<'tcx> {
         self.with_item_cache(self.owner_id(), f)
     }
     fn with_predicate_searcher<T>(&self, f: impl FnOnce(&mut PredicateSearcher<'tcx>) -> T) -> T {
-        self.with_cache(|cache| {
-            f(cache.predicate_searcher.get_or_insert_with(|| {
-                PredicateSearcher::new_for_owner(
-                    self.base().tcx,
-                    self.owner_id(),
-                    &self.base().options.bounds_options,
-                )
-            }))
-        })
+        let base = self.base();
+        let mut predicate_searcher = base.elab_ctx.predicate_searcher_for(self.owner_id());
+        f(&mut predicate_searcher)
     }
 }
 impl<'tcx, S: UnderOwnerState<'tcx>> WithItemCacheExt<'tcx> for S {}

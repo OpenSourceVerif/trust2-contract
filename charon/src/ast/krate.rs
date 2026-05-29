@@ -41,7 +41,7 @@ generate_index_type!(TraitImplId, "TraitImpl");
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("Id")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Id"))]
 #[serde_state(stateless)]
 pub enum ItemId {
     Type(TypeDeclId),
@@ -49,6 +49,34 @@ pub enum ItemId {
     TraitImpl(TraitImplId),
     Fun(FunDeclId),
     Global(GlobalDeclId),
+}
+
+#[derive(
+    Copy,
+    Clone,
+    Debug,
+    PartialOrd,
+    Ord,
+    PartialEq,
+    Eq,
+    Hash,
+    EnumIsA,
+    EnumAsGetters,
+    VariantName,
+    VariantIndexArity,
+    Serialize,
+    Deserialize,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+)]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("AssocId"))]
+#[serde_state(stateless)]
+pub enum AssocItemId {
+    Type(AssocTypeId),
+    Method(TraitMethodId),
+    Const(AssocConstId),
 }
 
 /// Implement `TryFrom`  and `From` to convert between an enum and its variants.
@@ -89,6 +117,10 @@ impl TryFrom<ItemId> for FunId {
         Ok(FunId::Regular(x.try_into()?))
     }
 }
+
+wrap_unwrap_enum!(AssocItemId::Type(AssocTypeId));
+wrap_unwrap_enum!(AssocItemId::Method(TraitMethodId));
+wrap_unwrap_enum!(AssocItemId::Const(AssocConstId));
 
 /// A translated item.
 #[derive(
@@ -131,7 +163,7 @@ pub enum ItemRefMut<'ctx> {
 #[derive(
     Debug, Clone, VariantIndexArity, VariantName, EnumAsGetters, EnumIsA, Serialize, Deserialize,
 )]
-#[charon::variants_suffix("Group")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_suffix("Group"))]
 pub enum GDeclarationGroup<Id> {
     /// A non-recursive declaration
     NonRec(Id),
@@ -143,7 +175,7 @@ pub enum GDeclarationGroup<Id> {
 #[derive(
     Debug, Clone, VariantIndexArity, VariantName, EnumAsGetters, EnumIsA, Serialize, Deserialize,
 )]
-#[charon::variants_suffix("Group")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_suffix("Group"))]
 pub enum DeclarationGroup {
     /// A type declaration group
     Type(GDeclarationGroup<TypeDeclId>),
@@ -171,6 +203,13 @@ pub struct TargetInfo {
     pub is_little_endian: bool,
 }
 
+#[derive(Default, Clone, Drive, DriveMut, SerializeState, DeserializeState)]
+pub struct AssocItemNames {
+    pub types: IndexVec<AssocTypeId, TraitItemName>,
+    pub methods: IndexVec<TraitMethodId, TraitItemName>,
+    pub consts: IndexVec<AssocConstId, TraitItemName>,
+}
+
 /// The data of a translated crate.
 #[derive(Default, Clone, Drive, DriveMut, SerializeState, DeserializeState)]
 #[serde_state(state_implements = HashConsSerializerState)]
@@ -194,7 +233,6 @@ pub struct TranslatedCrate {
 
     /// The translated files. This field must come before any field containing spans,
     /// as the OCaml deserialization of spans requires the files to be deserialized already.
-    #[drive(skip)]
     #[serde_state(stateless)]
     pub files: IndexVec<FileId, File>,
 
@@ -204,6 +242,11 @@ pub struct TranslatedCrate {
     /// if the corresponding item wasn't translated.
     #[serde(with = "SeqHashMapToArray::<ItemId, Name>")]
     pub item_names: SeqHashMap<ItemId, Name>,
+    /// The names of all the registered associated items. Available so we can know the names even
+    /// of items that failed to translate.
+    /// Invariant: after translation, any existing `AssocItemId` must have an associated name, even
+    /// if the corresponding item wasn't translated.
+    pub assoc_item_names: IndexMap<TraitDeclId, AssocItemNames>,
     /// Short names, for items whose last PathElem is unique.
     #[serde(with = "SeqHashMapToArray::<ItemId, Name>")]
     pub short_names: SeqHashMap<ItemId, Name>,
@@ -218,9 +261,6 @@ pub struct TranslatedCrate {
     pub trait_decls: IndexMap<TraitDeclId, TraitDecl>,
     /// The translated trait declarations
     pub trait_impls: IndexMap<TraitImplId, TraitImpl>,
-    /// A `const UNIT: () = ();` used whenever we make a thin pointer/reference to avoid creating a
-    /// local `let unit = ();` variable. It is always `Some`.
-    pub unit_metadata: Option<GlobalDeclRef>,
     /// The re-ordered groups of declarations, initialized as empty.
     #[drive(skip)]
     #[serde_state(stateless)]
@@ -228,13 +268,29 @@ pub struct TranslatedCrate {
 }
 
 impl TranslatedCrate {
-    pub fn item_name(&self, id: impl Into<ItemId>) -> Option<&Name> {
-        self.item_names.get(&id.into())
+    pub fn item_name(&self, id: impl Into<ItemId>) -> &Name {
+        // `unwrap` is ok because we ensure to translate the item name as soon as we create a new
+        // item id.
+        self.item_names.get(&id.into()).unwrap()
+    }
+    pub fn assoc_item_name(
+        &self,
+        trait_id: TraitDeclId,
+        id: impl Into<AssocItemId>,
+    ) -> TraitItemName {
+        let names = &self.assoc_item_names[trait_id];
+        match id.into() {
+            AssocItemId::Type(id) => names.types[id],
+            AssocItemId::Method(id) => names.methods[id],
+            AssocItemId::Const(id) => names.consts[id],
+        }
     }
 
-    pub fn item_short_name(&self, id: impl Into<ItemId>) -> Option<&Name> {
+    pub fn item_short_name(&self, id: impl Into<ItemId>) -> &Name {
         let id = id.into();
-        self.short_names.get(&id).or_else(|| self.item_name(id))
+        self.short_names
+            .get(&id)
+            .unwrap_or_else(|| self.item_name(id))
     }
 
     pub fn get_item(&self, trans_id: impl Into<ItemId>) -> Option<ItemRef<'_>> {

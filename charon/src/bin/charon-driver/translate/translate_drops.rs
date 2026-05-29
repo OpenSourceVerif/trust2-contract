@@ -7,6 +7,34 @@ use crate::translate::translate_crate::TransItemSourceKind;
 use charon_lib::{ast::*, formatter::IntoFormatter, pretty::FmtWithCtx};
 
 impl<'tcx> ItemTransCtx<'tcx, '_> {
+    pub fn translate_drop_in_place_method_id(
+        &mut self,
+        destruct_trait_def_id: &hax::DefId,
+        destruct_trait_id: TraitDeclId,
+    ) -> Result<TraitMethodId, Error> {
+        self.register_assoc_items(destruct_trait_def_id, destruct_trait_id)?;
+        let method_id = TraitMethodId::ZERO; // It's the only method
+        Ok(method_id)
+    }
+
+    pub fn translate_drop_in_place_method_ref(
+        &mut self,
+        span: Span,
+        item_ref: &hax::ItemRef,
+        destruct_trait_def_id: &hax::DefId,
+        destruct_trait_id: TraitDeclId,
+        impl_kind: Option<TraitImplSource>,
+    ) -> Result<(FunDeclId, TraitMethodId), Error> {
+        let method_id =
+            self.translate_drop_in_place_method_id(destruct_trait_def_id, destruct_trait_id)?;
+        let fun_id = self.register_item(
+            span,
+            item_ref,
+            TransItemSourceKind::DropInPlaceMethod(impl_kind),
+        );
+        Ok((fun_id, method_id))
+    }
+
     /// Translate a call to `drop_in_place` for that type.
     pub fn translate_drop_in_place_method_call(
         &mut self,
@@ -15,17 +43,15 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
     ) -> Result<FnPtr, Error> {
         let impl_expr = hax::solve_destruct(self.hax_state_with_id(), ty);
         let tref = self.translate_trait_impl_expr(span, &impl_expr)?;
-        let method_id = self.register_item(
+        let (fun_id, method_id) = self.translate_drop_in_place_method_ref(
             span,
             impl_expr.r#trait.hax_skip_binder_ref(),
-            TransItemSourceKind::DropInPlaceMethod(None),
-        );
+            &impl_expr.r#trait.hax_skip_binder_ref().def_id,
+            tref.trait_id(),
+            None,
+        )?;
         let fn_ptr = FnPtr {
-            kind: Box::new(FnPtrKind::Trait(
-                tref,
-                TraitItemName("drop_in_place".into()),
-                method_id,
-            )),
+            kind: Box::new(FnPtrKind::Trait(tref, method_id, fun_id)),
             generics: Box::new(GenericArgs::empty()),
         };
         Ok(fn_ptr)
@@ -34,7 +60,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
     fn translate_drop_in_place_method_body(
         &mut self,
         span: Span,
-        def: &hax::FullDef,
+        def: &hax::FullDef<'tcx>,
         self_ty: &Ty,
     ) -> Result<Body, Error> {
         let (hax::FullDefKind::Adt { .. } | hax::FullDefKind::Closure { .. }) = def.kind() else {
@@ -65,9 +91,8 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                     id: TypeId::Adt(type_id),
                     ..
                 }) = self_ty.kind()
-                    && let Some(name) = self.translated.item_name(*type_id)
                 {
-                    name.to_string_with_ctx(&self.into_fmt())
+                    (*type_id).to_string_with_ctx(&self.into_fmt())
                 } else {
                     "crate::the::Type".to_string()
                 };
@@ -93,7 +118,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         mut self,
         def_id: FunDeclId,
         item_meta: ItemMeta,
-        def: &hax::FullDef,
+        def: &hax::FullDef<'tcx>,
         impl_kind: Option<TraitImplSource>,
     ) -> Result<FunDecl, Error> {
         let span = item_meta.span;
@@ -113,12 +138,15 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         };
 
         let implemented_trait = self.translate_trait_predicate(span, trait_pred)?;
-        let item_name = TraitItemName("drop_in_place".into());
+        let item_id: AssocItemId = self
+            .translate_drop_in_place_method_id(&trait_pred.trait_ref.def_id, implemented_trait.id)?
+            .into();
         let self_ty = implemented_trait
             .self_ty(&self.t_ctx.translated)
             .unwrap()
             .clone();
 
+        let signature = self.drop_in_place_method_sig(self_ty.clone());
         let src = match impl_kind {
             Some(impl_kind) => {
                 let destruct_impl_id =
@@ -130,13 +158,13 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                 ItemSource::TraitImpl {
                     impl_ref,
                     trait_ref: implemented_trait,
-                    item_name,
+                    item_id,
                     reuses_default: false,
                 }
             }
             None => ItemSource::TraitDecl {
                 trait_ref: implemented_trait,
-                item_name,
+                item_id,
                 has_default: false,
             },
         };
@@ -147,53 +175,59 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             self.translate_drop_in_place_method_body(span, def, &self_ty)?
         };
 
-        let input = TyKind::RawPtr(self_ty, RefKind::Mut).into_ty();
-        let signature = FunSig {
-            is_unsafe: true,
-            inputs: vec![input],
-            output: Ty::mk_unit(),
-        };
-
         Ok(FunDecl {
             def_id,
             item_meta,
             generics: self.into_generics(),
-            signature,
+            signature: Box::new(signature),
             src,
             is_global_initializer: None,
             body,
         })
     }
 
+    // Small helper to deduplicate. Generates the signature `*mut self_ty -> ()`.
+    pub fn drop_in_place_method_sig(&self, self_ty: Ty) -> FunSig {
+        let self_ptr = TyKind::RawPtr(self_ty, RefKind::Mut).into_ty();
+        FunSig {
+            is_unsafe: true,
+            abi: Abi::rust(),
+            inputs: [self_ptr].into(),
+            output: Ty::mk_unit(),
+        }
+    }
+
     // Small helper to deduplicate.
     pub fn prepare_drop_in_place_method(
         &mut self,
-        def: &hax::FullDef,
+        def: &hax::FullDef<'tcx>,
         span: Span,
+        destruct_trait_def_id: &hax::DefId,
         destruct_trait_id: TraitDeclId,
         impl_kind: Option<TraitImplSource>,
-    ) -> (TraitItemName, Binder<FunDeclRef>) {
-        let method_id = self.register_item(
+    ) -> Result<(TraitMethodId, Binder<FunDeclRef>), Error> {
+        let (fun_id, method_id) = self.translate_drop_in_place_method_ref(
             span,
             def.this(),
-            TransItemSourceKind::DropInPlaceMethod(impl_kind),
-        );
-        let method_name = TraitItemName("drop_in_place".into());
+            destruct_trait_def_id,
+            destruct_trait_id,
+            impl_kind,
+        )?;
         let method_binder = {
             let generics = self
                 .outermost_binder()
                 .params
                 .identity_args_at_depth(DeBruijnId::one());
             Binder::new(
-                BinderKind::TraitMethod(destruct_trait_id, method_name),
+                BinderKind::TraitMethod(destruct_trait_id, method_id),
                 GenericParams::empty(),
                 FunDeclRef {
-                    id: method_id,
+                    id: fun_id,
                     generics: Box::new(generics),
                 },
             )
         };
-        (method_name, method_binder)
+        Ok((method_id, method_binder))
     }
 
     #[tracing::instrument(skip(self, item_meta, def))]
@@ -201,7 +235,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         mut self,
         impl_id: TraitImplId,
         item_meta: ItemMeta,
-        def: &hax::FullDef,
+        def: &hax::FullDef<'tcx>,
     ) -> Result<TraitImpl, Error> {
         let span = item_meta.span;
 
@@ -213,12 +247,15 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         let mut timpl = self.translate_virtual_trait_impl(impl_id, item_meta, destruct_impl)?;
 
         // Add the `drop_in_place(*mut self)` method.
-        timpl.methods.push(self.prepare_drop_in_place_method(
+        let destruct_trait_id = timpl.impl_trait.id;
+        let (method_id, method_binder) = self.prepare_drop_in_place_method(
             def,
             span,
-            timpl.impl_trait.id,
+            &destruct_impl.trait_pred.trait_ref.def_id,
+            destruct_trait_id,
             Some(TraitImplSource::ImplicitDestruct),
-        ));
+        )?;
+        timpl.methods.set_slot_extend(method_id, method_binder);
 
         Ok(timpl)
     }

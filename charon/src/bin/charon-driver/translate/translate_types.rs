@@ -146,8 +146,9 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     assoc_item,
                 } => {
                     let trait_ref = self.translate_trait_impl_expr(span, impl_expr)?;
-                    let name = self.t_ctx.translate_trait_item_name(&assoc_item.def_id)?;
-                    TyKind::TraitType(trait_ref, name)
+                    let assoc_type_id =
+                        self.translate_assoc_type_id(trait_ref.trait_id(), &assoc_item.def_id)?;
+                    TyKind::TraitType(trait_ref, assoc_type_id)
                 }
                 hax::AliasKind::Opaque { hidden_ty, .. } => {
                     return self.translate_ty(span, hidden_ty);
@@ -172,6 +173,11 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     args.types.pop().unwrap(),
                     Box::new(args.const_generics.pop().unwrap()),
                 )
+            }
+            hax::TyKind::Pat(ty, pat) => {
+                let ty = self.translate_ty(span, ty)?;
+                let pat = self.translate_pattern(span, pat)?;
+                TyKind::Pattern(ty, pat)
             }
             hax::TyKind::Slice(item_ref) => {
                 let mut args = self.translate_generic_args(span, &item_ref.generic_args, &[])?;
@@ -306,6 +312,26 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         Ok(kind.into_ty())
     }
 
+    pub fn translate_pattern(
+        &mut self,
+        span: Span,
+        pat: &hax::Pattern,
+    ) -> Result<TypePattern, Error> {
+        Ok(match pat {
+            hax::Pattern::Range { start, end } => TypePattern::Range(
+                Box::new(self.translate_constant_expr(span, start)?),
+                Box::new(self.translate_constant_expr(span, end)?),
+            ),
+            hax::Pattern::Or(patterns) => TypePattern::OrPattern(
+                patterns
+                    .iter()
+                    .map(|pat| self.translate_pattern(span, pat))
+                    .try_collect()?,
+            ),
+            hax::Pattern::NotNull => TypePattern::NotNull,
+        })
+    }
+
     pub(crate) fn translate_rustc_ty(
         &mut self,
         span: Span,
@@ -331,9 +357,18 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         let output = self.translate_ty(span, &sig.output)?;
         Ok(FunSig {
             is_unsafe: sig.safety == hax::Safety::Unsafe,
+            abi: Self::translate_abi(&sig.abi),
             inputs,
             output,
         })
+    }
+
+    pub fn translate_abi(abi: &hax::ExternAbi) -> Abi {
+        match abi {
+            hax::ExternAbi::Rust => Abi::Rust,
+            hax::ExternAbi::C { unwind: false } => Abi::C,
+            _ => Abi::Other(abi.as_str().into()),
+        }
     }
 
     /// Translate generic args. Don't call directly; use `translate_xxx_ref` as much as possible.
@@ -421,16 +456,22 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             ty::Str | ty::Slice(..) => PtrMetadata::Length,
             ty::Dynamic(..) => match hax_ty.kind() {
                 hax::TyKind::Dynamic(dyn_binder, _) => {
-                    let vtable = self.translate_region_binder(
-                        span,
-                        &dyn_binder.predicates.predicates[0].clause.kind,
-                        |ctx, kind: &hax::ClauseKind| {
-                            let hax::ClauseKind::Trait(trait_predicate) = kind else {
-                                unreachable!()
-                            };
-                            ctx.translate_vtable_struct_ref(span, &trait_predicate.trait_ref)
-                        },
-                    )?;
+                    let vtable = self.translate_dyn_binder(span, dyn_binder, |ctx, _, _| {
+                        ctx.translate_region_binder(
+                            span,
+                            &dyn_binder.predicates.predicates[0].clause.kind,
+                            |ctx, kind: &hax::ClauseKind| {
+                                let hax::ClauseKind::Trait(trait_predicate) = kind else {
+                                    unreachable!()
+                                };
+                                ctx.translate_vtable_struct_ref(span, &trait_predicate.trait_ref)
+                            },
+                        )
+                    })?;
+                    let vtable = vtable
+                        .skip_binder
+                        .try_substitute(&GenericArgs::empty())
+                        .expect("vtable struct should not depend on self type");
                     let vtable = self.erase_region_binder(vtable);
                     PtrMetadata::VTable(vtable)
                 }
@@ -453,25 +494,27 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     /// Translates the layout as queried from rustc into
     /// the more restricted [`Layout`].
     #[tracing::instrument(skip(self))]
-    pub fn translate_layout(&self, item: &hax::ItemRef) -> Option<Layout> {
+    pub fn translate_layout(&mut self, def: &hax::FullDef<'tcx>) -> Option<Layout> {
+        let item = def.this();
         use rustc_abi as r_abi;
 
         fn translate_variant_layout(
             variant_layout: &r_abi::LayoutData<r_abi::FieldIdx, r_abi::VariantIdx>,
-            tag: Option<ScalarValue>,
-        ) -> VariantLayout {
+            tagger: Vec<(ByteCount, ScalarValue)>,
+        ) -> Option<VariantLayout> {
             let field_offsets = match &variant_layout.fields {
                 r_abi::FieldsShape::Arbitrary { offsets, .. } => {
                     offsets.iter().map(|o| o.bytes()).collect()
                 }
-                r_abi::FieldsShape::Primitive | r_abi::FieldsShape::Union(_) => IndexVec::default(),
+                r_abi::FieldsShape::Union(n) => vec![0; n.get()].into(),
+                r_abi::FieldsShape::Primitive => IndexVec::default(),
                 r_abi::FieldsShape::Array { .. } => panic!("Unexpected layout shape"),
             };
-            VariantLayout {
+            Some(VariantLayout {
                 field_offsets,
                 uninhabited: variant_layout.is_uninhabited(),
-                tag,
-            }
+                tagger,
+            })
         }
 
         fn translate_primitive_int(int_ty: r_abi::Integer, signed: bool) -> IntegerTy {
@@ -503,6 +546,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             .type_of(rdefid)
             .instantiate(tcx, item.rustc_args(hax_state));
         let pseudo_input = ty_env.as_query_input(ty);
+        let ptr_size = self.translated.the_target_information().target_pointer_size;
 
         // If layout computation returns an error, we return `None`.
         let layout = tcx.layout_of(pseudo_input).ok()?.layout;
@@ -515,105 +559,139 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             (None, None)
         };
 
-        // Get the layout of the discriminant when there is one (even if it is encoded in a niche).
-        let discriminant_layout = match layout.variants() {
+        // Build the discriminator tree and variant layouts.
+        let (discriminator, variant_layouts) = match layout.variants() {
             r_abi::Variants::Multiple {
                 tag,
                 tag_encoding,
                 tag_field,
+                variants,
                 ..
             } => {
                 // The tag_field is the index into the `offsets` vector.
                 let r_abi::FieldsShape::Arbitrary { offsets, .. } = layout.fields() else {
                     unreachable!()
                 };
+                let tag_offset = offsets
+                    .get(*tag_field)
+                    .map(|s| r_abi::Size::bytes(*s))
+                    .expect("No tag field offset for enum?");
 
                 let tag_ty = match tag.primitive() {
                     r_abi::Primitive::Int(int_ty, signed) => {
                         translate_primitive_int(int_ty, signed)
                     }
-                    // Try to handle pointer as integers of the same size.
                     r_abi::Primitive::Pointer(_) => IntegerTy::Signed(IntTy::Isize),
-                    r_abi::Primitive::Float(_) => {
-                        unreachable!()
+                    r_abi::Primitive::Float(_) => unreachable!(),
+                };
+                let tag_size = r_abi::Size::from_bytes(tag_ty.target_size(ptr_size));
+                let tag_for_variant = |id: rustc_abi::VariantIdx| {
+                    tcx.tag_for_variant(ty_env.as_query_input((ty, id)))
+                        .map(|s| match tag_ty {
+                            IntegerTy::Signed(int_ty) => {
+                                ScalarValue::from_int(ptr_size, int_ty, s.to_int(tag_size)).unwrap()
+                            }
+                            IntegerTy::Unsigned(uint_ty) => {
+                                ScalarValue::from_uint(ptr_size, uint_ty, s.to_uint(tag_size))
+                                    .unwrap()
+                            }
+                        })
+                };
+
+                // Compute per-variant tag values and build tagger + discriminator children.
+                let mut variant_layouts: IndexVec<VariantId, Option<VariantLayout>> =
+                    IndexVec::new();
+                let mut children = Vec::new();
+
+                for (id, variant_layout) in variants.iter_enumerated() {
+                    let variant_id = self.translate_variant_id(id);
+                    let tagger = if variant_layout.is_uninhabited() {
+                        vec![]
+                    } else if let Some(val) = tag_for_variant(id) {
+                        children.push((val..=val, Discriminator::Known(variant_id)));
+                        vec![(tag_offset, val)]
+                    } else {
+                        // Niched variant
+                        vec![]
+                    };
+                    variant_layouts.push(translate_variant_layout(variant_layout, tagger));
+                }
+
+                let fallback = match tag_encoding {
+                    r_abi::TagEncoding::Direct => Discriminator::Invalid,
+                    r_abi::TagEncoding::Niche {
+                        untagged_variant,
+                        niche_variants,
+                        ..
+                    } => {
+                        if niche_variants.contains(untagged_variant)
+                            && let Some(start) = tag_for_variant(*niche_variants.start())
+                            && let Some(end) = tag_for_variant(*niche_variants.end())
+                        {
+                            // Add an inner discriminator; the outer one filters the whole range of
+                            // values considered to be discriminants, the inner one selects known
+                            // variants from within that range. This is to detect the UB that
+                            // happens if we encounter a discriminant that would have been the
+                            // niched variant.
+                            let discriminator = Discriminator::Branch {
+                                offset: tag_offset,
+                                int_ty: tag_ty,
+                                fallback: Box::new(Discriminator::Invalid),
+                                children,
+                            };
+                            children = vec![(start..=end, discriminator)];
+                        }
+                        Discriminator::Known(self.translate_variant_id(*untagged_variant))
                     }
                 };
 
-                let encoding = match tag_encoding {
-                    r_abi::TagEncoding::Direct => TagEncoding::Direct,
-                    r_abi::TagEncoding::Niche {
-                        untagged_variant, ..
-                    } => TagEncoding::Niche {
-                        untagged_variant: VariantId::from_usize(r_abi::VariantIdx::as_usize(
-                            *untagged_variant,
-                        )),
-                    },
+                let discriminator = Discriminator::Branch {
+                    offset: tag_offset,
+                    int_ty: tag_ty,
+                    fallback: Box::new(fallback),
+                    children,
                 };
-                offsets.get(*tag_field).map(|s| DiscriminantLayout {
-                    offset: r_abi::Size::bytes(*s),
-                    tag_ty,
-                    encoding,
-                })
-            }
-            r_abi::Variants::Single { .. } | r_abi::Variants::Empty => None,
-        };
 
-        let mut variant_layouts: IndexVec<VariantId, VariantLayout> = IndexVec::new();
-
-        match layout.variants() {
-            r_abi::Variants::Multiple { variants, .. } => {
-                let tag_ty = discriminant_layout
-                    .as_ref()
-                    .expect("No discriminant layout for enum?")
-                    .tag_ty;
-                let ptr_size = self.translated.the_target_information().target_pointer_size;
-                let tag_size = r_abi::Size::from_bytes(tag_ty.target_size(ptr_size));
-
-                for (id, variant_layout) in variants.iter_enumerated() {
-                    let tag = if variant_layout.is_uninhabited() {
-                        None
-                    } else {
-                        tcx.tag_for_variant(ty_env.as_query_input((ty, id)))
-                            .map(|s| match tag_ty {
-                                IntegerTy::Signed(int_ty) => {
-                                    ScalarValue::from_int(ptr_size, int_ty, s.to_int(tag_size))
-                                        .unwrap()
-                                }
-                                IntegerTy::Unsigned(uint_ty) => {
-                                    ScalarValue::from_uint(ptr_size, uint_ty, s.to_uint(tag_size))
-                                        .unwrap()
-                                }
-                            })
-                    };
-                    variant_layouts.push(translate_variant_layout(variant_layout, tag));
-                }
+                (Some(discriminator), variant_layouts)
             }
             r_abi::Variants::Single { index } => {
-                if let r_abi::FieldsShape::Arbitrary { .. } = layout.fields() {
-                    let n_variants = match ty.kind() {
-                        _ if let Some(range) = ty.variant_range(tcx) => range.end.index(),
-                        _ => 1,
-                    };
-                    // All the variants not initialized below are uninhabited.
-                    variant_layouts = (0..n_variants)
-                        .map(|_| VariantLayout {
-                            field_offsets: IndexVec::default(),
-                            uninhabited: true,
-                            tag: None,
-                        })
-                        .collect();
-                    variant_layouts[index.index()] = translate_variant_layout(&layout, None);
-                }
+                let variant_id = self.translate_variant_id(*index);
+                let variant_layouts = match layout.fields() {
+                    r_abi::FieldsShape::Arbitrary { .. } => {
+                        let n_variants = if let Some(range) = ty.variant_range(self.t_ctx.tcx) {
+                            range.end.index()
+                        } else {
+                            1
+                        };
+                        let mut variant_layouts: IndexVec<VariantId, Option<VariantLayout>> =
+                            (0..n_variants).map(|_| None).collect();
+                        variant_layouts[variant_id] = translate_variant_layout(&layout, vec![]);
+                        variant_layouts
+                    }
+                    r_abi::FieldsShape::Union(_) => {
+                        vec![translate_variant_layout(&layout, vec![])].into()
+                    }
+                    r_abi::FieldsShape::Primitive | r_abi::FieldsShape::Array { .. } => {
+                        vec![].into()
+                    }
+                };
+                (Some(Discriminator::trivial(variant_id)), variant_layouts)
             }
-            r_abi::Variants::Empty => {}
-        }
+            r_abi::Variants::Empty => (None, IndexVec::new()),
+        };
+
+        let repr = match &def.kind {
+            hax::FullDefKind::Adt { repr: hax_repr, .. } => self.translate_repr_options(hax_repr),
+            _ => ReprOptions::default(),
+        };
 
         Some(Layout {
             size,
             align,
-            discriminant_layout,
+            discriminator,
             uninhabited: layout.is_uninhabited(),
             variant_layouts,
+            repr,
         })
     }
 
@@ -641,13 +719,14 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 Ok(Layout {
                     size: Some(size),
                     align: Some(align),
-                    discriminant_layout: None,
+                    discriminator: None,
                     uninhabited: false,
-                    variant_layouts: IndexVec::from([VariantLayout {
+                    variant_layouts: IndexVec::from([Some(VariantLayout {
                         field_offsets,
-                        tag: None,
+                        tagger: vec![],
                         uninhabited: false,
-                    }]),
+                    })]),
+                    repr: ReprOptions::default(),
                 })
             }
             _ => raise_error!(
@@ -668,7 +747,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         trans_id: TypeDeclId,
         def_span: Span,
         item_meta: &ItemMeta,
-        def: &hax::FullDef,
+        def: &hax::FullDef<'tcx>,
     ) -> Result<TypeDeclKind, Error> {
         use crate::hax::AdtKind;
         let hax::FullDefKind::Adt {
@@ -758,17 +837,10 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             let variant_name = var_def.name.to_string();
             let variant_full_def =
                 self.hax_def(&def.this().with_def_id(self.hax_state(), &var_def.def_id))?;
-            let variant_attrs = self.t_ctx.translate_attr_info(&variant_full_def);
 
-            let mut variant = Variant {
-                span: variant_span,
-                attr_info: variant_attrs,
-                name: variant_name,
-                fields,
-                discriminant,
-            };
+            let mut variant_attrs = self.t_ctx.translate_attr_info(&variant_full_def);
             // Propagate a `#[charon::variants_prefix(..)]` or `#[charon::variants_suffix(..)]` attribute to the variants.
-            if variant.attr_info.rename.is_none() {
+            if variant_attrs.rename.is_none() {
                 let prefix = item_meta
                     .attr_info
                     .attributes
@@ -786,11 +858,18 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 if prefix.is_some() || suffix.is_some() {
                     let prefix = prefix.unwrap_or_default();
                     let suffix = suffix.unwrap_or_default();
-                    let name = &variant.name;
-                    variant.attr_info.rename = Some(format!("{prefix}{name}{suffix}"));
+                    variant_attrs.rename = Some(format!("{prefix}{variant_name}{suffix}"));
                 }
             }
-            translated_variants.push(variant);
+
+            translated_variants.push_with(|id| Variant {
+                id,
+                span: variant_span,
+                attr_info: variant_attrs,
+                name: variant_name,
+                fields,
+                discriminant,
+            });
         }
 
         // Register the type

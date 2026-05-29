@@ -440,11 +440,11 @@ let expr_body_substitute (subst : subst) (body : expr_body) : local list * block
 
 let trait_type_constraint_substitute (subst : subst)
     (ttc : trait_type_constraint) : trait_type_constraint =
-  let { trait_ref; type_name; ty } = ttc in
+  let { trait_ref; type_id; ty } = ttc in
   let visitor = st_substitute_visitor in
   let trait_ref = visitor#visit_trait_ref subst trait_ref in
   let ty = visitor#visit_ty subst ty in
-  { trait_ref; type_name; ty }
+  { trait_ref; type_id; ty }
 
 (** Substitute variable identifiers in a type *)
 let block_substitute_ids (ty_subst : TypeVarId.id -> TypeVarId.id)
@@ -562,12 +562,12 @@ let fuse_binders (substitutor : subst -> 'a -> 'a)
 (** Helper *)
 let instantiate_method (trait_self : trait_ref_kind)
     (item_generics : generic_args) (method_generics : generic_args)
-    (bound_fn : fun_decl_ref binder item_binder) : fun_decl_ref =
+    (bound_method : fun_decl_ref binder item_binder) : fun_decl_ref =
   let bound_fn =
     apply_args_to_item_binder trait_self item_generics
       (st_substitute_visitor#visit_binder
          st_substitute_visitor#visit_fun_decl_ref)
-      bound_fn
+      bound_method
   in
   apply_args_to_binder method_generics st_substitute_visitor#visit_fun_decl_ref
     bound_fn
@@ -581,20 +581,20 @@ let instantiate_trait_method (trait_ref : trait_ref) =
 (** Like lookup_trait_decl_method, but also correctly substitutes the generics.
 *)
 let lookup_and_subst_trait_decl_method (tdecl : trait_decl)
-    (name : trait_item_name) (trait_ref : trait_ref)
+    (id : trait_method_id) (trait_ref : trait_ref)
     (method_generics : generic_args) : fun_decl_ref option =
   Option.map
     (instantiate_trait_method trait_ref method_generics)
-    (lookup_trait_decl_method tdecl name)
+    (lookup_trait_decl_method_ref tdecl id)
 
 (** Like lookup_trait_impl_method, but also correctly substitutes the generics.
 *)
 let lookup_and_subst_trait_impl_method (timpl : trait_impl)
-    (name : trait_item_name) (impl_generics : generic_args)
+    (id : trait_method_id) (impl_generics : generic_args)
     (method_generics : generic_args) : fun_decl_ref option =
   Option.map
     (instantiate_method Self impl_generics method_generics)
-    (lookup_trait_impl_method timpl name)
+    (lookup_trait_impl_method timpl id)
 
 (* Lookup the signature of a method. This returns a signature bound in two
    levels of binders: one for the trait generics and one for the method
@@ -602,36 +602,27 @@ let lookup_and_subst_trait_impl_method (timpl : trait_impl)
    found.
 *)
 let lookup_method_sig (crate : crate) (trait_id : trait_decl_id)
-    (name : trait_item_name) : fun_sig binder item_binder option =
+    (id : trait_method_id) : fun_sig binder item_binder option =
   let* tdecl = TraitDeclId.Map.find_opt trait_id crate.trait_decls in
   let* {
          item_binder_params : generic_params = trait_params;
-         item_binder_value : fun_decl_ref binder = bound_method;
+         item_binder_value : trait_method binder =
+           { binder_params = method_params; binder_value = trait_method };
        } =
-    lookup_trait_decl_method tdecl name
+    lookup_trait_decl_method tdecl id
   in
-  let method_decl_id = bound_method.binder_value.id in
-  let* method_decl =
-    LlbcAst.FunDeclId.Map.find_opt method_decl_id crate.fun_decls
-  in
-  (* Substitute the signature to be valid under the binder. *)
-  let signature =
-    st_substitute_visitor#visit_fun_sig
-      (make_subst_from_generics method_decl.generics
-         bound_method.binder_value.generics Self)
-      method_decl.signature
-  in
-  (* Rebind everything *)
-  let bound_sig =
-    { binder_params = bound_method.binder_params; binder_value = signature }
-  in
-  Some { item_binder_params = trait_params; item_binder_value = bound_sig }
+  Some
+    {
+      item_binder_params = trait_params;
+      item_binder_value =
+        { binder_params = method_params; binder_value = trait_method.signature };
+    }
 
 (* Like [lookup_method_sig], but with no binder shenanigans: the returned
    binder binds the concatenation of trait generics and method generics. *)
 let lookup_flat_method_sig (crate : crate) (trait_id : trait_decl_id)
-    (name : trait_item_name) : bound_fun_sig option =
-  let* bound_sig = lookup_method_sig crate trait_id name in
+    (id : trait_method_id) : bound_fun_sig option =
+  let* bound_sig = lookup_method_sig crate trait_id id in
   let bound_sig = fuse_binders st_substitute_visitor#visit_fun_sig bound_sig in
   Some bound_sig
 

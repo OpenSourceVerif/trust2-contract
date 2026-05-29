@@ -75,12 +75,12 @@ pub trait FnMut<Self, Args>
     vtable: core::ops::function::FnMut::{vtable}<Args, Self::parent_clause1::Output>
 }
 
-pub fn core::ops::function::FnMut::call_mut<'_0, Self, Args>(_1: &'_0 mut Self, _2: Args) -> @TraitClause0::parent_clause1::Output
+pub extern "rust-call" fn core::ops::function::FnMut::call_mut<'_0, Self, Args>(_1: &'_0 mut Self, _2: Args) -> @TraitClause0::parent_clause1::Output
 where
     [@TraitClause0]: FnMut<Self, Args>,
 = <opaque>
 
-pub fn core::ops::function::FnOnce::call_once<Self, Args>(_1: Self, _2: Args) -> @TraitClause0::Output
+pub extern "rust-call" fn core::ops::function::FnOnce::call_once<Self, Args>(_1: Self, _2: Args) -> @TraitClause0::Output
 where
     [@TraitClause0]: FnOnce<Self, Args>,
 = <opaque>
@@ -95,20 +95,6 @@ where
   Ok(T),
   Err(E),
 }
-
-// Full name: UNIT_METADATA
-fn UNIT_METADATA()
-{
-    let _0: (); // return
-
-    bb0: {
-        _0 = ();
-        return;
-    }
-}
-
-// Full name: UNIT_METADATA
-const UNIT_METADATA: () = UNIT_METADATA()
 
 fn core::hint::assert_unchecked::precondition_check(_1: bool)
 = <opaque>
@@ -440,14 +426,17 @@ fn {impl FnMut<(&'_ u32,)> for closure}::call_mut<'_0, '_1>(_1: &'_1 mut closure
     let _5: &'4 u32; // anonymous local
     let _6: &'5 u32; // anonymous local
     let _7: &'6 u32; // anonymous local
-    let _8: &'12 u32; // anonymous local
-    let _9: u32; // anonymous local
+    let _8: &'7 u32; // anonymous local
+    let _9: &'12 u32; // anonymous local
+    let _10: u32; // anonymous local
 
     bb0: {
         storage_live(_8);
         storage_live(_9);
-        _9 = const 3 : u32;
-        _8 = &_9;
+        storage_live(_10);
+        _10 = const 3 : u32;
+        _9 = &_10;
+        _8 = move _9;
         storage_live(x_3);
         storage_live(_7);
         x_3 = move tupled_args_2.0;

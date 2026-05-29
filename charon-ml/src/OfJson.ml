@@ -28,32 +28,40 @@ let crate_of_json (js : json) : (crate, string) result =
       if
         not (String.equal charon_version CharonVersion.supported_charon_version)
       then
-        Error
-          ("Incompatible version of charon: this program supports llbc emitted \
-            by charon v" ^ CharonVersion.supported_charon_version
-         ^ " but attempted to read a file emitted by charon v" ^ charon_version
-         ^ ".")
+        Format.kasprintf Result.error
+          "Incompatible version of charon: this program supports llbc emitted \
+           by charon v%s but attempted to read a file emitted by charon v%s."
+          CharonVersion.supported_charon_version charon_version
       else
         let ctx = empty_of_json_ctx in
         let* crate = translated_crate_of_json ctx translated in
-        let type_decls = TypeDeclId.map_of_indexed_list crate.type_decls in
-        let fun_decls = FunDeclId.map_of_indexed_list crate.fun_decls in
-        let global_decls =
-          GlobalDeclId.map_of_indexed_list crate.global_decls
-        in
-        let trait_decls = TraitDeclId.map_of_indexed_list crate.trait_decls in
-        let trait_impls = TraitImplId.map_of_indexed_list crate.trait_impls in
         Ok
           {
             name = crate.crate_name;
             options = crate.options;
             target_information = crate.target_information;
+            item_names = crate.item_names;
+            assoc_item_names = crate.assoc_item_names;
+            short_names = crate.short_names;
             declarations = Option.value ~default:[] crate.ordered_decls;
-            type_decls;
-            fun_decls;
-            global_decls;
-            trait_decls;
-            trait_impls;
-            unit_metadata = Option.get crate.unit_metadata;
+            type_decls = crate.type_decls;
+            fun_decls = crate.fun_decls;
+            global_decls = crate.global_decls;
+            trait_decls = crate.trait_decls;
+            trait_impls = crate.trait_impls;
           }
   | _ -> combine_error_msgs js __FUNCTION__ (Error "")
+
+let crate_of_json_file (file : string) : (crate, string) result =
+  let* format = OfPostcardBasic.format_hint_of_file file in
+  match format with
+  | Json ->
+      let json = Yojson.Basic.from_file file in
+      crate_of_json json
+  | Postcard ->
+      Format.kasprintf Result.error
+        "This file looks like Postcard, but JSON deserialization was \
+         requested: %s. Please use Postcard deserialization or regenerate as \
+         JSON."
+        file
+  | Empty -> Error ("Input file is empty: " ^ file)

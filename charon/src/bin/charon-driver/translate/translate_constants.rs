@@ -2,8 +2,6 @@
 use crate::hax;
 use rustc_middle::ty;
 
-use crate::translate::translate_bodies::translate_variant_id;
-
 use super::translate_ctx::*;
 use charon_lib::ast::*;
 
@@ -80,7 +78,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     .try_collect()?;
                 use crate::hax::VariantKind;
                 let vid = if let VariantKind::Enum { index, .. } = *kind {
-                    Some(translate_variant_id(index))
+                    Some(self.translate_variant_id(index))
                 } else {
                     None
                 };
@@ -107,8 +105,9 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     let trait_ref = self.translate_trait_impl_expr(span, impl_expr)?;
                     // Trait consts can't have their own generics.
                     assert!(item.generic_args.is_empty());
-                    let name = self.translate_trait_item_name(&item.def_id)?;
-                    ConstantExprKind::TraitConst(trait_ref, name)
+                    let const_id =
+                        self.translate_assoc_const_id(trait_ref.trait_id(), &item.def_id)?;
+                    ConstantExprKind::TraitConst(trait_ref, const_id)
                 }
                 None => {
                     let global_ref = self.translate_global_decl_ref(span, item)?;

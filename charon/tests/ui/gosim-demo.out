@@ -117,18 +117,6 @@ where
 pub fn _eprint<'_0>(_1: Arguments<'_0>)
 = <opaque>
 
-// Full name: UNIT_METADATA
-fn UNIT_METADATA()
-{
-    let _0: (); // return
-
-    _0 = ()
-    return
-}
-
-// Full name: UNIT_METADATA
-const UNIT_METADATA: () = UNIT_METADATA()
-
 // Full name: test_crate::debug_slice
 fn debug_slice<'_0, T>(slice_1: &'_0 [T])
 where
@@ -242,13 +230,16 @@ fn main()
     let _3: &'3 [i32; 3 : usize]; // anonymous local
     let _4: &'4 [i32; 3 : usize]; // anonymous local
     let _5: &'5 [i32; 3 : usize]; // anonymous local
-    let _6: &'10 [i32; 3 : usize]; // anonymous local
-    let _7: [i32; 3 : usize]; // anonymous local
+    let _6: &'6 [i32; 3 : usize]; // anonymous local
+    let _7: &'10 [i32; 3 : usize]; // anonymous local
+    let _8: [i32; 3 : usize]; // anonymous local
 
     storage_live(_6)
     storage_live(_7)
-    _7 = [const 0 : i32, const 1 : i32, const 2 : i32]
-    _6 = &_7
+    storage_live(_8)
+    _8 = [const 0 : i32, const 1 : i32, const 2 : i32]
+    _7 = &_8
+    _6 = move _7
     storage_live(_5)
     _0 = ()
     storage_live(_1)

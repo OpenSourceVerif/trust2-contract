@@ -6,11 +6,13 @@ use crate::hax;
 use crate::hax::SInto;
 use charon_lib::ast::*;
 use charon_lib::formatter::{FmtCtx, IntoFormatter};
+use charon_lib::ids::IndexVec;
 use charon_lib::options::TranslateOptions;
+use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use rustc_middle::ty::TyCtxt;
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::VecDeque;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
@@ -44,12 +46,14 @@ pub struct TranslateCtx<'tcx> {
     /// When we find a use of a method, we mark it "used" using `mark_method_as_used`. This
     /// enqueues all known and future impls of this method. We also mark a method as used if we
     /// find an implementation of it in a non-opaque impl, and if the method is a required method.
-    pub method_status: IndexMap<TraitDeclId, HashMap<TraitItemName, MethodStatus>>,
+    pub method_status: IndexMap<TraitDeclId, IndexVec<TraitMethodId, MethodStatus>>,
 
     /// The map from rustc id to translated id.
     pub id_map: HashMap<TransItemSource, ItemId>,
     /// The reverse map of ids.
     pub reverse_id_map: HashMap<ItemId, TransItemSource>,
+    /// Map from rustc id to associated item id
+    pub assoc_item_id_map: HashMap<hax::DefId, AssocItemId>,
     /// The reverse filename map.
     pub file_to_id: HashMap<FileName, FileId>,
 
@@ -67,10 +71,6 @@ pub struct TranslateCtx<'tcx> {
     pub cached_item_metas: HashMap<TransItemSource, ItemMeta>,
     /// Compute which lifetimes are used in a `&'a mut T`. This is a global fixpoint analysis.
     pub lt_mutability_computer: LifetimeMutabilityComputer,
-    /// Cache translated dyn trait preshims by generic and associated arguments.
-    /// This is used to fetch the unique preshim
-    /// when invoking dyn trait methods (see transform_dyn_trait_calls.rs).
-    pub translated_preshims: HashSet<(TraitDeclId, Vec<Ty>)>,
 }
 
 /// Tracks whether a method is used (i.e. called or (non-opaquely) implemented).
@@ -163,13 +163,13 @@ impl<'tcx> TranslateCtx<'tcx> {
     /// possible.
     ///
     /// Used for computing names, for associated items, and for various checks.
-    pub fn poly_hax_def(&mut self, def_id: &hax::DefId) -> Result<Arc<hax::FullDef>, Error> {
+    pub fn poly_hax_def(&mut self, def_id: &hax::DefId) -> Result<Arc<hax::FullDef<'tcx>>, Error> {
         self.hax_def_for_item(&RustcItem::Poly(def_id.clone()))
     }
 
     /// Return the definition for this item. This uses the polymorphic or monomorphic definition
     /// depending on user choice.
-    pub fn hax_def_for_item(&mut self, item: &RustcItem) -> Result<Arc<hax::FullDef>, Error> {
+    pub fn hax_def_for_item(&mut self, item: &RustcItem) -> Result<Arc<hax::FullDef<'tcx>>, Error> {
         let def_id = item.def_id();
         let span = self.def_span(def_id);
         if let RustcItem::Mono(item_ref) = item
@@ -257,7 +257,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
 
     /// Return the definition for this item. This uses the polymorphic or monomorphic definition
     /// depending on user choice. For `TraitDecl` or `VTable`, we always use polymorphic definitions.
-    pub fn hax_def(&mut self, item: &hax::ItemRef) -> Result<Arc<hax::FullDef>, Error> {
+    pub fn hax_def(&mut self, item: &hax::ItemRef) -> Result<Arc<hax::FullDef<'tcx>>, Error> {
         let item = if self.monomorphize()
             && !matches!(
                 self.item_src.kind,
@@ -270,7 +270,10 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         self.t_ctx.hax_def_for_item(&item)
     }
 
-    pub(crate) fn poly_hax_def(&mut self, def_id: &hax::DefId) -> Result<Arc<hax::FullDef>, Error> {
+    pub(crate) fn poly_hax_def(
+        &mut self,
+        def_id: &hax::DefId,
+    ) -> Result<Arc<hax::FullDef<'tcx>>, Error> {
         self.t_ctx.poly_hax_def(def_id)
     }
 }

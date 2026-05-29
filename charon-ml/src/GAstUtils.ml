@@ -5,6 +5,9 @@ open GAst
 let get_target_information crate =
   match crate.target_information with
   | [ (_, info) ] -> info
+  | (_, info) :: rest when List.for_all (fun (_, i) -> i = info) rest ->
+      (* All targets agree on the layout — safe to use any one. *)
+      info
   | _ ->
       failwith "`get_target_information` can't be used in a multi-layout crate"
 
@@ -56,31 +59,62 @@ let bound_fun_sig_of_decl (def : fun_decl) : bound_fun_sig =
 (** Lookup a method in this trait decl. The two levels of binders in the output
     reflect that there are two binding levels: the trait generics and the method
     generics. *)
-let lookup_trait_decl_method (tdecl : trait_decl) (name : trait_item_name) :
+let lookup_trait_decl_method (tdecl : trait_decl) (id : trait_method_id) :
+    trait_method binder item_binder option =
+  Option.map
+    (fun m -> { item_binder_params = tdecl.generics; item_binder_value = m })
+    (TraitMethodId.Map.find_opt id tdecl.methods)
+
+let lookup_trait_decl_method_ref (tdecl : trait_decl) (id : trait_method_id) :
     fun_decl_ref binder item_binder option =
   Option.map
     (fun m ->
       {
-        item_binder_params = tdecl.generics;
+        item_binder_params = m.item_binder_params;
         item_binder_value =
           {
-            binder_params = m.binder_params;
-            binder_value = m.binder_value.item;
+            binder_params = m.item_binder_value.binder_params;
+            binder_value = m.item_binder_value.binder_value.item;
           };
       })
-    (List.find_opt
-       (fun (m : trait_method binder) -> m.binder_value.name = name)
-       tdecl.methods)
+    (lookup_trait_decl_method tdecl id)
 
 (** Lookup a method in this trait impl. The two levels of binders in the output
     reflect that there are two binding levels: the impl generics and the method
     generics. *)
-let lookup_trait_impl_method (timpl : trait_impl) (name : trait_item_name) :
+let lookup_trait_impl_method (timpl : trait_impl) (id : trait_method_id) :
     fun_decl_ref binder item_binder option =
   Option.map
-    (fun (_, bound_fn) ->
+    (fun bound_fn ->
       { item_binder_params = timpl.generics; item_binder_value = bound_fn })
-    (List.find_opt (fun (s, _) -> s = name) timpl.methods)
+    (TraitMethodId.Map.find_opt id timpl.methods)
+
+(** Resolve a [assoc_item_id] to a name. *)
+let get_assoc_item_name (crate : crate) (trait_id : trait_decl_id)
+    (id : assoc_item_id) : trait_item_name =
+  let names = TraitDeclId.Map.find trait_id crate.assoc_item_names in
+  match id with
+  | AssocIdMethod id -> TraitMethodId.nth names.methods id
+  | AssocIdConst id -> AssocConstId.nth names.consts id
+  | AssocIdType id -> AssocTypeId.nth names.types id
+
+(** Resolve a [trait_method_id] to a name. *)
+let get_method_name (crate : crate) (trait_id : trait_decl_id)
+    (id : trait_method_id) : trait_item_name =
+  let names = TraitDeclId.Map.find trait_id crate.assoc_item_names in
+  TraitMethodId.nth names.methods id
+
+(** Resolve a [assoc_type_id] to a name. *)
+let get_assoc_type_name (crate : crate) (trait_id : trait_decl_id)
+    (id : assoc_type_id) : trait_item_name =
+  let names = TraitDeclId.Map.find trait_id crate.assoc_item_names in
+  AssocTypeId.nth names.types id
+
+(** Resolve a [assoc_const_id] to a name. *)
+let get_assoc_const_name (crate : crate) (trait_id : trait_decl_id)
+    (id : assoc_const_id) : trait_item_name =
+  let names = TraitDeclId.Map.find trait_id crate.assoc_item_names in
+  AssocConstId.nth names.consts id
 
 let g_declaration_group_to_list (g : 'a g_declaration_group) : 'a list =
   match g with

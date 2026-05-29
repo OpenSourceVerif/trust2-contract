@@ -16,6 +16,7 @@
 //! signature) but not its contents.
 use itertools::Itertools;
 use rustc_middle::ty::TyCtxt;
+use rustc_span::sym;
 use std::cell::RefCell;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -24,6 +25,7 @@ use super::translate_ctx::*;
 use crate::hax;
 use crate::hax::SInto;
 use charon_lib::ast::*;
+use charon_lib::name_matcher::NamePattern;
 use charon_lib::options::{CliOpts, StartFrom, TranslateOptions};
 use charon_lib::transform::TransformCtx;
 use macros::VariantIndexArity;
@@ -65,7 +67,7 @@ pub enum TransItemSourceKind {
     Module,
     /// A trait impl method that uses the default method body from the trait declaration. The
     /// `DefId` is that of the trait impl.
-    DefaultedMethod(TraitImplSource, TraitItemName),
+    DefaultedMethod(TraitImplSource, TraitDeclId, TraitMethodId),
     /// The `call_*` method of the appropriate `TraitImplSource::Closure` impl.
     ClosureMethod(ClosureKind),
     /// A cast of a state-less closure as a function pointer.
@@ -86,10 +88,8 @@ pub enum TransItemSourceKind {
     /// this takes a `Ptr<dyn Trait>` and forwards to the method. The `DefId` refers to the method
     /// implementation.
     VTableMethod,
-    /// The drop shim function to be used in the vtable as a field, the ID is an `impl`.
+    /// The drop shim function to be used in the vtable as a field, the `DefId` is an `impl`.
     VTableDropShim,
-    VTableDropPreShim,
-    VTableMethodPreShim(TraitDeclId, TraitItemName),
 }
 
 /// The kind of a [`TransItemSourceKind::TraitImpl`].
@@ -167,7 +167,7 @@ impl TransItemSource {
             TransItemSourceKind::ClosureMethod(kind) => {
                 TransItemSourceKind::TraitImpl(TraitImplSource::Closure(kind))
             }
-            TransItemSourceKind::DefaultedMethod(impl_kind, _)
+            TransItemSourceKind::DefaultedMethod(impl_kind, ..)
             | TransItemSourceKind::DropInPlaceMethod(Some(impl_kind))
             | TransItemSourceKind::VTableInstance(impl_kind)
             | TransItemSourceKind::VTableInstanceInitializer(impl_kind) => {
@@ -207,6 +207,18 @@ impl RustcItem {
 }
 
 impl<'tcx> TranslateCtx<'tcx> {
+    /// Resolve a path to a list of matching `DefId`s.
+    pub fn resolve_path(
+        &self,
+        span: Span,
+        pat: &NamePattern,
+        strict: bool,
+    ) -> Result<Vec<rustc_span::def_id::DefId>, Error> {
+        super::resolve_path::def_path_def_ids(&self.hax_state, pat, strict).map_err(|err| {
+            register_error!(self, span, "failed to resolve item path `{pat}`: {err}")
+        })
+    }
+
     /// Returns the default translation kind for the given `DefId`. Returns `None` for items that
     /// we don't translate. Errors on unexpected items.
     pub fn base_kind_for_item(&mut self, def_id: &hax::DefId) -> Option<TransItemSourceKind> {
@@ -296,11 +308,7 @@ impl<'tcx> TranslateCtx<'tcx> {
                     | DropInPlaceMethod(..)
                     | VTableInstanceInitializer(..)
                     | VTableMethod
-                    | VTableDropShim
-                    | VTableDropPreShim
-                    | VTableMethodPreShim(..) => {
-                        ItemId::Fun(self.translated.fun_decls.reserve_slot())
-                    }
+                    | VTableDropShim => ItemId::Fun(self.translated.fun_decls.reserve_slot()),
                     InherentImpl | Module => return None,
                 };
                 // Add the id to the queue of declarations to translate
@@ -337,6 +345,133 @@ impl<'tcx> TranslateCtx<'tcx> {
             let item_src = self.reverse_id_map[&id].clone();
             self.items_to_translate.push_back(item_src);
         }
+    }
+
+    /// Register the associated types of this trait.
+    pub fn register_assoc_items(
+        &mut self,
+        trait_def_id: &hax::DefId,
+        trait_id: TraitDeclId,
+    ) -> Result<(), Error> {
+        if self.method_status.get(trait_id).is_some() {
+            return Ok(());
+        }
+        let trait_def = self.poly_hax_def(trait_def_id)?;
+        let hax::FullDefKind::Trait { items, .. } = trait_def.kind() else {
+            unreachable!()
+        };
+        let names = self
+            .translated
+            .assoc_item_names
+            .get_or_extend_and_insert(trait_id, Default::default);
+        for item in items {
+            let name = TraitItemName(
+                item.name
+                    .as_ref()
+                    .map(|n| n.to_string().into())
+                    .unwrap_or_default(),
+            );
+            let id: AssocItemId = match item.kind {
+                hax::AssocKind::Type { .. } => names.types.push(name).into(),
+                hax::AssocKind::Fn { .. } => names.methods.push(name).into(),
+                hax::AssocKind::Const { .. } => names.consts.push(name).into(),
+            };
+            self.assoc_item_id_map.insert(item.def_id.clone(), id);
+        }
+        // Add a virtual method to the `Destruct` trait.
+        if trait_def.lang_item == Some(sym::destruct) {
+            let method_name = TraitItemName("drop_in_place".into());
+            names.methods.push(method_name);
+        }
+        self.method_status.get_or_extend_and_insert(trait_id, || {
+            names.methods.map_ref(|_| MethodStatus::default())
+        });
+        Ok(())
+    }
+
+    /// Get the unique per-trait id corresponding to this associated item. The `DefId` can be of an
+    /// item declaration or item implementation.
+    pub fn translate_assoc_item_id(
+        &mut self,
+        trait_id: TraitDeclId,
+        item_def_id: &hax::DefId,
+    ) -> Result<AssocItemId, Error> {
+        // The same assoc item `DefId` could belong to several `TraitDeclId`s because of
+        // monomorphization, so we only return the item id if we know this trait's data is
+        // initialized.
+        if let Some(&item_id) = self.assoc_item_id_map.get(item_def_id)
+            && self.method_status.get(trait_id).is_some()
+        {
+            return Ok(item_id);
+        }
+
+        let item_def = self.poly_hax_def(item_def_id)?;
+        let assoc = match item_def.kind() {
+            hax::FullDefKind::AssocTy {
+                associated_item, ..
+            }
+            | hax::FullDefKind::AssocConst {
+                associated_item, ..
+            }
+            | hax::FullDefKind::AssocFn {
+                associated_item, ..
+            } => associated_item,
+            _ => panic!("Unexpected def for associated item: {item_def:?}"),
+        };
+        let decl_def_id = assoc.implemented_trait_item_id();
+
+        if decl_def_id != item_def_id
+            && let Some(&item_id) = self.assoc_item_id_map.get(decl_def_id)
+            && self.method_status.get(trait_id).is_some()
+        {
+            self.assoc_item_id_map.insert(item_def_id.clone(), item_id);
+            return Ok(item_id);
+        }
+
+        let trait_def_id = decl_def_id.parent(&self.hax_state).unwrap();
+        self.register_assoc_items(&trait_def_id, trait_id)?;
+        let item_id = *self.assoc_item_id_map.get(decl_def_id).unwrap();
+        Ok(item_id)
+    }
+
+    /// Register a trait method and return its `TraitMethodId`. This id is unique per trait.
+    /// This does not make the method be considered "used"; use `mark_method_as_used` for that.
+    pub fn translate_trait_method_id_no_enqueue(
+        &mut self,
+        trait_id: TraitDeclId,
+        def_id: &hax::DefId,
+    ) -> Result<TraitMethodId, Error> {
+        let item_id = self.translate_assoc_item_id(trait_id, def_id)?;
+        Ok(*item_id.as_method().unwrap())
+    }
+    /// Register a trait method and return its `TraitMethodId`. This id is unique per trait.
+    /// This makes the method be considered "used".
+    pub fn translate_trait_method_id(
+        &mut self,
+        trait_id: TraitDeclId,
+        def_id: &hax::DefId,
+    ) -> Result<TraitMethodId, Error> {
+        let method_id = self.translate_trait_method_id_no_enqueue(trait_id, def_id)?;
+        self.mark_method_as_used(trait_id, method_id);
+        Ok(method_id)
+    }
+    /// Register a trait associated type and return its `AssocTypeId`. This id is unique per trait.
+    pub fn translate_assoc_type_id(
+        &mut self,
+        trait_id: TraitDeclId,
+        def_id: &hax::DefId,
+    ) -> Result<AssocTypeId, Error> {
+        let item_id = self.translate_assoc_item_id(trait_id, def_id)?;
+        Ok(*item_id.as_type().unwrap())
+    }
+    /// Register a trait associated const and return its `AssocTypeId`. This id is unique per trait.
+    pub fn translate_assoc_const_id(
+        &mut self,
+        trait_id: TraitDeclId,
+        def_id: &hax::DefId,
+    ) -> Result<AssocConstId, Error> {
+        let item_id = self.translate_assoc_item_id(trait_id, def_id)?;
+        Ok(*item_id.as_const().unwrap())
     }
 
     pub(crate) fn register_target_info(&mut self) {
@@ -616,13 +751,13 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
             None => FnPtrKind::Fun(fun_item.id),
             // Trait method
             Some(trait_ref) => {
-                let name = self.t_ctx.translate_trait_item_name(&item.def_id)?;
                 let method_decl_id = *fun_item
                     .id
                     .as_regular()
                     .expect("methods are not builtin functions");
-                self.mark_method_as_used(trait_ref.trait_decl_ref.skip_binder.id, name);
-                FnPtrKind::Trait(trait_ref.move_under_binder(), name, method_decl_id)
+                let trait_decl_id = trait_ref.trait_id();
+                let method_id = self.translate_trait_method_id(trait_decl_id, &item.def_id)?;
+                FnPtrKind::Trait(trait_ref.move_under_binder(), method_id, method_decl_id)
             }
         };
         let late_bound = match self.hax_def(item)?.kind() {
@@ -699,7 +834,11 @@ pub fn translate<'tcx>(
     let translate_options = TranslateOptions::new(&mut error_ctx, cli_options);
 
     let traits_to_remove: HashSet<rustc_hir::def_id::DefId> = {
-        let hax_state = hax::state::State::new(tcx, hax::options::Options::default());
+        let hax_state = hax::state::State::new(
+            tcx,
+            hax::options::Options::default(),
+            hax::options::BoundsOptions::default(),
+        );
         translate_options
             .hide_traits
             .iter()
@@ -710,10 +849,10 @@ pub fn translate<'tcx>(
         tcx,
         hax::options::Options {
             inline_anon_consts: !translate_options.raw_consts,
-            bounds_options: hax::options::BoundsOptions {
-                add_destruct_bounds: translate_options.add_destruct_bounds,
-                remove_traits: traits_to_remove,
-            },
+        },
+        hax::options::BoundsOptions {
+            add_destruct_bounds: translate_options.add_destruct_bounds,
+            remove_traits: traits_to_remove,
         },
     );
 
@@ -735,6 +874,7 @@ pub fn translate<'tcx>(
             ..TranslatedCrate::default()
         },
         method_status: Default::default(),
+        assoc_item_id_map: Default::default(),
         id_map: Default::default(),
         reverse_id_map: Default::default(),
         file_to_id: Default::default(),
@@ -744,7 +884,6 @@ pub fn translate<'tcx>(
         cached_item_metas: Default::default(),
         cached_names: Default::default(),
         lt_mutability_computer: Default::default(),
-        translated_preshims: Default::default(),
     };
     ctx.register_target_info();
 
@@ -752,19 +891,10 @@ pub fn translate<'tcx>(
     for start_from in ctx.options.start_from.clone() {
         match start_from {
             StartFrom::Pattern { pattern, strict } => {
-                match super::resolve_path::def_path_def_ids(&ctx.hax_state, &pattern, strict) {
-                    Ok(resolved) => {
-                        for def_id in resolved {
-                            let def_id: hax::DefId = def_id.sinto(&ctx.hax_state);
-                            ctx.enqueue_module_item(&def_id);
-                        }
-                    }
-                    Err(err) => {
-                        register_error!(
-                            ctx,
-                            Span::dummy(),
-                            "when processing starting pattern `{pattern}`: {err}"
-                        );
+                if let Ok(def_ids) = ctx.resolve_path(Span::dummy(), &pattern, strict) {
+                    for def_id in def_ids {
+                        let def_id: hax::DefId = def_id.sinto(&ctx.hax_state);
+                        ctx.enqueue_module_item(&def_id);
                     }
                 }
             }
@@ -810,8 +940,6 @@ pub fn translate<'tcx>(
         "Queue after we explored the crate:\n{:?}",
         &ctx.items_to_translate
     );
-
-    ctx.translate_unit_metadata_const();
 
     // Translate.
     //
