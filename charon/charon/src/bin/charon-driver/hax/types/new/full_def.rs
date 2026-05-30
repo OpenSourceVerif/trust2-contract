@@ -6,11 +6,12 @@ use rustc_hir::def::DefKind as RDefKind;
 use rustc_middle::mir;
 use rustc_middle::ty;
 use rustc_span::def_id::DefId as RDefId;
+use std::marker::PhantomData;
 use std::sync::Arc;
 
 /// Gathers a lot of definition information about a [`rustc_hir::def_id::DefId`].
 #[derive(Clone, Debug)]
-pub struct FullDef {
+pub struct FullDef<'tcx> {
     /// A reference to the current item. If the item was provided with generic args, they are
     /// stored here; otherwise the args are the identity_args for this item.
     pub this: ItemRef,
@@ -28,7 +29,7 @@ pub struct FullDef {
     pub lang_item: Option<Symbol>,
     /// If this definition is a diagnostic item, we store the identifier, e.g. `box_new`.
     pub diagnostic_item: Option<Symbol>,
-    pub kind: FullDefKind,
+    pub kind: FullDefKind<'tcx>,
 }
 
 /// Construct the `FullDefKind` for this item. If `args` is `Some`, the returned `FullDef` will be
@@ -37,7 +38,7 @@ fn translate_full_def<'tcx, S>(
     s: &S,
     def_id: &DefId,
     args: Option<ty::GenericArgsRef<'tcx>>,
-) -> FullDef
+) -> FullDef<'tcx>
 where
     S: UnderOwnerState<'tcx>,
 {
@@ -60,6 +61,7 @@ where
                 virtual_impl_for(s, ty::TraitRef::new(tcx, destruct_trait, [type_of_self]))
             };
             kind = FullDefKind::Adt {
+                phantom: PhantomData,
                 param_env,
                 adt_kind,
                 variants: [].into_iter().collect(),
@@ -104,7 +106,6 @@ where
                 param_env,
                 ty,
                 kind: ConstKind::PromotedConst,
-                value: None,
             };
 
             lang_item = Default::default();
@@ -176,7 +177,7 @@ impl DefId {
     }
 
     /// Get the full definition of this item.
-    pub fn full_def<'tcx, S>(&self, s: &S) -> Arc<FullDef>
+    pub fn full_def<'tcx, S>(&self, s: &S) -> Arc<FullDef<'tcx>>
     where
         S: BaseState<'tcx>,
     {
@@ -188,7 +189,7 @@ impl DefId {
         &self,
         s: &S,
         args: Option<ty::GenericArgsRef<'tcx>>,
-    ) -> Arc<FullDef>
+    ) -> Arc<FullDef<'tcx>>
     where
         S: BaseState<'tcx>,
     {
@@ -207,7 +208,7 @@ impl DefId {
 
 impl ItemRef {
     /// Get the full definition of the item, instantiated with the provided generics.
-    pub fn instantiated_full_def<'tcx, S>(&self, s: &S) -> Arc<FullDef>
+    pub fn instantiated_full_def<'tcx, S>(&self, s: &S) -> Arc<FullDef<'tcx>>
     where
         S: BaseState<'tcx>,
     {
@@ -302,10 +303,11 @@ pub enum InlineAttr {
 
 #[derive(Clone, Debug)]
 #[allow(clippy::large_enum_variant)]
-pub enum FullDefKind {
+pub enum FullDefKind<'tcx> {
     // Types
     /// ADts (`Struct`, `Enum` and `Union` map to this variant).
     Adt {
+        phantom: PhantomData<*mut &'tcx ()>,
         param_env: ParamEnv,
         adt_kind: AdtKind,
         variants: IndexVec<VariantIdx, VariantDef>,
@@ -436,14 +438,12 @@ pub enum FullDefKind {
         param_env: ParamEnv,
         ty: Ty,
         kind: ConstKind,
-        value: Option<ConstantExpr>,
     },
     /// Associated constant: `trait MyTrait { const ASSOC: usize; }`
     AssocConst {
         param_env: ParamEnv,
         associated_item: AssocItem,
         ty: Ty,
-        value: Option<ConstantExpr>,
     },
     Static {
         param_env: ParamEnv,
@@ -451,6 +451,8 @@ pub enum FullDefKind {
         safety: Safety,
         /// Whether it's a `static mut` or just a `static`.
         mutability: Mutability,
+        /// Whether it's a `#[thread_local] static`.
+        thread_local: bool,
         /// Whether it's an anonymous static generated for nested allocations.
         nested: bool,
         ty: Ty,
@@ -619,7 +621,7 @@ fn translate_full_def_kind<'tcx, S>(
     s: &S,
     def_id: &DefId,
     args: Option<ty::GenericArgsRef<'tcx>>,
-) -> FullDefKind
+) -> FullDefKind<'tcx>
 where
     S: BaseState<'tcx>,
 {
@@ -652,6 +654,7 @@ where
 
             let destruct_trait = tcx.lang_items().destruct_trait().unwrap();
             FullDefKind::Adt {
+                phantom: PhantomData,
                 param_env: get_param_env(s, args),
                 adt_kind: def.adt_kind().sinto(s),
                 variants,
@@ -924,14 +927,12 @@ where
                 param_env: get_param_env(s, args),
                 ty: self_ty.sinto(s),
                 kind,
-                value: const_value(s, def_id, args_or_default()),
             }
         }
         RDefKind::AssocConst { .. } => FullDefKind::AssocConst {
             param_env: get_param_env(s, args),
             associated_item: AssocItem::sfrom_instantiated(s, &tcx.associated_item(def_id), args),
             ty: type_of_self().sinto(s),
-            value: const_value(s, def_id, args_or_default()),
         },
         RDefKind::Static {
             safety,
@@ -942,6 +943,7 @@ where
             param_env: get_param_env(s, args),
             safety: safety.sinto(s),
             mutability: mutability.sinto(s),
+            thread_local: tcx.is_thread_local_static(def_id),
             nested: nested.sinto(s),
             ty: type_of_self().sinto(s),
         },
@@ -1047,7 +1049,6 @@ pub enum ImplAssocItemValue {
 
 /// Partial data for a trait impl, used for fake trait impls that we generate ourselves such as
 /// `FnOnce` and `Drop` impls.
-
 #[derive(Clone, Debug)]
 pub struct VirtualTraitImpl {
     /// The trait that is implemented by this impl block.
@@ -1056,9 +1057,11 @@ pub struct VirtualTraitImpl {
     pub implied_impl_exprs: Vec<ImplExpr>,
     /// The associated types and their predicates, in definition order.
     pub types: Vec<(Ty, Vec<ImplExpr>)>,
+    /// The methods, in definition order.
+    pub methods: Vec<DefId>,
 }
 
-impl FullDef {
+impl<'tcx> FullDef<'tcx> {
     pub fn def_id(&self) -> &DefId {
         &self.this.def_id
     }
@@ -1068,8 +1071,28 @@ impl FullDef {
         &self.this
     }
 
-    pub fn kind(&self) -> &FullDefKind {
+    pub fn kind(&self) -> &FullDefKind<'tcx> {
         &self.kind
+    }
+
+    /// Evaluate the value of a `Const` or `AssocConst` item.
+    pub fn const_value<S>(&self, s: &S) -> Option<ConstantExpr>
+    where
+        S: BaseState<'tcx>,
+    {
+        match self.kind() {
+            FullDefKind::Const { .. } | FullDefKind::AssocConst { .. } => {}
+            _ => panic!("expected a Const or AssocConst definition"),
+        }
+        let s = &s.with_hax_owner(self.def_id());
+        let def_id = self.def_id().as_rust_def_id()?;
+        let args = self.this().rustc_args(s);
+        let uneval = ty::UnevaluatedConst::new(def_id, args);
+        let c = eval_ty_constant(s, uneval)?;
+        match c.kind() {
+            ty::ConstKind::Error(..) => None,
+            _ => Some(c.sinto(s)),
+        }
     }
 
     /// Returns the generics and predicates for definitions that have those.
@@ -1094,7 +1117,7 @@ impl FullDef {
     }
 
     /// Return the parent of this item if the item inherits the typing context from its parent.
-    pub fn typing_parent<'tcx>(&self, s: &impl BaseState<'tcx>) -> Option<ItemRef> {
+    pub fn typing_parent(&self, s: &impl BaseState<'tcx>) -> Option<ItemRef> {
         use FullDefKind::*;
         match self.kind() {
             AssocTy { .. }
@@ -1151,7 +1174,7 @@ impl FullDef {
 
     /// Lists the children of this item that can be named, in the way of normal rust paths. For
     /// types, this includes inherent items.
-    pub fn nameable_children<'tcx>(&self, s: &impl BaseState<'tcx>) -> Vec<(Symbol, DefId)> {
+    pub fn nameable_children(&self, s: &impl BaseState<'tcx>) -> Vec<(Symbol, DefId)> {
         let mut children = match self.kind() {
             FullDefKind::Mod { items } => items
                 .iter()
@@ -1265,10 +1288,17 @@ where
             (ty, required_impl_exprs)
         })
         .collect();
+    let methods = tcx
+        .associated_items(trait_ref.def_id)
+        .in_definition_order()
+        .filter(|assoc| matches!(assoc.kind, ty::AssocKind::Fn { .. }))
+        .map(|assoc| assoc.def_id.sinto(s))
+        .collect();
     Box::new(VirtualTraitImpl {
         trait_pred,
         implied_impl_exprs: required_impl_exprs,
         types,
+        methods,
     })
 }
 
@@ -1297,7 +1327,7 @@ fn get_param_env<'tcx, S: UnderOwnerState<'tcx>>(
             predicates: if is_typeck_child {
                 GenericPredicates::default()
             } else {
-                ItemPredicates::required(tcx, def_id, &s.base().options.bounds_options).sinto(s)
+                ItemPredicates::required(s.base().elab_ctx, def_id).sinto(s)
             },
             parent,
         },
@@ -1321,25 +1351,11 @@ fn get_implied_predicates<'tcx, S: UnderOwnerState<'tcx>>(
     let tcx = s.base().tcx;
     let def_id = s.owner_id();
     let typing_env = s.typing_env();
-    let mut implied_predicates =
-        ItemPredicates::implied(tcx, def_id, &s.base().options.bounds_options);
+    let mut implied_predicates = ItemPredicates::implied(s.base().elab_ctx, def_id);
     if args.is_some() {
         for pred in implied_predicates.iter_mut() {
             pred.clause = substitute(tcx, typing_env, args, pred.clause);
         }
     }
     implied_predicates.sinto(s)
-}
-
-fn const_value<'tcx, S: UnderOwnerState<'tcx>>(
-    s: &S,
-    def_id: RDefId,
-    args: ty::GenericArgsRef<'tcx>,
-) -> Option<ConstantExpr> {
-    let uneval = ty::UnevaluatedConst::new(def_id, args);
-    let c = eval_ty_constant(s, uneval)?;
-    match c.kind() {
-        ty::ConstKind::Error(..) => None,
-        _ => Some(c.sinto(s)),
-    }
 }

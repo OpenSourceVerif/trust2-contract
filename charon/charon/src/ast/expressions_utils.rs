@@ -69,7 +69,8 @@ impl Place {
                 tref.generics.types[0].clone()
             }
             Adt(..) | TypeVar(_) | Literal(_) | Never | TraitType(..) | DynTrait(..)
-            | FnPtr(..) | FnDef(..) | PtrMetadata(..) | Array(..) | Slice(_) | Error(..) => {
+            | FnPtr(..) | FnDef(..) | PtrMetadata(..) | Array(..) | Slice(_) | Pattern(..)
+            | Error(..) => {
                 panic!("internal type error")
             }
         };
@@ -90,6 +91,13 @@ impl Place {
 }
 
 impl ConstantExpr {
+    pub fn mk_unit() -> Self {
+        ConstantExpr {
+            kind: ConstantExprKind::Adt(None, Vec::new()),
+            ty: Ty::mk_unit(),
+        }
+    }
+
     pub fn mk_usize(scalar: ScalarValue) -> Self {
         ConstantExpr {
             kind: ConstantExprKind::Literal(Literal::Scalar(scalar)),
@@ -100,10 +108,7 @@ impl ConstantExpr {
 
 impl Operand {
     pub fn mk_const_unit() -> Self {
-        Operand::Const(Box::new(ConstantExpr {
-            kind: ConstantExprKind::Adt(None, Vec::new()),
-            ty: Ty::mk_unit(),
-        }))
+        Operand::Const(Box::new(ConstantExpr::mk_unit()))
     }
 
     pub fn ty(&self) -> &Ty {
@@ -168,7 +173,7 @@ impl ProjectionElem {
                     }
                     Adt(..) | TypeVar(_) | Literal(_) | Never | TraitType(..) | DynTrait(..)
                     | Array(..) | Slice(..) | FnPtr(..) | FnDef(..) | PtrMetadata(..)
-                    | Error(..) => {
+                    | Pattern(..) | Error(..) => {
                         // Type error
                         return None;
                     }
@@ -263,7 +268,6 @@ impl FnPtr {
         match *self.kind {
             FnPtrKind::Fun(FunId::Regular(fun_id)) => krate
                 .item_name(fun_id)
-                .unwrap()
                 .mono_args()
                 .unwrap_or(&self.generics),
             //  We don't mono builtins.

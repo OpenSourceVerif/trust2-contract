@@ -25,7 +25,7 @@ pub use vars::*;
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("R")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("R"))]
 pub enum Region {
     /// Region variable. See `DeBruijnVar` for details.
     Var(RegionDbVar),
@@ -44,7 +44,9 @@ pub enum Region {
 /// definition. Note that every path designated by `TraitInstanceId` refers
 /// to a *trait instance*, which is why the [`TraitRefKind::Clause`] variant may seem redundant
 /// with some of the other variants.
-#[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
+#[derive(
+    Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, EnumIsA, Drive, DriveMut,
+)]
 pub enum TraitRefKind {
     /// A specific top-level implementation item.
     TraitImpl(TraitImplRef),
@@ -100,16 +102,21 @@ pub enum TraitRefKind {
     ///                         clause 1 from item W (from local clause 0)
     /// }
     /// ```
-    ItemClause(Box<TraitRef>, TraitItemName, TraitClauseId),
+    ItemClause(Box<TraitRef>, AssocTypeId, TraitClauseId),
 
     /// The implicit `Self: Trait` clause. Present inside trait declarations, including trait
     /// method declarations. Not present in trait implementations as we can use `TraitImpl` intead.
-    #[charon::rename("Self")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("Self"))]
     SelfId,
 
     /// A trait implementation that is computed by the compiler, such as for built-in trait
     /// `Sized`. This morally points to an invisible `impl` block; as such it contains
     /// the information we may need from one.
+    ///
+    /// Also used as a placeholder for trait clauses that were stripped by the
+    /// `--remove-adt-clauses` pass: the original `Clause` reference is replaced with a
+    /// `BuiltinOrAuto { builtin_data: RemovedAdtClause, .. }`. See
+    /// [`BuiltinImplData::RemovedAdtClause`].
     BuiltinOrAuto {
         #[drive(skip)]
         builtin_data: BuiltinImplData,
@@ -118,14 +125,14 @@ pub enum TraitRefKind {
         /// FnMut` impl would have a `TraitRef` for `T: FnOnce`.
         parent_trait_refs: IndexVec<TraitClauseId, TraitRef>,
         /// The values of the associated types for this trait.
-        types: Vec<(TraitItemName, TraitAssocTyImpl)>,
+        types: IndexMap<AssocTypeId, TraitAssocTyImpl>,
     },
 
     /// The automatically-generated implementation for `dyn Trait`.
     Dyn,
 
     /// For error reporting.
-    #[charon::rename("UnknownTrait")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("UnknownTrait"))]
     #[drive(skip)]
     Unknown(String),
 }
@@ -133,7 +140,7 @@ pub enum TraitRefKind {
 /// Describes a built-in impl. Mostly lists the implemented trait, sometimes with more details
 /// about the contents of the implementation.
 #[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
-#[charon::variants_prefix("Builtin")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Builtin"))]
 pub enum BuiltinImplData {
     // Marker traits (without methods).
     Sized,
@@ -155,6 +162,10 @@ pub enum BuiltinImplData {
     FnOnce,
     Copy,
     Clone,
+    /// Placeholder used by the `--remove-adt-clauses` pass when it strips a trait clause from a
+    /// type declaration. References to the removed clause are rewritten as
+    /// `BuiltinOrAuto { builtin_data: RemovedAdtClause, .. }`.
+    RemovedAdtClause,
 }
 
 /// A reference to a trait.
@@ -212,7 +223,7 @@ pub type TypeOutlives = OutlivesPred<Ty, Region>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitTypeConstraint {
     pub trait_ref: TraitRef,
-    pub type_name: TraitItemName,
+    pub type_id: AssocTypeId,
     pub ty: Ty,
 }
 
@@ -231,23 +242,23 @@ pub type BoxedArgs = Box<GenericArgs>;
 /// issues in the derived ocaml visitors.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct RegionBinder<T> {
-    #[charon::rename("binder_regions")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("binder_regions"))]
     #[serde_state(stateless)]
     pub regions: IndexVec<RegionId, RegionParam>,
     /// Named this way to highlight accesses to the inner value that might be handling parameters
     /// incorrectly. Prefer using helper methods.
-    #[charon::rename("binder_value")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("binder_value"))]
     pub skip_binder: T,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
-#[charon::variants_prefix("BK")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("BK"))]
 pub enum BinderKind {
     /// The parameters of a generic associated type.
-    TraitType(TraitDeclId, TraitItemName),
+    TraitType(TraitDeclId, AssocTypeId),
     /// The parameters of a trait method. Used in the `methods` lists in trait decls and trait
     /// impls.
-    TraitMethod(TraitDeclId, TraitItemName),
+    TraitMethod(TraitDeclId, TraitMethodId),
     /// The parameters bound in a non-trait `impl` block. Used in the `Name`s of inherent methods.
     InherentImplBlock,
     /// Binder used for `dyn Trait` existential predicates.
@@ -261,14 +272,14 @@ pub enum BinderKind {
 /// now), trait methods, GATs (TODO).
 #[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct Binder<T> {
-    #[charon::rename("binder_params")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("binder_params"))]
     pub params: GenericParams,
     /// Named this way to highlight accesses to the inner value that might be handling parameters
     /// incorrectly. Prefer using helper methods.
-    #[charon::rename("binder_value")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("binder_value"))]
     pub skip_binder: T,
     /// The kind of binder this is.
-    #[charon::opaque]
+    #[cfg_attr(feature = "charon_on_charon", charon::opaque)]
     #[drive(skip)]
     pub kind: BinderKind,
 }
@@ -334,9 +345,9 @@ pub enum PredicateOrigin {
     //     type AssocType: Clone;
     // }
     // ```
-    TraitItem(TraitItemName),
+    TraitItem(AssocTypeId),
     /// Clauses that are part of a `dyn Trait` type.
-    #[charon::rename("OriginDyn")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("OriginDyn"))]
     Dyn,
 }
 
@@ -355,38 +366,32 @@ pub struct VariantLayout {
     /// Note that uninhabited types can have arbitrary layouts.
     #[drive(skip)]
     pub uninhabited: bool,
-    /// The memory representation of the discriminant corresponding to this
-    /// variant. It must be of the same type as the corresponding [`DiscriminantLayout::tag_ty`].
-    ///
-    /// If it's `None`, then this variant is either:
-    /// - the untagged variant (cf. [`TagEncoding::Niche::untagged_variant`]) of a niched enum;
-    /// - the single variant of a struct;
-    /// - uninhabited.
+    /// How to write the tag when constructing this variant. Each entry means: write `value` at
+    /// byte `offset`. Mirrors MiniRust's `Variant::tagger`.
     #[drive(skip)]
-    pub tag: Option<ScalarValue>,
+    pub tagger: Vec<(ByteCount, ScalarValue)>,
 }
 
-/// Describes how we represent the active enum variant in memory.
+/// Decision tree used to determine the active variant by reading memory. Mirrors MiniRust's
+/// `Discriminator`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TagEncoding {
-    /// Represents the direct encoding of the discriminant as the tag via integer casts.
-    Direct,
-    /// Represents the encoding of the discriminant in the niche of variant `untagged_variant`.
-    Niche { untagged_variant: VariantId },
-}
-
-/// Layout of the discriminant.
-/// Describes the offset of the discriminant field as well as its encoding
-/// as `tag` in memory.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct DiscriminantLayout {
-    /// The offset of the discriminant in bytes.
-    pub offset: ByteCount,
-    /// The representation type of the discriminant.
-    pub tag_ty: IntegerTy,
-    /// How the tag is encoding in memory.
-    pub encoding: TagEncoding,
-    // FIXME: Should probably contain the valid range of the tag, too.
+pub enum Discriminator {
+    /// The variant is known.
+    Known(VariantId),
+    /// No valid variant (e.g., invalid tag value).
+    Invalid,
+    /// Branch on an integer value read from memory at `offset`.
+    Branch {
+        /// Byte offset to read from.
+        offset: ByteCount,
+        /// Integer type to read.
+        int_ty: IntegerTy,
+        /// If the integer is in one of these ranges, continue with the given `Discriminator`. The
+        /// ranges are sorted.
+        children: Vec<(std::ops::RangeInclusive<ScalarValue>, Discriminator)>,
+        /// Fallback if no range in `children` matches.
+        fallback: Box<Discriminator>,
+    },
 }
 
 /// Simplified type layout information.
@@ -396,7 +401,6 @@ pub struct DiscriminantLayout {
 /// some of the layout parts are not available.
 #[derive(
     Debug,
-    Default,
     Clone,
     PartialEq,
     Eq,
@@ -415,17 +419,22 @@ pub struct Layout {
     /// The alignment, in bytes.
     #[drive(skip)]
     pub align: Option<ByteCount>,
-    /// The discriminant's layout, if any. Only relevant for types with multiple variants.
+    /// Decision tree that determines the active variant by reading memory. Only `Some` for enums.
     #[drive(skip)]
-    pub discriminant_layout: Option<DiscriminantLayout>,
+    pub discriminator: Option<Discriminator>,
     /// Whether the type is uninhabited, i.e. has any valid value at all.
     /// Note that uninhabited types can have arbitrary layouts: `(u32, !)` has space for the `u32`
     /// and `enum E2 { A, B(!), C(i32, !) }` may have space for a discriminant.
     #[drive(skip)]
     pub uninhabited: bool,
-    /// Map from `VariantId` to the corresponding field layouts. Structs are modeled as having
-    /// exactly one variant, unions as having no variant.
-    pub variant_layouts: IndexVec<VariantId, VariantLayout>,
+    /// Map from `VariantId` to the corresponding field layouts. Some variants don't have a
+    /// meaningful layout due to being uninhabited (though an uninhabited variant may have a
+    /// layout). Structs and unions are modeled as having exactly one variant.
+    pub variant_layouts: IndexVec<VariantId, Option<VariantLayout>>,
+    /// The representation options of this type declaration as annotated by the user.
+    #[drive(skip)]
+    #[serde_state(stateless)]
+    pub repr: ReprOptions,
 }
 
 /// The metadata stored in a pointer. That's the information stored in pointers alongside
@@ -435,7 +444,7 @@ pub struct Layout {
 #[serde_state(default_state = ())]
 pub enum PtrMetadata {
     /// Types that need no metadata, namely `T: Sized` types.
-    #[charon::rename("NoMetadata")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("NoMetadata"))]
     None,
     /// Metadata for `[T]` and `str`, and user-defined types
     /// that directly or indirectly contain one of the two.
@@ -443,9 +452,7 @@ pub enum PtrMetadata {
     /// Notably, length for `[T]` denotes the number of elements in the slice.
     /// While for `str` it denotes the number of bytes in the string.
     Length,
-    /// Metadata for `dyn Trait`, referring to the vtable struct,
-    /// also for user-defined types that directly or indirectly contain a `dyn Trait`.
-    /// Of type `&'static vtable`
+    /// Metadata for `dyn Trait`, referring to the vtable struct. Has type `&'static vtable`
     VTable(TypeDeclRef),
     /// Unknown due to generics, but will inherit from the given type.
     /// This is consistent with `<Ty as Pointee>::Metadata`.
@@ -455,9 +462,10 @@ pub enum PtrMetadata {
 
 /// Describes which layout algorithm is used for representing the corresponding type.
 /// Depends on the `#[repr(...)]` used.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ReprAlgorithm {
     /// The default layout algorithm. Used without an explicit `ŗepr` or for `repr(Rust)`.
+    #[default]
     Rust,
     /// The C layout algorithm as enforced by `repr(C)`.
     C,
@@ -475,9 +483,9 @@ pub enum AlignmentModifier {
 ///
 /// NOTE: This does not include less common/unstable representations such as `#[repr(simd)]`
 /// or the compiler internal `#[repr(linear)]`. Similarly, enum discriminant representations
-/// are encoded in [`Variant::discriminant`] and [`DiscriminantLayout`] instead.
+/// are encoded in [`Variant::discriminant`] and [`Discriminator`] instead.
 /// This only stores whether the discriminant type was derived from an explicit annotation.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ReprOptions {
     pub repr_algo: ReprAlgorithm,
     pub align_modif: Option<AlignmentModifier>,
@@ -515,11 +523,6 @@ pub struct TypeDecl {
     pub layout: SeqHashMap<TargetTriple, Layout>,
     /// The metadata associated with a pointer to the type.
     pub ptr_metadata: PtrMetadata,
-    /// The representation options of this type declaration as annotated by the user.
-    /// Is `None` for foreign type declarations.
-    #[drive(skip)]
-    #[serde_state(stateless)]
-    pub repr: Option<ReprOptions>,
     /// Associated trust2-contract specifications.
     pub specs: TypeSpecs,
 }
@@ -552,7 +555,7 @@ pub enum TypeDeclKind {
     Alias(Ty),
     /// Used if an error happened during the extraction, and we don't panic
     /// on error.
-    #[charon::rename("TDeclError")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("TDeclError"))]
     #[drive(skip)]
     Error(String),
 }
@@ -560,17 +563,18 @@ pub enum TypeDeclKind {
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 #[serde_state(stateless)]
 pub struct Variant {
+    pub id: VariantId,
     pub span: Span,
     #[drive(skip)]
     pub attr_info: AttrInfo,
-    #[charon::rename("variant_name")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("variant_name"))]
     #[drive(skip)]
     pub name: String,
     #[serde_state(stateful)]
     pub fields: IndexVec<FieldId, Field>,
     /// The discriminant value outputted by `std::mem::discriminant` for this variant. This can be
-    /// different than the value stored in memory (called `tag`). That one is described by
-    /// [`DiscriminantLayout`] and [`TagEncoding`].
+    /// different than the value stored in memory (called `tag`); that one is described by
+    /// [`Discriminator`] and [`VariantLayout::tagger`].
     pub discriminant: Literal,
 }
 
@@ -580,10 +584,10 @@ pub struct Field {
     pub span: Span,
     #[drive(skip)]
     pub attr_info: AttrInfo,
-    #[charon::rename("field_name")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("field_name"))]
     #[drive(skip)]
     pub name: Option<String>,
-    #[charon::rename("field_ty")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("field_ty"))]
     #[serde_state(stateful)]
     pub ty: Ty,
 }
@@ -654,7 +658,7 @@ pub enum UIntTy {
     Ord,
     PartialOrd,
 )]
-#[charon::rename("IntegerType")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("IntegerType"))]
 pub enum IntegerTy {
     Signed(IntTy),
     Unsigned(UIntTy),
@@ -676,7 +680,7 @@ pub enum IntegerTy {
     Ord,
     PartialOrd,
 )]
-#[charon::rename("FloatType")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("FloatType"))]
 pub enum FloatTy {
     F16,
     F32,
@@ -702,7 +706,7 @@ pub enum FloatTy {
     Ord,
     PartialOrd,
 )]
-#[charon::variants_prefix("R")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("R"))]
 #[serde_state(stateless)]
 pub enum RefKind {
     Mut,
@@ -714,7 +718,7 @@ pub enum RefKind {
 #[derive(
     Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, EnumIsA,
 )]
-#[charon::variants_prefix("Lt")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Lt"))]
 pub enum LifetimeMutability {
     /// A lifetime that is used for a mutable reference.
     Mutable,
@@ -744,13 +748,13 @@ pub enum LifetimeMutability {
     Ord,
     PartialOrd,
 )]
-#[charon::variants_prefix("T")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("T"))]
 pub enum TypeId {
     /// A "regular" ADT type.
     ///
     /// Includes transparent ADTs and opaque ADTs (local ADTs marked as opaque,
     /// and external ADTs).
-    #[charon::rename("TAdtId")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("TAdtId"))]
     Adt(TypeDeclId),
     Tuple,
     /// Built-in type. Either a primitive type like array or slice, or a
@@ -760,7 +764,7 @@ pub enum TypeId {
     /// The Array and Slice types were initially modelled as primitive in
     /// the [Ty] type. We decided to move them to built-in types as it allows
     /// for more uniform treatment throughout the codebase.
-    #[charon::rename("TBuiltin")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("TBuiltin"))]
     #[serde_state(stateless)]
     Builtin(BuiltinTy),
 }
@@ -793,8 +797,8 @@ pub struct TypeDeclRef {
     Ord,
     PartialOrd,
 )]
-#[charon::rename("LiteralType")]
-#[charon::variants_prefix("T")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("LiteralType"))]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("T"))]
 #[serde_state(stateless)]
 pub enum LiteralTy {
     Int(IntTy),
@@ -828,7 +832,7 @@ pub struct Ty(pub HashConsed<TyKind>);
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("T")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("T"))]
 pub enum TyKind {
     /// An ADT.
     /// Note that here ADTs are very general. They can be:
@@ -842,7 +846,7 @@ pub enum TyKind {
     /// Note: this is incorrectly named: this can refer to any valid `TypeDecl` including extern
     /// types.
     Adt(TypeDeclRef),
-    #[charon::rename("TVar")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("TVar"))]
     TypeVar(TypeDbVar),
     Literal(LiteralTy),
     /// The never type, for computations which don't return. It is sometimes
@@ -874,7 +878,7 @@ pub enum TyKind {
     ///   type Bar; // type associated to the trait Foo
     /// }
     /// ```
-    TraitType(TraitRef, TraitItemName),
+    TraitType(TraitRef, AssocTypeId),
     /// `dyn Trait`
     DynTrait(DynPredicate),
     /// Function pointer type. This is a literal pointer to a region of memory that
@@ -898,6 +902,9 @@ pub enum TyKind {
     Array(Ty, Box<ConstantExpr>),
     /// A slice type `[T]`
     Slice(Ty),
+    /// A pattern type. This is a newtype over the first type whose valid values are restricted by
+    /// the pattern.
+    Pattern(Ty, TypePattern),
     /// A type that could not be computed or was incorrect.
     #[drive(skip)]
     Error(String),
@@ -930,7 +937,7 @@ pub enum TyKind {
     Ord,
     PartialOrd,
 )]
-#[charon::variants_prefix("T")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("T"))]
 pub enum BuiltinTy {
     /// Boxes are de facto a primitive type.
     Box,
@@ -990,8 +997,47 @@ pub struct FunSig {
     /// Is the function unsafe or not
     #[drive(skip)]
     pub is_unsafe: bool,
+    /// The calling convention of this function.
+    #[drive(skip)]
+    pub abi: Abi,
     pub inputs: Vec<Ty>,
     pub output: Ty,
+}
+
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    VariantName,
+    EnumIsA,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+)]
+#[serde_state(stateless)]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Abi"))]
+pub enum Abi {
+    Rust,
+    C,
+    /// Rust's spelling for the ABI, e.g. "C-unwind" or "system".
+    Other(#[drive(skip)] ustr::Ustr),
+}
+
+impl Abi {
+    pub fn rust() -> Self {
+        Self::Rust
+    }
+
+    pub fn rust_name(&self) -> &str {
+        match self {
+            Self::Rust => "Rust",
+            Self::C => "C",
+            Self::Other(name) => name.as_str(),
+        }
+    }
 }
 
 /// The contents of a `dyn Trait` type.
@@ -1004,6 +1050,27 @@ pub struct DynPredicate {
     /// Only the first trait clause may have methods. We use the vtable of this trait in the `dyn
     /// Trait` pointer metadata.
     pub binder: Binder<Ty>,
+}
+
+/// A type-level pattern used by [`TyKind::Pattern`].
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    VariantName,
+    EnumIsA,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+)]
+#[serde_state(state_implements = HashConsSerializerState)] // Avoid corecursive impls due to perfect derive
+pub enum TypePattern {
+    Range(Box<ConstantExpr>, Box<ConstantExpr>),
+    OrPattern(Vec<TypePattern>),
+    NotNull,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]

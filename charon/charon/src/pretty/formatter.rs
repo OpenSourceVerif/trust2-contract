@@ -53,6 +53,51 @@ pub trait AstFormatter: Sized {
     where
         GenericParams: HasIdxVecOf<Id, Output = T>;
 
+    fn format_method_name(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        trait_id: TraitDeclId,
+        method_id: TraitMethodId,
+    ) -> fmt::Result {
+        if let Some(translated) = self.get_crate()
+            && let Some(names) = translated.assoc_item_names.get(trait_id)
+            && let Some(name) = names.methods.get(method_id).copied()
+        {
+            write!(f, "{name}")
+        } else {
+            write!(f, "{}", &method_id.to_pretty_string())
+        }
+    }
+    fn format_assoc_type_name(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        trait_id: TraitDeclId,
+        type_id: AssocTypeId,
+    ) -> fmt::Result {
+        if let Some(translated) = self.get_crate()
+            && let Some(names) = translated.assoc_item_names.get(trait_id)
+            && let Some(name) = names.types.get(type_id).copied()
+        {
+            write!(f, "{name}")
+        } else {
+            write!(f, "{}", &type_id.to_pretty_string())
+        }
+    }
+    fn format_assoc_const_name(
+        &self,
+        f: &mut fmt::Formatter<'_>,
+        trait_id: TraitDeclId,
+        const_id: AssocConstId,
+    ) -> fmt::Result {
+        if let Some(translated) = self.get_crate()
+            && let Some(names) = translated.assoc_item_names.get(trait_id)
+            && let Some(name) = names.consts.get(const_id).copied()
+        {
+            write!(f, "{name}")
+        } else {
+            write!(f, "{}", &const_id.to_pretty_string())
+        }
+    }
     fn format_enum_variant_name(
         &self,
         f: &mut fmt::Formatter<'_>,
@@ -221,7 +266,7 @@ impl<'a> FmtCtx<'a> {
         };
         translated
             .get_item(id)
-            .ok_or_else(|| translated.item_short_name(id))
+            .ok_or_else(|| Some(translated.item_short_name(id)))
     }
 
     /// Print the whole definition.

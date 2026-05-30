@@ -86,6 +86,16 @@ let opt_indexed_map_of_json :
 
 let rec ___ = ()
 
+and abi_of_json (ctx : of_json_ctx) (js : json) : (abi, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `String "Rust" -> Ok AbiRust
+    | `String "C" -> Ok AbiC
+    | `Assoc [ ("Other", other) ] ->
+        let* other = string_of_json ctx other in
+        Ok (AbiOther other)
+    | _ -> Error "")
+
 and abort_kind_of_json (ctx : of_json_ctx) (js : json) :
     (abort_kind, string) result =
   combine_error_msgs js __FUNCTION__
@@ -129,6 +139,20 @@ and assertion_of_json (ctx : of_json_ctx) (js : json) :
           option_of_json builtin_assert_kind_of_json ctx check_kind
         in
         Ok ({ cond; expected; check_kind } : assertion)
+    | _ -> Error "")
+
+and assoc_const_id_of_json (ctx : of_json_ctx) (js : json) :
+    (assoc_const_id, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | x -> AssocConstId.id_of_json ctx x
+    | _ -> Error "")
+
+and assoc_type_id_of_json (ctx : of_json_ctx) (js : json) :
+    (assoc_type_id, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | x -> AssocTypeId.id_of_json ctx x
     | _ -> Error "")
 
 and binop_of_json (ctx : of_json_ctx) (js : json) : (binop, string) result =
@@ -193,11 +217,11 @@ and binder_kind_of_json (ctx : of_json_ctx) (js : json) :
     (match js with
     | `Assoc [ ("TraitType", `List [ x_0; x_1 ]) ] ->
         let* x_0 = trait_decl_id_of_json ctx x_0 in
-        let* x_1 = trait_item_name_of_json ctx x_1 in
+        let* x_1 = assoc_type_id_of_json ctx x_1 in
         Ok (BKTraitType (x_0, x_1))
     | `Assoc [ ("TraitMethod", `List [ x_0; x_1 ]) ] ->
         let* x_0 = trait_decl_id_of_json ctx x_0 in
-        let* x_1 = trait_item_name_of_json ctx x_1 in
+        let* x_1 = trait_method_id_of_json ctx x_1 in
         Ok (BKTraitMethod (x_0, x_1))
     | `String "InherentImplBlock" -> Ok BKInherentImplBlock
     | `String "Dyn" -> Ok BKDyn
@@ -251,6 +275,9 @@ and builtin_assert_kind_of_json (ctx : of_json_ctx) (js : json) :
           operand_of_json ctx invalid_enum_construction
         in
         Ok (InvalidEnumConstruction invalid_enum_construction)
+    | `String "ResumedAfterReturn" -> Ok ResumedAfterReturn
+    | `String "ResumedAfterPanic" -> Ok ResumedAfterPanic
+    | `String "ResumedAfterDrop" -> Ok ResumedAfterDrop
     | _ -> Error "")
 
 and builtin_fun_id_of_json (ctx : of_json_ctx) (js : json) :
@@ -295,6 +322,7 @@ and builtin_impl_data_of_json (ctx : of_json_ctx) (js : json) :
     | `String "FnOnce" -> Ok BuiltinFnOnce
     | `String "Copy" -> Ok BuiltinCopy
     | `String "Clone" -> Ok BuiltinClone
+    | `String "RemovedAdtClause" -> Ok BuiltinRemovedAdtClause
     | _ -> Error "")
 
 and builtin_index_op_of_json (ctx : of_json_ctx) (js : json) :
@@ -422,7 +450,7 @@ and constant_expr_kind_of_json (ctx : of_json_ctx) (js : json) :
         Ok (CGlobal global)
     | `Assoc [ ("TraitConst", `List [ x_0; x_1 ]) ] ->
         let* x_0 = trait_ref_of_json ctx x_0 in
-        let* x_1 = trait_item_name_of_json ctx x_1 in
+        let* x_1 = assoc_const_id_of_json ctx x_1 in
         Ok (CTraitConst (x_0, x_1))
     | `Assoc [ ("VTableRef", v_table_ref) ] ->
         let* v_table_ref = trait_ref_of_json ctx v_table_ref in
@@ -595,7 +623,7 @@ and fn_ptr_kind_of_json (ctx : of_json_ctx) (js : json) :
         Ok (FunId fun_)
     | `Assoc [ ("Trait", `List [ x_0; x_1; x_2 ]) ] ->
         let* x_0 = trait_ref_of_json ctx x_0 in
-        let* x_1 = trait_item_name_of_json ctx x_1 in
+        let* x_1 = trait_method_id_of_json ctx x_1 in
         let* x_2 = fun_decl_id_of_json ctx x_2 in
         Ok (TraitMethod (x_0, x_1, x_2))
     | _ -> Error "")
@@ -632,11 +660,17 @@ and fun_sig_of_json (ctx : of_json_ctx) (js : json) : (fun_sig, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc
-        [ ("is_unsafe", is_unsafe); ("inputs", inputs); ("output", output) ] ->
+        [
+          ("is_unsafe", is_unsafe);
+          ("abi", abi);
+          ("inputs", inputs);
+          ("output", output);
+        ] ->
         let* is_unsafe = bool_of_json ctx is_unsafe in
+        let* abi = abi_of_json ctx abi in
         let* inputs = list_of_json ty_of_json ctx inputs in
         let* output = ty_of_json ctx output in
-        Ok ({ is_unsafe; inputs; output } : fun_sig)
+        Ok ({ is_unsafe; abi; inputs; output } : fun_sig)
     | _ -> Error "")
 
 and generic_args_of_json (ctx : of_json_ctx) (js : json) :
@@ -971,7 +1005,7 @@ and predicate_origin_of_json (ctx : of_json_ctx) (js : json) :
     | `String "TraitSelf" -> Ok TraitSelf
     | `String "WhereClauseOnTrait" -> Ok WhereClauseOnTrait
     | `Assoc [ ("TraitItem", trait_item) ] ->
-        let* trait_item = trait_item_name_of_json ctx trait_item in
+        let* trait_item = assoc_type_id_of_json ctx trait_item in
         Ok (TraitItem trait_item)
     | `String "Dyn" -> Ok OriginDyn
     | _ -> Error "")
@@ -1131,10 +1165,6 @@ and rvalue_of_json (ctx : of_json_ctx) (js : json) : (rvalue, string) result =
         let* x_1 = ty_of_json ctx x_1 in
         let* x_2 = box_of_json constant_expr_of_json ctx x_2 in
         Ok (Repeat (x_0, x_1, x_2))
-    | `Assoc [ ("ShallowInitBox", `List [ x_0; x_1 ]) ] ->
-        let* x_0 = operand_of_json ctx x_0 in
-        let* x_1 = ty_of_json ctx x_1 in
-        Ok (ShallowInitBox (x_0, x_1))
     | _ -> Error "")
 
 and scalar_value_of_json (ctx : of_json_ctx) (js : json) :
@@ -1233,11 +1263,11 @@ and trait_impl_ref_of_json (ctx : of_json_ctx) (js : json) :
         Ok ({ id; generics } : trait_impl_ref)
     | _ -> Error "")
 
-and trait_item_name_of_json (ctx : of_json_ctx) (js : json) :
-    (trait_item_name, string) result =
+and trait_method_id_of_json (ctx : of_json_ctx) (js : json) :
+    (trait_method_id, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | x -> string_of_json ctx x
+    | x -> TraitMethodId.id_of_json ctx x
     | _ -> Error "")
 
 and trait_param_of_json (ctx : of_json_ctx) (js : json) :
@@ -1297,7 +1327,7 @@ and trait_ref_kind_of_json (ctx : of_json_ctx) (js : json) :
         Ok (ParentClause (x_0, x_1))
     | `Assoc [ ("ItemClause", `List [ x_0; x_1; x_2 ]) ] ->
         let* x_0 = box_of_json trait_ref_of_json ctx x_0 in
-        let* x_1 = trait_item_name_of_json ctx x_1 in
+        let* x_1 = assoc_type_id_of_json ctx x_1 in
         let* x_2 = trait_clause_id_of_json ctx x_2 in
         Ok (ItemClause (x_0, x_1, x_2))
     | `String "SelfId" -> Ok Self
@@ -1317,8 +1347,10 @@ and trait_ref_kind_of_json (ctx : of_json_ctx) (js : json) :
             parent_trait_refs
         in
         let* types =
-          list_of_json
-            (pair_of_json trait_item_name_of_json trait_assoc_ty_impl_of_json)
+          (fun ctx json ->
+            Result.map AssocTypeId.map_of_indexed_list
+              (opt_indexed_map_of_json assoc_type_id_of_json
+                 trait_assoc_ty_impl_of_json ctx json))
             ctx types
         in
         Ok (BuiltinOrAuto (builtin_data, parent_trait_refs, types))
@@ -1332,12 +1364,11 @@ and trait_type_constraint_of_json (ctx : of_json_ctx) (js : json) :
     (trait_type_constraint, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | `Assoc [ ("trait_ref", trait_ref); ("type_name", type_name); ("ty", ty) ]
-      ->
+    | `Assoc [ ("trait_ref", trait_ref); ("type_id", type_id); ("ty", ty) ] ->
         let* trait_ref = trait_ref_of_json ctx trait_ref in
-        let* type_name = trait_item_name_of_json ctx type_name in
+        let* type_id = assoc_type_id_of_json ctx type_id in
         let* ty = ty_of_json ctx ty in
-        Ok ({ trait_ref; type_name; ty } : trait_type_constraint)
+        Ok ({ trait_ref; type_id; ty } : trait_type_constraint)
     | _ -> Error "")
 
 and trait_type_constraint_id_of_json (ctx : of_json_ctx) (js : json) :
@@ -1380,7 +1411,7 @@ and ty_kind_of_json (ctx : of_json_ctx) (js : json) : (ty_kind, string) result =
         Ok (TRawPtr (x_0, x_1))
     | `Assoc [ ("TraitType", `List [ x_0; x_1 ]) ] ->
         let* x_0 = trait_ref_of_json ctx x_0 in
-        let* x_1 = trait_item_name_of_json ctx x_1 in
+        let* x_1 = assoc_type_id_of_json ctx x_1 in
         Ok (TTraitType (x_0, x_1))
     | `Assoc [ ("DynTrait", dyn_trait) ] ->
         let* dyn_trait = dyn_predicate_of_json ctx dyn_trait in
@@ -1401,6 +1432,10 @@ and ty_kind_of_json (ctx : of_json_ctx) (js : json) : (ty_kind, string) result =
     | `Assoc [ ("Slice", slice) ] ->
         let* slice = ty_of_json ctx slice in
         Ok (TSlice slice)
+    | `Assoc [ ("Pattern", `List [ x_0; x_1 ]) ] ->
+        let* x_0 = ty_of_json ctx x_0 in
+        let* x_1 = type_pattern_of_json ctx x_1 in
+        Ok (TPattern (x_0, x_1))
     | `Assoc [ ("Error", error) ] ->
         let* error = string_of_json ctx error in
         Ok (TError error)
@@ -1443,6 +1478,20 @@ and type_param_of_json (ctx : of_json_ctx) (js : json) :
         let* index = type_var_id_of_json ctx index in
         let* name = string_of_json ctx name in
         Ok ({ index; name } : type_param)
+    | _ -> Error "")
+
+and type_pattern_of_json (ctx : of_json_ctx) (js : json) :
+    (type_pattern, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("Range", `List [ x_0; x_1 ]) ] ->
+        let* x_0 = box_of_json constant_expr_of_json ctx x_0 in
+        let* x_1 = box_of_json constant_expr_of_json ctx x_1 in
+        Ok (Range (x_0, x_1))
+    | `Assoc [ ("OrPattern", or_pattern) ] ->
+        let* or_pattern = list_of_json type_pattern_of_json ctx or_pattern in
+        Ok (OrPattern or_pattern)
+    | `String "NotNull" -> Ok NotNull
     | _ -> Error "")
 
 and type_var_id_of_json (ctx : of_json_ctx) (js : json) :
@@ -1692,6 +1741,17 @@ module Ullbc = struct
           let* target = block_id_of_json ctx target in
           let* on_unwind = block_id_of_json ctx on_unwind in
           Ok (TAssert (assert_, target, on_unwind))
+      | `Assoc
+          [
+            ( "InlineAsm",
+              `Assoc
+                [ ("asm", asm); ("targets", targets); ("on_unwind", on_unwind) ]
+            );
+          ] ->
+          let* asm = string_of_json ctx asm in
+          let* targets = list_of_json block_id_of_json ctx targets in
+          let* on_unwind = block_id_of_json ctx on_unwind in
+          Ok (InlineAsm (asm, targets, on_unwind))
       | `Assoc [ ("Abort", abort) ] ->
           let* abort = abort_kind_of_json ctx abort in
           Ok (Abort abort)
@@ -1810,6 +1870,11 @@ module Llbc = struct
           let* assert_ = assertion_of_json ctx assert_ in
           let* on_failure = abort_kind_of_json ctx on_failure in
           Ok (Assert (assert_, on_failure))
+      | `Assoc [ ("InlineAsm", `Assoc [ ("asm", asm); ("targets", targets) ]) ]
+        ->
+          let* asm = string_of_json ctx asm in
+          let* targets = list_of_json block_of_json ctx targets in
+          Ok (InlineAsm (asm, targets))
       | `Assoc [ ("Call", call) ] ->
           let* call = call_of_json ctx call in
           Ok (Call call)
@@ -1878,6 +1943,41 @@ and alignment_modifier_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc [ ("Pack", pack) ] ->
         let* pack = int_of_json ctx pack in
         Ok (Pack pack)
+    | _ -> Error "")
+
+and assoc_item_id_of_json (ctx : of_json_ctx) (js : json) :
+    (assoc_item_id, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("Type", type_) ] ->
+        let* type_ = assoc_type_id_of_json ctx type_ in
+        Ok (AssocIdType type_)
+    | `Assoc [ ("Method", method_) ] ->
+        let* method_ = trait_method_id_of_json ctx method_ in
+        Ok (AssocIdMethod method_)
+    | `Assoc [ ("Const", const) ] ->
+        let* const = assoc_const_id_of_json ctx const in
+        Ok (AssocIdConst const)
+    | _ -> Error "")
+
+and assoc_item_names_of_json (ctx : of_json_ctx) (js : json) :
+    (assoc_item_names, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("types", types); ("methods", methods); ("consts", consts) ] ->
+        let* types =
+          index_vec_of_json assoc_type_id_of_json trait_item_name_of_json ctx
+            types
+        in
+        let* methods =
+          index_vec_of_json trait_method_id_of_json trait_item_name_of_json ctx
+            methods
+        in
+        let* consts =
+          index_vec_of_json assoc_const_id_of_json trait_item_name_of_json ctx
+            consts
+        in
+        Ok ({ types; methods; consts } : assoc_item_names)
     | _ -> Error "")
 
 and attr_info_of_json (ctx : of_json_ctx) (js : json) :
@@ -2006,6 +2106,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("dest_dir", dest_dir);
           ("dest_file", dest_file);
           ("no_dedup_serialized_ast", no_dedup_serialized_ast);
+          ("format", format);
           ("no_serialize", no_serialize);
           ("no_typecheck", no_typecheck);
           ("no_normalize", no_normalize);
@@ -2067,6 +2168,9 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         let* no_dedup_serialized_ast =
           bool_of_json ctx no_dedup_serialized_ast
         in
+        let* format =
+          option_of_json serialization_format_arg_of_json ctx format
+        in
         let* no_serialize = bool_of_json ctx no_serialize in
         let* no_typecheck = bool_of_json ctx no_typecheck in
         let* no_normalize = bool_of_json ctx no_normalize in
@@ -2113,6 +2217,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
              dest_dir;
              dest_file;
              no_dedup_serialized_ast;
+             format;
              no_serialize;
              no_typecheck;
              no_normalize;
@@ -2196,16 +2301,36 @@ and declaration_group_of_json (ctx : of_json_ctx) (js : json) :
         Ok (MixedGroup mixed)
     | _ -> Error "")
 
-and discriminant_layout_of_json (ctx : of_json_ctx) (js : json) :
-    (discriminant_layout, string) result =
+and discriminator_of_json (ctx : of_json_ctx) (js : json) :
+    (discriminator, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | `Assoc [ ("offset", offset); ("tag_ty", tag_ty); ("encoding", encoding) ]
-      ->
+    | `Assoc [ ("Known", known) ] ->
+        let* known = variant_id_of_json ctx known in
+        Ok (Known known)
+    | `String "Invalid" -> Ok Invalid
+    | `Assoc
+        [
+          ( "Branch",
+            `Assoc
+              [
+                ("offset", offset);
+                ("int_ty", int_ty);
+                ("children", children);
+                ("fallback", fallback);
+              ] );
+        ] ->
         let* offset = int_of_json ctx offset in
-        let* tag_ty = integer_type_of_json ctx tag_ty in
-        let* encoding = tag_encoding_of_json ctx encoding in
-        Ok ({ offset; tag_ty; encoding } : discriminant_layout)
+        let* int_ty = integer_type_of_json ctx int_ty in
+        let* children =
+          list_of_json
+            (pair_of_json
+               (range_inclusive_of_json scalar_value_of_json)
+               discriminator_of_json)
+            ctx children
+        in
+        let* fallback = box_of_json discriminator_of_json ctx fallback in
+        Ok (Branch (offset, int_ty, children, fallback))
     | _ -> Error "")
 
 and error_of_json (ctx : of_json_ctx) (js : json) : (error, string) result =
@@ -2284,7 +2409,7 @@ and fun_decl_of_json (ctx : of_json_ctx) (js : json) : (fun_decl, string) result
         let* def_id = fun_decl_id_of_json ctx def_id in
         let* item_meta = item_meta_of_json ctx item_meta in
         let* generics = generic_params_of_json ctx generics in
-        let* signature = fun_sig_of_json ctx signature in
+        let* signature = box_of_json fun_sig_of_json ctx signature in
         let* src = item_source_of_json ctx src in
         let* is_global_initializer =
           option_of_json global_decl_id_of_json ctx is_global_initializer
@@ -2378,6 +2503,7 @@ and global_kind_of_json (ctx : of_json_ctx) (js : json) :
   combine_error_msgs js __FUNCTION__
     (match js with
     | `String "Static" -> Ok Static
+    | `String "ThreadLocal" -> Ok ThreadLocal
     | `String "NamedConst" -> Ok NamedConst
     | `String "AnonConst" -> Ok AnonConst
     | _ -> Error "")
@@ -2395,21 +2521,6 @@ and index_map_of_json :
     (match js with
     | json ->
         list_of_json (key_value_pair_of_json arg0_of_json arg1_of_json) ctx json
-    | _ -> Error "")
-
-and indexed_map_of_json :
-    'a0 'a1.
-    (of_json_ctx -> json -> ('a0, string) result) ->
-    (of_json_ctx -> json -> ('a1, string) result) ->
-    of_json_ctx ->
-    json ->
-    ('a1 list, string) result =
- fun arg0_of_json arg1_of_json ctx js ->
-  combine_error_msgs js __FUNCTION__
-    (match js with
-    | json ->
-        let* list = list_of_json (option_of_json arg1_of_json) ctx json in
-        Ok (List.filter_map (fun x -> x) list)
     | _ -> Error "")
 
 and inline_attr_of_json (ctx : of_json_ctx) (js : json) :
@@ -2503,14 +2614,14 @@ and item_source_of_json (ctx : of_json_ctx) (js : json) :
             `Assoc
               [
                 ("trait_ref", trait_ref);
-                ("item_name", item_name);
+                ("item_id", item_id);
                 ("has_default", has_default);
               ] );
         ] ->
         let* trait_ref = trait_decl_ref_of_json ctx trait_ref in
-        let* item_name = trait_item_name_of_json ctx item_name in
+        let* item_id = assoc_item_id_of_json ctx item_id in
         let* has_default = bool_of_json ctx has_default in
-        Ok (TraitDeclItem (trait_ref, item_name, has_default))
+        Ok (TraitDeclItem (trait_ref, item_id, has_default))
     | `Assoc
         [
           ( "TraitImpl",
@@ -2518,15 +2629,18 @@ and item_source_of_json (ctx : of_json_ctx) (js : json) :
               [
                 ("impl_ref", impl_ref);
                 ("trait_ref", trait_ref);
-                ("item_name", item_name);
+                ("item_id", item_id);
                 ("reuses_default", reuses_default);
               ] );
         ] ->
         let* impl_ref = trait_impl_ref_of_json ctx impl_ref in
         let* trait_ref = trait_decl_ref_of_json ctx trait_ref in
-        let* item_name = trait_item_name_of_json ctx item_name in
+        let* item_id = assoc_item_id_of_json ctx item_id in
         let* reuses_default = bool_of_json ctx reuses_default in
-        Ok (TraitImplItem (impl_ref, trait_ref, item_name, reuses_default))
+        Ok (TraitImplItem (impl_ref, trait_ref, item_id, reuses_default))
+    | `Assoc [ ("TargetDependent", `Assoc [ ("dispatcher", dispatcher) ]) ] ->
+        let* dispatcher = fun_decl_ref_of_json ctx dispatcher in
+        Ok (TargetDependentItem dispatcher)
     | `Assoc
         [
           ( "VTableTy",
@@ -2552,11 +2666,6 @@ and item_source_of_json (ctx : of_json_ctx) (js : json) :
         Ok (VTableInstanceItem impl_ref)
     | `String "VTableMethodShim" -> Ok VTableMethodShimItem
     | `String "VTableInstanceMono" -> Ok VTableInstanceMonoItem
-    | `Assoc [ ("VTableMethodPreShim", `List [ x_0; x_1; x_2 ]) ] ->
-        let* x_0 = trait_decl_id_of_json ctx x_0 in
-        let* x_1 = trait_item_name_of_json ctx x_1 in
-        let* x_2 = list_of_json ty_of_json ctx x_2 in
-        Ok (VTableMethodPreShimItem (x_0, x_1, x_2))
     | _ -> Error "")
 
 and layout_of_json (ctx : of_json_ctx) (js : json) : (layout, string) result =
@@ -2566,22 +2675,25 @@ and layout_of_json (ctx : of_json_ctx) (js : json) : (layout, string) result =
         [
           ("size", size);
           ("align", align);
-          ("discriminant_layout", discriminant_layout);
+          ("discriminator", discriminator);
           ("uninhabited", uninhabited);
           ("variant_layouts", variant_layouts);
+          ("repr", repr);
         ] ->
         let* size = option_of_json int_of_json ctx size in
         let* align = option_of_json int_of_json ctx align in
-        let* discriminant_layout =
-          option_of_json discriminant_layout_of_json ctx discriminant_layout
+        let* discriminator =
+          option_of_json discriminator_of_json ctx discriminator
         in
         let* uninhabited = bool_of_json ctx uninhabited in
         let* variant_layouts =
-          index_vec_of_json variant_id_of_json variant_layout_of_json ctx
-            variant_layouts
+          index_vec_of_json variant_id_of_json
+            (option_of_json variant_layout_of_json)
+            ctx variant_layouts
         in
+        let* repr = repr_options_of_json ctx repr in
         Ok
-          ({ size; align; discriminant_layout; uninhabited; variant_layouts }
+          ({ size; align; discriminator; uninhabited; variant_layouts; repr }
             : layout)
     | _ -> Error "")
 
@@ -2691,14 +2803,13 @@ and repr_options_of_json (ctx : of_json_ctx) (js : json) :
             : repr_options)
     | _ -> Error "")
 
-and tag_encoding_of_json (ctx : of_json_ctx) (js : json) :
-    (tag_encoding, string) result =
+and serialization_format_arg_of_json (ctx : of_json_ctx) (js : json) :
+    (serialization_format_arg, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | `String "Direct" -> Ok Direct
-    | `Assoc [ ("Niche", `Assoc [ ("untagged_variant", untagged_variant) ]) ] ->
-        let* untagged_variant = variant_id_of_json ctx untagged_variant in
-        Ok (Niche untagged_variant)
+    | `String "Json" -> Ok Json
+    | `String "Postcard" -> Ok Postcard
+    | `String "All" -> Ok AllFormats
     | _ -> Error "")
 
 and target_info_of_json (ctx : of_json_ctx) (js : json) :
@@ -2776,12 +2887,28 @@ and trait_decl_of_json (ctx : of_json_ctx) (js : json) :
           index_vec_of_json trait_clause_id_of_json trait_param_of_json ctx
             implied_clauses
         in
-        let* consts = list_of_json trait_assoc_const_of_json ctx consts in
+        let* consts =
+          (fun ctx json ->
+            Result.map AssocConstId.map_of_indexed_list
+              (opt_indexed_map_of_json assoc_const_id_of_json
+                 trait_assoc_const_of_json ctx json))
+            ctx consts
+        in
         let* types =
-          list_of_json (binder_of_json trait_assoc_ty_of_json) ctx types
+          (fun ctx json ->
+            Result.map AssocTypeId.map_of_indexed_list
+              (opt_indexed_map_of_json assoc_type_id_of_json
+                 (binder_of_json trait_assoc_ty_of_json)
+                 ctx json))
+            ctx types
         in
         let* methods =
-          list_of_json (binder_of_json trait_method_of_json) ctx methods
+          (fun ctx json ->
+            Result.map TraitMethodId.map_of_indexed_list
+              (opt_indexed_map_of_json trait_method_id_of_json
+                 (binder_of_json trait_method_of_json)
+                 ctx json))
+            ctx methods
         in
         let* vtable = option_of_json type_decl_ref_of_json ctx vtable in
         Ok
@@ -2823,20 +2950,26 @@ and trait_impl_of_json (ctx : of_json_ctx) (js : json) :
             implied_trait_refs
         in
         let* consts =
-          list_of_json
-            (pair_of_json trait_item_name_of_json global_decl_ref_of_json)
+          (fun ctx json ->
+            Result.map AssocConstId.map_of_indexed_list
+              (opt_indexed_map_of_json assoc_const_id_of_json
+                 global_decl_ref_of_json ctx json))
             ctx consts
         in
         let* types =
-          list_of_json
-            (pair_of_json trait_item_name_of_json
-               (binder_of_json trait_assoc_ty_impl_of_json))
+          (fun ctx json ->
+            Result.map AssocTypeId.map_of_indexed_list
+              (opt_indexed_map_of_json assoc_type_id_of_json
+                 (binder_of_json trait_assoc_ty_impl_of_json)
+                 ctx json))
             ctx types
         in
         let* methods =
-          list_of_json
-            (pair_of_json trait_item_name_of_json
-               (binder_of_json fun_decl_ref_of_json))
+          (fun ctx json ->
+            Result.map TraitMethodId.map_of_indexed_list
+              (opt_indexed_map_of_json trait_method_id_of_json
+                 (binder_of_json fun_decl_ref_of_json)
+                 ctx json))
             ctx methods
         in
         let* vtable = option_of_json global_decl_ref_of_json ctx vtable in
@@ -2855,15 +2988,29 @@ and trait_impl_of_json (ctx : of_json_ctx) (js : json) :
             : trait_impl)
     | _ -> Error "")
 
+and trait_item_name_of_json (ctx : of_json_ctx) (js : json) :
+    (trait_item_name, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | x -> string_of_json ctx x
+    | _ -> Error "")
+
 and trait_method_of_json (ctx : of_json_ctx) (js : json) :
     (trait_method, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | `Assoc [ ("name", name); ("attr_info", attr_info); ("item", item) ] ->
+    | `Assoc
+        [
+          ("name", name);
+          ("attr_info", attr_info);
+          ("signature", signature);
+          ("item", item);
+        ] ->
         let* name = trait_item_name_of_json ctx name in
         let* attr_info = attr_info_of_json ctx attr_info in
+        let* signature = fun_sig_of_json ctx signature in
         let* item = fun_decl_ref_of_json ctx item in
-        Ok ({ name; attr_info; item } : trait_method)
+        Ok ({ name; attr_info; signature; item } : trait_method)
     | _ -> Error "")
 
 and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
@@ -2877,13 +3024,13 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
           ("target_information", target_information);
           ("files", files);
           ("item_names", item_names);
+          ("assoc_item_names", assoc_item_names);
           ("short_names", short_names);
           ("type_decls", type_decls);
           ("fun_decls", fun_decls);
           ("global_decls", global_decls);
           ("trait_decls", trait_decls);
           ("trait_impls", trait_impls);
-          ("unit_metadata", unit_metadata);
           ("ordered_decls", ordered_decls);
         ] ->
         let* crate_name = string_of_json ctx crate_name in
@@ -2897,32 +3044,51 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
           index_map_of_json item_id_of_json name_of_json int_of_json ctx
             item_names
         in
+        let* assoc_item_names =
+          (fun ctx json ->
+            Result.map TraitDeclId.map_of_indexed_list
+              (opt_indexed_map_of_json trait_decl_id_of_json
+                 assoc_item_names_of_json ctx json))
+            ctx assoc_item_names
+        in
         let* short_names =
           index_map_of_json item_id_of_json name_of_json int_of_json ctx
             short_names
         in
         let* type_decls =
-          opt_indexed_map_of_json type_decl_id_of_json type_decl_of_json ctx
-            type_decls
+          (fun ctx json ->
+            Result.map TypeDeclId.map_of_indexed_list
+              (opt_indexed_map_of_json type_decl_id_of_json type_decl_of_json
+                 ctx json))
+            ctx type_decls
         in
         let* fun_decls =
-          opt_indexed_map_of_json fun_decl_id_of_json fun_decl_of_json ctx
-            fun_decls
+          (fun ctx json ->
+            Result.map FunDeclId.map_of_indexed_list
+              (opt_indexed_map_of_json fun_decl_id_of_json fun_decl_of_json ctx
+                 json))
+            ctx fun_decls
         in
         let* global_decls =
-          opt_indexed_map_of_json global_decl_id_of_json global_decl_of_json ctx
-            global_decls
+          (fun ctx json ->
+            Result.map GlobalDeclId.map_of_indexed_list
+              (opt_indexed_map_of_json global_decl_id_of_json
+                 global_decl_of_json ctx json))
+            ctx global_decls
         in
         let* trait_decls =
-          opt_indexed_map_of_json trait_decl_id_of_json trait_decl_of_json ctx
-            trait_decls
+          (fun ctx json ->
+            Result.map TraitDeclId.map_of_indexed_list
+              (opt_indexed_map_of_json trait_decl_id_of_json trait_decl_of_json
+                 ctx json))
+            ctx trait_decls
         in
         let* trait_impls =
-          opt_indexed_map_of_json trait_impl_id_of_json trait_impl_of_json ctx
-            trait_impls
-        in
-        let* unit_metadata =
-          option_of_json global_decl_ref_of_json ctx unit_metadata
+          (fun ctx json ->
+            Result.map TraitImplId.map_of_indexed_list
+              (opt_indexed_map_of_json trait_impl_id_of_json trait_impl_of_json
+                 ctx json))
+            ctx trait_impls
         in
         let* ordered_decls =
           option_of_json
@@ -2936,13 +3102,13 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
              target_information;
              files;
              item_names;
+             assoc_item_names;
              short_names;
              type_decls;
              fun_decls;
              global_decls;
              trait_decls;
              trait_impls;
-             unit_metadata;
              ordered_decls;
            }
             : translated_crate)
@@ -2961,7 +3127,6 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
           ("kind", kind);
           ("layout", layout);
           ("ptr_metadata", ptr_metadata);
-          ("repr", repr);
           ("specs", specs);
         ] ->
         let* def_id = type_decl_id_of_json ctx def_id in
@@ -2973,7 +3138,6 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
           index_map_of_json string_of_json layout_of_json int_of_json ctx layout
         in
         let* ptr_metadata = ptr_metadata_of_json ctx ptr_metadata in
-        let* repr = option_of_json repr_options_of_json ctx repr in
         let* specs = type_specs_of_json ctx specs in
         Ok
           ({
@@ -2984,7 +3148,6 @@ and type_decl_of_json (ctx : of_json_ctx) (js : json) :
              kind;
              layout;
              ptr_metadata;
-             repr;
              specs;
            }
             : type_decl)
@@ -3035,7 +3198,7 @@ and v_table_field_of_json (ctx : of_json_ctx) (js : json) :
     | `String "Align" -> Ok VTableAlign
     | `String "Drop" -> Ok VTableDrop
     | `Assoc [ ("Method", method_) ] ->
-        let* method_ = trait_item_name_of_json ctx method_ in
+        let* method_ = trait_method_id_of_json ctx method_ in
         Ok (VTableMethod method_)
     | `Assoc [ ("SuperTrait", super_trait) ] ->
         let* super_trait = trait_clause_id_of_json ctx super_trait in
@@ -3047,12 +3210,14 @@ and variant_of_json (ctx : of_json_ctx) (js : json) : (variant, string) result =
     (match js with
     | `Assoc
         [
+          ("id", id);
           ("span", span);
           ("attr_info", attr_info);
           ("name", name);
           ("fields", fields);
           ("discriminant", discriminant);
         ] ->
+        let* id = variant_id_of_json ctx id in
         let* span = span_of_json ctx span in
         let* attr_info = attr_info_of_json ctx attr_info in
         let* variant_name = string_of_json ctx name in
@@ -3060,7 +3225,9 @@ and variant_of_json (ctx : of_json_ctx) (js : json) : (variant, string) result =
           index_vec_of_json field_id_of_json field_of_json ctx fields
         in
         let* discriminant = literal_of_json ctx discriminant in
-        Ok ({ span; attr_info; variant_name; fields; discriminant } : variant)
+        Ok
+          ({ id; span; attr_info; variant_name; fields; discriminant }
+            : variant)
     | _ -> Error "")
 
 and variant_layout_of_json (ctx : of_json_ctx) (js : json) :
@@ -3071,12 +3238,16 @@ and variant_layout_of_json (ctx : of_json_ctx) (js : json) :
         [
           ("field_offsets", field_offsets);
           ("uninhabited", uninhabited);
-          ("tag", tag);
+          ("tagger", tagger);
         ] ->
         let* field_offsets =
           index_vec_of_json field_id_of_json int_of_json ctx field_offsets
         in
         let* uninhabited = bool_of_json ctx uninhabited in
-        let* tag = option_of_json scalar_value_of_json ctx tag in
-        Ok ({ field_offsets; uninhabited; tag } : variant_layout)
+        let* tagger =
+          list_of_json
+            (pair_of_json int_of_json scalar_value_of_json)
+            ctx tagger
+        in
+        Ok ({ field_offsets; uninhabited; tagger } : variant_layout)
     | _ -> Error "")

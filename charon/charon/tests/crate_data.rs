@@ -103,7 +103,7 @@ fn spans() -> anyhow::Result<()> {
         ",
         &["--reconstruct-fallible-operations"],
     )?;
-    let function = &crate_data.fun_decls[1];
+    let function = &crate_data.fun_decls[0];
     // Span of the whole function.
     assert_eq!(repr_span(function.item_meta.span), "2:8-10:9");
 
@@ -197,8 +197,8 @@ fn predicate_origins() -> anyhow::Result<()> {
                 (WhereClauseOnTrait, "Sized"),
                 (WhereClauseOnTrait, "Copy"),
                 (WhereClauseOnTrait, "Default"),
-                (TraitItem(TraitItemName("AssocType".into())), "Sized"),
-                (TraitItem(TraitItemName("AssocType".into())), "Default"),
+                (TraitItem(AssocTypeId::ZERO), "Sized"),
+                (TraitItem(AssocTypeId::ZERO), "Default"),
             ],
         ),
         // Interesting note: the method definition does not mention the clauses on the trait.
@@ -311,20 +311,20 @@ fn attributes() -> anyhow::Result<()> {
         vec!["clippy::foo"]
     );
     assert_eq!(
+        unknown_attrs(&crate_data.global_decls[0].item_meta),
+        vec!["clippy::foo"]
+    );
+    assert_eq!(
         unknown_attrs(&crate_data.global_decls[1].item_meta),
         vec!["clippy::foo"]
     );
+    assert!(unknown_attrs(&crate_data.fun_decls[0].item_meta).is_empty());
     assert_eq!(
-        unknown_attrs(&crate_data.global_decls[2].item_meta),
-        vec!["clippy::foo"]
-    );
-    assert!(unknown_attrs(&crate_data.fun_decls[1].item_meta).is_empty());
-    assert_eq!(
-        crate_data.fun_decls[1].item_meta.attr_info.inline,
+        crate_data.fun_decls[0].item_meta.attr_info.inline,
         Some(InlineAttr::Never)
     );
     assert_eq!(
-        crate_data.fun_decls[1]
+        crate_data.fun_decls[0]
             .item_meta
             .attr_info
             .attributes
@@ -517,7 +517,7 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.fun_decls[1]
+        crate_data.fun_decls[0]
             .item_meta
             .attr_info
             .rename
@@ -526,7 +526,7 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.fun_decls[2]
+        crate_data.fun_decls[1]
             .item_meta
             .attr_info
             .rename
@@ -535,7 +535,16 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.fun_decls[3]
+        crate_data.fun_decls[2]
+            .item_meta
+            .attr_info
+            .rename
+            .as_deref(),
+        Some("retTest")
+    );
+
+    assert_eq!(
+        crate_data.fun_decls[4]
             .item_meta
             .attr_info
             .rename
@@ -545,15 +554,6 @@ fn rename_attribute() -> anyhow::Result<()> {
 
     assert_eq!(
         crate_data.fun_decls[5]
-            .item_meta
-            .attr_info
-            .rename
-            .as_deref(),
-        Some("retTest")
-    );
-
-    assert_eq!(
-        crate_data.fun_decls[6]
             .item_meta
             .attr_info
             .rename
@@ -607,7 +607,7 @@ fn rename_attribute() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        crate_data.global_decls[1]
+        crate_data.global_decls[0]
             .item_meta
             .attr_info
             .rename
@@ -648,9 +648,8 @@ fn declaration_groups() -> anyhow::Result<()> {
         "#,
     )?;
 
-    // There are 3 function items: one for `foo`, one for the initializer of `Trait::FOO`, and
-    // one for the initializer of UNIT_METADATA (always included).
-    assert_eq!(crate_data.fun_decls.iter().count(), 3);
+    // There are 2 function items: one for `foo`, and one for the initializer of `Trait::FOO`.
+    assert_eq!(crate_data.fun_decls.iter().count(), 2);
     let decl_groups = crate_data.ordered_decls.unwrap();
     assert_eq!(decl_groups.len(), 6);
 
@@ -707,7 +706,7 @@ fn known_trait_method_call() -> anyhow::Result<()> {
         }
         "#,
     )?;
-    let function = &crate_data.fun_decls[1];
+    let function = &crate_data.fun_decls[0];
     assert_eq!(
         repr_name(&crate_data, &function.item_meta.name),
         "test_crate::use_default"
@@ -727,7 +726,7 @@ fn known_trait_method_call() -> anyhow::Result<()> {
         panic!()
     };
     // This is the function that gets called.
-    let function = &crate_data.fun_decls[id.index()];
+    let function = &crate_data.fun_decls[*id];
     assert_eq!(
         repr_name(&crate_data, &function.item_meta.name),
         "test_crate::<impl Default for ??>::default"
@@ -735,6 +734,91 @@ fn known_trait_method_call() -> anyhow::Result<()> {
     let ItemSource::TraitImpl { .. } = &function.src else {
         panic!()
     };
+    Ok(())
+}
+
+#[test]
+fn target_dispatch_source() -> anyhow::Result<()> {
+    let crate_data = translate_with_options(
+        "
+        #[cfg(target_pointer_width = \"64\")]
+        pub fn platform_val() -> u32 { 64 }
+
+        #[cfg(target_pointer_width = \"32\")]
+        pub fn platform_val() -> u32 { 32 }
+        ",
+        &["--targets=x86_64-apple-darwin,i686-unknown-linux-gnu"],
+    )?;
+
+    // Find the dispatcher (the facade with a TargetDispatch body).
+    let real_dispatcher = crate_data
+        .fun_decls
+        .iter()
+        .find(|f| matches!(f.body, Body::TargetDispatch(_)))
+        .expect("should have a TargetDispatch facade");
+    let Body::TargetDispatch(dispatch_map) = &real_dispatcher.body else {
+        unreachable!()
+    };
+
+    // Each target in the dispatch map should point to a function with
+    // `ItemSource::TargetDependent` whose `dispatcher` points back to the facade.
+    for (_target, fun_ref) in dispatch_map {
+        let target_fun = &crate_data.fun_decls[fun_ref.id];
+        let ItemSource::TargetDependent { dispatcher } = &target_fun.src else {
+            panic!("expected TargetDependent source, got {:?}", target_fun.src)
+        };
+        assert_eq!(dispatcher.id, real_dispatcher.def_id);
+    }
+    Ok(())
+}
+
+#[test]
+fn issue_1184_target_dispatch_unbound_item_generics() -> anyhow::Result<()> {
+    let crate_data = translate_with_options(
+        "
+        pub struct Foo<T>(core::marker::PhantomData<T>);
+
+        impl<T> Foo<T> {
+            pub fn bar() -> usize {
+                #[cfg(target_pointer_width = \"64\")]
+                { 64 }
+                #[cfg(target_pointer_width = \"32\")]
+                { 32 }
+            }
+        }
+        ",
+        &[
+            "--preset=aeneas",
+            "--targets=x86_64-unknown-linux-gnu,i686-unknown-linux-gnu",
+        ],
+    )?;
+
+    let real_dispatcher = crate_data
+        .fun_decls
+        .iter()
+        .find(|f| matches!(f.body, Body::TargetDispatch(_)))
+        .expect("should have a TargetDispatch facade");
+    let Body::TargetDispatch(dispatch_map) = &real_dispatcher.body else {
+        unreachable!()
+    };
+
+    fn assert_single_free_type_arg(generics: &GenericArgs) {
+        let ty = generics
+            .types
+            .iter()
+            .exactly_one()
+            .expect("expected one type argument");
+        assert!(matches!(ty.kind(), TyKind::TypeVar(DeBruijnVar::Free(_))));
+    }
+
+    for (_target, fun_ref) in dispatch_map {
+        assert_single_free_type_arg(fun_ref.generics.as_ref());
+        let target_fun = &crate_data.fun_decls[fun_ref.id];
+        let ItemSource::TargetDependent { dispatcher } = &target_fun.src else {
+            panic!("expected TargetDependent source, got {:?}", target_fun.src)
+        };
+        assert_single_free_type_arg(dispatcher.generics.as_ref());
+    }
     Ok(())
 }
 
@@ -758,10 +842,10 @@ fn multiple_deserialize() -> anyhow::Result<()> {
         fn bar(_: u32) {}
         ",
     )?;
-    let ty1_1 = krate1.fun_decls[1].signature.inputs[0].clone();
-    let ty1_2 = krate1.fun_decls[2].signature.inputs[0].clone();
-    let ty2_1 = krate2.fun_decls[1].signature.inputs[0].clone();
-    let ty2_2 = krate2.fun_decls[2].signature.inputs[0].clone();
+    let ty1_1 = krate1.fun_decls[0].signature.inputs[0].clone();
+    let ty1_2 = krate1.fun_decls[1].signature.inputs[0].clone();
+    let ty2_1 = krate2.fun_decls[0].signature.inputs[0].clone();
+    let ty2_2 = krate2.fun_decls[1].signature.inputs[0].clone();
     assert_eq!(ty1_1.kind().as_literal(), Some(&LiteralTy::Bool));
     assert_eq!(ty1_2, ty1_1);
     assert_eq!(

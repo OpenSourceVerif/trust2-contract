@@ -7,6 +7,9 @@ use crate::hax::sinto_todo;
 use charon_lib::ast::HashConsed;
 use rustc_middle::ty;
 use rustc_span::def_id::DefId as RDefId;
+use rustc_type_ir::inherent::IntoKind;
+
+sinto_reexport!(rustc_abi::ExternAbi);
 
 /// Generic container for decorating items with a type, a span,
 /// attributes and other meta-data.
@@ -600,8 +603,7 @@ impl TyGenerics {
 }
 
 /// This type merges the information from
-/// `rustc_type_ir::AliasKind` and `ty::AliasTy`
-
+/// [`ty::AliasTyKind`] and [`ty::AliasTy`].
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct Alias {
     pub kind: AliasKind,
@@ -609,8 +611,7 @@ pub struct Alias {
     pub def_id: DefId,
 }
 
-/// Reflects [`ty::AliasKind`]
-
+/// Reflects [`rustc_middle::ty::AliasTyKind`].
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub enum AliasKind {
     /// The projection of a trait type: `<Ty as Trait<...>>::Type<...>`
@@ -785,6 +786,7 @@ pub enum TyKind {
         ItemRef::translate_synthetic(s, SyntheticItem::Array, args)
     }),)]
     Array(ItemRef),
+    Pat(Ty, Pattern),
     /// The `ItemRef` uses the fake `Slice` def_id.
     #[custom_arm(FROM_TYPE::Slice(ty) => TO_TYPE::Slice({
         let args = s.base().tcx.mk_args(&[(*ty).into()]);
@@ -939,6 +941,23 @@ fn resolve_for_dyn<'tcx, S: UnderOwnerState<'tcx>, R>(
     }
 }
 
+#[derive(AdtInto)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::pattern::PatternKind<'tcx>, state: S as gstate)]
+#[derive(Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Pattern {
+    Range {
+        start: ConstantExpr,
+        end: ConstantExpr,
+    },
+    Or(Vec<Pattern>),
+    NotNull,
+}
+
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, Pattern> for ty::Pattern<'tcx> {
+    fn sinto(&self, s: &S) -> Pattern {
+        self.kind().sinto(s)
+    }
+}
 /// Reflects [`ty::CanonicalUserTypeAnnotation`]
 #[derive(AdtInto)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: ty::CanonicalUserTypeAnnotation<'tcx>, state: S as gstate)]
@@ -976,7 +995,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, AdtKind> for ty::AdtKind {
 
 sinto_todo!(rustc_middle::ty, AdtFlags);
 
-/// Reflects [`ty::ReprOptions`]
+/// Reflects [`rustc_abi::ReprOptions`].
 
 #[derive(AdtInto, Clone, Debug)]
 #[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_abi::ReprOptions, state: S as s)]
@@ -1005,7 +1024,7 @@ pub struct ReprFlags {
     pub is_simd: bool,
 }
 
-/// Reflects [`ty::Align`], but directly stores the number of bytes as a u64.
+/// Reflects [`rustc_abi::Align`], but directly stores the number of bytes as a u64.
 
 #[derive(AdtInto, Clone, Debug, Hash, PartialEq, Eq)]
 #[args(<'tcx, S: BaseState<'tcx>>, from: rustc_abi::Align, state: S as _s)]
@@ -1074,18 +1093,6 @@ pub fn compute_unsizing_metadata<'tcx, S: UnderOwnerState<'tcx>>(
         }
         _ => UnsizingMetadata::Unknown,
     }
-}
-
-/// Reflects [`rustc_abi::ExternAbi`]
-#[derive(AdtInto, Clone, Debug, Hash, PartialEq, Eq)]
-#[args(<'tcx, S: BaseState<'tcx>>, from: rustc_abi::ExternAbi, state: S as s)]
-pub enum ExternAbi {
-    Rust,
-    C {
-        unwind: bool,
-    },
-    #[todo]
-    Other(String),
 }
 
 /// Reflects [`ty::FnSig`]
@@ -1594,11 +1601,18 @@ impl AssocItem {
                 let implemented_trait_ref = tcx
                     .impl_trait_ref(container_id)
                     .instantiate(tcx, container_args);
-                let implemented_trait_item = translate_item_ref(
-                    s,
-                    implemented_item_id,
-                    item_args.rebase_onto(tcx, container_id, implemented_trait_ref.args),
-                );
+                let implemented_trait_item = {
+                    let implemented_item_id = implemented_item_id.sinto(s);
+                    let generics =
+                        item_args.rebase_onto(tcx, container_id, implemented_trait_ref.args);
+                    // Don't resolve, otherwise we'll always get the impl item id back.
+                    ItemRef::translate_from_hax_def_id_maybe_resolve(
+                        s,
+                        implemented_item_id,
+                        generics,
+                        false,
+                    )
+                };
                 AssocItemContainer::TraitImplContainer {
                     impl_: item,
                     implemented_trait_ref: implemented_trait_ref.sinto(s),
@@ -1628,6 +1642,17 @@ impl AssocItem {
             kind: item.kind.sinto(s),
             container,
             has_value: item.defaultness(tcx).has_value(),
+        }
+    }
+
+    /// The `DefId` of the item being implemented.
+    pub fn implemented_trait_item_id(&self) -> &DefId {
+        match &self.container {
+            AssocItemContainer::TraitImplContainer {
+                implemented_trait_item,
+                ..
+            } => &implemented_trait_item.def_id,
+            _ => &self.def_id,
         }
     }
 }

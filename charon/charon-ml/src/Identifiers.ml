@@ -48,6 +48,29 @@ module type Id = sig
     include C.Map
 
     val add_in_place : id -> 'a -> 'a t ref -> unit
+    val to_list : 'a t -> (id * 'a) list
+    val values : 'a t -> 'a list
+
+    (** Visitor helpers for the [visitors] ppx. *)
+
+    val visit_iter : ('env -> 'a -> unit) -> 'env -> 'a t -> unit
+    val visit_map : ('env -> 'a -> 'b) -> 'env -> 'a t -> 'b t
+
+    val visit_reduce :
+      zero:'z ->
+      plus:('z -> 'z -> 'z) ->
+      ('env -> 'a -> 'z) ->
+      'env ->
+      'a t ->
+      'z
+
+    val visit_mapreduce :
+      zero:'z ->
+      plus:('z -> 'z -> 'z) ->
+      ('env -> 'a -> 'b * 'z) ->
+      'env ->
+      'a t ->
+      'b t * 'z
   end
   with type key = id
 
@@ -94,6 +117,10 @@ module type Id = sig
   val pp_id : Format.formatter -> id -> unit
   val show_id : id -> string
   val id_of_json : 'ctx -> Yojson.Basic.t -> (id, string) result
+
+  val id_of_postcard :
+    'ctx -> OfPostcardBasic.postcard_state -> (id, string) result
+
   val compare_id : id -> id -> int
   val equal_id : id -> id -> bool
   val max : id -> id -> id
@@ -170,6 +197,20 @@ module IdGen () : Id = struct
     include C.MakeMap (Ord)
 
     let add_in_place id x m = m := add id x !m
+    let to_list m = bindings m
+    let values m = List.map (fun (_k, v) -> v) (bindings m)
+    let visit_iter visit_a env m = iter (fun _ v -> visit_a env v) m
+    let visit_map visit_a env m = map (fun v -> visit_a env v) m
+
+    let visit_reduce ~zero ~plus visit_a env m =
+      fold (fun _ v acc -> plus acc (visit_a env v)) m zero
+
+    let visit_mapreduce ~zero ~plus visit_a env m =
+      fold
+        (fun k v (m', acc) ->
+          let v', z = visit_a env v in
+          (add k v' m', plus acc z))
+        m (empty, zero)
   end
 
   module InjSubst = C.MakeInjMap (Ord) (Ord)
@@ -218,6 +259,7 @@ module IdGen () : Id = struct
   let to_int x = x
   let of_int x = x
   let id_of_json = OfJsonBasic.int_of_json
+  let id_of_postcard = OfPostcardBasic.int_of_postcard
   let compare_id = compare
   let equal_id = ( = )
   let max id0 id1 = if id0 > id1 then id0 else id1

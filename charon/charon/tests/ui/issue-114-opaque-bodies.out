@@ -107,7 +107,7 @@ pub struct PhantomData<T> {}
 
 // Full name: core::num::niche_types::UsizeNoHighBit
 pub struct UsizeNoHighBit {
-  usize,
+  usize is 0 : usize..=9223372036854775807 : usize,
 }
 
 // Full name: core::num::{usize}::MAX

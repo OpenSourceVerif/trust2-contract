@@ -8,7 +8,7 @@ use rustc_span::def_id::DefId as RDefId;
 /// uses this.
 ///
 /// This can refer to a top-level item or to a trait associated item. Example:
-/// ```ignore
+/// ```text
 /// trait MyTrait<TraitType, const TraitConst: usize> {
 ///   fn meth<MethType>(...) {...}
 /// }
@@ -17,7 +17,7 @@ use rustc_span::def_id::DefId as RDefId;
 /// }
 /// ```
 /// Here, in the call `x.meth::<String>(...)` we will build an `ItemRef` that looks like:
-/// ```ignore
+/// ```text
 /// ItemRef {
 ///     def_id = MyTrait::meth,
 ///     generic_args = [String],
@@ -27,7 +27,7 @@ use rustc_span::def_id::DefId as RDefId;
 /// ```
 /// The `in_trait` `ImplExpr` will have in its `trait` field a representation of the `SelfType:
 /// MyTrait<TraitType, 12>` predicate, which looks like:
-/// ```ignore
+/// ```text
 /// ItemRef {
 ///     def_id = MyTrait,
 ///     generic_args = [SelfType, TraitType, 12],
@@ -107,7 +107,7 @@ impl ItemRef {
     /// `translate` rewrites `def_id` to the concrete associated item from that `impl` and re-bases
     /// the generics.
     ///
-    /// For instance, [`<u32 as From<u8>>::from`] produces a [`ItemRef`] with a [`DefId`] looking
+    /// For instance, `<u32 as From<u8>>::from` produces a [`ItemRef`] with a [`DefId`] looking
     /// like `core::convert::num::Impl#42::from` when `resolve_impl` is `true`,
     /// `core::convert::From::from` otherwise.
     pub fn translate_from_hax_def_id<'tcx, S: UnderOwnerState<'tcx>>(
@@ -115,16 +115,25 @@ impl ItemRef {
         hax_def_id: DefId,
         generics: ty::GenericArgsRef<'tcx>,
     ) -> ItemRef {
-        let key = (hax_def_id.clone(), generics);
+        Self::translate_from_hax_def_id_maybe_resolve(s, hax_def_id, generics, true)
+    }
+    pub fn translate_from_hax_def_id_maybe_resolve<'tcx, S: UnderOwnerState<'tcx>>(
+        s: &S,
+        hax_def_id: DefId,
+        generics: ty::GenericArgsRef<'tcx>,
+        resolve_assoc_item_trait_ref: bool,
+    ) -> ItemRef {
+        let key = (hax_def_id.clone(), generics, resolve_assoc_item_trait_ref);
         if let Some(item) = s.with_cache(|cache| cache.item_refs.get(&key).cloned()) {
             return item;
         }
 
         // Don't resolve if the DefId isn't real.
         let is_real_def_id = hax_def_id.as_rust_def_id().is_some();
+        let resolve_assoc_item_trait_ref = is_real_def_id && resolve_assoc_item_trait_ref;
         let def_id = hax_def_id.as_def_id_even_synthetic();
         let item_ref = s.with_predicate_searcher(|pred_searcher| {
-            pred_searcher.resolve_item_reference(def_id, generics, is_real_def_id)
+            pred_searcher.resolve_item_reference(def_id, generics, resolve_assoc_item_trait_ref)
         });
 
         // If the original `DefId` was not real, make sure we keep that around.

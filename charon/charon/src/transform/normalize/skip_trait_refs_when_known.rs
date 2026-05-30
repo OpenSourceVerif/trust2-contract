@@ -1,6 +1,6 @@
 use derive_generic_visitor::Visitor;
 
-use crate::transform::ctx::TransformPass;
+use crate::transform::ctx::UllbcPass;
 use crate::{register_error, transform::TransformCtx, ullbc_ast::*};
 
 #[derive(Visitor)]
@@ -28,7 +28,7 @@ impl VisitAstMut for NormalizeFnPtr<'_> {
 
 fn transform_fn_ptr(ctx: &TransformCtx, span: Span, fn_ptr: &mut FnPtr) {
     // We find references to a trait method where the impl is known; otherwise we return.
-    let FnPtrKind::Trait(trait_ref, name, _) = fn_ptr.kind.as_ref() else {
+    let FnPtrKind::Trait(trait_ref, method_id, _) = fn_ptr.kind.as_ref() else {
         return;
     };
     let TraitRefKind::TraitImpl(impl_ref) = &trait_ref.kind else {
@@ -38,7 +38,7 @@ fn transform_fn_ptr(ctx: &TransformCtx, span: Span, fn_ptr: &mut FnPtr) {
         return;
     };
     // Find the function declaration corresponding to this impl.
-    let Some((_, bound_fn)) = trait_impl.methods().find(|(n, _)| n == name) else {
+    let Some(bound_fn) = trait_impl.methods.get(*method_id) else {
         return;
     };
     let method_generics = &fn_ptr.generics;
@@ -67,13 +67,11 @@ fn transform_fn_ptr(ctx: &TransformCtx, span: Span, fn_ptr: &mut FnPtr) {
 }
 
 pub struct Transform;
-impl TransformPass for Transform {
-    fn transform_ctx(&self, ctx: &mut TransformCtx) {
-        ctx.for_each_item_mut(|ctx, mut item| {
-            let _ = item.drive_mut(&mut NormalizeFnPtr {
-                ctx,
-                span: Span::dummy(),
-            });
-        })
+impl UllbcPass for Transform {
+    fn transform_item(&self, ctx: &mut TransformCtx, mut item: ItemRefMut<'_>) {
+        let _ = item.drive_mut(&mut NormalizeFnPtr {
+            ctx,
+            span: Span::dummy(),
+        });
     }
 }

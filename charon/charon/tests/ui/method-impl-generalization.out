@@ -49,18 +49,6 @@ pub trait Destruct<Self>
 unsafe fn drop_in_place<Self>(_1: *mut Self)
 = <opaque>
 
-// Full name: UNIT_METADATA
-fn UNIT_METADATA()
-{
-    let _0: (); // return
-
-    _0 = ()
-    return
-}
-
-// Full name: UNIT_METADATA
-const UNIT_METADATA: () = UNIT_METADATA()
-
 // Full name: test_crate::Trait
 trait Trait<Self>
 {
@@ -157,67 +145,82 @@ fn main()
     let _2: (); // anonymous local
     let _3: &'1 u32; // anonymous local
     let _4: &'2 u32; // anonymous local
-    let _5: bool; // anonymous local
-    let _6: &'4 (); // anonymous local
-    let _7: &'5 (); // anonymous local
-    let _8: &'6 (); // anonymous local
-    let _9: &'7 (); // anonymous local
-    let _10: &'8 (); // anonymous local
-    let _11: &'9 u32; // anonymous local
-    let _12: &'14 u32; // anonymous local
-    let _13: u32; // anonymous local
-    let _14: &'15 (); // anonymous local
-    let _15: (); // anonymous local
-    let _16: &'16 (); // anonymous local
-    let _17: (); // anonymous local
+    let _5: (); // anonymous local
+    let _6: (); // anonymous local
+    let _7: bool; // anonymous local
+    let _8: &'4 (); // anonymous local
+    let _9: &'5 (); // anonymous local
+    let _10: &'6 (); // anonymous local
+    let _11: &'7 (); // anonymous local
+    let _12: &'8 (); // anonymous local
+    let _13: &'9 u32; // anonymous local
+    let _14: &'10 u32; // anonymous local
+    let _15: &'11 (); // anonymous local
+    let _16: &'12 (); // anonymous local
+    let _17: &'14 u32; // anonymous local
+    let _18: u32; // anonymous local
+    let _19: &'15 (); // anonymous local
+    let _20: (); // anonymous local
+    let _21: &'16 (); // anonymous local
+    let _22: (); // anonymous local
 
+    storage_live(_14)
+    storage_live(_17)
+    storage_live(_18)
+    _18 = const 1 : u32
+    _17 = &_18
+    _14 = move _17
+    storage_live(_11)
     storage_live(_12)
     storage_live(_13)
-    _13 = const 1 : u32
-    _12 = &_13
-    storage_live(_9)
-    storage_live(_10)
-    storage_live(_11)
     _0 = ()
     storage_live(_1)
     storage_live(_2)
     _2 = ()
     storage_live(_3)
     storage_live(_4)
-    _11 = move _12
-    _4 = &(*_11)
+    _13 = move _14
+    _4 = &(*_13)
     _3 = &(*_4)
     _1 = {impl Trait for ()}::method1(move _2, move _3)
-    storage_live(_14)
-    storage_live(_15)
-    // TODO: this gives incorrect predicates
-    // let _ = ().method2(false);
-    // Not allowed to use the more precise signature.
-    // let _ = ().method2(String::new());
-    _15 = ()
-    _14 = &_15
-    storage_live(_16)
-    storage_live(_17)
-    _17 = ()
-    _16 = &_17
     storage_dead(_3)
     storage_dead(_2)
     storage_dead(_4)
     storage_dead(_1)
     storage_live(_5)
     storage_live(_6)
-    _10 = move _14
-    _6 = &(*_10)
+    _6 = ()
+    _5 = {impl Trait for ()}::method2<bool>[{built_in impl Sized for bool}](move _6, const false)
+    storage_live(_16)
+    storage_live(_21)
+    storage_live(_22)
+    // Not allowed to use the more precise signature.
+    // let _ = ().method2(String::new());
+    _22 = ()
+    _21 = &_22
+    _16 = move _21
+    storage_live(_15)
+    storage_live(_19)
+    storage_live(_20)
+    _20 = ()
+    _19 = &_20
+    _15 = move _19
+    storage_dead(_6)
+    storage_dead(_5)
     storage_live(_7)
     storage_live(_8)
-    _9 = move _16
-    _8 = &(*_9)
-    _7 = &(*_8)
-    _5 = {impl MyCompare<&'a ()> for &'a ()}::compare<'13>(move _6, move _7)
-    storage_dead(_7)
-    storage_dead(_6)
+    _12 = move _15
+    _8 = &(*_12)
+    storage_live(_9)
+    storage_live(_10)
+    _11 = move _16
+    _10 = &(*_11)
+    _9 = &(*_10)
+    _7 = {impl MyCompare<&'a ()> for &'a ()}::compare<'13>(move _8, move _9)
+    storage_dead(_9)
     storage_dead(_8)
-    storage_dead(_5)
+    storage_dead(_10)
+    storage_dead(_7)
     _0 = ()
     return
 }
@@ -263,14 +266,17 @@ fn call_foo<'e>(x_1: &'e ()) -> &'e ()
     let _4: &'5 (); // anonymous local
     let _5: &'6 (); // anonymous local
     let _6: &'7 (); // anonymous local
-    let _7: &'13 (); // anonymous local
-    let _8: (); // anonymous local
+    let _7: &'8 (); // anonymous local
+    let _8: &'13 (); // anonymous local
+    let _9: (); // anonymous local
 
     storage_live(_7)
     storage_live(_8)
+    storage_live(_9)
     // Calls have erased lifetimes so we can't notice the discrepancy if there is one.
-    _8 = ()
-    _7 = &_8
+    _9 = ()
+    _8 = &_9
+    _7 = move _8
     storage_live(_6)
     storage_live(_2)
     storage_live(_3)

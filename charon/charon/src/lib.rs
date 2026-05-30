@@ -13,26 +13,20 @@
 
 // For rustdoc: prevents overflows
 #![recursion_limit = "256"]
-#![allow(clippy::borrowed_box)]
-#![allow(clippy::derivable_impls)]
-#![allow(clippy::field_reassign_with_default)]
-#![allow(clippy::manual_map)]
-#![allow(clippy::mem_replace_with_default)]
-#![allow(clippy::new_without_default)]
-#![allow(clippy::useless_format)]
-#![expect(incomplete_features)]
-#![feature(assert_matches)]
-#![feature(box_patterns)]
-#![feature(deref_patterns)]
-#![feature(deref_pure_trait)]
-#![feature(if_let_guard)]
-#![feature(impl_trait_in_assoc_type)]
-#![feature(iterator_try_collect)]
-#![feature(register_tool)]
-#![feature(trait_alias)]
-#![feature(trivial_bounds)]
+#![allow(
+    clippy::borrowed_box,
+    clippy::derivable_impls,
+    clippy::field_reassign_with_default,
+    clippy::manual_map,
+    clippy::mem_replace_with_default,
+    clippy::new_ret_no_self,
+    clippy::new_without_default,
+    clippy::should_implement_trait,
+    clippy::useless_format
+)]
 // For when we use charon on itself :3
-#![register_tool(charon)]
+#![cfg_attr(feature = "charon_on_charon", feature(register_tool))]
+#![cfg_attr(feature = "charon_on_charon", register_tool(charon))]
 
 #[macro_use]
 pub mod ids;
@@ -56,6 +50,14 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Read a `.llbc` file.
 pub fn deserialize_llbc(path: &std::path::Path) -> anyhow::Result<ast::TranslatedCrate> {
+    deserialize_llbc_with_format(path, options::SerializationFormat::Json)
+}
+
+/// Read a serialized (U)LLBC file.
+pub fn deserialize_llbc_with_format(
+    path: &std::path::Path,
+    format: options::SerializationFormat,
+) -> anyhow::Result<ast::TranslatedCrate> {
     use crate::export::CrateData;
-    Ok(CrateData::deserialize_from_file(path)?.translated)
+    Ok(CrateData::deserialize_from_file(path, format)?.translated)
 }

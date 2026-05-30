@@ -27,7 +27,7 @@ pub struct Place {
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("Place")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Place"))]
 pub enum PlaceKind {
     /// A local variable in a function body.
     Local(LocalId),
@@ -78,7 +78,7 @@ pub enum ProjectionElem {
     /// MIR imposes that the argument to an index projection be a local variable, meaning
     /// that even constant indices into arrays are let-bound as separate variables.
     /// We **eliminate** this variant in a micro-pass for LLBC.
-    #[charon::rename("ProjIndex")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("ProjIndex"))]
     Index {
         offset: Box<Operand>,
         #[drive(skip)]
@@ -108,7 +108,7 @@ pub enum ProjectionElem {
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("Proj")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Proj"))]
 pub enum FieldProjKind {
     Adt(TypeDeclId, Option<VariantId>),
     /// If we project from a tuple, the projection kind gives the arity of the tuple.
@@ -129,7 +129,7 @@ pub enum FieldProjKind {
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("B")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("B"))]
 pub enum BorrowKind {
     Shared,
     Mut,
@@ -169,7 +169,7 @@ pub enum BorrowKind {
     Drive,
     DriveMut,
 )]
-#[charon::rename("Unop")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("Unop"))]
 pub enum UnOp {
     Not,
     /// This can overflow, for `-i::MIN`.
@@ -193,7 +193,7 @@ pub enum UnOp {
     Drive,
     DriveMut,
 )]
-#[charon::rename("Nullop")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("Nullop"))]
 pub enum NullOp {
     SizeOf,
     AlignOf,
@@ -217,7 +217,7 @@ pub enum NullOp {
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("Cast")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Cast"))]
 pub enum CastKind {
     /// Conversion between types in `{Integer, Bool}`
     /// Remark: for now we don't support conversions with Char.
@@ -259,7 +259,7 @@ pub enum CastKind {
     DriveMut,
     Hash,
 )]
-#[charon::variants_prefix("Meta")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Meta"))]
 pub enum UnsizingMetadata {
     /// Cast from `[T; N]` to `[T]`.
     Length(Box<ConstantExpr>),
@@ -276,7 +276,7 @@ pub enum UnsizingMetadata {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Serialize, Deserialize)]
-#[charon::variants_prefix("O")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("O"))]
 pub enum OverflowMode {
     /// If this operation overflows, it panics. Only exists in debug mode, for instance in
     /// `a + b`, and only if `--reconstruct-fallible-operations` is passed to Charon. Otherwise the
@@ -304,7 +304,7 @@ pub enum OverflowMode {
     Drive,
     DriveMut,
 )]
-#[charon::rename("Binop")]
+#[cfg_attr(feature = "charon_on_charon", charon::rename("Binop"))]
 #[serde_state(stateless)]
 pub enum BinOp {
     BitXor,
@@ -365,7 +365,7 @@ pub enum Operand {
     Copy(Place),
     Move(Place),
     /// Constant value (including constant and static variables)
-    #[charon::rename("Constant")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("Constant"))]
     Const(Box<ConstantExpr>),
 }
 
@@ -384,7 +384,7 @@ pub enum Operand {
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("F")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("F"))]
 #[serde_state(stateless)]
 pub enum FunId {
     /// A "regular" function (function local to the crate, external function
@@ -393,7 +393,7 @@ pub enum FunId {
     /// A primitive function, coming from a standard library (for instance:
     /// `alloc::boxed::Box::new`).
     /// TODO: rename to "Primitive"
-    #[charon::rename("FBuiltin")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("FBuiltin"))]
     Builtin(BuiltinFunId),
 }
 
@@ -498,17 +498,6 @@ pub struct MaybeBuiltinFunDeclRef {
     pub trait_ref: Option<TraitRef>,
 }
 
-/// Reference to a trait method.
-#[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
-pub struct TraitMethodRef {
-    pub trait_ref: TraitRef,
-    pub name: TraitItemName,
-    pub generics: BoxedArgs,
-    /// Reference to the method declaration; can be derived from the trait_ref, provided here for
-    /// convenience. The generic args are for the method, not for this function.
-    pub method_decl_id: FunDeclId,
-}
-
 #[derive(
     Debug,
     Clone,
@@ -522,13 +511,13 @@ pub struct TraitMethodRef {
     Hash,
 )]
 pub enum FnPtrKind {
-    #[charon::rename("FunId")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("FunId"))]
     Fun(FunId),
     /// If a trait: the reference to the trait and the id of the trait method.
     /// The fun decl id is not really necessary - we put it here for convenience
     /// purposes.
-    #[charon::rename("TraitMethod")]
-    Trait(TraitRef, TraitItemName, FunDeclId),
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("TraitMethod"))]
+    Trait(TraitRef, TraitMethodId, FunDeclId),
 }
 
 impl From<FunId> for FnPtrKind {
@@ -555,7 +544,7 @@ impl From<FunDeclRef> for FnPtr {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut, Hash)]
-#[charon::variants_prefix("Prov")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Prov"))]
 pub enum Provenance {
     Global(GlobalDeclRef),
     Function(FunDeclRef),
@@ -618,7 +607,7 @@ pub enum Byte {
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("C")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("C"))]
 pub enum ConstantExprKind {
     #[serde_state(stateless)]
     Literal(Literal),
@@ -658,7 +647,7 @@ pub enum ConstantExprKind {
     ///   const C : usize = 32; // <-
     /// }
     /// ```
-    TraitConst(TraitRef, TraitItemName),
+    TraitConst(TraitRef, AssocConstId),
     /// A reference to the vtable `static` item for this trait ref. This can be normalized for
     /// cases where we do emit a vtable item. That's not always the case for builtin traits, e.g.
     /// for `MetaSized`.
@@ -722,7 +711,7 @@ pub enum Rvalue {
     Use(Operand),
     /// Takes a reference to the given place.
     /// The `Operand` refers to the init value of the metadata, it is `()` if no metadata
-    #[charon::rename("RvRef")]
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("RvRef"))]
     Ref {
         place: Place,
         #[serde_state(stateless)]
@@ -746,7 +735,7 @@ pub enum Rvalue {
     /// Discriminant read. Reads the discriminant value of an enum. The place must have the type of
     /// an enum. The discriminant in question is the one in the `discriminant` field of the
     /// corresponding `Variant`. This can be different than the value stored in memory (called
-    /// `tag`). That one is described by [`DiscriminantLayout`] and [`TagEncoding`].
+    /// `tag`); that one is described by [`Discriminator`] and [`VariantLayout::tagger`].
     Discriminant(Place),
     /// Creates an aggregate value, like a tuple, a struct or an enum:
     /// ```text
@@ -782,10 +771,6 @@ pub enum Rvalue {
     ///
     /// We translate this to a function call for LLBC.
     Repeat(Operand, Ty, Box<ConstantExpr>),
-    /// Transmutes a `*mut u8` (obtained from `malloc`) into shallow-initialized `Box<T>`. This
-    /// only appears as part of lowering `Box::new()` in some cases. We reconstruct the original
-    /// `Box::new()` call, but sometimes may fail to do so, leaking the expression.
-    ShallowInitBox(Operand, Ty),
 }
 
 /// An aggregated ADT.
@@ -819,7 +804,7 @@ pub enum Rvalue {
     Drive,
     DriveMut,
 )]
-#[charon::variants_prefix("Aggregated")]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Aggregated"))]
 pub enum AggregateKind {
     /// A struct, enum or union aggregate. The `VariantId`, if present, indicates this is an enum
     /// and the aggregate uses that variant. The `FieldId`, if present, indicates this is a union

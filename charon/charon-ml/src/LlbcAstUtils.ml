@@ -173,13 +173,15 @@ class ['self] map_crate =
         name;
         options;
         target_information;
+        item_names;
         declarations;
         type_decls;
         fun_decls;
         global_decls;
         trait_decls;
         trait_impls;
-        unit_metadata;
+        assoc_item_names;
+        short_names;
       } =
         crate
       in
@@ -206,18 +208,19 @@ class ['self] map_crate =
       let trait_impls =
         TraitImplId.Map.map (self#visit_trait_impl env) trait_impls
       in
-      let unit_metadata = self#visit_global_decl_ref env unit_metadata in
       {
         name;
         options;
         target_information;
+        item_names;
         declarations;
         type_decls;
         fun_decls;
         global_decls;
         trait_decls;
         trait_impls;
-        unit_metadata;
+        assoc_item_names;
+        short_names;
       }
   end
 
@@ -313,13 +316,15 @@ class ['self] iter_crate =
         name;
         options;
         target_information;
+        item_names = _;
         declarations;
         type_decls;
         fun_decls;
         global_decls;
         trait_decls;
         trait_impls;
-        unit_metadata;
+        assoc_item_names = _;
+        short_names = _;
       } =
         crate
       in
@@ -330,8 +335,7 @@ class ['self] iter_crate =
       FunDeclId.Map.iter (fun _ -> self#visit_fun_decl env) fun_decls;
       GlobalDeclId.Map.iter (fun _ -> self#visit_global_decl env) global_decls;
       TraitDeclId.Map.iter (fun _ -> self#visit_trait_decl env) trait_decls;
-      TraitImplId.Map.iter (fun _ -> self#visit_trait_impl env) trait_impls;
-      self#visit_global_decl_ref env unit_metadata
+      TraitImplId.Map.iter (fun _ -> self#visit_trait_impl env) trait_impls
   end
 
 (** This visitor keeps track of the last (most precise) span it found, together

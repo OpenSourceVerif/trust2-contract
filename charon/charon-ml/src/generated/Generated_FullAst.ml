@@ -16,8 +16,14 @@ open Generated_Expressions
 open Generated_Meta
 open Identifiers
 
+type assoc_item_names = {
+  types : trait_item_name list;
+  methods : trait_item_name list;
+  consts : trait_item_name list;
+}
+
 (** The body of a function. *)
-type body =
+and body =
   | UnstructuredBody of
       (Generated_UllbcAst.block list, Generated_UllbcAst.fun_specs) gexpr_body
       (** Body represented as a CFG. This is what ullbc is made of, and what we
@@ -129,12 +135,12 @@ and cli_options = {
           This takes a list of name patterns of the traits to transform, using
           the same syntax as [--include]. *)
   hide_marker_traits : bool;
-      (** Whether to hide various marker traits such as [Sized], [Sync], [Send]
-          and [Destruct] anywhere they show up. This can considerably speed up
+      (** Whether to hide various marker traits such as [Sized], [Sync], and
+          [Send] anywhere they show up. This can considerably speed up
           translation. *)
   remove_adt_clauses : bool;
       (** Remove trait clauses from type declarations. Must be combined with
-          [--remove-associated-types] for type declarations that use trait
+          [--lift-associated-types] for type declarations that use trait
           associated types in their fields, otherwise this will result in
           errors. *)
   hide_allocator : bool;
@@ -186,14 +192,19 @@ and cli_options = {
       (** Pretty-print the final LLBC (after all the cleaning micro-passes). *)
   dest_dir : path_buf option;
       (** The destination directory. Files will be generated as
-          [<dest_dir>/<crate_name>.{u}llbc], unless [dest_file] is set.
-          [dest_dir] defaults to the current directory. *)
+          [<dest_dir>/<crate_name>.{u}llbc] for json and
+          [<dest_dir>/<crate_name>.{u}llbc.postcard] for postcard, unless
+          [dest_file] is set. [dest_dir] defaults to the current directory. *)
   dest_file : path_buf option;
-      (** The destination file. By default [<dest_dir>/<crate_name>.llbc]. If
-          this is set we ignore [dest_dir]. *)
+      (** The destination file. By default this depends on [format] and [ullbc].
+          If this is set we ignore [dest_dir]. If used with [format=all], will
+          add an extension corresponding to the file format at the end of the
+          provided file name. *)
   no_dedup_serialized_ast : bool;
       (** Don't deduplicate values (types, trait refs) in the .(u)llbc file.
           This makes the file easier to inspect. *)
+  format : serialization_format_arg option;
+      (** Serialization format for emitted (U)LLBC files. Defaults to json. *)
   no_serialize : bool;  (** Don't serialize the final (U)LLBC to a file. *)
   no_typecheck : bool;  (** Skip the typecheck passes. *)
   no_normalize : bool;  (** Don't normalize associated types. *)
@@ -222,8 +233,7 @@ and fun_decl = {
   item_meta : item_meta;  (** The meta data associated with the declaration. *)
   generics : generic_params;
   signature : fun_sig;
-      (** The signature contains the inputs/output types *with* non-erased
-          regions. It also contains the list of region and type parameters. *)
+      (** The signature contains the inputs/output types and ABI details. *)
   src : item_source;
       (** The function kind: "regular" function, trait method declaration, etc.
       *)
@@ -275,6 +285,8 @@ and preset =
   | Soteria
   | Tests
 
+and serialization_format_arg = Json | Postcard | AllFormats
+
 and target_info = {
   target_pointer_size : int;  (** The pointer size of the target in bytes. *)
   is_little_endian : bool;
@@ -301,20 +313,23 @@ and translated_crate = {
           even of items that failed to translate. Invariant: after translation,
           any existing [ItemId] must have an associated name, even if the
           corresponding item wasn't translated. *)
+  assoc_item_names : assoc_item_names trait_decl_id_map;
+      (** The names of all the registered associated items. Available so we can
+          know the names even of items that failed to translate. Invariant:
+          after translation, any existing [AssocItemId] must have an associated
+          name, even if the corresponding item wasn't translated. *)
   short_names : (item_id * name) list;
       (** Short names, for items whose last PathElem is unique. *)
-  type_decls : type_decl option list;  (** The translated type definitions *)
-  fun_decls : fun_decl option list;  (** The translated function definitions *)
-  global_decls : global_decl option list;
+  type_decls : type_decl type_decl_id_map;
+      (** The translated type definitions *)
+  fun_decls : fun_decl fun_decl_id_map;
+      (** The translated function definitions *)
+  global_decls : global_decl global_decl_id_map;
       (** The translated global definitions *)
-  trait_decls : trait_decl option list;
+  trait_decls : trait_decl trait_decl_id_map;
       (** The translated trait declarations *)
-  trait_impls : trait_impl option list;
+  trait_impls : trait_impl trait_impl_id_map;
       (** The translated trait declarations *)
-  unit_metadata : global_decl_ref option;
-      (** A [const UNIT: () = ();] used whenever we make a thin
-          pointer/reference to avoid creating a local [let unit = ();] variable.
-          It is always [Some]. *)
   ordered_decls : declaration_group list option;
       (** The re-ordered groups of declarations, initialized as empty. *)
 }

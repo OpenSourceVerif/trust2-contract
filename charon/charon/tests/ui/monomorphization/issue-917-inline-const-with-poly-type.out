@@ -71,23 +71,12 @@ pub trait Fn<Self, Args>
 }
 
 // Full name: core::ops::function::FnMut::call_mut
-pub fn call_mut<'_0>(_1: &'_0 mut closure::<()>, _2: ((),))
+pub extern "rust-call" fn call_mut<'_0>(_1: &'_0 mut closure::<()>, _2: ((),))
 = <opaque>
 
-// Full name: UNIT_METADATA
-fn UNIT_METADATA()
-{
-    let _0: (); // return
-
-    _0 = ()
-    return
-}
-
-// Full name: UNIT_METADATA
-const UNIT_METADATA: () = UNIT_METADATA()
-
 // Full name: test_crate::foo::{const}::closure::{impl Destruct for closure::<()>}
-impl Destruct for closure::<()> {    non-dyn-compatible
+impl Destruct for closure::<()> {
+    non-dyn-compatible
 }
 
 // Full name: test_crate::foo::{const}::{impl FnOnce<((),)> for closure::<()>}
@@ -149,13 +138,16 @@ fn foo::<()>(x_1: ())
     let _3: fn(()); // anonymous local
     let _4: (); // anonymous local
     let _5: fn(()); // anonymous local
-    let _6: closure::<()>; // anonymous local
+    let _6: fn(()); // anonymous local
+    let _7: closure::<()>; // anonymous local
 
     storage_live(_5)
     storage_live(_6)
-    _6 = closure::<()> {  }
-    _5 = cast<as_fn::<()>, fn(())>(const as_fn::<()>)
-    storage_dead(_6)
+    storage_live(_7)
+    _7 = closure::<()> {  }
+    _6 = cast<as_fn::<()>, fn(())>(const as_fn::<()>)
+    storage_dead(_7)
+    _5 = move _6
     _0 = ()
     storage_live(f_2)
     f_2 = move _5

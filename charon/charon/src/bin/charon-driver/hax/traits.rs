@@ -3,8 +3,8 @@ use rustc_span::def_id::DefId as RDefId;
 
 pub use rustc_trait_elaboration as elaboration;
 pub use rustc_trait_elaboration::{
-    ItemPredicate, ItemPredicateId, ItemPredicates, PredicateSearcher, ToPolyTraitRef,
-    erase_and_norm, erase_free_regions, normalize, self_predicate,
+    ElaborationCtx, ItemPredicate, ItemPredicateId, ItemPredicates, PredicateSearcher,
+    ToPolyTraitRef, erase_and_norm, erase_free_regions, normalize, self_predicate,
 };
 
 use crate::hax::prelude::*;
@@ -139,7 +139,7 @@ pub enum DestructData {
 pub type ImplExpr = HashConsed<ImplExprContents>;
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: elaboration::ImplExpr<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx> >, from: elaboration::ImplExprContents<'tcx>, state: S as s)]
 pub struct ImplExprContents {
     /// The trait this is an impl for.
     pub r#trait: Binder<TraitRef>,
@@ -149,7 +149,7 @@ pub struct ImplExprContents {
 
 impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ImplExpr> for elaboration::ImplExpr<'tcx> {
     fn sinto(&self, s: &S) -> ImplExpr {
-        HashConsed::new(self.sinto(s))
+        HashConsed::new(self.contents().sinto(s))
     }
 }
 
@@ -216,11 +216,7 @@ pub fn solve_item_required_traits<'tcx, S: UnderOwnerState<'tcx>>(
     def_id: RDefId,
     generics: ty::GenericArgsRef<'tcx>,
 ) -> Vec<ImplExpr> {
-    let predicates = ItemPredicates::required_recursively(
-        s.base().tcx,
-        def_id,
-        &s.base().options.bounds_options,
-    );
+    let predicates = ItemPredicates::required_recursively(s.base().elab_ctx, def_id);
     solve_item_traits_inner(s, generics, predicates)
 }
 
@@ -232,8 +228,7 @@ pub fn solve_item_implied_traits<'tcx, S: UnderOwnerState<'tcx>>(
     def_id: RDefId,
     generics: ty::GenericArgsRef<'tcx>,
 ) -> Vec<ImplExpr> {
-    let predicates =
-        ItemPredicates::implied(s.base().tcx, def_id, &s.base().options.bounds_options);
+    let predicates = ItemPredicates::implied(s.base().elab_ctx, def_id);
     solve_item_traits_inner(s, generics, predicates)
 }
 

@@ -63,6 +63,7 @@ pub enum Error {
     Union(TypeDeclId),
     RawPointer,
     RawBytesConst,
+    InlineAsm,
 }
 
 impl error::Error for Error {}
@@ -82,6 +83,7 @@ impl Display for Error {
             }
             Error::RawPointer => write!(f, "unsupported raw pointer"),
             Error::RawBytesConst => write!(f, "unsupported constant in raw byte representation"),
+            Error::InlineAsm => write!(f, "unsupported inline assembly"),
         }
     }
 }
@@ -185,10 +187,6 @@ pub fn translate_crates(
 }
 
 fn translate_crate(crate_: &mut TranslatedCrate) -> Result<(MlwFile, HashSet<(usize, FieldId)>)> {
-    let global_unit_id = crate_.unit_metadata.take().unwrap().id;
-    let global_unit_init_func_decl_id = crate_.global_decls.remove(global_unit_id).unwrap().init;
-    crate_.fun_decls.remove(global_unit_init_func_decl_id);
-
     let name_map = name_map::build(crate_);
 
     let mut whyml_decls = Vec::new();
@@ -197,8 +195,6 @@ fn translate_crate(crate_: &mut TranslatedCrate) -> Result<(MlwFile, HashSet<(us
 
     let mut ctx = Ctx {
         crate_,
-        global_unit_id,
-        global_unit_init_func_decl_id,
         name_map: &name_map,
         whyml_decls: &mut whyml_decls,
         tuple_field_accesses: HashSet::new(),
@@ -220,8 +216,6 @@ fn translate_ident(ident: Box<str>) -> Ident {
 
 struct Ctx<'a> {
     crate_: &'a TranslatedCrate,
-    global_unit_id: GlobalDeclId,
-    global_unit_init_func_decl_id: FunDeclId,
     name_map: &'a NameMap,
     whyml_decls: &'a mut Vec<Decl>,
     tuple_field_accesses: HashSet<(usize, FieldId)>,
@@ -328,6 +322,7 @@ impl<'a> Ctx<'a> {
             TyKind::PtrMetadata(..) => todo!(),
             TyKind::Array(ty, _n) => translate_array_type(ty),
             TyKind::Slice(..) => todo!(),
+            TyKind::Pattern(ty, pattern) => self.translate_type(ty),
             TyKind::Error(..) => unreachable!(),
         }
     }
@@ -913,6 +908,7 @@ impl<'a> Ctx<'a> {
             StatementKind::Assert { assert, on_failure } => {
                 translate_assert(self, trailing_expr, assert, on_failure)
             }
+            StatementKind::InlineAsm { .. } => Err(Error::InlineAsm),
             StatementKind::Call(call) => translate_call(self, trailing_expr, call),
             StatementKind::Abort(abort_kind) => Ok(translate_abort(abort_kind)),
             StatementKind::Return => Ok(translate_return()),
@@ -1033,9 +1029,6 @@ impl<'a> Ctx<'a> {
         assert!(global_ref.generics.types.is_empty());
         assert!(global_ref.generics.const_generics.is_empty());
         assert!(global_ref.generics.trait_refs.is_empty());
-        if global_ref.id == self.global_unit_id {
-            return UNIT_VALUE.clone();
-        }
 
         let names = &self.name_map.global_names[global_ref.id];
 
@@ -1501,7 +1494,6 @@ impl<'a> Ctx<'a> {
             Rvalue::Aggregate(kind, operands) => translate_aggregate(self, kind, operands),
             Rvalue::Len(..) => todo!(),
             Rvalue::Repeat(..) => unreachable!(),
-            Rvalue::ShallowInitBox(..) => unreachable!(),
         }
     }
 
@@ -1703,10 +1695,6 @@ impl<'a> Ctx<'a> {
         let translate_func_decl_group = |self_: &mut Self, func_decl_group: &_| {
             match func_decl_group {
                 GDeclarationGroup::NonRec(func_decl_id) => {
-                    if *func_decl_id == self_.global_unit_init_func_decl_id {
-                        return Ok(());
-                    }
-
                     let Some((ident, ghost, kind, params, ret_type, pat, mask, spec, body)) =
                         self_.translate_func_decl(*func_decl_id)?
                     else {
@@ -1779,13 +1767,8 @@ impl<'a> Ctx<'a> {
             let [global_id] = global_ids else {
                 unreachable!();
             };
-            let global_id = *global_id;
 
-            if global_id == self_.global_unit_id {
-                return;
-            }
-
-            let decl = self_.translate_global(global_id);
+            let decl = self_.translate_global(*global_id);
             self_.push_decl(decl);
         };
         match decl_group {

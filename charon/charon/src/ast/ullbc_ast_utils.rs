@@ -6,6 +6,33 @@ use crate::meta::Span;
 use crate::ullbc_ast::*;
 use std::collections::HashMap;
 use std::mem;
+use std::ops::{Index, IndexMut};
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct StmtLoc {
+    pub block: BlockId,
+    pub statement: usize,
+}
+
+impl StmtLoc {
+    pub fn new(block: BlockId, statement: usize) -> Self {
+        StmtLoc { block, statement }
+    }
+
+    pub fn block_start(block: BlockId) -> Self {
+        StmtLoc {
+            block,
+            statement: 0,
+        }
+    }
+
+    pub fn after(self) -> Self {
+        StmtLoc {
+            block: self.block,
+            statement: self.statement + 1,
+        }
+    }
+}
 
 impl SwitchTargets {
     pub fn targets(&self) -> SmallVec<[BlockId; 2]> {
@@ -63,6 +90,7 @@ impl Terminator {
             Abort(..) => true,
             Goto { .. }
             | Switch { .. }
+            | InlineAsm { .. }
             | Return
             | Call { .. }
             | Drop { .. }
@@ -84,6 +112,9 @@ impl Terminator {
                 smallvec![*target]
             }
             TerminatorKind::Switch { targets, .. } => targets.targets(),
+            TerminatorKind::InlineAsm {
+                targets, on_unwind, ..
+            } => targets.iter().copied().chain([*on_unwind]).collect(),
             TerminatorKind::Call {
                 target, on_unwind, ..
             }
@@ -104,6 +135,9 @@ impl Terminator {
                 smallvec![target]
             }
             TerminatorKind::Switch { targets, .. } => targets.targets_mut(),
+            TerminatorKind::InlineAsm {
+                targets, on_unwind, ..
+            } => targets.iter_mut().chain([on_unwind]).collect(),
             TerminatorKind::Call {
                 target, on_unwind, ..
             }
@@ -113,6 +147,24 @@ impl Terminator {
             | TerminatorKind::Assert {
                 target, on_unwind, ..
             } => smallvec![target, on_unwind],
+            TerminatorKind::Abort(..) | TerminatorKind::Return | TerminatorKind::UnwindResume => {
+                smallvec![]
+            }
+        }
+    }
+
+    pub fn targets_ignoring_unwind(&self) -> SmallVec<[BlockId; 2]> {
+        match &self.kind {
+            TerminatorKind::Goto { target } => {
+                smallvec![*target]
+            }
+            TerminatorKind::Switch { targets, .. } => targets.targets(),
+            TerminatorKind::InlineAsm { targets, .. } => targets.iter().copied().collect(),
+            TerminatorKind::Call { target, .. }
+            | TerminatorKind::Drop { target, .. }
+            | TerminatorKind::Assert { target, .. } => {
+                smallvec![*target]
+            }
             TerminatorKind::Abort(..) | TerminatorKind::Return | TerminatorKind::UnwindResume => {
                 smallvec![]
             }
@@ -165,22 +217,8 @@ impl BlockData {
     pub fn targets(&self) -> SmallVec<[BlockId; 2]> {
         self.terminator.targets()
     }
-
     pub fn targets_ignoring_unwind(&self) -> SmallVec<[BlockId; 2]> {
-        match &self.terminator.kind {
-            TerminatorKind::Goto { target } => {
-                smallvec![*target]
-            }
-            TerminatorKind::Switch { targets, .. } => targets.targets(),
-            TerminatorKind::Call { target, .. }
-            | TerminatorKind::Drop { target, .. }
-            | TerminatorKind::Assert { target, .. } => {
-                smallvec![*target]
-            }
-            TerminatorKind::Abort(..) | TerminatorKind::Return | TerminatorKind::UnwindResume => {
-                smallvec![]
-            }
-        }
+        self.terminator.targets_ignoring_unwind()
     }
 
     /// Apply a transformer to all the statements.
@@ -316,6 +354,19 @@ impl ExprBody {
                 f(st);
             }
         }
+    }
+}
+
+impl Index<StmtLoc> for ExprBody {
+    type Output = Statement;
+    fn index(&self, loc: StmtLoc) -> &Self::Output {
+        &self.body[loc.block].statements[loc.statement]
+    }
+}
+
+impl IndexMut<StmtLoc> for ExprBody {
+    fn index_mut(&mut self, loc: StmtLoc) -> &mut Self::Output {
+        &mut self.body[loc.block].statements[loc.statement]
     }
 }
 

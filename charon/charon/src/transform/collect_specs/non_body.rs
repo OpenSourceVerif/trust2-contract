@@ -13,7 +13,7 @@ impl TransformPass for Transform {
         ) {
             // let trait_ids: Vec<_> = ctx
             //     .trait_decls
-            //     .iter_indexed()
+            //     .iter_enumerated()
             //     .filter_map(|(trait_id, r#trait)|
             //         if r#trait.item_meta.name.equals_ref_name(trait_name) {
             //             Some(trait_id)
@@ -30,7 +30,7 @@ impl TransformPass for Transform {
 
             //     let trait_impl_ids: Vec<_> = ctx
             //         .trait_impls
-            //         .iter_indexed()
+            //         .iter_enumerated()
             //         .filter_map(|(trait_impl_id, trait_impl)|
             //             if trait_impl.impl_trait.id == trait_id {
             //                 Some(trait_impl_id)
@@ -55,11 +55,11 @@ impl TransformPass for Transform {
             //     }
             // }
 
-            for (trait_id, r#trait) in ctx.trait_decls.iter_indexed() {
-                if !r#trait.item_meta.name.equals_ref_name(trait_name) {
+            for (trait_id, trait_) in ctx.trait_decls.iter_enumerated() {
+                if !trait_.item_meta.name.equals_ref_name(trait_name) {
                     continue;
                 }
-                for (_, trait_impl) in ctx.trait_impls.iter_indexed() {
+                for (_, trait_impl) in ctx.trait_impls.iter_enumerated() {
                     if trait_impl.impl_trait.id != trait_id {
                         continue;
                     }
@@ -71,7 +71,7 @@ impl TransformPass for Transform {
                         continue;
                     };
                     let self_ty = &mut ctx.type_decls[type_id];
-                    for (_, trait_impl_method) in trait_impl.methods.iter() {
+                    for trait_impl_method in &trait_impl.methods {
                         collect(self_ty, trait_impl_method.skip_binder.id);
                     }
                 }

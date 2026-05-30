@@ -18,23 +18,37 @@ module GlobalDeclId = IdGen ()
 module ConstGenericVarId = IdGen ()
 module TraitDeclId = IdGen ()
 module TraitImplId = IdGen ()
+module TraitMethodId = IdGen ()
+module AssocTypeId = IdGen ()
+module AssocConstId = IdGen ()
 module TraitClauseId = IdGen ()
 module TraitTypeConstraintId = IdGen ()
 module UnsolvedTraitId = IdGen ()
 module RegionId = IdGen ()
 module Disambiguator = IdGen ()
 module FunDeclId = IdGen ()
-module BodyId = IdGen ()
 
 type integer_type = Values.integer_type [@@deriving show, ord, eq]
 type float_type = Values.float_type [@@deriving show, ord, eq]
 type literal_type = Values.literal_type [@@deriving show, ord, eq]
+
+(* A range that includes both endpoints. *)
+type 'a range_inclusive = 'a * 'a [@@deriving show, ord, eq]
 
 (* Manually implemented because no type uses it (we use plain lists instead of
    vectors in generic_params), which causes visitor inference problems if we
    declare it within a visitor group. *)
 type trait_type_constraint_id = TraitTypeConstraintId.id
 [@@deriving show, ord, eq]
+
+type 'a fun_decl_id_map = 'a FunDeclId.Map.t
+and 'a global_decl_id_map = 'a GlobalDeclId.Map.t
+and 'a type_decl_id_map = 'a TypeDeclId.Map.t
+and 'a trait_decl_id_map = 'a TraitDeclId.Map.t
+and 'a trait_impl_id_map = 'a TraitImplId.Map.t
+and 'a trait_method_id_map = 'a TraitMethodId.Map.t
+and 'a assoc_type_id_map = 'a AssocTypeId.Map.t [@@deriving show, eq, ord]
+and 'a assoc_const_id_map = 'a AssocConstId.Map.t [@@deriving show, eq, ord]
 
 (** The index of a binder, counting from the innermost. See [[DeBruijnVar]] for
     details. *)
@@ -133,24 +147,67 @@ and type_var_id = (TypeVarId.id[@visitors.opaque])
       nude = true (* Don't inherit VisitorsRuntime *);
     }]
 
-(* Ancestors for the ty visitors *)
 class ['self] iter_ty_base =
   object (self : 'self)
     inherit [_] iter_type_vars
     method visit_span : 'env -> span -> unit = fun _ _ -> ()
+
+    method visit_range_inclusive :
+        'a. ('env -> 'a -> unit) -> 'env -> 'a range_inclusive -> unit =
+      fun visit_elem env (x, y) ->
+        visit_elem env x;
+        visit_elem env y
+
+    method visit_assoc_type_id_map :
+        'a. ('env -> 'a -> unit) -> 'env -> 'a assoc_type_id_map -> unit =
+      AssocTypeId.Map.visit_iter
+
+    method visit_assoc_const_id_map :
+        'a. ('env -> 'a -> unit) -> 'env -> 'a assoc_const_id_map -> unit =
+      AssocConstId.Map.visit_iter
   end
 
 class ['self] map_ty_base =
   object (self : 'self)
     inherit [_] map_type_vars
     method visit_span : 'env -> span -> span = fun _ x -> x
+
+    method visit_range_inclusive :
+        'a 'b.
+        ('env -> 'a -> 'b) -> 'env -> 'a range_inclusive -> 'b range_inclusive =
+      fun visit_elem env (x, y) -> (visit_elem env x, visit_elem env y)
+
+    method visit_assoc_type_id_map :
+        'a 'b.
+        ('env -> 'a -> 'b) ->
+        'env ->
+        'a assoc_type_id_map ->
+        'b assoc_type_id_map =
+      AssocTypeId.Map.visit_map
+
+    method visit_assoc_const_id_map :
+        'a 'b.
+        ('env -> 'a -> 'b) ->
+        'env ->
+        'a assoc_const_id_map ->
+        'b assoc_const_id_map =
+      AssocConstId.Map.visit_map
   end
+
+type abi =
+  | AbiRust
+  | AbiC
+  | AbiOther of string
+      (** Rust's spelling for the ABI, e.g. "C-unwind" or "system". *)
+
+and assoc_const_id = (AssocConstId.id[@visitors.opaque])
+and assoc_type_id = (AssocTypeId.id[@visitors.opaque])
 
 (** A value of type [T] bound by generic parameters. Used in any context where
     we're adding generic parameters that aren't on the top-level item, e.g.
     [for<'a>] clauses (uses [RegionBinder] for now), trait methods, GATs (TODO).
 *)
-type 'a0 binder = {
+and 'a0 binder = {
   binder_params : generic_params;
   binder_value : 'a0;
       (** Named this way to highlight accesses to the inner value that might be
@@ -158,9 +215,9 @@ type 'a0 binder = {
 }
 
 and binder_kind =
-  | BKTraitType of trait_decl_id * trait_item_name
+  | BKTraitType of trait_decl_id * assoc_type_id
       (** The parameters of a generic associated type. *)
-  | BKTraitMethod of trait_decl_id * trait_item_name
+  | BKTraitMethod of trait_decl_id * trait_method_id
       (** The parameters of a trait method. Used in the [methods] lists in trait
           decls and trait impls. *)
   | BKInherentImplBlock
@@ -235,6 +292,11 @@ and builtin_impl_data =
   | BuiltinFnOnce
   | BuiltinCopy
   | BuiltinClone
+  | BuiltinRemovedAdtClause
+      (** Placeholder used by the [--remove-adt-clauses] pass when it strips a
+          trait clause from a type declaration. References to the removed clause
+          are rewritten as
+          [BuiltinOrAuto { builtin_data: RemovedAdtClause, .. }]. *)
 
 (** One of 8 built-in indexing operations. *)
 and builtin_index_op = {
@@ -342,7 +404,7 @@ and constant_expr_kind =
               let l = V::<N, T>::LEN; // We need to provided a substitution here
             }
           ]} *)
-  | CTraitConst of trait_ref * trait_item_name
+  | CTraitConst of trait_ref * assoc_const_id
       (** A trait associated constant.
 
           Ex.:
@@ -399,7 +461,7 @@ and fn_ptr = { kind : fn_ptr_kind; generics : generic_args }
 
 and fn_ptr_kind =
   | FunId of fun_id
-  | TraitMethod of trait_ref * trait_item_name * fun_decl_id
+  | TraitMethod of trait_ref * trait_method_id * fun_decl_id
       (** If a trait: the reference to the trait and the id of the trait method.
           The fun decl id is not really necessary - we put it here for
           convenience purposes. *)
@@ -422,6 +484,7 @@ and fun_id =
 (** A function signature. *)
 and fun_sig = {
   is_unsafe : bool;  (** Is the function unsafe or not *)
+  abi : abi;  (** The calling convention of this function. *)
   inputs : ty list;
   output : ty;
 }
@@ -475,7 +538,7 @@ and predicate_origin =
   | WhereClauseOnImpl
   | TraitSelf
   | WhereClauseOnTrait
-  | TraitItem of trait_item_name
+  | TraitItem of assoc_type_id
   | OriginDyn  (** Clauses that are part of a [dyn Trait] type. *)
 
 and provenance =
@@ -534,7 +597,7 @@ and trait_decl_ref = { id : trait_decl_id; generics : generic_args }
 (** A reference to a tait impl, using the provided arguments. *)
 and trait_impl_ref = { id : trait_impl_id; generics : generic_args }
 
-and trait_item_name = string
+and trait_method_id = (TraitMethodId.id[@visitors.opaque])
 
 (** A trait predicate in a signature, of the form [Type: Trait<Args>]. This
     functions like a variable binder, to which variables of the form
@@ -600,7 +663,7 @@ and trait_ref_kind =
                                 parent clause 1 of clause 0
             }
           ]} *)
-  | ItemClause of trait_ref * trait_item_name * trait_clause_id
+  | ItemClause of trait_ref * assoc_type_id * trait_clause_id
       (** A clause defined on an associated type. This variant is only used
           during translation; after the [lift_associated_item_clauses] pass,
           clauses on items become [ParentClause]s.
@@ -626,12 +689,16 @@ and trait_ref_kind =
           including trait method declarations. Not present in trait
           implementations as we can use [TraitImpl] intead. *)
   | BuiltinOrAuto of
-      builtin_impl_data
-      * trait_ref list
-      * (trait_item_name * trait_assoc_ty_impl) list
+      builtin_impl_data * trait_ref list * trait_assoc_ty_impl assoc_type_id_map
       (** A trait implementation that is computed by the compiler, such as for
           built-in trait [Sized]. This morally points to an invisible [impl]
           block; as such it contains the information we may need from one.
+
+          Also used as a placeholder for trait clauses that were stripped by the
+          [--remove-adt-clauses] pass: the original [Clause] reference is
+          replaced with a
+          [BuiltinOrAuto { builtin_data: RemovedAdtClause, .. }]. See
+          [[BuiltinImplData::RemovedAdtClause]].
 
           Fields:
           - [builtin_data]
@@ -652,7 +719,7 @@ and trait_ref_kind =
     ]} *)
 and trait_type_constraint = {
   trait_ref : trait_ref;
-  type_name : trait_item_name;
+  type_id : assoc_type_id;
   ty : ty;
 }
 
@@ -697,7 +764,7 @@ and ty_kind =
           eventually disappears from the AST. *)
   | TRef of region * ty * ref_kind  (** A borrow *)
   | TRawPtr of ty * ref_kind  (** A raw pointer. *)
-  | TTraitType of trait_ref * trait_item_name
+  | TTraitType of trait_ref * assoc_type_id
       (** A trait associated type
 
           Ex.:
@@ -728,6 +795,9 @@ and ty_kind =
           is assumed to be a type variable *)
   | TArray of ty * constant_expr  (** An array type [[T; N]] *)
   | TSlice of ty  (** A slice type [[T]] *)
+  | TPattern of ty * type_pattern
+      (** A pattern type. This is a newtype over the first type whose valid
+          values are restricted by the pattern. *)
   | TError of string  (** A type that could not be computed or was incorrect. *)
 
 (** Reference to a type declaration or builtin type. *)
@@ -758,6 +828,12 @@ and type_param = {
           level. *)
   name : string;  (** Variable name *)
 }
+
+(** A type-level pattern used by [[TyKind::Pattern]]. *)
+and type_pattern =
+  | Range of constant_expr * constant_expr
+  | OrPattern of type_pattern list
+  | NotNull
 
 and unsizing_metadata =
   | MetaLength of constant_expr  (** Cast from [[T; N]] to [[T]]. *)
@@ -813,6 +889,11 @@ class ['self] map_type_decl_base =
     Represents [repr(align(n))] and [repr(packed(n))]. *)
 type alignment_modifier = Align of int | Pack of int
 
+and assoc_item_id =
+  | AssocIdType of assoc_type_id
+  | AssocIdMethod of trait_method_id
+  | AssocIdConst of assoc_const_id
+
 (** Additional information for closures. *)
 and closure_info = {
   kind : closure_kind;
@@ -829,13 +910,24 @@ and closure_info = {
 and closure_kind = Fn | FnMut | FnOnce
 and disambiguator = (Disambiguator.id[@visitors.opaque])
 
-(** Layout of the discriminant. Describes the offset of the discriminant field
-    as well as its encoding as [tag] in memory. *)
-and discriminant_layout = {
-  offset : int;  (** The offset of the discriminant in bytes. *)
-  tag_ty : integer_type;  (** The representation type of the discriminant. *)
-  encoding : tag_encoding;  (** How the tag is encoding in memory. *)
-}
+(** Decision tree used to determine the active variant by reading memory.
+    Mirrors MiniRust's [Discriminator]. *)
+and discriminator =
+  | Known of variant_id  (** The variant is known. *)
+  | Invalid  (** No valid variant (e.g., invalid tag value). *)
+  | Branch of
+      int
+      * integer_type
+      * (scalar_value range_inclusive * discriminator) list
+      * discriminator
+      (** Branch on an integer value read from memory at [offset].
+
+          Fields:
+          - [offset]: Byte offset to read from.
+          - [int_ty]: Integer type to read.
+          - [children]: If the integer is in one of these ranges, continue with
+            the given [Discriminator]. The ranges are sorted.
+          - [fallback]: Fallback if no range in [children] matches. *)
 
 and field = {
   span : span;
@@ -937,25 +1029,32 @@ and item_source =
 
           Fields:
           - [info] *)
-  | TraitDeclItem of trait_decl_ref * trait_item_name * bool
+  | TraitDeclItem of trait_decl_ref * assoc_item_id * bool
       (** This is an associated item in a trait declaration. It has a body if
           and only if the trait provided a default implementation.
 
           Fields:
           - [trait_ref]: The trait declaration this item belongs to.
-          - [item_name]: The name of the item.
+          - [item_id]: The associated item this corresponds to.
           - [has_default]: Whether the trait declaration provides a default
             implementation. *)
-  | TraitImplItem of trait_impl_ref * trait_decl_ref * trait_item_name * bool
+  | TraitImplItem of trait_impl_ref * trait_decl_ref * assoc_item_id * bool
       (** This is an associated item in a trait implementation.
 
           Fields:
           - [impl_ref]: The trait implementation the method belongs to.
           - [trait_ref]: The trait declaration that the impl block implements.
-          - [item_name]: The name of the item
+          - [item_id]: The associated item this corresponds to.
           - [reuses_default]: True if the trait decl had a default
             implementation for this function/const and this item is a copy of
             the default item. *)
+  | TargetDependentItem of fun_decl_ref
+      (** This function is a target-specific variant behind a [TargetDispatch]
+          façade. The dispatcher is the function with the [Body::TargetDispatch]
+          body that dispatches to this function.
+
+          Fields:
+          - [dispatcher] *)
   | VTableTyItem of dyn_predicate * v_table_field list * field_id option list
       (** This is a vtable struct for a trait.
 
@@ -975,7 +1074,6 @@ and item_source =
           function that takes [dyn Trait] as its [Self] type. This shim casts
           the receiver to the known concrete type and calls the real method. *)
   | VTableInstanceMonoItem
-  | VTableMethodPreShimItem of trait_decl_id * trait_item_name * ty list
 
 (** Simplified type layout information.
 
@@ -985,17 +1083,22 @@ and item_source =
 and layout = {
   size : int option;  (** The size of the type in bytes. *)
   align : int option;  (** The alignment, in bytes. *)
-  discriminant_layout : discriminant_layout option;
-      (** The discriminant's layout, if any. Only relevant for types with
-          multiple variants. *)
+  discriminator : discriminator option;
+      (** Decision tree that determines the active variant by reading memory.
+          Only [Some] for enums. *)
   uninhabited : bool;
       (** Whether the type is uninhabited, i.e. has any valid value at all. Note
           that uninhabited types can have arbitrary layouts: [(u32, !)] has
           space for the [u32] and [enum E2 { A, B(!), C(i32, !) }] may have
           space for a discriminant. *)
-  variant_layouts : variant_layout list;
-      (** Map from [VariantId] to the corresponding field layouts. Structs are
-          modeled as having exactly one variant, unions as having no variant. *)
+  variant_layouts : variant_layout option list;
+      (** Map from [VariantId] to the corresponding field layouts. Some variants
+          don't have a meaningful layout due to being uninhabited (though an
+          uninhabited variant may have a layout). Structs and unions are modeled
+          as having exactly one variant. *)
+  repr : repr_options;
+      (** The representation options of this type declaration as annotated by
+          the user. *)
 }
 
 (** An item name/path
@@ -1060,9 +1163,8 @@ and ptr_metadata =
           for [[T]] denotes the number of elements in the slice. While for [str]
           it denotes the number of bytes in the string. *)
   | VTable of type_decl_ref
-      (** Metadata for [dyn Trait], referring to the vtable struct, also for
-          user-defined types that directly or indirectly contain a [dyn Trait].
-          Of type [&'static vtable] *)
+      (** Metadata for [dyn Trait], referring to the vtable struct. Has type
+          [&'static vtable] *)
   | InheritFrom of ty
       (** Unknown due to generics, but will inherit from the given type. This is
           consistent with [<Ty as Pointee>::Metadata]. Of type
@@ -1081,26 +1183,14 @@ and repr_algorithm =
     NOTE: This does not include less common/unstable representations such as
     [#[repr(simd)]] or the compiler internal [#[repr(linear)]]. Similarly, enum
     discriminant representations are encoded in [[Variant::discriminant]] and
-    [[DiscriminantLayout]] instead. This only stores whether the discriminant
-    type was derived from an explicit annotation. *)
+    [[Discriminator]] instead. This only stores whether the discriminant type
+    was derived from an explicit annotation. *)
 and repr_options = {
   repr_algo : repr_algorithm;
   align_modif : alignment_modifier option;
   transparent : bool;
   explicit_discr_type : bool;
 }
-
-(** Describes how we represent the active enum variant in memory. *)
-and tag_encoding =
-  | Direct
-      (** Represents the direct encoding of the discriminant as the tag via
-          integer casts. *)
-  | Niche of variant_id
-      (** Represents the encoding of the discriminant in the niche of variant
-          [untagged_variant].
-
-          Fields:
-          - [untagged_variant] *)
 
 (** A type declaration.
 
@@ -1129,9 +1219,6 @@ and type_decl = {
           layout, the target has no entry. *)
   ptr_metadata : ptr_metadata;
       (** The metadata associated with a pointer to the type. *)
-  repr : repr_options option;
-      (** The representation options of this type declaration as annotated by
-          the user. Is [None] for foreign type declarations. *)
   specs : type_specs;  (** Associated trust2-contract specifications. *)
 }
 
@@ -1156,10 +1243,11 @@ and v_table_field =
   | VTableSize
   | VTableAlign
   | VTableDrop
-  | VTableMethod of trait_item_name
+  | VTableMethod of trait_method_id
   | VTableSuperTrait of trait_clause_id
 
 and variant = {
+  id : variant_id;
   span : span;
   attr_info : attr_info;
   variant_name : string;
@@ -1167,8 +1255,8 @@ and variant = {
   discriminant : literal;
       (** The discriminant value outputted by [std::mem::discriminant] for this
           variant. This can be different than the value stored in memory (called
-          [tag]). That one is described by [[DiscriminantLayout]] and
-          [[TagEncoding]]. *)
+          [tag]); that one is described by [[Discriminator]] and
+          [[VariantLayout::tagger]]. *)
 }
 
 (** Simplified layout of a single variant.
@@ -1179,16 +1267,10 @@ and variant_layout = {
   uninhabited : bool;
       (** Whether the variant is uninhabited, i.e. has any valid possible value.
           Note that uninhabited types can have arbitrary layouts. *)
-  tag : scalar_value option;
-      (** The memory representation of the discriminant corresponding to this
-          variant. It must be of the same type as the corresponding
-          [[DiscriminantLayout::tag_ty]].
-
-          If it's [None], then this variant is either:
-          - the untagged variant (cf. [[TagEncoding::Niche::untagged_variant]])
-            of a niched enum;
-          - the single variant of a struct;
-          - uninhabited. *)
+  tagger : (int * scalar_value) list;
+      (** How to write the tag when constructing this variant. Each entry means:
+          write [value] at byte [offset]. Mirrors MiniRust's [Variant::tagger].
+      *)
 }
 [@@deriving
   show,

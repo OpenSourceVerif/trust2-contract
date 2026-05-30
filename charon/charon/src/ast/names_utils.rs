@@ -93,9 +93,9 @@ impl Name {
     /// Created an instantiated version of this name by putting a `PathElem::Instantiated` last. If
     /// the item was already instantiated, this merges the two instantiations.
     pub fn instantiate(mut self, binder: Binder<GenericArgs>) -> Self {
-        if let [.., PathElem::Instantiated(box x)] = self.name.as_mut_slice() {
+        if let [.., PathElem::Instantiated(x)] = self.name.as_mut_slice() {
             // Put the new args in place; the params are what we want but the args are wrong.
-            let old_args = std::mem::replace(x, binder);
+            let old_args = std::mem::replace(x.as_mut(), binder);
             // Apply the new args to the old binder to get correct args.
             x.skip_binder = old_args.apply(&x.skip_binder);
         } else {
@@ -106,7 +106,7 @@ impl Name {
 
     /// Get the last identifier of the name, if any. This is useful for error messages and such.
     /// Panics if the name is empty or if the last element is not an identifier.
-    pub fn short_str(&self) -> &String {
-        self.name.last().unwrap().as_ident().unwrap().0
+    pub fn short_str(&self) -> Option<&str> {
+        Some(self.name.last()?.as_ident()?.0)
     }
 }

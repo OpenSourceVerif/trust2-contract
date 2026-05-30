@@ -722,16 +722,25 @@ impl Ty {
     pub fn is_scalar(&self) -> bool {
         match self.kind() {
             TyKind::Literal(kind) => kind.is_int() || kind.is_uint(),
+            TyKind::Pattern(ty, _) => ty.is_scalar(),
             _ => false,
         }
     }
 
     pub fn is_unsigned_scalar(&self) -> bool {
-        matches!(self.kind(), TyKind::Literal(LiteralTy::UInt(_)))
+        match self.kind() {
+            TyKind::Literal(LiteralTy::UInt(_)) => true,
+            TyKind::Pattern(ty, _) => ty.is_unsigned_scalar(),
+            _ => false,
+        }
     }
 
     pub fn is_signed_scalar(&self) -> bool {
-        matches!(self.kind(), TyKind::Literal(LiteralTy::Int(_)))
+        match self.kind() {
+            TyKind::Literal(LiteralTy::Int(_)) => true,
+            TyKind::Pattern(ty, _) => ty.is_signed_scalar(),
+            _ => false,
+        }
     }
 
     pub fn is_str(&self) -> bool {
@@ -758,9 +767,14 @@ impl Ty {
         }
     }
 
+    pub fn as_adt_id(&self) -> Option<TypeDeclId> {
+        self.kind().as_adt().and_then(|a| a.id.as_adt().cloned())
+    }
+
     pub fn get_ptr_metadata(&self, translated: &TranslatedCrate) -> PtrMetadata {
         let ty_decls = &translated.type_decls;
         match self.kind() {
+            TyKind::Pattern(ty, _) => ty.get_ptr_metadata(translated),
             TyKind::Adt(ty_ref) => {
                 // there are two cases:
                 // 1. if the declared type has a fixed metadata, just returns it
@@ -858,8 +872,6 @@ impl std::ops::Deref for Ty {
         self.kind()
     }
 }
-/// For deref patterns.
-unsafe impl std::ops::DerefPure for Ty {}
 
 impl TypeDeclRef {
     pub fn new(id: TypeId, generics: GenericArgs) -> Self {
@@ -876,7 +888,7 @@ impl TraitDeclRef {
             Some(ty) => Some(ty),
             // TODO(mono): A monomorphized trait takes no arguments.
             None => {
-                let name = krate.item_name(self.id)?;
+                let name = krate.item_name(self.id);
                 let args = name.name.last()?.as_monomorphized()?;
                 args.types.iter().next()
             }
@@ -1428,47 +1440,13 @@ impl<'a, T> Substituted<'a, T> {
 }
 
 impl TypeDecl {
-    /// Looks up the variant corresponding to the tag (i.e. the in-memory bytes that represent the discriminant).
-    /// Returns `None` for types that don't have a relevant discriminant (e.g. uninhabited types).
-    ///
-    /// If the `tag` does not correspond to any valid discriminant but there is a niche,
-    /// the resulting `VariantId` will be for the untagged variant [`TagEncoding::Niche::untagged_variant`].
-    pub fn get_variant_from_tag(
-        &self,
-        target: &TargetTriple,
-        tag: ScalarValue,
-    ) -> Option<VariantId> {
-        let layout = self.layout.get(target)?;
-        if layout.uninhabited {
-            return None;
+    pub fn get_field(&self, variant: Option<VariantId>, field: FieldId) -> Option<&Field> {
+        let fields = match &self.kind {
+            TypeDeclKind::Struct(fields) | TypeDeclKind::Union(fields) => fields,
+            TypeDeclKind::Enum(variants) => &variants[variant.unwrap()].fields,
+            _ => return None,
         };
-        let discr_layout = layout.discriminant_layout.as_ref()?;
-
-        let variant_for_tag =
-            layout
-                .variant_layouts
-                .iter_enumerated()
-                .find_map(|(id, variant_layout)| {
-                    if variant_layout.tag == Some(tag) {
-                        Some(id)
-                    } else {
-                        None
-                    }
-                });
-
-        match &discr_layout.encoding {
-            TagEncoding::Direct => {
-                assert_eq!(tag.get_integer_ty(), discr_layout.tag_ty);
-                variant_for_tag
-            }
-            TagEncoding::Niche { untagged_variant } => variant_for_tag.or(Some(*untagged_variant)),
-        }
-    }
-
-    pub fn is_c_repr(&self) -> bool {
-        self.repr
-            .as_ref()
-            .is_some_and(|repr| repr.repr_algo == ReprAlgorithm::C)
+        fields.get(field)
     }
 
     pub fn get_field_by_name(
@@ -1487,13 +1465,57 @@ impl TypeDecl {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum DiscriminantReadError {
+    /// We read an uninitialized byte.
+    UninitByte,
+    /// We reached an invalid discriminant state.
+    InvalidDiscriminant,
+}
+
+impl Discriminator {
+    /// Make a trivial discriminator that always returns the given variant id.
+    pub fn trivial(variant_id: VariantId) -> Self {
+        Self::Known(variant_id)
+    }
+
+    /// Read a discriminant from memory. The `read` function simulates reading an integer of the
+    /// given type at the given byte offset from memory and can return `UninitByte` if the byte
+    /// could not be read.
+    pub fn read_discriminant(
+        &self,
+        read: impl Fn(ByteCount, IntegerTy) -> Result<ScalarValue, DiscriminantReadError> + Copy,
+    ) -> Result<VariantId, DiscriminantReadError> {
+        match self {
+            Discriminator::Known(id) => Ok(*id),
+            Discriminator::Invalid => Err(DiscriminantReadError::InvalidDiscriminant),
+            Discriminator::Branch {
+                offset,
+                int_ty,
+                fallback,
+                children,
+            } => {
+                let val = read(*offset, *int_ty)?;
+                for (range, child) in children {
+                    if range.contains(&val) {
+                        return child.read_discriminant(read);
+                    }
+                }
+                fallback.read_discriminant(read)
+            }
+        }
+    }
+}
+
 impl Layout {
     pub fn is_variant_uninhabited(&self, variant_id: VariantId) -> bool {
-        if let Some(v) = self.variant_layouts.get(variant_id) {
-            v.uninhabited
-        } else {
-            false
-        }
+        self.variant_layouts[variant_id]
+            .as_ref()
+            .is_none_or(|v| v.uninhabited)
+    }
+
+    pub fn is_c_repr(&self) -> bool {
+        self.repr.repr_algo == ReprAlgorithm::C
     }
 }
 

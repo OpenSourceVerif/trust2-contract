@@ -76,6 +76,9 @@ and builtin_assert_kind =
           - [found] *)
   | NullPointerDereference
   | InvalidEnumConstruction of operand
+  | ResumedAfterReturn
+  | ResumedAfterPanic
+  | ResumedAfterDrop
 
 and call = { func : fn_operand; args : operand list; dest : place }
 and copy_non_overlapping = { src : operand; dst : operand; count : operand }
@@ -182,6 +185,7 @@ type global_decl = {
 
 and global_kind =
   | Static  (** A static. *)
+  | ThreadLocal  (** A thread-local static. *)
   | NamedConst
       (** A const with a name (either top-level or an associated const in a
           trait). *)
@@ -210,6 +214,28 @@ and global_kind =
       ancestors = [ "map_fun_sig" ];
       nude = true (* Don't inherit VisitorsRuntime *);
     }]
+
+class ['self] iter_trait_decl_base =
+  object (self : 'self)
+    inherit [_] iter_global_decl
+
+    method visit_trait_method_id_map :
+        'a. ('env -> 'a -> unit) -> 'env -> 'a trait_method_id_map -> unit =
+      TraitMethodId.Map.visit_iter
+  end
+
+class ['self] map_trait_decl_base =
+  object (self : 'self)
+    inherit [_] map_global_decl
+
+    method visit_trait_method_id_map :
+        'a 'b.
+        ('env -> 'a -> 'b) ->
+        'env ->
+        'a trait_method_id_map ->
+        'b trait_method_id_map =
+      TraitMethodId.Map.visit_map
+  end
 
 (** An associated constant in a trait. *)
 type trait_assoc_const = {
@@ -277,13 +303,13 @@ and trait_decl = {
           ]}
           TODO: actually, as of today, we consider that all trait clauses of
           trait declarations are parent clauses. *)
-  consts : trait_assoc_const list;
+  consts : trait_assoc_const assoc_const_id_map;
       (** The associated constants declared in the trait. *)
-  types : trait_assoc_ty binder list;
+  types : trait_assoc_ty binder assoc_type_id_map;
       (** The associated types declared in the trait. The binder binds the
           generic parameters of the type if it is a GAT (Generic Associated
           Type). For a plain associated type the binder binds nothing. *)
-  methods : trait_method binder list;
+  methods : trait_method binder trait_method_id_map;
       (** The methods declared by the trait. The binder binds the generic
           parameters of the method.
 
@@ -299,10 +325,13 @@ and trait_decl = {
           guaranteed that the trait has a vtable iff it is dyn-compatible. *)
 }
 
+and trait_item_name = string
+
 (** A trait method. *)
 and trait_method = {
   name : trait_item_name;
   attr_info : attr_info;
+  signature : fun_sig;
   item : fun_decl_ref;
       (** Each method declaration is represented by a function item. That
           function contains the signature of the method as well as information
@@ -318,7 +347,7 @@ and trait_method = {
       name = "iter_trait_decl";
       monomorphic = [ "env" ];
       variety = "iter";
-      ancestors = [ "iter_global_decl" ];
+      ancestors = [ "iter_trait_decl_base" ];
       nude = true (* Don't inherit VisitorsRuntime *);
     },
   visitors
@@ -326,7 +355,7 @@ and trait_method = {
       name = "map_trait_decl";
       monomorphic = [ "env" ];
       variety = "map";
-      ancestors = [ "map_global_decl" ];
+      ancestors = [ "map_trait_decl_base" ];
       nude = true (* Don't inherit VisitorsRuntime *);
     }]
 
@@ -362,11 +391,11 @@ and trait_impl = {
   generics : generic_params;
   implied_trait_refs : trait_ref list;
       (** The trait references for the parent clauses (see [TraitDecl]). *)
-  consts : (trait_item_name * global_decl_ref) list;
+  consts : global_decl_ref assoc_const_id_map;
       (** The implemented associated constants. *)
-  types : (trait_item_name * trait_assoc_ty_impl binder) list;
+  types : trait_assoc_ty_impl binder assoc_type_id_map;
       (** The implemented associated types. *)
-  methods : (trait_item_name * fun_decl_ref binder) list;
+  methods : fun_decl_ref binder trait_method_id_map;
       (** The implemented methods *)
   vtable : global_decl_ref option;
       (** The virtual table instance for this trait implementation. This is

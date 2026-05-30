@@ -1,18 +1,14 @@
 use crate::{
     ast::{BuiltinFunId, Call, FnOperand, FnPtrKind, FunId, SpecCall},
-    transform::{TransformCtx, ctx::FusedUllbcPass},
-    ullbc_ast::{BlockData, FunSpecBlock, Terminator, TerminatorKind},
+    transform::{TransformCtx, ctx::UllbcPass},
+    ullbc_ast::{BlockData, ExprBody, FunSpecBlock, Terminator, TerminatorKind},
 };
 
 use std::mem;
 
 pub struct Transform;
-impl FusedUllbcPass for Transform {
-    fn transform_function(&self, _ctx: &mut TransformCtx, decl: &mut crate::ast::FunDecl) {
-        let Some(body) = decl.body.as_unstructured_mut() else {
-            return;
-        };
-
+impl UllbcPass for Transform {
+    fn transform_body(&self, _ctx: &mut TransformCtx, body: &mut ExprBody) {
         for block_data in &mut body.body {
             let Terminator {
                 span,
@@ -35,7 +31,7 @@ impl FusedUllbcPass for Transform {
             let FnOperand::Regular(fn_ptr) = func else {
                 continue;
             };
-            let FnPtrKind::Fun(FunId::Builtin(fun_id)) = fn_ptr.kind else {
+            let FnPtrKind::Fun(FunId::Builtin(fun_id)) = *fn_ptr.kind else {
                 continue;
             };
 

@@ -72,27 +72,39 @@ impl Pattern {
     ) -> bool {
         let mut scrutinee_elems = name.name.as_slice();
         let mut args: Option<GenericArgs> = args.cloned();
-        if let [prefix @ .., PathElem::Instantiated(mono_args)] = scrutinee_elems {
-            // In this case, we may still have some late-bound generics in `args`, this could ONLY happen for regions
-            assert!(
-                args.is_none()
-                    || args.as_ref().unwrap().len() == args.as_ref().unwrap().regions.len(),
-                "In pattern \"{}\" matching against name \"{}\": we have both monomorphized generics {} and regular generics {}",
-                self,
-                name.with_ctx(&ctx.into_fmt()),
-                mono_args.skip_binder.with_ctx(&ctx.into_fmt()),
-                args.unwrap().with_ctx(&ctx.into_fmt())
-            );
-            // We additionally append the regions from `args` to the monomorphized args, so that we
-            // can match against them. We can ignore the binder because binding levels shouldn't
-            // affect matching.
-            let mut mono_args = mono_args.skip_binder.clone();
-            if let Some(args) = args {
-                // Late-bound regions are appended after the monomorphized ones.
-                mono_args.regions.extend(args.regions);
-            }
+        if let [prefix @ .., PathElem::Instantiated(instantiation)] = scrutinee_elems {
+            // An `Instantiated` suffix is appended when the generics of an item are modified; it
+            // records the map from the new generics to the old ones.
+            args = match args {
+                None => None,
+                Some(args) if instantiation.params.is_empty() => {
+                    // HACK: Monomorphization doesn't handle late-bound regions properly, so we
+                    // append them here manually.
+                    assert!(
+                        args.len() == args.regions.len(),
+                        "In pattern \"{}\" matching against name \"{}\": we have both monomorphized generics {} and regular generics {}",
+                        self,
+                        name.with_ctx(&ctx.into_fmt()),
+                        instantiation.skip_binder.with_ctx(&ctx.into_fmt()),
+                        args.with_ctx(&ctx.into_fmt())
+                    );
+                    // We can ignore the binder because binding levels shouldn't affect matching.
+                    let mut mono_args = instantiation.skip_binder.clone();
+                    mono_args.regions.extend(args.regions);
+                    Some(mono_args)
+                }
+                Some(args) => {
+                    assert!(
+                        generic_args_match_params(&instantiation.params, &args),
+                        "In pattern \"{}\" matching against name \"{}\": the instantiated item generics {} do not match the item parameters",
+                        self,
+                        name.with_ctx(&ctx.into_fmt()),
+                        args.with_ctx(&ctx.into_fmt())
+                    );
+                    Some(instantiation.as_ref().clone().apply(&args))
+                }
+            };
             scrutinee_elems = prefix;
-            args = Some(mono_args);
         };
         let args = args.as_ref();
         // Patterns that start with an impl block match that impl block anywhere. In such a case we
@@ -138,9 +150,7 @@ impl Pattern {
                 let args = &tref.generics;
                 match tref.id {
                     TypeId::Adt(type_id) => {
-                        let Some(type_name) = ctx.item_name(type_id) else {
-                            return false;
-                        };
+                        let type_name = ctx.item_name(type_id);
                         self.matches_with_generics(ctx, type_name, Some(args))
                     }
                     TypeId::Builtin(builtin_ty) => {
@@ -170,6 +180,7 @@ impl Pattern {
                 };
                 self.matches_with_generics(ctx, &type_name, Some(&args))
             }
+            TyKind::Pattern(ty, _) => self.matches_ty(ctx, ty),
             TyKind::TypeVar(..)
             | TyKind::Literal(..)
             | TyKind::Never
@@ -210,6 +221,13 @@ impl Pattern {
             _ => Equal,
         }
     }
+}
+
+fn generic_args_match_params(params: &GenericParams, args: &GenericArgs) -> bool {
+    params.regions.len() == args.regions.len()
+        && params.types.len() == args.types.len()
+        && params.const_generics.len() == args.const_generics.len()
+        && params.trait_clauses.len() == args.trait_refs.len()
 }
 
 /// Orders patterns by precision: the maximal pattern is the most precise. COmparing patterns only
@@ -255,9 +273,7 @@ impl PatElem {
                 let Some(timpl) = ctx.trait_impls.get(*impl_id) else {
                     return false;
                 };
-                let Some(trait_name) = ctx.item_name(timpl.impl_trait.id) else {
-                    return false;
-                };
+                let trait_name = ctx.item_name(timpl.impl_trait.id);
                 pat.matches_with_generics(ctx, trait_name, Some(&timpl.impl_trait.generics))
             }
             _ => false,
