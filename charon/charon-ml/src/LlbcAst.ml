@@ -5,7 +5,7 @@ open Meta
 include GAst
 include Generated_LlbcAst
 
-type expr_body = (block, fun_specs) gexpr_body [@@deriving show]
+type expr_body = block gexpr_body [@@deriving show]
 type fun_body = expr_body [@@deriving show]
 
 (* Ancestors for the type_decl visitors *)

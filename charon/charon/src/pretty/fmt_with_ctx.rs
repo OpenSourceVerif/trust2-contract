@@ -637,6 +637,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDecl {
             write!(f, " -> {}", self.signature.output.with_ctx(ctx))?;
         };
         write!(f, "{preds}")?;
+        write!(f, "{}", self.specs.with_ctx(ctx))?;
         write!(f, "{}", self.body.with_ctx(ctx))?;
 
         Ok(())
@@ -657,75 +658,21 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDeclRef {
     }
 }
 
-impl ullbc::FunSpecBlock {
-    fn fmt_with_ctx_and_kind<C: AstFormatter>(
-        &self,
-        ctx: &C,
-        f: &mut fmt::Formatter<'_>,
-        kind: &str,
-    ) -> fmt::Result {
-        let tab = ctx.indent();
-        let ctx = &ctx.increase_indent();
-        writeln!(
-            f,
-            "{tab}{kind}({}) {{",
-            self.call
-                .args
-                .iter()
-                .map(|arg| arg.with_ctx(ctx))
-                .format(", "),
-        )?;
-        for st in &self.statements {
-            writeln!(f, "{}", st.with_ctx(ctx))?;
-        }
-        writeln!(f, "{tab}}}")
-    }
-}
-
-impl llbc::FunSpecBlock {
-    fn fmt_with_ctx_and_kind<C: AstFormatter>(
-        &self,
-        ctx: &C,
-        f: &mut fmt::Formatter<'_>,
-        kind: &str,
-    ) -> fmt::Result {
-        let tab = ctx.indent();
-        let ctx = &ctx.increase_indent();
-        writeln!(
-            f,
-            "{tab}{kind}({}) {{",
-            self.call
-                .args
-                .iter()
-                .map(|arg| arg.with_ctx(ctx))
-                .format(", "),
-        )?;
-        for st in &self.statements {
-            writeln!(f, "{}", st.with_ctx(ctx))?;
-        }
-        writeln!(f, "{tab}}}")
-    }
-}
-
-impl<C: AstFormatter> FmtWithCtx<C> for ullbc::FunSpecs {
+impl<C: AstFormatter> FmtWithCtx<C> for FunSpecs {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ctx = &ctx.increase_indent();
+        let tab = ctx.indent();
         for precondition in &self.preconditions {
-            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
+            write!(f, "\n{tab}precondition")?;
+            write!(f, "{}", precondition.with_ctx(ctx))?;
         }
         for postcondition in &self.postconditions {
-            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
-        }
-        Ok(())
-    }
-}
-
-impl<C: AstFormatter> FmtWithCtx<C> for llbc::FunSpecs {
-    fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for precondition in &self.preconditions {
-            precondition.fmt_with_ctx_and_kind(ctx, f, "precondition")?;
-        }
-        for postcondition in &self.postconditions {
-            postcondition.fmt_with_ctx_and_kind(ctx, f, "postcondition")?;
+            write!(
+                f,
+                "\n{tab}postcondition({})",
+                postcondition.body.locals()[postcondition.arg_id],
+            )?;
+            write!(f, "{}", postcondition.body.with_ctx(ctx))?;
         }
         Ok(())
     }
@@ -915,7 +862,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for GenericsSource {
     }
 }
 
-impl<T, U> GExprBody<T, U> {
+impl<T> GExprBody<T> {
     fn fmt_with_ctx_and_callback<C: AstFormatter>(
         &self,
         ctx: &C,
@@ -924,7 +871,6 @@ impl<T, U> GExprBody<T, U> {
             &mut fmt::Formatter<'_>,
             &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             &T,
-            &U,
         ) -> fmt::Result,
     ) -> fmt::Result {
         // Update the context
@@ -951,38 +897,35 @@ impl<T, U> GExprBody<T, U> {
             writeln!(f)?;
         }
 
-        fmt_body(f, ctx, &self.body, &self.specs)?;
+        fmt_body(f, ctx, &self.body)?;
 
         Ok(())
     }
 }
 
-impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block, llbc_ast::FunSpecs> {
+impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<llbc_ast::Block> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Inference fails when this is a closure.
         fn fmt_body<C: AstFormatter>(
             f: &mut fmt::Formatter<'_>,
             ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             body: &Block,
-            specs: &llbc_ast::FunSpecs,
         ) -> Result<(), fmt::Error> {
-            writeln!(f, "{}", specs.with_ctx(ctx))?;
+            writeln!(f)?;
             body.fmt_with_ctx(ctx, f)?;
             Ok(())
         }
         self.fmt_with_ctx_and_callback(ctx, f, fmt_body::<C>)
     }
 }
-impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents, ullbc_ast::FunSpecs> {
+impl<C: AstFormatter> FmtWithCtx<C> for GExprBody<ullbc_ast::BodyContents> {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Inference fails when this is a closure.
         fn fmt_body<C: AstFormatter>(
             f: &mut fmt::Formatter<'_>,
             ctx: &<<C as AstFormatter>::Reborrow<'_> as AstFormatter>::Reborrow<'_>,
             body: &IndexVec<BlockId, BlockData>,
-            specs: &ullbc_ast::FunSpecs,
         ) -> Result<(), fmt::Error> {
-            write!(f, "{}", specs.with_ctx(ctx))?;
             let tab = ctx.indent();
             let ctx = &ctx.increase_indent();
             for (bid, block) in body.iter_enumerated() {
@@ -2410,11 +2353,8 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeDecl {
             TypeDeclKind::Error(msg) => write!(f, " = ERROR({msg})")?,
         }
 
-        if !self.specs.invariants.is_empty() {
-            write!(f, "\n{}", self.specs.with_ctx(ctx))
-        } else {
-            Ok(())
-        }
+        write!(f, "{}", self.specs.with_ctx(ctx))?;
+        Ok(())
     }
 }
 
@@ -2450,14 +2390,21 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeParam {
 
 impl<C: AstFormatter> FmtWithCtx<C> for TypeSpecs {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "invariant({})",
-            self.invariants
-                .iter()
-                .map(|invariant| invariant.with_ctx(ctx))
-                .format(", "),
-        )
+        let ctx = &ctx.increase_indent();
+        let tab = ctx.indent();
+        for invariant_body_id in &self.invariants {
+            write!(f, "\n{tab}invariant")?;
+            if let Some(crate_) = ctx.get_crate() {
+                write!(
+                    f,
+                    "{}",
+                    crate_.type_spec_bodies[*invariant_body_id].with_ctx(ctx),
+                )?;
+            } else {
+                write!(f, "({invariant_body_id})")?;
+            }
+        }
+        Ok(())
     }
 }
 

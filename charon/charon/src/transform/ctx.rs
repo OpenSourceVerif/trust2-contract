@@ -7,7 +7,7 @@ use crate::pretty::FmtWithCtx;
 use crate::transform::CowBox;
 use crate::ullbc_ast;
 use std::cell::RefCell;
-use std::{fmt, mem};
+use std::{fmt, iter, mem};
 
 /// Simpler context used for rustc-independent code transformation. This only depends on rustc for
 /// its error reporting machinery.
@@ -33,8 +33,10 @@ pub trait UllbcPass: Sync {
 
     /// Transform a function declaration. This forwards to `transform_body` by default.
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
-        if let Some(body) = decl.body.as_unstructured_mut() {
-            self.transform_body(ctx, body)
+        for body in decl.iter_bodies_mut() {
+            if let Some(body) = body.as_unstructured_mut() {
+                self.transform_body(ctx, body);
+            }
         }
     }
 
@@ -77,8 +79,10 @@ pub trait LlbcPass: Sync {
 
     /// Transform a function declaration. This forwards to `transform_body` by default.
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
-        if let Some(body) = decl.body.as_structured_mut() {
-            self.transform_body(ctx, body)
+        for body in decl.iter_bodies_mut() {
+            if let Some(body) = body.as_structured_mut() {
+                self.transform_body(ctx, body);
+            }
         }
     }
 
@@ -147,14 +151,36 @@ impl TransformCtx {
     pub(crate) fn for_each_body(&mut self, mut f: impl FnMut(&mut Self, &mut Body)) {
         let fn_ids = self.translated.fun_decls.all_indices();
         for id in fn_ids {
-            if let Some(decl) = self.translated.fun_decls.get_mut(id)
-                && decl.body.has_contents()
-            {
-                let mut body = mem::replace(&mut decl.body, Body::Opaque);
-                let fun_decl_id = decl.def_id;
-                let is_local = decl.item_meta.is_local;
-                self.with_def_id(fun_decl_id, is_local, |ctx| f(ctx, &mut body));
-                self.translated.fun_decls[id].body = body;
+            if let Some(decl) = self.translated.fun_decls.get_mut(id) {
+                if decl.body.has_contents() {
+                    let mut body = mem::replace(&mut decl.body, Body::Opaque);
+                    let fun_decl_id = decl.def_id;
+                    let is_local = decl.item_meta.is_local;
+                    self.with_def_id(fun_decl_id, is_local, |ctx| f(ctx, &mut body));
+                    self.translated.fun_decls[id].body = body;
+                }
+                for precondition_idx in 0..self.translated.fun_decls[id].specs.preconditions.len() {
+                    let decl = &mut self.translated.fun_decls[id];
+                    let mut spec_body = mem::replace(
+                        &mut decl.specs.preconditions[precondition_idx],
+                        Body::Opaque,
+                    );
+                    let is_local = decl.item_meta.is_local;
+                    self.with_def_id(id, is_local, |ctx| f(ctx, &mut spec_body));
+                    self.translated.fun_decls[id].specs.preconditions[precondition_idx] = spec_body;
+                }
+                for postcondition_idx in 0..self.translated.fun_decls[id].specs.postconditions.len()
+                {
+                    let decl = &mut self.translated.fun_decls[id];
+                    let mut spec_body = mem::replace(
+                        &mut decl.specs.postconditions[postcondition_idx].body,
+                        Body::Opaque,
+                    );
+                    let is_local = decl.item_meta.is_local;
+                    self.with_def_id(id, is_local, |ctx| f(ctx, &mut spec_body));
+                    self.translated.fun_decls[id].specs.postconditions[postcondition_idx].body =
+                        spec_body;
+                }
             }
         }
     }
@@ -511,29 +537,50 @@ impl BodyTransformCtx for LlbcStatementTransformCtx<'_> {
     }
 }
 
+impl FunSpecs {
+    pub fn iter_bodies_mut(&mut self) -> impl Iterator<Item = &mut Body> {
+        self.preconditions.iter_mut().chain(
+            self.postconditions
+                .iter_mut()
+                .map(|Postcondition { body, .. }| body),
+        )
+    }
+}
+
 impl FunDecl {
+    pub fn iter_bodies_mut(&mut self) -> impl Iterator<Item = &mut Body> {
+        iter::once(&mut self.body).chain(self.specs.iter_bodies_mut())
+    }
+
     pub fn transform_ullbc_statements(
         &mut self,
         ctx: &mut TransformCtx,
         mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut ullbc_ast::Statement),
     ) {
-        if let Some(body) = self.body.as_unstructured_mut() {
-            let mut ctx = UllbcStatementTransformCtx {
-                ctx,
-                params: &self.generics,
-                locals: &mut body.locals,
-                span: self.item_meta.span,
-                statements: Vec::new(),
-            };
-            body.body.iter_mut().for_each(|block| {
-                ctx.statements = Vec::with_capacity(block.statements.len());
-                for mut st in mem::take(&mut block.statements) {
-                    ctx.span = st.span;
-                    f(&mut ctx, &mut st);
-                    ctx.statements.push(st);
-                }
-                block.statements = mem::take(&mut ctx.statements);
-            });
+        let mut transform = |body: &mut Body| {
+            if let Some(body) = body.as_unstructured_mut() {
+                let mut ctx = UllbcStatementTransformCtx {
+                    ctx,
+                    params: &self.generics,
+                    locals: &mut body.locals,
+                    span: self.item_meta.span,
+                    statements: Vec::new(),
+                };
+                body.body.iter_mut().for_each(|block| {
+                    ctx.statements = Vec::with_capacity(block.statements.len());
+                    for mut st in mem::take(&mut block.statements) {
+                        ctx.span = st.span;
+                        f(&mut ctx, &mut st);
+                        ctx.statements.push(st);
+                    }
+                    block.statements = mem::take(&mut ctx.statements);
+                });
+            }
+        };
+        // Borrow splitting to pass borrowck.
+        transform(&mut self.body);
+        for body in self.specs.iter_bodies_mut() {
+            transform(body);
         }
     }
 
@@ -542,20 +589,27 @@ impl FunDecl {
         ctx: &mut TransformCtx,
         mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut ullbc_ast::Terminator),
     ) {
-        if let Some(body) = self.body.as_unstructured_mut() {
-            let mut ctx = UllbcStatementTransformCtx {
-                ctx,
-                params: &self.generics,
-                locals: &mut body.locals,
-                span: self.item_meta.span,
-                statements: Vec::new(),
-            };
-            body.body.iter_mut().for_each(|block| {
-                ctx.span = block.terminator.span;
-                ctx.statements = mem::take(&mut block.statements);
-                f(&mut ctx, &mut block.terminator);
-                block.statements = mem::take(&mut ctx.statements);
-            });
+        let mut transform = |body: &mut Body| {
+            if let Some(body) = body.as_unstructured_mut() {
+                let mut ctx = UllbcStatementTransformCtx {
+                    ctx,
+                    params: &self.generics,
+                    locals: &mut body.locals,
+                    span: self.item_meta.span,
+                    statements: Vec::new(),
+                };
+                body.body.iter_mut().for_each(|block| {
+                    ctx.span = block.terminator.span;
+                    ctx.statements = mem::take(&mut block.statements);
+                    f(&mut ctx, &mut block.terminator);
+                    block.statements = mem::take(&mut ctx.statements);
+                });
+            }
+        };
+        // Borrow splitting to pass borrowck.
+        transform(&mut self.body);
+        for body in self.specs.iter_bodies_mut() {
+            transform(body);
         }
     }
 
@@ -577,23 +631,30 @@ impl FunDecl {
         ctx: &mut TransformCtx,
         mut f: impl FnMut(&mut LlbcStatementTransformCtx, &mut llbc_ast::Statement),
     ) {
-        if let Some(body) = self.body.as_structured_mut() {
-            let mut ctx = LlbcStatementTransformCtx {
-                ctx,
-                locals: &mut body.locals,
-                statements: Vec::new(),
-                span: self.item_meta.span,
-                params: &self.generics,
-            };
-            body.body.visit_blocks_bwd(|block: &mut llbc_ast::Block| {
-                ctx.statements = Vec::with_capacity(block.statements.len());
-                for mut st in mem::take(&mut block.statements) {
-                    ctx.span = st.span;
-                    f(&mut ctx, &mut st);
-                    ctx.statements.push(st);
-                }
-                block.statements = mem::take(&mut ctx.statements)
-            })
+        let mut transform = |body: &mut Body| {
+            if let Some(body) = body.as_structured_mut() {
+                let mut ctx = LlbcStatementTransformCtx {
+                    ctx,
+                    locals: &mut body.locals,
+                    statements: Vec::new(),
+                    span: self.item_meta.span,
+                    params: &self.generics,
+                };
+                body.body.visit_blocks_bwd(|block: &mut llbc_ast::Block| {
+                    ctx.statements = Vec::with_capacity(block.statements.len());
+                    for mut st in mem::take(&mut block.statements) {
+                        ctx.span = st.span;
+                        f(&mut ctx, &mut st);
+                        ctx.statements.push(st);
+                    }
+                    block.statements = mem::take(&mut ctx.statements)
+                })
+            }
+        };
+        // Borrow splitting to pass borrowck.
+        transform(&mut self.body);
+        for body in self.specs.iter_bodies_mut() {
+            transform(body);
         }
     }
 }

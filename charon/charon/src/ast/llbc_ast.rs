@@ -168,16 +168,4 @@ pub enum Switch {
     Match(Place, Vec<(Vec<VariantId>, Block)>, Option<Block>),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct FunSpecBlock {
-    pub statements: Vec<Statement>,
-    pub call: SpecCall,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct FunSpecs {
-    pub preconditions: Vec<FunSpecBlock>,
-    pub postconditions: Vec<FunSpecBlock>,
-}
-
-pub type ExprBody = GExprBody<Block, FunSpecs>;
+pub type ExprBody = GExprBody<Block>;

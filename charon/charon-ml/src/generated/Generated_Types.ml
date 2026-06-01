@@ -12,6 +12,7 @@ open Generated_Meta
 open Generated_Values
 module TypeVarId = IdGen ()
 module TypeDeclId = IdGen ()
+module TypeSpecBodyId = IdGen ()
 module VariantId = IdGen ()
 module FieldId = IdGen ()
 module GlobalDeclId = IdGen ()
@@ -44,6 +45,7 @@ type trait_type_constraint_id = TraitTypeConstraintId.id
 type 'a fun_decl_id_map = 'a FunDeclId.Map.t
 and 'a global_decl_id_map = 'a GlobalDeclId.Map.t
 and 'a type_decl_id_map = 'a TypeDeclId.Map.t
+and 'a type_spec_body_id_map = 'a TypeSpecBodyId.Map.t
 and 'a trait_decl_id_map = 'a TraitDeclId.Map.t
 and 'a trait_impl_id_map = 'a TraitImplId.Map.t
 and 'a trait_method_id_map = 'a TraitMethodId.Map.t
@@ -1237,7 +1239,8 @@ and type_decl_kind =
       (** Used if an error happened during the extraction, and we don't panic on
           error. *)
 
-and type_specs = { invariants : fun_decl_id list }
+and type_spec_body_id = (TypeSpecBodyId.id[@visitors.opaque])
+and type_specs = { invariants : type_spec_body_id list }
 
 and v_table_field =
   | VTableSize

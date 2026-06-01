@@ -15,6 +15,7 @@ open Generated_Values
 
 module TypeVarId = IdGen ()
 module TypeDeclId = IdGen ()
+module TypeSpecBodyId = IdGen ()
 module VariantId = IdGen ()
 module FieldId = IdGen ()
 module GlobalDeclId = IdGen ()
@@ -46,6 +47,7 @@ type trait_type_constraint_id = TraitTypeConstraintId.id [@@deriving show, ord, 
 type 'a fun_decl_id_map = 'a FunDeclId.Map.t
 and 'a global_decl_id_map = 'a GlobalDeclId.Map.t
 and 'a type_decl_id_map = 'a TypeDeclId.Map.t
+and 'a type_spec_body_id_map = 'a TypeSpecBodyId.Map.t
 and 'a trait_decl_id_map = 'a TraitDeclId.Map.t
 and 'a trait_impl_id_map = 'a TraitImplId.Map.t
 and 'a trait_method_id_map = 'a TraitMethodId.Map.t

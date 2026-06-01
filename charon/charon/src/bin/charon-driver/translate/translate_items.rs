@@ -513,6 +513,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                 src,
                 is_global_initializer: None,
                 body,
+                specs: FunSpecs::new(),
             });
         }
 
@@ -582,6 +583,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             src,
             is_global_initializer,
             body,
+            specs: FunSpecs::new(),
         })
     }
 

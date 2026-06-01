@@ -1203,16 +1203,6 @@ and span_data_of_json (ctx : of_json_ctx) (js : json) :
         Ok ({ file; beg_loc; end_loc } : span_data)
     | _ -> Error "")
 
-and spec_call_of_json (ctx : of_json_ctx) (js : json) :
-    (spec_call, string) result =
-  combine_error_msgs js __FUNCTION__
-    (match js with
-    | `Assoc [ ("span", span); ("args", args) ] ->
-        let* span = span_of_json ctx span in
-        let* args = list_of_json operand_of_json ctx args in
-        Ok ({ span; args } : spec_call)
-    | _ -> Error "")
-
 and trait_assoc_ty_impl_of_json (ctx : of_json_ctx) (js : json) :
     (trait_assoc_ty_impl, string) result =
   combine_error_msgs js __FUNCTION__
@@ -1573,33 +1563,6 @@ module Ullbc = struct
       | x -> BlockId.id_of_json ctx x
       | _ -> Error "")
 
-  and fun_spec_block_of_json (ctx : of_json_ctx) (js : json) :
-      (fun_spec_block, string) result =
-    combine_error_msgs js __FUNCTION__
-      (match js with
-      | `Assoc [ ("statements", statements); ("call", call) ] ->
-          let* statements = list_of_json statement_of_json ctx statements in
-          let* call = spec_call_of_json ctx call in
-          Ok ({ statements; call } : fun_spec_block)
-      | _ -> Error "")
-
-  and fun_specs_of_json (ctx : of_json_ctx) (js : json) :
-      (Generated_UllbcAst.fun_specs, string) result =
-    combine_error_msgs js __FUNCTION__
-      (match js with
-      | `Assoc
-          [
-            ("preconditions", preconditions); ("postconditions", postconditions);
-          ] ->
-          let* preconditions =
-            list_of_json fun_spec_block_of_json ctx preconditions
-          in
-          let* postconditions =
-            list_of_json fun_spec_block_of_json ctx postconditions
-          in
-          Ok ({ preconditions; postconditions } : Generated_UllbcAst.fun_specs)
-      | _ -> Error "")
-
   and statement_of_json (ctx : of_json_ctx) (js : json) :
       (Generated_UllbcAst.statement, string) result =
     combine_error_msgs js __FUNCTION__
@@ -1773,33 +1736,6 @@ module Llbc = struct
           let* span = span_of_json ctx span in
           let* statements = list_of_json statement_of_json ctx statements in
           Ok ({ span; statements } : Generated_LlbcAst.block)
-      | _ -> Error "")
-
-  and fun_spec_block_of_json (ctx : of_json_ctx) (js : json) :
-      (fun_spec_block, string) result =
-    combine_error_msgs js __FUNCTION__
-      (match js with
-      | `Assoc [ ("statements", statements); ("call", call) ] ->
-          let* statements = list_of_json statement_of_json ctx statements in
-          let* call = spec_call_of_json ctx call in
-          Ok ({ statements; call } : fun_spec_block)
-      | _ -> Error "")
-
-  and fun_specs_of_json (ctx : of_json_ctx) (js : json) :
-      (Generated_LlbcAst.fun_specs, string) result =
-    combine_error_msgs js __FUNCTION__
-      (match js with
-      | `Assoc
-          [
-            ("preconditions", preconditions); ("postconditions", postconditions);
-          ] ->
-          let* preconditions =
-            list_of_json fun_spec_block_of_json ctx preconditions
-          in
-          let* postconditions =
-            list_of_json fun_spec_block_of_json ctx postconditions
-          in
-          Ok ({ preconditions; postconditions } : Generated_LlbcAst.fun_specs)
       | _ -> Error "")
 
   and statement_of_json (ctx : of_json_ctx) (js : json) :
@@ -2028,13 +1964,12 @@ and body_of_json (ctx : of_json_ctx) (js : json) : (body, string) result =
         let* unstructured =
           gexpr_body_of_json
             (index_vec_of_json Ullbc.block_id_of_json Ullbc.block_of_json)
-            Ullbc.fun_specs_of_json ctx unstructured
+            ctx unstructured
         in
         Ok (UnstructuredBody unstructured)
     | `Assoc [ ("Structured", structured) ] ->
         let* structured =
-          gexpr_body_of_json Llbc.block_of_json Llbc.fun_specs_of_json ctx
-            structured
+          gexpr_body_of_json Llbc.block_of_json ctx structured
         in
         Ok (StructuredBody structured)
     | `Assoc [ ("TargetDispatch", target_dispatch) ] ->
@@ -2405,6 +2340,7 @@ and fun_decl_of_json (ctx : of_json_ctx) (js : json) : (fun_decl, string) result
           ("src", src);
           ("is_global_initializer", is_global_initializer);
           ("body", body);
+          ("specs", specs);
         ] ->
         let* def_id = fun_decl_id_of_json ctx def_id in
         let* item_meta = item_meta_of_json ctx item_meta in
@@ -2415,6 +2351,7 @@ and fun_decl_of_json (ctx : of_json_ctx) (js : json) : (fun_decl, string) result
           option_of_json global_decl_id_of_json ctx is_global_initializer
         in
         let* body = body_of_json ctx body in
+        let* specs = fun_specs_of_json ctx specs in
         Ok
           ({
              def_id;
@@ -2424,8 +2361,23 @@ and fun_decl_of_json (ctx : of_json_ctx) (js : json) : (fun_decl, string) result
              src;
              is_global_initializer;
              body;
+             specs;
            }
             : fun_decl)
+    | _ -> Error "")
+
+and fun_specs_of_json (ctx : of_json_ctx) (js : json) :
+    (fun_specs, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc
+        [ ("preconditions", preconditions); ("postconditions", postconditions) ]
+      ->
+        let* preconditions = list_of_json body_of_json ctx preconditions in
+        let* postconditions =
+          list_of_json postcondition_of_json ctx postconditions
+        in
+        Ok ({ preconditions; postconditions } : fun_specs)
     | _ -> Error "")
 
 and g_declaration_group_of_json :
@@ -2446,13 +2398,12 @@ and g_declaration_group_of_json :
     | _ -> Error "")
 
 and gexpr_body_of_json :
-    'a0 'a1.
+    'a0.
     (of_json_ctx -> json -> ('a0, string) result) ->
-    (of_json_ctx -> json -> ('a1, string) result) ->
     of_json_ctx ->
     json ->
-    (('a0, 'a1) gexpr_body, string) result =
- fun arg0_of_json arg1_of_json ctx js ->
+    ('a0 gexpr_body, string) result =
+ fun arg0_of_json ctx js ->
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc
@@ -2462,14 +2413,12 @@ and gexpr_body_of_json :
           ("locals", locals);
           ("body", body);
           ("comments", _);
-          ("specs", specs);
         ] ->
         let* span = span_of_json ctx span in
         let* bound_body_regions = int_of_json ctx bound_body_regions in
         let* locals = locals_of_json ctx locals in
         let* body = arg0_of_json ctx body in
-        let* specs = arg1_of_json ctx specs in
-        Ok ({ span; bound_body_regions; locals; body; specs } : _ gexpr_body)
+        Ok ({ span; bound_body_regions; locals; body } : _ gexpr_body)
     | _ -> Error "")
 
 and global_decl_of_json (ctx : of_json_ctx) (js : json) :
@@ -2735,6 +2684,16 @@ and monomorphize_mut_of_json (ctx : of_json_ctx) (js : json) :
     (match js with
     | `String "All" -> Ok All
     | `String "ExceptTypes" -> Ok ExceptTypes
+    | _ -> Error "")
+
+and postcondition_of_json (ctx : of_json_ctx) (js : json) :
+    (postcondition, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("arg_id", arg_id); ("body", body) ] ->
+        let* arg_id = local_id_of_json ctx arg_id in
+        let* body = body_of_json ctx body in
+        Ok ({ arg_id; body } : postcondition)
     | _ -> Error "")
 
 and preset_of_json (ctx : of_json_ctx) (js : json) : (preset, string) result =
@@ -3027,6 +2986,7 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
           ("assoc_item_names", assoc_item_names);
           ("short_names", short_names);
           ("type_decls", type_decls);
+          ("type_spec_bodies", type_spec_bodies);
           ("fun_decls", fun_decls);
           ("global_decls", global_decls);
           ("trait_decls", trait_decls);
@@ -3061,6 +3021,13 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
               (opt_indexed_map_of_json type_decl_id_of_json type_decl_of_json
                  ctx json))
             ctx type_decls
+        in
+        let* type_spec_bodies =
+          (fun ctx json ->
+            Result.map TypeSpecBodyId.map_of_indexed_list
+              (opt_indexed_map_of_json type_spec_body_id_of_json body_of_json
+                 ctx json))
+            ctx type_spec_bodies
         in
         let* fun_decls =
           (fun ctx json ->
@@ -3105,6 +3072,7 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
              assoc_item_names;
              short_names;
              type_decls;
+             type_spec_bodies;
              fun_decls;
              global_decls;
              trait_decls;
@@ -3181,12 +3149,21 @@ and type_decl_kind_of_json (ctx : of_json_ctx) (js : json) :
         Ok (TDeclError error)
     | _ -> Error "")
 
+and type_spec_body_id_of_json (ctx : of_json_ctx) (js : json) :
+    (type_spec_body_id, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | x -> TypeSpecBodyId.id_of_json ctx x
+    | _ -> Error "")
+
 and type_specs_of_json (ctx : of_json_ctx) (js : json) :
     (type_specs, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc [ ("invariants", invariants) ] ->
-        let* invariants = list_of_json fun_decl_id_of_json ctx invariants in
+        let* invariants =
+          list_of_json type_spec_body_id_of_json ctx invariants
+        in
         Ok ({ invariants } : type_specs)
     | _ -> Error "")
 

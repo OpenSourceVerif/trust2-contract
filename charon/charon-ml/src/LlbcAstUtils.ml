@@ -72,12 +72,49 @@ class ['self] map_crate =
     inherit [_] map_statement
 
     method visit_expr_body env (body : expr_body) : expr_body =
-      let { span; locals; bound_body_regions; body; specs } = body in
+      let { span; locals; bound_body_regions; body } = body in
       let span = self#visit_span env span in
       let locals = self#visit_locals env locals in
       let body = self#visit_block env body in
-      let specs = self#visit_fun_specs env specs in
-      { span; locals; bound_body_regions; body; specs }
+      { span; locals; bound_body_regions; body }
+
+    method visit_body env (body : body) : body =
+      match body with
+      | StructuredBody body ->
+          StructuredBody (self#visit_gexpr_body self#visit_block env body)
+      | UnstructuredBody _ -> (* ULLBC in LLBC visitor: ignore *) body
+      | TraitMethodWithoutDefaultBody -> TraitMethodWithoutDefaultBody
+      | ExternBody sym -> ExternBody (self#visit_string env sym)
+      | IntrinsicBody (name, arg_names) ->
+          IntrinsicBody
+            ( self#visit_string env name,
+              self#visit_list
+                (self#visit_option self#visit_string)
+                env arg_names )
+      | TargetDispatchBody targets ->
+          TargetDispatchBody
+            (self#visit_list
+               (fun env (tgt, fref) ->
+                 (self#visit_string env tgt, self#visit_fun_decl_ref env fref))
+               env targets)
+      | OpaqueBody -> OpaqueBody
+      | MissingBody -> MissingBody
+      | ErrorBody err -> ErrorBody (self#visit_error env err)
+
+    method visit_postcondition env (postcondition : postcondition) :
+        postcondition =
+      let { arg_id; body } = postcondition in
+      let arg_id = self#visit_local_id env arg_id in
+      let body = self#visit_body env body in
+      { arg_id; body }
+
+    method visit_fun_specs env (specs : fun_specs) : fun_specs =
+      let { preconditions; postconditions } = specs in
+      let preconditions = List.map (self#visit_body env) preconditions in
+      let postconditions =
+        List.map (self#visit_postcondition env) postconditions
+      in
+      { preconditions; postconditions }
 
     method visit_fun_decl env (decl : fun_decl) : fun_decl =
       let {
@@ -88,6 +125,7 @@ class ['self] map_crate =
         src;
         is_global_initializer;
         body;
+        specs;
       } =
         decl
       in
@@ -99,31 +137,8 @@ class ['self] map_crate =
       let is_global_initializer =
         self#visit_option self#visit_global_decl_id env is_global_initializer
       in
-      let body =
-        match body with
-        | StructuredBody body ->
-            StructuredBody
-              (self#visit_gexpr_body self#visit_block self#visit_fun_specs env
-                 body)
-        | UnstructuredBody _ -> (* ULLBC in LLBC visitor: ignore *) body
-        | TraitMethodWithoutDefaultBody -> TraitMethodWithoutDefaultBody
-        | ExternBody sym -> ExternBody (self#visit_string env sym)
-        | IntrinsicBody (name, arg_names) ->
-            IntrinsicBody
-              ( self#visit_string env name,
-                self#visit_list
-                  (self#visit_option self#visit_string)
-                  env arg_names )
-        | TargetDispatchBody targets ->
-            TargetDispatchBody
-              (self#visit_list
-                 (fun env (tgt, fref) ->
-                   (self#visit_string env tgt, self#visit_fun_decl_ref env fref))
-                 env targets)
-        | OpaqueBody -> OpaqueBody
-        | MissingBody -> MissingBody
-        | ErrorBody err -> ErrorBody (self#visit_error env err)
-      in
+      let body = self#visit_body env body in
+      let specs = self#visit_fun_specs env specs in
       {
         def_id;
         item_meta;
@@ -132,6 +147,7 @@ class ['self] map_crate =
         src;
         is_global_initializer;
         body;
+        specs;
       }
 
     method visit_declaration_group env (g : declaration_group) :
@@ -176,6 +192,7 @@ class ['self] map_crate =
         item_names;
         declarations;
         type_decls;
+        type_spec_bodies;
         fun_decls;
         global_decls;
         trait_decls;
@@ -198,6 +215,9 @@ class ['self] map_crate =
       let type_decls =
         TypeDeclId.Map.map (self#visit_type_decl env) type_decls
       in
+      let type_spec_bodies =
+        TypeSpecBodyId.Map.map (self#visit_body env) type_spec_bodies
+      in
       let fun_decls = FunDeclId.Map.map (self#visit_fun_decl env) fun_decls in
       let global_decls =
         GlobalDeclId.Map.map (self#visit_global_decl env) global_decls
@@ -215,6 +235,7 @@ class ['self] map_crate =
         item_names;
         declarations;
         type_decls;
+        type_spec_bodies;
         fun_decls;
         global_decls;
         trait_decls;
@@ -229,31 +250,13 @@ class ['self] iter_crate =
     inherit [_] iter_statement
 
     method visit_expr_body env (body : expr_body) : unit =
-      let { span; locals; bound_body_regions; body; specs } = body in
+      let { span; locals; bound_body_regions; body } = body in
       self#visit_int env bound_body_regions;
       self#visit_span env span;
       self#visit_locals env locals;
-      self#visit_block env body;
-      self#visit_fun_specs env specs
+      self#visit_block env body
 
-    method visit_fun_decl env (decl : fun_decl) : unit =
-      let {
-        def_id;
-        item_meta;
-        generics;
-        signature;
-        src;
-        is_global_initializer;
-        body;
-      } =
-        decl
-      in
-      self#visit_fun_decl_id env def_id;
-      self#visit_item_meta env item_meta;
-      self#visit_generic_params env generics;
-      self#visit_fun_sig env signature;
-      self#visit_item_source env src;
-      self#visit_option self#visit_global_decl_id env is_global_initializer;
+    method visit_body env (body : body) : unit =
       match body with
       | StructuredBody body -> self#visit_expr_body env body
       | UnstructuredBody body -> (* ULLBC in LLBC visitor: ignore *) ()
@@ -271,6 +274,38 @@ class ['self] iter_crate =
       | OpaqueBody -> ()
       | MissingBody -> ()
       | ErrorBody err -> self#visit_error env err
+
+    method visit_postcondition env (postcondition : postcondition) : unit =
+      let { arg_id; body } = postcondition in
+      self#visit_local_id env arg_id;
+      self#visit_body env body
+
+    method visit_fun_specs env (specs : fun_specs) : unit =
+      let { preconditions; postconditions } = specs in
+      List.iter (self#visit_body env) preconditions;
+      List.iter (self#visit_postcondition env) postconditions
+
+    method visit_fun_decl env (decl : fun_decl) : unit =
+      let {
+        def_id;
+        item_meta;
+        generics;
+        signature;
+        src;
+        is_global_initializer;
+        body;
+        specs;
+      } =
+        decl
+      in
+      self#visit_fun_decl_id env def_id;
+      self#visit_item_meta env item_meta;
+      self#visit_generic_params env generics;
+      self#visit_fun_sig env signature;
+      self#visit_item_source env src;
+      self#visit_option self#visit_global_decl_id env is_global_initializer;
+      self#visit_body env body;
+      self#visit_fun_specs env specs
 
     method visit_declaration_group env (g : declaration_group) : unit =
       match g with
@@ -319,6 +354,7 @@ class ['self] iter_crate =
         item_names = _;
         declarations;
         type_decls;
+        type_spec_bodies;
         fun_decls;
         global_decls;
         trait_decls;
@@ -332,6 +368,7 @@ class ['self] iter_crate =
       self#visit_cli_options env options;
       List.iter (self#visit_declaration_group env) declarations;
       TypeDeclId.Map.iter (fun _ -> self#visit_type_decl env) type_decls;
+      TypeSpecBodyId.Map.iter (fun _ -> self#visit_body env) type_spec_bodies;
       FunDeclId.Map.iter (fun _ -> self#visit_fun_decl env) fun_decls;
       GlobalDeclId.Map.iter (fun _ -> self#visit_global_decl env) global_decls;
       TraitDeclId.Map.iter (fun _ -> self#visit_trait_decl env) trait_decls;

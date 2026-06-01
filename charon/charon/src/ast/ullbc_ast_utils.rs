@@ -304,21 +304,6 @@ impl BlockData {
     }
 }
 
-impl FunSpecs {
-    pub fn new() -> Self {
-        Self {
-            preconditions: Vec::new(),
-            postconditions: Vec::new(),
-        }
-    }
-}
-
-impl Default for FunSpecs {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl ExprBody {
     /// Returns a map from blocks in this body to their abort kind, if they correspond to an
     /// abort block (ie. a block with no statements and an [TerminatorKind::Abort] terminator).
@@ -397,7 +382,6 @@ impl BodyBuilder {
             bound_body_regions: 0,
             body: IndexVec::new(),
             comments: vec![],
-            specs: FunSpecs::new(),
         };
         let current_block = body.body.push(BlockData {
             statements: Default::default(),
