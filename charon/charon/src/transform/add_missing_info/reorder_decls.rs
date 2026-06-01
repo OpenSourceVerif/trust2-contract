@@ -337,6 +337,7 @@ fn compute_declarations_graph(ctx: &TransformCtx) -> DiGraphMap<ItemId, ()> {
                     src,
                     is_global_initializer: _,
                     body,
+                    specs,
                 } = d;
                 let _ = def_id.drive(&mut visitor); // For `seen_current_id`
                 // Skip `d.is_global_initializer` to avoid incorrect mutual dependencies.
@@ -344,6 +345,7 @@ fn compute_declarations_graph(ctx: &TransformCtx) -> DiGraphMap<ItemId, ()> {
                 let _ = generics.drive(&mut visitor);
                 let _ = signature.drive(&mut visitor);
                 let _ = body.drive(&mut visitor);
+                let _ = specs.drive(&mut visitor);
                 if let ItemSource::TraitDecl { trait_ref, .. } = src {
                     visitor.insert_edge(trait_ref.id);
                 }

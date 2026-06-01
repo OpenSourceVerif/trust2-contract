@@ -187,12 +187,10 @@ fn generate_ml(
         ("charon_lib::ast::ullbc_ast::SwitchTargets", ("Generated_UllbcAst", "Ullbc")),
         ("charon_lib::ast::ullbc_ast::BlockData", ("Generated_UllbcAst", "Ullbc")),
         ("charon_lib::ast::ullbc_ast::BlockId", ("Generated_UllbcAst", "Ullbc")),
-        ("charon_lib::ast::ullbc_ast::FunSpecs", ("Generated_UllbcAst", "Ullbc")),
         ("charon_lib::ast::llbc_ast::Statement", ("Generated_LlbcAst", "Llbc")),
         ("charon_lib::ast::llbc_ast::StatementKind", ("Generated_LlbcAst", "Llbc")),
         ("charon_lib::ast::llbc_ast::Switch", ("Generated_LlbcAst", "Llbc")),
         ("charon_lib::ast::llbc_ast::Block", ("Generated_LlbcAst", "Llbc")),
-        ("charon_lib::ast::llbc_ast::FunSpecs", ("Generated_LlbcAst", "Llbc")),
     ];
 
     let mut ctx = GenerateCtx::new(&crate_data, ambiguous_types);
@@ -206,14 +204,11 @@ fn generate_ml(
         let mut all_types: HashSet<_> = ctx.children_of("TranslatedCrate");
         all_types.insert(ctx.id_from_name("indexmap::map::IndexMap")); // Add this one foreign type
         all_types.remove(&ctx.id_from_name("charon_lib::ids::index_map::IndexMap"));
-        let all_llbc_types: HashSet<_> = ctx.children_of_many(&[
-            "charon_lib::ast::llbc_ast::Block",
-            "charon_lib::ast::llbc_ast::FunSpecs",
-        ]);
+        let all_llbc_types: HashSet<_> =
+            ctx.children_of_many(&["charon_lib::ast::llbc_ast::Block"]);
         let all_ullbc_types: HashSet<_> = ctx.children_of_many(&[
             "charon_lib::ast::ullbc_ast::BlockData",
             "charon_lib::ast::ullbc_ast::BlockId",
-            "charon_lib::ast::ullbc_ast::FunSpecs",
         ]);
         all_types.into_iter().for_each(|ty| {
             let in_llbc = all_llbc_types.contains(&ty);
@@ -354,7 +349,6 @@ fn generate_ml(
                     "CopyNonOverlapping",
                     "Error",
                     "AbortKind",
-                    "SpecCall",
                 ]),
                 // These have to be kept separate to avoid field name clashes
                 (GenerationKind::TypeDecl(Some(DeriveVisitors {
@@ -395,7 +389,6 @@ fn generate_ml(
                     extra_types: &[],
                 })), &[
                     "charon_lib::ast::llbc_ast::Statement",
-                    "charon_lib::ast::llbc_ast::FunSpecs",
                 ]),
             ]),
         },
@@ -410,7 +403,6 @@ fn generate_ml(
                     extra_types: &[],
                 })), &[
                     "charon_lib::ast::ullbc_ast::BodyContents",
-                    "charon_lib::ast::ullbc_ast::FunSpecs",
                 ]),
             ]),
         },
@@ -424,6 +416,7 @@ fn generate_ml(
                     "CliOpts",
                     "DeclarationGroup",
                     "TranslatedCrate",
+                    "FunSpecs",
                 ]),
             ]),
         },

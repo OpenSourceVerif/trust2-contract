@@ -73,9 +73,7 @@ impl VisitBodyMut for LocalsRenumberVisitor {
     }
 }
 
-fn remove_unused_locals<Body: BodyVisitable, Specs: BodyVisitable>(
-    body: &mut GExprBody<Body, Specs>,
-) {
+fn remove_unused_locals<Body: BodyVisitable>(body: &mut GExprBody<Body>) {
     // Compute the set of used locals.
     // We always register the return variable and the input arguments.
     let mut visitor = LocalsUsageVisitor {
@@ -85,7 +83,6 @@ fn remove_unused_locals<Body: BodyVisitable, Specs: BodyVisitable>(
             .map_ref(|local| body.locals.is_return_or_arg(local.index)),
     };
     let _ = body.body.drive_body(&mut visitor);
-    let _ = body.specs.drive_body(&mut visitor);
     let used_locals = visitor.used_locals;
     trace!("used_locals: {:?}", used_locals);
 
@@ -107,7 +104,6 @@ fn remove_unused_locals<Body: BodyVisitable, Specs: BodyVisitable>(
     // Update all `LocalId`s.
     let mut visitor = LocalsRenumberVisitor { ids_map };
     let _ = body.body.drive_body_mut(&mut visitor);
-    let _ = body.specs.drive_body_mut(&mut visitor);
 }
 
 pub struct Transform;

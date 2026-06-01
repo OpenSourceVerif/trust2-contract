@@ -1243,34 +1243,6 @@ impl<'a> ReconstructCtx<'a> {
     }
 }
 
-/// `ctx` is passed only to reuse `ctx.translate_statement`.
-fn translate_spec_block(spec_block: &src::FunSpecBlock, ctx: &ReconstructCtx) -> tgt::FunSpecBlock {
-    tgt::FunSpecBlock {
-        statements: spec_block
-            .statements
-            .iter()
-            .map(|st| ctx.translate_statement(st))
-            .collect(),
-        call: spec_block.call.clone(),
-    }
-}
-
-/// `ctx` is passed only to reuse `ctx.translate_statement`.
-fn translate_specs(specs: &src::FunSpecs, ctx: &ReconstructCtx) -> tgt::FunSpecs {
-    tgt::FunSpecs {
-        preconditions: specs
-            .preconditions
-            .iter()
-            .map(|spec_block| translate_spec_block(spec_block, ctx))
-            .collect(),
-        postconditions: specs
-            .postconditions
-            .iter()
-            .map(|spec_block| translate_spec_block(spec_block, ctx))
-            .collect(),
-    }
-}
-
 fn remove_useless_jump_blocks(body: &mut tgt::ExprBody) {
     use tgt::StatementKind;
     #[derive(Default)]
@@ -1395,15 +1367,12 @@ fn translate_body(ctx: &mut TransformCtx, body: &mut gast::Body) {
     // Translate the blocks using the computed data.
     let tgt_body = ctx.translate_block(start_block);
 
-    let tgt_specs = translate_specs(&src_body.specs, &ctx);
-
     let mut tgt_body = tgt::ExprBody {
         span: src_body.span,
         locals: src_body.locals.clone(),
         bound_body_regions: src_body.bound_body_regions,
         body: tgt_body,
         comments: src_body.comments.clone(),
-        specs: tgt_specs,
     };
     remove_useless_jump_blocks(&mut tgt_body);
 

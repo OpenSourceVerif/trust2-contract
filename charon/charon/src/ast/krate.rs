@@ -16,6 +16,7 @@ use macros::{EnumAsGetters, EnumIsA, VariantIndexArity, VariantName};
 
 generate_index_type!(FunDeclId, "Fun");
 generate_index_type!(TypeDeclId, "Adt");
+generate_index_type!(TypeSpecBodyId, "TypeSpecBody");
 generate_index_type!(GlobalDeclId, "Global");
 generate_index_type!(TraitDeclId, "TraitDecl");
 generate_index_type!(TraitImplId, "TraitImpl");
@@ -253,6 +254,8 @@ pub struct TranslatedCrate {
 
     /// The translated type definitions
     pub type_decls: IndexMap<TypeDeclId, TypeDecl>,
+    /// Bodies for trust2-contract type specifications.
+    pub type_spec_bodies: IndexMap<TypeSpecBodyId, Body>,
     /// The translated function definitions
     pub fun_decls: IndexMap<FunDeclId, FunDecl>,
     /// The translated global definitions

@@ -145,8 +145,6 @@ and locals = {
           - the [arg_count] input arguments
           - the remaining locals, used for the intermediate computations *)
 }
-
-and spec_call = { span : span; args : operand list }
 [@@deriving
   show,
   eq,
@@ -361,7 +359,7 @@ and trait_method = {
 
 (** An expression body. TODO: arg_count should be stored in GFunDecl below. But
     then, the print is obfuscated and Aeneas may need some refactoring. *)
-type ('a0, 'a1) gexpr_body = {
+type 'a0 gexpr_body = {
   span : span;
   bound_body_regions : int;
       (** The number of regions existentially bound in this body. We introduce
@@ -369,7 +367,6 @@ type ('a0, 'a1) gexpr_body = {
           that rustc gives us. *)
   locals : locals;  (** The local variables. *)
   body : 'a0;  (** The statements and blocks that compose this body. *)
-  specs : 'a1;  (** Associated trust2-contract specifications. *)
 }
 
 (** A trait **implementation**.

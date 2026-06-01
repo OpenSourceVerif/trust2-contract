@@ -98,10 +98,12 @@ impl FunDecl {
             src,
             is_global_initializer,
             body,
+            specs,
         } = self;
         let signature = signature.substitute(&subst.skip_binder);
         let src = src.substitute(&subst.skip_binder);
         let body = body.substitute(&subst.skip_binder);
+        let specs = specs.substitute(&subst.skip_binder);
         FunDecl {
             def_id,
             item_meta,
@@ -110,6 +112,7 @@ impl FunDecl {
             src,
             is_global_initializer,
             body,
+            specs,
         }
     }
 }
@@ -132,5 +135,20 @@ impl Binder<TraitAssocTy> {
 impl Binder<TraitMethod> {
     pub fn name(&self) -> TraitItemName {
         self.skip_binder.name
+    }
+}
+
+impl FunSpecs {
+    pub fn new() -> Self {
+        Self {
+            preconditions: Vec::new(),
+            postconditions: Vec::new(),
+        }
+    }
+}
+
+impl Default for FunSpecs {
+    fn default() -> Self {
+        Self::new()
     }
 }

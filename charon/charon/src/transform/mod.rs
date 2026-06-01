@@ -178,12 +178,14 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
         CowBox::Borrowed(&simplify_output::remove_unit_locals::Transform),
         // Duplicate the return blocks
         CowBox::Borrowed(&control_flow::duplicate_return::Transform),
+        // Collect and move trust2-contract specifications, unstructured body part.
+        // This pass happens before `merge_goto_chains` and `remove_unused_locals`,
+        // because they are useful to clean up the output of this pass.
+        CowBox::Owned(Box::new(collect_specs::unstructured_body::Transform::new(
+            ctx,
+        ))),
         // Remove the locals which are never used.
         CowBox::Borrowed(&simplify_output::remove_unused_locals::Transform),
-        // Collect and move trust2-contract specifications, unstructured body part.
-        // This pass happens before `merge_goto_chains`,
-        // because `merge_goto_chains` is useful to clean up the output of this pass.
-        CowBox::Borrowed(&collect_specs::unstructured_body::Transform),
         // Another round.
         CowBox::Borrowed(&control_flow::merge_goto_chains::Transform),
         // Filter the "dangling" blocks. Those might have been introduced by, for instance,

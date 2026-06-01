@@ -1119,6 +1119,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             src,
             is_global_initializer: Some(init_for),
             body,
+            specs: FunSpecs::new(),
         })
     }
 
@@ -1273,6 +1274,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             src: ItemSource::VTableMethodShim,
             is_global_initializer: None,
             body,
+            specs: FunSpecs::new(),
         })
     }
 
@@ -1321,6 +1323,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             src: ItemSource::VTableMethodShim,
             is_global_initializer: None,
             body,
+            specs: FunSpecs::new(),
         })
     }
 }

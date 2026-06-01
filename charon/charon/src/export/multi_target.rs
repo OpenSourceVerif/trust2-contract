@@ -103,6 +103,7 @@ impl CrateMerger {
                 target: TargetTriple,
                 file_id_map: IndexVec<FileId, FileId>,
                 type_offset: usize,
+                type_spec_body_offset: usize,
                 fun_offset: usize,
                 global_offset: usize,
                 trait_decl_offset: usize,
@@ -115,6 +116,9 @@ impl CrateMerger {
                 }
                 fn enter_type_decl_id(&mut self, id: &mut TypeDeclId) {
                     *id += self.type_offset;
+                }
+                fn enter_type_spec_body_id(&mut self, id: &mut TypeSpecBodyId) {
+                    *id += self.type_spec_body_offset;
                 }
                 fn enter_fun_decl_id(&mut self, id: &mut FunDeclId) {
                     *id += self.fun_offset;
@@ -141,6 +145,7 @@ impl CrateMerger {
                 target,
                 file_id_map,
                 type_offset: self.merged.translated.type_decls.slot_count(),
+                type_spec_body_offset: self.merged.translated.type_spec_bodies.slot_count(),
                 fun_offset: self.merged.translated.fun_decls.slot_count(),
                 global_offset: self.merged.translated.global_decls.slot_count(),
                 trait_decl_offset: self.merged.translated.trait_decls.slot_count(),
@@ -157,6 +162,7 @@ impl CrateMerger {
             short_names: _, // TODO
             files: _,       // Done above
             type_decls,
+            type_spec_bodies,
             fun_decls,
             global_decls,
             trait_decls,
@@ -179,6 +185,10 @@ impl CrateMerger {
             .translated
             .type_decls
             .extend_from_other(type_decls);
+        self.merged
+            .translated
+            .type_spec_bodies
+            .extend_from_other(type_spec_bodies);
         self.merged
             .translated
             .fun_decls
@@ -315,6 +325,7 @@ impl TargetGroup {
             src: canonical.src.clone(),
             is_global_initializer: canonical.is_global_initializer,
             body: Body::TargetDispatch(dispatch_map),
+            specs: canonical.specs.clone(),
         }
     }
 }
@@ -553,6 +564,11 @@ impl<'a> ItemDeduplicator<'a> {
         // Remove non-canonical copies.
         for &id in group.ids.values() {
             if id != canonical {
+                if let ItemId::Type(type_decl_id) = id && let Some(type_decl) = self.krate.type_decls.get(type_decl_id) {
+                    for type_spec_body_id in &type_decl.specs.invariants {
+                        self.krate.type_spec_bodies.remove(*type_spec_body_id);
+                    }
+                }
                 self.krate.remove_item(id);
             }
         }

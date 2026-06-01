@@ -1107,13 +1107,6 @@ and span_data_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      let* end_loc = loc_of_postcard ctx st in
      Ok ({ file; beg_loc; end_loc } : span_data))
 
-and spec_call_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-    (spec_call, string) result =
-  combine_error_msgs st __FUNCTION__
-    (let* span = span_of_postcard ctx st in
-     let* args = list_of_postcard operand_of_postcard ctx st in
-     Ok ({ span; args } : spec_call))
-
 and trait_assoc_ty_impl_of_postcard (ctx : of_postcard_ctx)
     (st : postcard_state) : (trait_assoc_ty_impl, string) result =
   combine_error_msgs st __FUNCTION__
@@ -1411,24 +1404,6 @@ module Ullbc = struct
       (Generated_UllbcAst.block_id, string) result =
     combine_error_msgs st __FUNCTION__ (BlockId.id_of_postcard ctx st)
 
-  and fun_spec_block_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-      (fun_spec_block, string) result =
-    combine_error_msgs st __FUNCTION__
-      (let* statements = list_of_postcard statement_of_postcard ctx st in
-       let* call = spec_call_of_postcard ctx st in
-       Ok ({ statements; call } : fun_spec_block))
-
-  and fun_specs_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-      (Generated_UllbcAst.fun_specs, string) result =
-    combine_error_msgs st __FUNCTION__
-      (let* preconditions =
-         list_of_postcard fun_spec_block_of_postcard ctx st
-       in
-       let* postconditions =
-         list_of_postcard fun_spec_block_of_postcard ctx st
-       in
-       Ok ({ preconditions; postconditions } : Generated_UllbcAst.fun_specs))
-
   and statement_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
       (Generated_UllbcAst.statement, string) result =
     combine_error_msgs st __FUNCTION__
@@ -1550,24 +1525,6 @@ module Llbc = struct
       (let* span = span_of_postcard ctx st in
        let* statements = list_of_postcard statement_of_postcard ctx st in
        Ok ({ span; statements } : Generated_LlbcAst.block))
-
-  and fun_spec_block_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-      (fun_spec_block, string) result =
-    combine_error_msgs st __FUNCTION__
-      (let* statements = list_of_postcard statement_of_postcard ctx st in
-       let* call = spec_call_of_postcard ctx st in
-       Ok ({ statements; call } : fun_spec_block))
-
-  and fun_specs_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-      (Generated_LlbcAst.fun_specs, string) result =
-    combine_error_msgs st __FUNCTION__
-      (let* preconditions =
-         list_of_postcard fun_spec_block_of_postcard ctx st
-       in
-       let* postconditions =
-         list_of_postcard fun_spec_block_of_postcard ctx st
-       in
-       Ok ({ preconditions; postconditions } : Generated_LlbcAst.fun_specs))
 
   and statement_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
       (Generated_LlbcAst.statement, string) result =
@@ -1774,14 +1731,11 @@ and body_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
            gexpr_body_of_postcard
              (index_vec_of_postcard Ullbc.block_id_of_postcard
                 Ullbc.block_of_postcard)
-             Ullbc.fun_specs_of_postcard ctx st
+             ctx st
          in
          Ok (UnstructuredBody x_0)
      | 1 ->
-         let* x_0 =
-           gexpr_body_of_postcard Llbc.block_of_postcard
-             Llbc.fun_specs_of_postcard ctx st
-         in
+         let* x_0 = gexpr_body_of_postcard Llbc.block_of_postcard ctx st in
          Ok (StructuredBody x_0)
      | 2 ->
          let* x_0 =
@@ -2053,6 +2007,7 @@ and fun_decl_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
        option_of_postcard global_decl_id_of_postcard ctx st
      in
      let* body = body_of_postcard ctx st in
+     let* specs = fun_specs_of_postcard ctx st in
      Ok
        ({
           def_id;
@@ -2062,8 +2017,16 @@ and fun_decl_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
           src;
           is_global_initializer;
           body;
+          specs;
         }
          : fun_decl))
+
+and fun_specs_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
+    (fun_specs, string) result =
+  combine_error_msgs st __FUNCTION__
+    (let* preconditions = list_of_postcard body_of_postcard ctx st in
+     let* postconditions = list_of_postcard postcondition_of_postcard ctx st in
+     Ok ({ preconditions; postconditions } : fun_specs))
 
 and g_declaration_group_of_postcard :
     'a0.
@@ -2084,13 +2047,12 @@ and g_declaration_group_of_postcard :
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
 and gexpr_body_of_postcard :
-    'a0 'a1.
+    'a0.
     (of_postcard_ctx -> postcard_state -> ('a0, string) result) ->
-    (of_postcard_ctx -> postcard_state -> ('a1, string) result) ->
     of_postcard_ctx ->
     postcard_state ->
-    (('a0, 'a1) gexpr_body, string) result =
- fun arg0_of_postcard arg1_of_postcard ctx st ->
+    ('a0 gexpr_body, string) result =
+ fun arg0_of_postcard ctx st ->
   combine_error_msgs st __FUNCTION__
     (let* span = span_of_postcard ctx st in
      let* bound_body_regions = usize_of_postcard ctx st in
@@ -2102,8 +2064,7 @@ and gexpr_body_of_postcard :
             (list_of_postcard string_of_postcard))
          ctx st
      in
-     let* specs = arg1_of_postcard ctx st in
-     Ok ({ span; bound_body_regions; locals; body; specs } : _ gexpr_body))
+     Ok ({ span; bound_body_regions; locals; body } : _ gexpr_body))
 
 and global_decl_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (global_decl, string) result =
@@ -2310,6 +2271,13 @@ and monomorphize_mut_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      | 0 -> Ok All
      | 1 -> Ok ExceptTypes
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
+
+and postcondition_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
+    (postcondition, string) result =
+  combine_error_msgs st __FUNCTION__
+    (let* arg_id = local_id_of_postcard ctx st in
+     let* body = body_of_postcard ctx st in
+     Ok ({ arg_id; body } : postcondition))
 
 and preset_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (preset, string) result =
@@ -2550,6 +2518,13 @@ and translated_crate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
               type_decl_of_postcard ctx st))
          ctx st
      in
+     let* type_spec_bodies =
+       (fun ctx st ->
+         Result.map TypeSpecBodyId.map_of_indexed_list
+           (opt_indexed_map_of_postcard type_spec_body_id_of_postcard
+              body_of_postcard ctx st))
+         ctx st
+     in
      let* fun_decls =
        (fun ctx st ->
          Result.map FunDeclId.map_of_indexed_list
@@ -2593,6 +2568,7 @@ and translated_crate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
           assoc_item_names;
           short_names;
           type_decls;
+          type_spec_bodies;
           fun_decls;
           global_decls;
           trait_decls;
@@ -2649,10 +2625,14 @@ and type_decl_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
          Ok (TDeclError x_0)
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
+and type_spec_body_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state)
+    : (type_spec_body_id, string) result =
+  combine_error_msgs st __FUNCTION__ (TypeSpecBodyId.id_of_postcard ctx st)
+
 and type_specs_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (type_specs, string) result =
   combine_error_msgs st __FUNCTION__
-    (let* invariants = list_of_postcard fun_decl_id_of_postcard ctx st in
+    (let* invariants = list_of_postcard type_spec_body_id_of_postcard ctx st in
      Ok ({ invariants } : type_specs))
 
 and v_table_field_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :

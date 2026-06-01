@@ -51,7 +51,7 @@ pub struct Locals {
 ///       the print is obfuscated and Aeneas may need some refactoring.
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 #[cfg_attr(feature = "charon_on_charon", charon::rename("GexprBody"))]
-pub struct GExprBody<T, U> {
+pub struct GExprBody<T> {
     pub span: Span,
     /// The number of regions existentially bound in this body. We introduce fresh such regions
     /// during translation instead of the erased regions that rustc gives us.
@@ -66,8 +66,6 @@ pub struct GExprBody<T, U> {
     #[cfg_attr(feature = "charon_on_charon", charon::opaque)]
     #[drive(skip)]
     pub comments: Vec<(usize, Vec<String>)>,
-    /// Associated trust2-contract specifications.
-    pub specs: U,
 }
 
 /// The body of a function.
@@ -218,6 +216,20 @@ pub enum VTableField {
     SuperTrait(TraitClauseId),
 }
 
+// `Body` here can only be `Body::Unstructured` or `Body::Structured`.
+#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+pub struct Postcondition {
+    pub arg_id: LocalId,
+    pub body: Body,
+}
+
+// `Body` here can only be `Body::Unstructured` or `Body::Structured`.
+#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+pub struct FunSpecs {
+    pub preconditions: Vec<Body>,
+    pub postconditions: Vec<Postcondition>,
+}
+
 /// A function definition
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct FunDecl {
@@ -234,6 +246,8 @@ pub struct FunDecl {
     pub is_global_initializer: Option<GlobalDeclId>,
     /// The function body.
     pub body: Body,
+    /// Associated trust2-contract specifications.
+    pub specs: FunSpecs,
 }
 
 /// Reference to a function declaration.
@@ -563,12 +577,6 @@ pub struct Assert {
     /// The kind of check performed by this assert. This is only used for error reporting, as the check
     /// is actually performed by the instructions preceding the assert.
     pub check_kind: Option<BuiltinAssertKind>,
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct SpecCall {
-    pub span: Span,
-    pub args: Vec<Operand>,
 }
 
 /// A generic `*DeclRef`-shaped struct, used when we're generic over the type of item.

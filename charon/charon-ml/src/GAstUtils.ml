@@ -48,7 +48,7 @@ let locals_get_input_vars (locals : locals) : local list =
   let args = List.tl locals.locals in
   Collections.List.prefix locals.arg_count args
 
-let fun_body_get_input_vars (fbody : ('body, 'specs) gexpr_body) : local list =
+let fun_body_get_input_vars (fbody : 'body gexpr_body) : local list =
   locals_get_input_vars fbody.locals
 
 (** Get the signature of this function as a bound value, i.e. including its

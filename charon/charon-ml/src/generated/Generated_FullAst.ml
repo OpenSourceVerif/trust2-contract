@@ -24,12 +24,10 @@ type assoc_item_names = {
 
 (** The body of a function. *)
 and body =
-  | UnstructuredBody of
-      (Generated_UllbcAst.block list, Generated_UllbcAst.fun_specs) gexpr_body
+  | UnstructuredBody of Generated_UllbcAst.block list gexpr_body
       (** Body represented as a CFG. This is what ullbc is made of, and what we
           get after translating MIR. *)
-  | StructuredBody of
-      (Generated_LlbcAst.block, Generated_LlbcAst.fun_specs) gexpr_body
+  | StructuredBody of Generated_LlbcAst.block gexpr_body
       (** Body represented with structured control flow. This is what llbc is
           made of. We restructure the control flow in the [ullbc_to_llbc] pass.
       *)
@@ -241,6 +239,12 @@ and fun_decl = {
       (** Whether this function is in fact the body of a constant/static that we
           turned into an initializer function. *)
   body : body;  (** The function body. *)
+  specs : fun_specs;  (** Associated trust2-contract specifications. *)
+}
+
+and fun_specs = {
+  preconditions : body list;
+  postconditions : postcondition list;
 }
 
 (** A (group of) top-level declaration(s), properly reordered. "G" stands for
@@ -268,6 +272,8 @@ and monomorphize_mut =
   | All  (** Monomorphize any item instantiated with [&mut]. *)
   | ExceptTypes
       (** Monomorphize all non-typedecl items instantiated with [&mut]. *)
+
+and postcondition = { arg_id : local_id; body : body }
 
 (** Presets to make it easier to tweak options without breaking dependent
     projects. Eventually we should define semantically-meaningful presets
@@ -322,6 +328,8 @@ and translated_crate = {
       (** Short names, for items whose last PathElem is unique. *)
   type_decls : type_decl type_decl_id_map;
       (** The translated type definitions *)
+  type_spec_bodies : body type_spec_body_id_map;
+      (** Bodies for trust2-contract type specifications. *)
   fun_decls : fun_decl fun_decl_id_map;
       (** The translated function definitions *)
   global_decls : global_decl global_decl_id_map;
