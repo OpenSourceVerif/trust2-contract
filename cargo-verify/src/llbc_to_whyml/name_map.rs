@@ -1,11 +1,12 @@
 use charon_lib::{
     ast::{
-        Body, FieldId, FunDecl, FunDeclId, GenericParams, GlobalDeclId, ItemId, LocalId, Name,
-        PathElem, TranslatedCrate, TypeDeclId, TypeDeclKind, TypeVarId, VariantId,
+        Body, FieldId, FunDeclId, GenericParams, GlobalDeclId, ItemId, LocalId, Name, PathElem,
+        TranslatedCrate, TypeDeclId, TypeDeclKind, TypeVarId, VariantId,
     },
     formatter::FmtCtx,
     ids::{IndexMap, IndexVec},
     pretty::FmtWithCtx,
+    ullbc_ast::FunSig,
 };
 use utils::case;
 
@@ -107,17 +108,22 @@ pub struct TypeDeclNames {
 
 pub enum TypeDeclSubIdents {
     Record(IndexVec<FieldId, String>),
-    Variant(IndexVec<VariantId, (String, Option<(String, IndexVec<FieldId, String>)>)>),
+    Variant(IndexVec<VariantId, ConstructorIdents>),
     Abstract,
+}
+
+pub struct ConstructorIdents {
+    pub constructor_ident: String,
+    pub record_idents_opt: Option<(String, IndexVec<FieldId, String>)>,
 }
 
 pub struct FuncDeclNames {
     pub item_ident: String,
     pub type_param_names: TypeParamNames,
-    pub local_names: FuncDeclLocalNames,
+    pub local_names: LocalNames,
 }
 
-pub enum FuncDeclLocalNames {
+pub enum LocalNames {
     Concrete(IndexVec<LocalId, String>),
     Abstract(Vec<Option<String>>),
 }
@@ -136,16 +142,14 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
 
     enum TypeDeclSubIdentsOpt {
         Record(IndexVec<FieldId, Option<String>>),
-        Variant(
-            IndexVec<
-                VariantId,
-                (
-                    Option<String>,
-                    Option<(Option<String>, IndexVec<FieldId, Option<String>>)>,
-                ),
-            >,
-        ),
+        Variant(IndexVec<VariantId, ConstructorIdentsOpt>),
         Abstract,
+    }
+
+    struct ConstructorIdentsOpt {
+        ident: Option<String>,
+        #[allow(clippy::type_complexity)]
+        record_idents_opt: Option<(Option<String>, IndexVec<FieldId, Option<String>>)>,
     }
 
     let mut type_decl_names_opt = crate_
@@ -218,7 +222,10 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
                             .or_default()
                             .push((item_id, Some((variant_id.into(), None))));
 
-                        (None, record_idents_opt)
+                        ConstructorIdentsOpt {
+                            ident: None,
+                            record_idents_opt,
+                        }
                     }),
                 ),
                 TypeDeclKind::Union(..) => todo!(),
@@ -267,10 +274,12 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
                             TypeDeclSubIdentsOpt::Variant(variant_idents_opt) => {
                                 let constructor_idents_opt = &mut variant_idents_opt[sub_id];
                                 match record_id_opt {
-                                    None => constructor_idents_opt.0 = Some(ident),
+                                    None => constructor_idents_opt.ident = Some(ident),
                                     Some(record_id) => {
-                                        let record_idents_opt =
-                                            constructor_idents_opt.1.as_mut().unwrap();
+                                        let record_idents_opt = constructor_idents_opt
+                                            .record_idents_opt
+                                            .as_mut()
+                                            .unwrap();
                                         match record_id {
                                             None => record_idents_opt.0 = Some(ident),
                                             Some(record_field_id) => {
@@ -319,21 +328,26 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
                 TypeDeclSubIdentsOpt::Record(record_idents_opt) => {
                     TypeDeclSubIdents::Record(record_idents_opt.map(Option::unwrap))
                 }
-                TypeDeclSubIdentsOpt::Variant(variant_idents_opt) => TypeDeclSubIdents::Variant(
-                    variant_idents_opt.map(|(constructor_ident_opt, record_idents_opt_opt)| {
-                        (
-                            constructor_ident_opt.unwrap(),
-                            record_idents_opt_opt.map(
-                                |(record_ident_opt, record_field_idents_opt)| {
-                                    (
-                                        record_ident_opt.unwrap(),
-                                        record_field_idents_opt.map(Option::unwrap),
-                                    )
-                                },
-                            ),
-                        )
-                    }),
-                ),
+                TypeDeclSubIdentsOpt::Variant(variant_idents_opt) => {
+                    TypeDeclSubIdents::Variant(variant_idents_opt.map(
+                        |ConstructorIdentsOpt {
+                             ident,
+                             record_idents_opt,
+                         }| {
+                            ConstructorIdents {
+                                constructor_ident: ident.unwrap(),
+                                record_idents_opt: record_idents_opt.map(
+                                    |(record_ident_opt, record_field_idents_opt)| {
+                                        (
+                                            record_ident_opt.unwrap(),
+                                            record_field_idents_opt.map(Option::unwrap),
+                                        )
+                                    },
+                                ),
+                            }
+                        },
+                    ))
+                }
                 TypeDeclSubIdentsOpt::Abstract => TypeDeclSubIdents::Abstract,
             },
         }
@@ -344,7 +358,7 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
         FuncDeclNames {
             item_ident,
             type_param_names: map_generic_params(&idents, &func_decl.generics),
-            local_names: map_locals(&idents, func_decl),
+            local_names: map_locals(&idents, &func_decl.body, &func_decl.signature),
         }
     });
     let mut global_names_opt = global_names_opt.into_iter();
@@ -386,7 +400,10 @@ fn process_path(path: &Name, conv: impl Fn(String) -> String) -> Vec<String> {
         .collect()
 }
 
-fn map_generic_params(idents: &HashSet<String>, generic_params: &GenericParams) -> TypeParamNames {
+fn map_generic_params(
+    existing_idents: &HashSet<String>,
+    generic_params: &GenericParams,
+) -> TypeParamNames {
     let type_param = &generic_params.types;
 
     let mut inv_map: HashMap<_, Vec<_>> = HashMap::new();
@@ -400,14 +417,18 @@ fn map_generic_params(idents: &HashSet<String>, generic_params: &GenericParams) 
         String::default()
     });
 
-    resolve_collision(idents, inv_map, |type_param_id, type_param_name| {
-        type_param_names[type_param_id] = type_param_name;
-    });
+    resolve_collision(
+        existing_idents,
+        inv_map,
+        |type_param_id, type_param_name| {
+            type_param_names[type_param_id] = type_param_name;
+        },
+    );
     type_param_names
 }
 
-fn map_locals(idents: &HashSet<String>, func_decl: &FunDecl) -> FuncDeclLocalNames {
-    match &func_decl.body {
+fn map_locals(existing_idents: &HashSet<String>, body: &Body, signature: &FunSig) -> LocalNames {
+    match body {
         Body::Unstructured(_body) => unreachable!(),
         Body::Structured(body) => {
             let locals = &body.locals.locals;
@@ -420,16 +441,16 @@ fn map_locals(idents: &HashSet<String>, func_decl: &FunDecl) -> FuncDeclLocalNam
                 String::default()
             });
 
-            resolve_collision(idents, inv_map, |local_id, local_name| {
+            resolve_collision(existing_idents, inv_map, |local_id, local_name| {
                 local_names[local_id] = local_name;
             });
-            FuncDeclLocalNames::Concrete(local_names)
+            LocalNames::Concrete(local_names)
         }
         Body::TargetDispatch(..) => todo!(),
         Body::TraitMethodWithoutDefault | Body::Extern(..) | Body::Opaque | Body::Missing => {
-            FuncDeclLocalNames::Abstract(vec![None; func_decl.signature.inputs.len()])
+            LocalNames::Abstract(vec![None; signature.inputs.len()])
         }
-        Body::Intrinsic { arg_names, .. } => FuncDeclLocalNames::Abstract(
+        Body::Intrinsic { arg_names, .. } => LocalNames::Abstract(
             arg_names
                 .iter()
                 .map(|param_name_opt| {
@@ -444,17 +465,20 @@ fn map_locals(idents: &HashSet<String>, func_decl: &FunDecl) -> FuncDeclLocalNam
 }
 
 fn resolve_collision<I: Copy>(
-    idents: &HashSet<String>,
+    existing_idents: &HashSet<String>,
     inv_map: HashMap<String, Vec<I>>,
     mut set_map: impl FnMut(I, String),
 ) {
     for (name, ids) in inv_map {
-        if !TAKEN_WORDS_SET.contains(name.as_str()) && !idents.contains(&name) && ids.len() == 1 {
+        if !TAKEN_WORDS_SET.contains(name.as_str())
+            && !existing_idents.contains(&name)
+            && ids.len() == 1
+        {
             let id = ids[0];
             set_map(id, name);
         } else {
             let mut disambiguator = 0;
-            while idents.contains(&format!("{name}'{disambiguator}")) {
+            while existing_idents.contains(&format!("{name}'{disambiguator}")) {
                 disambiguator += 1;
             }
             for id in ids {

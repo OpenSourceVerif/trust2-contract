@@ -1,7 +1,7 @@
 use name_map::{
-    EMPTY_TYPE_NAME, FuncDeclLocalNames, LIB_BOOL, LIB_BUILTIN, LIB_CHAR, LIB_DIR, LIB_I8, LIB_I16,
-    LIB_I32, LIB_I64, LIB_I128, LIB_TUPLE, LIB_U8, LIB_U16, LIB_U32, LIB_U64, LIB_U128, NameMap,
-    TypeDeclSubIdents, TypeParamNames,
+    ConstructorIdents, EMPTY_TYPE_NAME, LIB_BOOL, LIB_BUILTIN, LIB_CHAR, LIB_DIR, LIB_I8, LIB_I16,
+    LIB_I32, LIB_I64, LIB_I128, LIB_TUPLE, LIB_U8, LIB_U16, LIB_U32, LIB_U64, LIB_U128, LocalNames,
+    NameMap, TypeDeclSubIdents, TypeParamNames,
 };
 
 use bumpalo::Bump;
@@ -37,8 +37,8 @@ use why3_ptree::{
     number::{IntConstant, IntLiteralKind, RealConstant, RealLiteralKind, RealValue},
     pmodule::REF_ATTR,
     ptree::{
-        self, Attr, Decl, Expr, ExprDesc, Fundef, Ghost, Ident, MlwFile, Param, PatDesc, Pattern,
-        Pty, Qualid, Spec, TypeDef, Visibility,
+        self, Attr, Binder, Decl, Expr, ExprDesc, Fundef, Ghost, Ident, MlwFile, Param, PatDesc,
+        Pattern, Pty, Qualid, Spec, TypeDef, Visibility,
     },
     ptree_helpers,
 };
@@ -449,7 +449,8 @@ impl<'a> Ctx<'a> {
 
                 let item_ident = translate_ident(names.item_ident.as_str().into());
                 let type_param_idents: Box<[_]> = self_.type_param_stack.innermost().as_raw_slice().into();
-                let translate_variant = |variant: &ast::Variant, (constructor_ident, record_idents_opt): &(String, Option<(String, _)>)| -> Result<_> {
+                let translate_variant = |variant: &ast::Variant, constructor_idents: &ConstructorIdents| -> Result<_> {
+                    let ConstructorIdents { constructor_ident, record_idents_opt } = constructor_idents;
                     let constructor_ident_ = translate_ident(constructor_ident.as_str().into());
                     let translate_tuple_like_variant_field = |variant_field_id, variant_field: &ast::Field| {
                         let constructor_field_type = self_.translate_type(&variant_field.ty)?;
@@ -945,8 +946,10 @@ impl<'a> Ctx<'a> {
                                 Box::new([base]),
                             ),
                             TypeDeclSubIdents::Variant(constructor_idents) => {
-                                let (constructor_ident, record_idents_opt) =
-                                    &constructor_idents[variant_id_opt.unwrap()];
+                                let ConstructorIdents {
+                                    constructor_ident,
+                                    record_idents_opt,
+                                } = &constructor_idents[variant_id_opt.unwrap()];
                                 match record_idents_opt {
                                     None => ptree_helpers::eapply(
                                         Position::default(),
@@ -1395,30 +1398,35 @@ impl<'a> Ctx<'a> {
                                 ),
                             ))
                         };
-                    let translate_enum_aggregate = |self_: &mut Ctx,
-                                                    (constructor_ident, record_idents_opt): &(
-                        String,
-                        _,
-                    )| {
-                        let constructor_expr = ptree_helpers::evar(
-                            Position::default(),
-                            ptree_helpers::qualid(Box::new([constructor_ident.as_str().into()])),
-                        );
-                        Ok(match record_idents_opt {
-                            None => {
-                                let operands: Vec<_> = operands
-                                    .iter()
-                                    .map(|operand| self_.translate_operand(operand))
-                                    .collect::<Result<_>>()?;
-                                self_.translate_apply(constructor_expr, operands)
-                            }
-                            Some((_record_ident, record_field_idents)) => ptree_helpers::eapply(
+                    let translate_enum_aggregate =
+                        |self_: &mut Ctx,
+                         ConstructorIdents {
+                             constructor_ident,
+                             record_idents_opt,
+                         }: &_| {
+                            let constructor_expr = ptree_helpers::evar(
                                 Position::default(),
-                                constructor_expr,
-                                translate_struct_aggregate(self_, record_field_idents)?,
-                            ),
-                        })
-                    };
+                                ptree_helpers::qualid(Box::new([constructor_ident
+                                    .as_str()
+                                    .into()])),
+                            );
+                            Ok(match record_idents_opt {
+                                None => {
+                                    let operands: Vec<_> = operands
+                                        .iter()
+                                        .map(|operand| self_.translate_operand(operand))
+                                        .collect::<Result<_>>()?;
+                                    self_.translate_apply(constructor_expr, operands)
+                                }
+                                Some((_record_ident, record_field_idents)) => {
+                                    ptree_helpers::eapply(
+                                        Position::default(),
+                                        constructor_expr,
+                                        translate_struct_aggregate(self_, record_field_idents)?,
+                                    )
+                                }
+                            })
+                        };
                     match &names.sub_idents {
                         TypeDeclSubIdents::Record(field_idents) => {
                             translate_struct_aggregate(self_, field_idents)
@@ -1503,22 +1511,7 @@ impl<'a> Ctx<'a> {
         })
     }
 
-    fn translate_func_decl(
-        &mut self,
-        func_decl_id: FunDeclId,
-    ) -> Result<
-        Option<(
-            Ident,
-            Ghost,
-            RsKind,
-            Box<[ptree::Binder]>,
-            Pty,
-            Pattern,
-            Mask,
-            Spec,
-            Option<Expr>,
-        )>,
-    > {
+    fn translate_func_decl(&mut self, func_decl_id: FunDeclId) -> Result<Option<FuncData>> {
         let func_decl = &self.crate_.fun_decls[func_decl_id];
 
         if matches!(func_decl.src, ItemSource::TraitDecl { .. }) {
@@ -1538,7 +1531,7 @@ impl<'a> Ctx<'a> {
         self.with_generic_params(&names.type_param_names, |self_| {
             let func_sig = &func_decl.signature;
             let translate_structured_body = |self_: &mut Self, body: &ExprBody| {
-                let FuncDeclLocalNames::Concrete(local_names) = &names.local_names else {
+                let LocalNames::Concrete(local_names) = &names.local_names else {
                     unreachable!();
                 };
 
@@ -1554,7 +1547,7 @@ impl<'a> Ctx<'a> {
                             .skip(1)
                             .zip(&func_sig.inputs)
                             .map(|(param_ident, param_type)| {
-                                Ok(ptree::Binder(
+                                Ok(Binder(
                                     Position::default(),
                                     Some(param_ident.clone()),
                                     false,
@@ -1600,7 +1593,7 @@ impl<'a> Ctx<'a> {
                 Ok((params, Some(body_expr)))
             };
             let translate_abstract_body = || {
-                let FuncDeclLocalNames::Abstract(param_names_opt) = &names.local_names else {
+                let LocalNames::Abstract(param_names_opt) = &names.local_names else {
                     unreachable!();
                 };
 
@@ -1612,7 +1605,7 @@ impl<'a> Ctx<'a> {
                             .iter()
                             .zip(&func_sig.inputs)
                             .map(|(param_name_opt, param_type)| {
-                                Ok(ptree::Binder(
+                                Ok(Binder(
                                     Position::default(),
                                     param_name_opt.as_ref().map(|param_name| {
                                         translate_ident(param_name.as_str().into())
@@ -1636,7 +1629,7 @@ impl<'a> Ctx<'a> {
                 }
                 Body::Error(..) => unreachable!(),
             };
-            Ok(Some((
+            Ok(Some(FuncData(
                 translate_ident(names.item_ident.as_str().into()),
                 false,
                 RsKind::None,
@@ -1695,7 +1688,7 @@ impl<'a> Ctx<'a> {
         let translate_func_decl_group = |self_: &mut Self, func_decl_group: &_| {
             match func_decl_group {
                 GDeclarationGroup::NonRec(func_decl_id) => {
-                    let Some((ident, ghost, kind, params, ret_type, pat, mask, spec, body)) =
+                    let Some(FuncData(ident, ghost, kind, params, ret_type, pat, mask, spec, body)) =
                         self_.translate_func_decl(*func_decl_id)?
                     else {
                         return Ok(());
@@ -1741,8 +1734,17 @@ impl<'a> Ctx<'a> {
                 GDeclarationGroup::Rec(func_decl_ids) => {
                     let mut func_decls = Vec::new();
                     for &func_decl_id in func_decl_ids {
-                        let Some((ident, ghost, kind, params, ret_type, pat, mask, spec, body)) =
-                            self_.translate_func_decl(func_decl_id)?
+                        let Some(FuncData(
+                            ident,
+                            ghost,
+                            kind,
+                            params,
+                            ret_type,
+                            pat,
+                            mask,
+                            spec,
+                            body,
+                        )) = self_.translate_func_decl(func_decl_id)?
                         else {
                             continue;
                         };
@@ -1790,6 +1792,18 @@ impl<'a> Ctx<'a> {
         }
     }
 }
+
+struct FuncData(
+    Ident,
+    Ghost,
+    RsKind,
+    Box<[Binder]>,
+    Pty,
+    Pattern,
+    Mask,
+    Spec,
+    Option<Expr>,
+);
 
 static IMPORTS: LazyLock<Decl> = LazyLock::new(|| {
     Decl::Useimport(
