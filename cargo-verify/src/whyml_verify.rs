@@ -14,6 +14,8 @@ pub fn verify(why3_out_dir: &Path, crates: &HashMap<String, TranslatedCrate>) ->
             "cvc5".as_ref(),
             "--library".as_ref(),
             why3_out_dir.as_os_str(),
+            "--extra-config".as_ref(),
+            why3_out_dir.join("whyml_lib/ext.conf").as_os_str(),
             whyml_path.as_os_str(),
         ]);
         if prove_cmd.status()?.success() {

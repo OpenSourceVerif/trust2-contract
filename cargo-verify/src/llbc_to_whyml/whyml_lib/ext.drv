@@ -1,0 +1,89 @@
+theory whyml_lib.i8.I8
+  syntax literal u "#x%2x"
+  syntax type u "(_ BitVec 8)"
+
+  syntax function zeros "#x00"
+  syntax function one   "#x01"
+  syntax function ones  "#xFF"
+end
+
+theory whyml_lib.i16.I16
+  syntax literal u "#x%4x"
+  syntax type u "(_ BitVec 16)"
+
+  syntax function zeros "#x0000"
+  syntax function one   "#x0001"
+  syntax function ones  "#xFFFF"
+end
+
+theory whyml_lib.i32.I32
+  syntax literal u "#x%8x"
+  syntax type u "(_ BitVec 32)"
+
+  syntax function zeros "#x00000000"
+  syntax function one   "#x00000001"
+  syntax function ones  "#xFFFFFFFF"
+end
+
+theory whyml_lib.i64.I64
+  syntax literal u "#x%16x"
+  syntax type u "(_ BitVec 64)"
+
+  syntax function zeros "#x0000000000000000"
+  syntax function one   "#x0000000000000001"
+  syntax function ones  "#xFFFFFFFFFFFFFFFF"
+end
+
+theory whyml_lib.i128.I128
+  syntax literal u "#x%32x"
+  syntax type u "(_ BitVec 128)"
+
+  syntax function zeros "#x00000000000000000000000000000000"
+  syntax function one   "#x00000000000000000000000000000001"
+  syntax function ones  "#xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+end
+
+theory whyml_lib.u8.U8
+  syntax literal t "#x%2x"
+  syntax type t "(_ BitVec 8)"
+
+  syntax function zeros "#x00"
+  syntax function one   "#x01"
+  syntax function ones  "#xFF"
+end
+
+theory whyml_lib.u16.U16
+  syntax literal t "#x%4x"
+  syntax type t "(_ BitVec 16)"
+
+  syntax function zeros "#x0000"
+  syntax function one   "#x0001"
+  syntax function ones  "#xFFFF"
+end
+
+theory whyml_lib.u32.U32
+  syntax literal t "#x%8x"
+  syntax type t "(_ BitVec 32)"
+
+  syntax function zeros "#x00000000"
+  syntax function one   "#x00000001"
+  syntax function ones  "#xFFFFFFFF"
+end
+
+theory whyml_lib.u64.U64
+  syntax literal t "#x%16x"
+  syntax type t "(_ BitVec 64)"
+
+  syntax function zeros "#x0000000000000000"
+  syntax function one   "#x0000000000000001"
+  syntax function ones  "#xFFFFFFFFFFFFFFFF"
+end
+
+theory whyml_lib.u128.U128
+  syntax literal t "#x%32x"
+  syntax type t "(_ BitVec 128)"
+
+  syntax function zeros "#x00000000000000000000000000000000"
+  syntax function one   "#x00000000000000000000000000000001"
+  syntax function ones  "#xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+end
