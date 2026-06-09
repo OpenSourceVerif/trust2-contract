@@ -1,13 +1,11 @@
+use cargo_verify::{llbc_to_whyml, rust_to_llbc, whyml_verify};
+
 use anyhow::{Context, Result};
 use clap::Parser;
 use clap_cargo::style::CLAP_STYLING;
 use yansi::{Condition, Paint};
 
 use std::{ffi::OsString, fs, path::PathBuf};
-
-mod llbc_to_whyml;
-mod rust_to_llbc;
-mod whyml_verify;
 
 #[derive(Parser)]
 #[command(bin_name("cargo"), styles(CLAP_STYLING), help_expected(true))]
