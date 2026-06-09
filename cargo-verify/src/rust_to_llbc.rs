@@ -36,7 +36,6 @@ pub fn translate_crates(
             // --unbind-item-vars
             "--abort-on-error".into(),
             "--translate-all-methods".into(),
-            "--monomorphize".into(),
             "--treat-box-as-builtin".into(),
             "--precise-drops".into(),
             // "--desugar-drops".into(),
