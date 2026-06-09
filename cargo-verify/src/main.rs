@@ -3,7 +3,8 @@ use cargo_verify::{llbc_to_whyml, rust_to_llbc, whyml_verify};
 use anyhow::{Context, Result};
 use clap::Parser;
 use clap_cargo::style::CLAP_STYLING;
-use yansi::{Condition, Paint};
+use utils::yansi::STDOUT_IS_TTY_AND_COLOR;
+use yansi::Paint;
 
 use std::{ffi::OsString, fs, path::PathBuf};
 
@@ -31,8 +32,6 @@ struct CliConfig {
 }
 
 fn main() -> Result<()> {
-    yansi::whenever(Condition::TTY_AND_COLOR);
-
     let Cli::Verify(config) = Cli::parse();
 
     let mut crates = run_with_dir(
@@ -42,7 +41,13 @@ fn main() -> Result<()> {
 
     if config.charon_pretty_print {
         for (crate_name, crate_) in &crates {
-            println!("{:=^80}", format!(" {crate_name} ").cyan().bold());
+            println!(
+                "{:=^80}",
+                format!(" {crate_name} ")
+                    .cyan()
+                    .bold()
+                    .whenever(STDOUT_IS_TTY_AND_COLOR),
+            );
             println!("{crate_}");
         }
     }

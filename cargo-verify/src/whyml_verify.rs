@@ -1,8 +1,9 @@
 use anyhow::{Result, bail};
 use charon_lib::ast::TranslatedCrate;
+use utils::yansi::STDERR_IS_TTY_AND_COLOR;
 use yansi::Paint;
 
-use std::{collections::HashMap, path::Path, process::Command};
+use std::{collections::HashMap, io, path::Path, process::Command};
 
 pub fn verify(why3_out_dir: &Path, crates: &HashMap<String, TranslatedCrate>) -> Result<()> {
     for crate_name in crates.keys() {
@@ -18,8 +19,12 @@ pub fn verify(why3_out_dir: &Path, crates: &HashMap<String, TranslatedCrate>) ->
             why3_out_dir.join("whyml_lib/ext.conf").as_os_str(),
             whyml_path.as_os_str(),
         ]);
+        prove_cmd.stdout(io::stderr());
         if prove_cmd.status()?.success() {
-            eprintln!("{:>12} {crate_name}", "Verified".green().bold());
+            eprintln!(
+                "{:>12} {crate_name}",
+                "Verified".green().bold().whenever(STDERR_IS_TTY_AND_COLOR),
+            );
         } else {
             bail!("failed to verify crate `{crate_name}`");
         }
