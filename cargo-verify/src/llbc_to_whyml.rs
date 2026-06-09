@@ -1,3 +1,4 @@
+use builder::{Builder, ExprBuilder, TermBuilder};
 use name_map::{
     ConstructorIdents, EMPTY_TYPE_NAME, LIB_BOOL, LIB_BUILTIN, LIB_CHAR, LIB_DIR, LIB_I8, LIB_I16,
     LIB_I32, LIB_I64, LIB_I128, LIB_TUPLE, LIB_U8, LIB_U16, LIB_U32, LIB_U64, LIB_U128, LocalNames,
@@ -17,7 +18,7 @@ use charon_lib::{
     },
     ids::IndexVec,
     llbc_ast::{Block, ExprBody, Statement, StatementKind, Switch},
-    ullbc_ast::{AbortKind, GlobalDeclId, IntTy, ItemSource, OverflowMode},
+    ullbc_ast::{AbortKind, GlobalDeclId, IntTy, ItemSource, OverflowMode, Postcondition},
 };
 use include_dir::{Dir, include_dir};
 use itertools::Itertools;
@@ -29,6 +30,7 @@ use rustc_apfloat::{
 };
 use why3_ptree::{
     constant::Constant,
+    dterm::{Dbinop, Dquant},
     expr::RsKind,
     ident::{self, OP_EQU},
     ity::Mask,
@@ -38,13 +40,13 @@ use why3_ptree::{
     pmodule::REF_ATTR,
     ptree::{
         self, Attr, Binder, Decl, Expr, ExprDesc, Fundef, Ghost, Ident, MlwFile, Param, PatDesc,
-        Pattern, Pty, Qualid, Spec, TypeDef, Visibility,
+        Pattern, Post, Pre, Pty, Qualid, Spec, Term, TermDesc, TypeDef, Visibility,
     },
     ptree_helpers,
 };
 
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap, HashSet},
     error,
     fmt::{self, Display, Formatter},
     fs::{self, File},
@@ -55,6 +57,7 @@ use std::{
     sync::LazyLock,
 };
 
+mod builder;
 mod name_map;
 
 #[derive(Debug)]
@@ -64,6 +67,8 @@ pub enum Error {
     RawPointer,
     RawBytesConst,
     InlineAsm,
+    CopyNonOverlappingInSpec,
+    LoopInSpec,
 }
 
 impl error::Error for Error {}
@@ -84,6 +89,10 @@ impl Display for Error {
             Error::RawPointer => write!(f, "unsupported raw pointer"),
             Error::RawBytesConst => write!(f, "unsupported constant in raw byte representation"),
             Error::InlineAsm => write!(f, "unsupported inline assembly"),
+            Error::CopyNonOverlappingInSpec => {
+                write!(f, "`CopyNonOverlapping` statement in specification")
+            }
+            Error::LoopInSpec => write!(f, "loop in specification"),
         }
     }
 }
@@ -121,7 +130,7 @@ pub fn translate_crates(
         Decl::Let(
             tuple_field_accessor_ident(arity, field_id),
             false,
-            RsKind::None,
+            RsKind::Func,
             Box::new(ptree_helpers::expr(
                 Position::default(),
                 ExprDesc::Fun(
@@ -301,7 +310,7 @@ impl<'a> Ctx<'a> {
             }
             Ok(ty)
         };
-        let translate_array_type = |ty| {
+        let translate_array_type = |_ty| {
             todo!();
             // Ok(Pty::Tyapp(
             //     ARRAY.clone(),
@@ -322,7 +331,7 @@ impl<'a> Ctx<'a> {
             TyKind::PtrMetadata(..) => todo!(),
             TyKind::Array(ty, _n) => translate_array_type(ty),
             TyKind::Slice(..) => todo!(),
-            TyKind::Pattern(ty, pattern) => self.translate_type(ty),
+            TyKind::Pattern(ty, _pattern) => self.translate_type(ty),
             TyKind::Error(..) => unreachable!(),
         }
     }
@@ -464,7 +473,7 @@ impl<'a> Ctx<'a> {
                             Decl::Let(
                                 variant_constructor_field_accessor_ident(constructor_ident, variant_field_id),
                                 false,
-                                RsKind::None,
+                                RsKind::Func,
                                 Box::new(ptree_helpers::expr(Position::default(), ExprDesc::Fun(
                                     ptree_helpers::one_binder(Position::default(), None, Some(Pty::Tyapp(Qualid(Box::new([item_ident.clone()])), Box::new([]))), name_map::local_temp_name(0).into()),
                                     Some(constructor_field_type),
@@ -490,7 +499,7 @@ impl<'a> Ctx<'a> {
                                                 ),
                                                 ptree_helpers::evar(Position::default(), Qualid(Box::new([local_temp_ident(1)]))),
                                             ),
-                                            (WILDCARD.clone(), ABSURD.clone()),
+                                            (WILDCARD.clone(), ABSURD_EXPR.clone()),
                                         ]),
                                         Box::new([]),
                                     ))),
@@ -521,7 +530,7 @@ impl<'a> Ctx<'a> {
                             vec![Decl::Let(
                                 variant_constructor_accessor_ident(constructor_ident),
                                 false,
-                                RsKind::None,
+                                RsKind::Func,
                                 Box::new(ptree_helpers::expr(Position::default(), ExprDesc::Fun(
                                     ptree_helpers::one_binder(Position::default(), None, Some(Pty::Tyapp(Qualid(Box::new([item_ident.clone()])), Box::new([]))), name_map::local_temp_name(0).into()),
                                     Some(record_type),
@@ -543,7 +552,7 @@ impl<'a> Ctx<'a> {
                                                 ),
                                                 ptree_helpers::evar(Position::default(), Qualid(Box::new([local_temp_ident(1)]))),
                                             ),
-                                            (WILDCARD.clone(), ABSURD.clone()),
+                                            (WILDCARD.clone(), ABSURD_EXPR.clone()),
                                         ]),
                                         Box::new([]),
                                     ))),
@@ -619,15 +628,170 @@ impl<'a> Ctx<'a> {
         })
     }
 
-    fn translate_block(&mut self, block: &Block) -> Result<Expr> {
-        let mut expr = UNIT_VALUE.clone();
+    fn translate_block_to_expr(&mut self, block: &Block) -> Result<Expr> {
+        let mut expr = UNIT_EXPR.clone();
         for stmt in block.statements.iter().rev() {
-            expr = self.translate_statement(stmt, expr)?;
+            expr = self.translate_statement_to_expr(stmt, expr)?;
         }
         Ok(expr)
     }
 
-    fn translate_statement(&mut self, stmt: &Statement, trailing_expr: Expr) -> Result<Expr> {
+    fn translate_block_to_term(&mut self, block: &Block) -> Result<Term> {
+        let blocks: Vec<_> = block
+            .statements
+            .split_inclusive(|stmt| matches!(stmt.kind, StatementKind::Switch(..)))
+            .enumerate()
+            .collect();
+        let mut blocks_rev = blocks.into_iter().rev();
+
+        let mut in_locals_ = BTreeSet::new();
+        let in_locals = &mut in_locals_;
+
+        let terms_rev: Vec<_> = iter::once({
+            let (block_id, stmts) = blocks_rev.next().unwrap();
+            let mut stmts_rev = stmts.iter().rev();
+            let stmt = stmts_rev.next().unwrap();
+            assert!(stmt.kind.is_return());
+            let mut term = self.translate_return_to_term(in_locals);
+            for stmt in stmts_rev {
+                term = self.translate_statement_to_term(stmt, term, in_locals)?;
+            }
+            Ok((block_id, term, in_locals.clone()))
+        })
+        .chain(blocks_rev.map(|(block_id, stmts)| {
+            let mut term = self.translate_apply_term(
+                ptree_helpers::tvar(
+                    Position::default(),
+                    Qualid(Box::new([local_block_ident(block_id + 1)])),
+                ),
+                in_locals.iter().copied().map(|local_id| {
+                    ptree_helpers::tvar(
+                        Position::default(),
+                        Qualid(Box::new([self.get_local(local_id).clone()])),
+                    )
+                }),
+            );
+            for stmt in stmts.iter().rev() {
+                term = self.translate_statement_to_term(stmt, term, in_locals)?;
+            }
+            Ok((block_id, term, in_locals.clone()))
+        }))
+        .collect::<Result<_>>()?;
+        let mut terms = terms_rev.into_iter().rev();
+
+        let (_, first_term, _) = terms.next().unwrap();
+        Ok(
+            terms.fold(first_term, |prev_term, (block_id, term, in_locals)| {
+                ptree_helpers::term(
+                    Position::default(),
+                    TermDesc::Let(
+                        local_block_ident(block_id),
+                        Box::new(ptree_helpers::term(
+                            Position::default(),
+                            TermDesc::Quant(
+                                Dquant::Lambda,
+                                in_locals
+                                    .into_iter()
+                                    .map(|local_id| {
+                                        Binder(
+                                            Position::default(),
+                                            Some(self.get_local(local_id).clone()),
+                                            false,
+                                            None,
+                                        )
+                                    })
+                                    .collect(),
+                                Box::new([]),
+                                Box::new(term),
+                            ),
+                        )),
+                        Box::new(prev_term),
+                    ),
+                )
+            }),
+        )
+    }
+
+    fn translate_inner_block_to_term(
+        &mut self,
+        block: &Block,
+        continuation: Term,
+        in_locals: &mut BTreeSet<LocalId>,
+    ) -> Result<Term> {
+        let blocks: Vec<_> = block
+            .statements
+            .split_inclusive(|stmt| matches!(stmt.kind, StatementKind::Switch(..)))
+            .enumerate()
+            .collect();
+        let mut blocks_rev = blocks.into_iter().rev();
+
+        let terms_rev: Vec<_> = iter::once({
+            let (block_id, stmts) = blocks_rev.next().unwrap();
+            let mut term = continuation;
+            for stmt in stmts.iter().rev() {
+                term = self.translate_statement_to_term(stmt, term, in_locals)?;
+            }
+            Ok((block_id, term, in_locals.clone()))
+        })
+        .chain(blocks_rev.map(|(block_id, stmts)| {
+            let mut term = self.translate_apply_term(
+                ptree_helpers::tvar(
+                    Position::default(),
+                    Qualid(Box::new([local_block_ident(block_id + 1)])),
+                ),
+                in_locals.iter().copied().map(|local_id| {
+                    ptree_helpers::tvar(
+                        Position::default(),
+                        Qualid(Box::new([self.get_local(local_id).clone()])),
+                    )
+                }),
+            );
+            for stmt in stmts.iter().rev() {
+                term = self.translate_statement_to_term(stmt, term, in_locals)?;
+            }
+            Ok((block_id, term, in_locals.clone()))
+        }))
+        .collect::<Result<_>>()?;
+        let mut terms = terms_rev.into_iter().rev();
+
+        let (_, first_term, _) = terms.next().unwrap();
+        Ok(
+            terms.fold(first_term, |prev_term, (block_id, term, in_locals)| {
+                ptree_helpers::term(
+                    Position::default(),
+                    TermDesc::Let(
+                        local_block_ident(block_id),
+                        Box::new(ptree_helpers::term(
+                            Position::default(),
+                            TermDesc::Quant(
+                                Dquant::Lambda,
+                                in_locals
+                                    .into_iter()
+                                    .map(|local_id| {
+                                        Binder(
+                                            Position::default(),
+                                            Some(self.get_local(local_id).clone()),
+                                            false,
+                                            None,
+                                        )
+                                    })
+                                    .collect(),
+                                Box::new([]),
+                                Box::new(term),
+                            ),
+                        )),
+                        Box::new(prev_term),
+                    ),
+                )
+            }),
+        )
+    }
+
+    fn translate_statement_to_expr(
+        &mut self,
+        stmt: &Statement,
+        trailing_expr: Expr,
+    ) -> Result<Expr> {
         fn sequence_expr(trailing_expr: Expr, expr: Expr) -> Expr {
             ptree_helpers::expr(
                 Position::default(),
@@ -638,7 +802,7 @@ impl<'a> Ctx<'a> {
         fn translate_assign(self_: &mut Ctx, trailing_expr: Expr, dst: &Place, expr: Expr) -> Expr {
             let expr = ptree_helpers::expr(
                 Position::default(),
-                ExprDesc::Assign(Box::new([(self_.translate_place(dst), None, expr)])),
+                ExprDesc::Assign(Box::new([(self_.translate_place_to_expr(dst), None, expr)])),
             );
             sequence_expr(trailing_expr, expr)
         }
@@ -649,23 +813,27 @@ impl<'a> Ctx<'a> {
             place: &Place,
             rvalue: &Rvalue,
         ) -> Result<Expr> {
-            let rvalue = self_.translate_rvalue(rvalue)?;
+            let rvalue = self_.translate_rvalue_to_expr(rvalue)?;
             Ok(translate_assign(self_, trailing_expr, place, rvalue))
         }
 
         fn translate_copy_nonoverlapping(
-            CopyNonOverlapping { src, dst, count }: &CopyNonOverlapping,
+            CopyNonOverlapping {
+                src: _,
+                dst: _,
+                count: _,
+            }: &CopyNonOverlapping,
         ) -> Expr {
             todo!()
         }
 
         fn translate_place_mention(self_: &mut Ctx, trailing_expr: Expr, place: &Place) -> Expr {
-            let expr = self_.translate_place(place);
+            let expr = self_.translate_place_to_expr(place);
             sequence_expr(trailing_expr, expr)
         }
 
         fn translate_abort(_: &AbortKind) -> Expr {
-            ABSURD.clone()
+            ABSURD_EXPR.clone()
         }
 
         fn translate_assert(
@@ -674,25 +842,17 @@ impl<'a> Ctx<'a> {
             assert: &Assert,
             on_failure: &AbortKind,
         ) -> Result<Expr> {
-            let cond = self_.translate_operand(&assert.cond)?;
+            let cond = self_.translate_operand_to_expr(&assert.cond)?;
             let abort = translate_abort(on_failure);
             let expr = if assert.expected {
                 ptree_helpers::expr(
                     Position::default(),
-                    ExprDesc::If(
-                        Box::new(cond),
-                        Box::new(UNIT_VALUE.clone()),
-                        Box::new(abort),
-                    ),
+                    ExprDesc::If(Box::new(cond), Box::new(UNIT_EXPR.clone()), Box::new(abort)),
                 )
             } else {
                 ptree_helpers::expr(
                     Position::default(),
-                    ExprDesc::If(
-                        Box::new(cond),
-                        Box::new(abort),
-                        Box::new(UNIT_VALUE.clone()),
-                    ),
+                    ExprDesc::If(Box::new(cond), Box::new(abort), Box::new(UNIT_EXPR.clone())),
                 )
             };
             Ok(sequence_expr(trailing_expr, expr))
@@ -708,14 +868,14 @@ impl<'a> Ctx<'a> {
             }: &Call,
         ) -> Result<Expr> {
             let func = match func {
-                FnOperand::Regular(func_ref) => self_.translate_func_ref(func_ref),
-                FnOperand::Dynamic(operand) => self_.translate_operand(operand)?,
+                FnOperand::Regular(func_ref) => self_.translate_func_ref_to_expr(func_ref),
+                FnOperand::Dynamic(operand) => self_.translate_operand_to_expr(operand)?,
             };
             let args: Vec<_> = args
                 .iter()
-                .map(|arg| self_.translate_operand(arg))
+                .map(|arg| self_.translate_operand_to_expr(arg))
                 .collect::<Result<_>>()?;
-            let expr = self_.translate_apply(func, args);
+            let expr = self_.translate_apply_expr(func, args);
             Ok(translate_assign(self_, trailing_expr, dst, expr))
         }
 
@@ -760,9 +920,9 @@ impl<'a> Ctx<'a> {
                 Ok(ptree_helpers::expr(
                     Position::default(),
                     ExprDesc::If(
-                        Box::new(self_.translate_operand(cond)?),
-                        Box::new(self_.translate_block(block_t)?),
-                        Box::new(self_.translate_block(block_f)?),
+                        Box::new(self_.translate_operand_to_expr(cond)?),
+                        Box::new(self_.translate_block_to_expr(block_t)?),
+                        Box::new(self_.translate_block_to_expr(block_f)?),
                     ),
                 ))
             }
@@ -811,8 +971,8 @@ impl<'a> Ctx<'a> {
                 }
 
                 let mut expr = match otherwise {
-                    Some(block) => self_.translate_block(block)?,
-                    None => ABSURD.clone(),
+                    Some(block) => self_.translate_block_to_expr(block)?,
+                    None => ABSURD_EXPR.clone(),
                 };
                 for (discriminants, block) in arms.iter().rev() {
                     expr = ptree_helpers::expr(
@@ -822,7 +982,7 @@ impl<'a> Ctx<'a> {
                                 &scrutinee_ident,
                                 discriminants,
                             )),
-                            Box::new(self_.translate_block(block)?),
+                            Box::new(self_.translate_block_to_expr(block)?),
                             Box::new(expr),
                         ),
                     );
@@ -833,7 +993,7 @@ impl<'a> Ctx<'a> {
                         scrutinee_ident,
                         false,
                         RsKind::None,
-                        Box::new(self_.translate_place(scrutinee)),
+                        Box::new(self_.translate_place_to_expr(scrutinee)),
                         Box::new(expr),
                     ),
                 ))
@@ -865,7 +1025,7 @@ impl<'a> Ctx<'a> {
                                 Box::new([(
                                     Qualid(Box::new([exn_ident])),
                                     None,
-                                    UNIT_VALUE.clone(),
+                                    UNIT_EXPR.clone(),
                                 )]),
                             ),
                         )),
@@ -879,12 +1039,12 @@ impl<'a> Ctx<'a> {
                     ptree_helpers::expr(
                         Position::default(),
                         ExprDesc::While(
-                            Box::new(TRUE.clone()),
+                            Box::new(TRUE_EXPR.clone()),
                             Box::new([]),
                             Box::new([]),
                             Box::new(surround_exn(
                                 continue_exn_ident(self_.loop_depth),
-                                self_.translate_block(block)?,
+                                self_.translate_block_to_expr(block)?,
                             )),
                         ),
                     ),
@@ -915,30 +1075,307 @@ impl<'a> Ctx<'a> {
             StatementKind::Return => Ok(translate_return()),
             StatementKind::Break(level) => Ok(translate_break(*level)),
             StatementKind::Continue(level) => Ok(translate_continue(*level)),
-            StatementKind::Nop => Ok(trailing_expr),
+            StatementKind::Nop => unreachable!(),
             StatementKind::Switch(switch) => translate_switch(self, trailing_expr, switch),
             StatementKind::Loop(block) => translate_loop(self, trailing_expr, block),
             StatementKind::Error(..) => unreachable!(),
         }
     }
 
-    fn translate_place(&mut self, place: &Place) -> Expr {
+    fn translate_return_to_term(&self, in_locals: &mut BTreeSet<LocalId>) -> Term {
+        in_locals.insert(LocalId::ZERO);
+        ptree_helpers::tvar(
+            Position::default(),
+            Qualid(Box::new([self.get_local(LocalId::ZERO).clone()])),
+        )
+    }
+
+    fn translate_statement_to_term(
+        &mut self,
+        stmt: &Statement,
+        trailing_term: Term,
+        in_locals: &mut BTreeSet<LocalId>,
+    ) -> Result<Term> {
+        fn translate_assign(
+            self_: &mut Ctx,
+            trailing_term: Term,
+            dst: &Place,
+            term: Term,
+            in_locals: &mut BTreeSet<LocalId>,
+            update_in_locals: impl FnOnce(&mut BTreeSet<LocalId>),
+        ) -> Term {
+            // TODO
+            let PlaceKind::Local(local_id) = dst.kind else {
+                todo!();
+            };
+            in_locals.remove(&local_id);
+            update_in_locals(in_locals);
+            ptree_helpers::term(
+                Position::default(),
+                TermDesc::Let(
+                    self_.get_local(local_id).clone(),
+                    Box::new(term),
+                    Box::new(trailing_term),
+                ),
+            )
+        }
+
+        fn translate_assign_rvalue(
+            self_: &mut Ctx,
+            trailing_term: Term,
+            place: &Place,
+            rvalue: &Rvalue,
+            in_locals: &mut BTreeSet<LocalId>,
+        ) -> Result<Term> {
+            let locals_set = self_.get_rvalue_locals(rvalue)?;
+            let rvalue = self_.translate_rvalue_to_term(rvalue)?;
+            Ok(translate_assign(
+                self_,
+                trailing_term,
+                place,
+                rvalue,
+                in_locals,
+                |in_locals| in_locals.extend(locals_set),
+            ))
+        }
+
+        fn translate_abort(_: &AbortKind) -> Term {
+            FALSE_TERM.clone()
+        }
+
+        fn translate_assert(
+            self_: &mut Ctx,
+            trailing_term: Term,
+            assert: &Assert,
+            on_failure: &AbortKind,
+            in_locals: &mut BTreeSet<LocalId>,
+        ) -> Result<Term> {
+            in_locals.extend(self_.get_operand_locals(&assert.cond));
+            let cond = self_.translate_operand_to_term(&assert.cond)?;
+            let abort = translate_abort(on_failure);
+            Ok(if assert.expected {
+                ptree_helpers::term(
+                    Position::default(),
+                    TermDesc::If(Box::new(cond), Box::new(trailing_term), Box::new(abort)),
+                )
+            } else {
+                ptree_helpers::term(
+                    Position::default(),
+                    TermDesc::If(Box::new(cond), Box::new(abort), Box::new(trailing_term)),
+                )
+            })
+        }
+
+        fn translate_call(
+            self_: &mut Ctx,
+            trailing_term: Term,
+            Call {
+                func,
+                args,
+                dest: dst,
+            }: &Call,
+            in_locals: &mut BTreeSet<LocalId>,
+        ) -> Result<Term> {
+            let mut locals_set = HashSet::new();
+            let func = match func {
+                FnOperand::Regular(func_ref) => self_.translate_func_ref_to_term(func_ref),
+                FnOperand::Dynamic(operand) => {
+                    locals_set.extend(self_.get_operand_locals(operand));
+                    self_.translate_operand_to_term(operand)?
+                }
+            };
+            let args: Vec<_> = args
+                .iter()
+                .map(|arg| {
+                    locals_set.extend(self_.get_operand_locals(arg));
+                    self_.translate_operand_to_term(arg)
+                })
+                .collect::<Result<_>>()?;
+            let term = self_.translate_apply_term(func, args);
+            Ok(translate_assign(
+                self_,
+                trailing_term,
+                dst,
+                term,
+                in_locals,
+                |in_locals| in_locals.extend(locals_set),
+            ))
+        }
+
+        fn translate_switch(
+            self_: &mut Ctx,
+            continuation: Term,
+            switch: &Switch,
+            in_locals: &mut BTreeSet<LocalId>,
+        ) -> Result<Term> {
+            fn translate_if(
+                self_: &mut Ctx,
+                cond: &Operand,
+                block_t: &Block,
+                block_f: &Block,
+                continuation: Term,
+                in_locals: &mut BTreeSet<LocalId>,
+            ) -> Result<Term> {
+                let mut in_locals_ = in_locals.clone();
+                let term_t = self_.translate_inner_block_to_term(
+                    block_t,
+                    continuation.clone(),
+                    &mut in_locals_,
+                )?;
+                let term_f =
+                    self_.translate_inner_block_to_term(block_f, continuation, in_locals)?;
+                in_locals.extend(in_locals_);
+                in_locals.extend(self_.get_operand_locals(cond));
+                Ok(ptree_helpers::term(
+                    Position::default(),
+                    TermDesc::If(
+                        Box::new(self_.translate_operand_to_term(cond)?),
+                        Box::new(term_t),
+                        Box::new(term_f),
+                    ),
+                ))
+            }
+
+            fn translate_match(
+                self_: &mut Ctx,
+                scrutinee: &Place,
+                arms: &[(Vec<VariantId>, Block)],
+                otherwise: &Option<Block>,
+                continuation: Term,
+                in_locals: &mut BTreeSet<LocalId>,
+            ) -> Result<Term> {
+                let scrutinee_ident = local_temp_ident(0);
+
+                fn translate_discriminants_cond(
+                    scrutinee: &Ident,
+                    discriminants: &[VariantId],
+                ) -> Term {
+                    let discriminant = discriminants.last().unwrap();
+                    let term = ptree_helpers::term(
+                        Position::default(),
+                        TermDesc::Infix(
+                            Box::new(ptree_helpers::tvar(
+                                Position::default(),
+                                Qualid(Box::new([scrutinee.clone()])),
+                            )),
+                            EQUAL.clone(),
+                            Box::new(ptree_helpers::tconst(
+                                Position::default(),
+                                discriminant.raw() as isize,
+                            )),
+                        ),
+                    );
+                    if discriminants.len() == 1 {
+                        term
+                    } else {
+                        ptree_helpers::term(
+                            Position::default(),
+                            TermDesc::Binop(
+                                Box::new(term),
+                                Dbinop::Or,
+                                Box::new(translate_discriminants_cond(
+                                    scrutinee,
+                                    &discriminants[..discriminants.len() - 1],
+                                )),
+                            ),
+                        )
+                    }
+                }
+
+                let in_locals_old = in_locals.clone();
+                let mut term = match otherwise {
+                    Some(block) => self_.translate_inner_block_to_term(
+                        block,
+                        continuation.clone(),
+                        in_locals,
+                    )?,
+                    None => FALSE_TERM.clone(),
+                };
+                for (discriminants, block) in arms.iter().rev() {
+                    let mut in_locals_ = in_locals_old.clone();
+                    let term_t = self_.translate_inner_block_to_term(
+                        block,
+                        continuation.clone(),
+                        &mut in_locals_,
+                    )?;
+                    in_locals.extend(in_locals_);
+                    term = ptree_helpers::term(
+                        Position::default(),
+                        TermDesc::If(
+                            Box::new(translate_discriminants_cond(
+                                &scrutinee_ident,
+                                discriminants,
+                            )),
+                            Box::new(term_t),
+                            Box::new(term),
+                        ),
+                    );
+                }
+                in_locals.extend(self_.get_place_locals(scrutinee));
+                Ok(ptree_helpers::term(
+                    Position::default(),
+                    TermDesc::Let(
+                        scrutinee_ident,
+                        Box::new(self_.translate_place_to_term(scrutinee)),
+                        Box::new(term),
+                    ),
+                ))
+            }
+
+            match switch {
+                Switch::If(cond, block_t, block_f) => {
+                    translate_if(self_, cond, block_t, block_f, continuation, in_locals)
+                }
+                Switch::SwitchInt(..) => unreachable!(),
+                Switch::Match(scrutinee, arms, otherwise) => {
+                    translate_match(self_, scrutinee, arms, otherwise, continuation, in_locals)
+                }
+            }
+        }
+
+        match &stmt.kind {
+            StatementKind::Assign(place, rvalue) => {
+                translate_assign_rvalue(self, trailing_term, place, rvalue, in_locals)
+            }
+            StatementKind::SetDiscriminant(..) => unreachable!(),
+            StatementKind::CopyNonOverlapping(..) => Err(Error::CopyNonOverlappingInSpec),
+            StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => Ok(trailing_term),
+            StatementKind::PlaceMention(_place) => Ok(trailing_term),
+            StatementKind::Drop(..) => Ok(trailing_term),
+            StatementKind::Assert { assert, on_failure } => {
+                translate_assert(self, trailing_term, assert, on_failure, in_locals)
+            }
+            StatementKind::InlineAsm { .. } => Err(Error::InlineAsm),
+            StatementKind::Call(call) => translate_call(self, trailing_term, call, in_locals),
+            StatementKind::Abort(abort_kind) => Ok(translate_abort(abort_kind)),
+            StatementKind::Return => Ok(self.translate_return_to_term(in_locals)),
+            StatementKind::Break(..) | StatementKind::Continue(..) | StatementKind::Loop(..) => {
+                Err(Error::LoopInSpec)
+            }
+            StatementKind::Nop => unreachable!(),
+            StatementKind::Switch(switch) => {
+                translate_switch(self, trailing_term, switch, in_locals)
+            }
+            StatementKind::Error(..) => unreachable!(),
+        }
+    }
+
+    fn translate_place<T: Builder>(&mut self, place: &Place) -> T::T {
         let translate_local = |local_id| {
-            ptree_helpers::evar(
+            T::var(
                 Position::default(),
                 Qualid(Box::new([self.get_local(local_id).clone()])),
             )
         };
-
-        fn translate_proj(self_: &mut Ctx, base: &Place, proj: &ProjectionElem) -> Expr {
-            let base = self_.translate_place(base);
+        let translate_proj = |self_: &mut Self, base, proj: &_| {
+            let base = self_.translate_place::<T>(base);
             let mut translate_field_proj = |base, proj_kind, field_id| {
                 let translate_type_decl_field_proj =
                     |base, type_decl_id, variant_id_opt: Option<_>| {
                         let names = &self_.name_map.type_decl_names[type_decl_id];
 
                         match &names.sub_idents {
-                            TypeDeclSubIdents::Record(field_idents) => ptree_helpers::eapp(
+                            TypeDeclSubIdents::Record(field_idents) => T::app(
                                 Position::default(),
                                 ptree_helpers::qualid(Box::new([field_idents[field_id]
                                     .as_str()
@@ -951,9 +1388,9 @@ impl<'a> Ctx<'a> {
                                     record_idents_opt,
                                 } = &constructor_idents[variant_id_opt.unwrap()];
                                 match record_idents_opt {
-                                    None => ptree_helpers::eapply(
+                                    None => T::apply(
                                         Position::default(),
-                                        ptree_helpers::evar(
+                                        T::var(
                                             Position::default(),
                                             Qualid(Box::new([
                                                 variant_constructor_field_accessor_ident(
@@ -964,37 +1401,35 @@ impl<'a> Ctx<'a> {
                                         ),
                                         base,
                                     ),
-                                    Some((_record_ident, record_field_idents)) => {
-                                        ptree_helpers::eapp(
+                                    Some((_record_ident, record_field_idents)) => T::app(
+                                        Position::default(),
+                                        ptree_helpers::qualid(Box::new([record_field_idents
+                                            [field_id]
+                                            .as_str()
+                                            .into()])),
+                                        Box::new([T::apply(
                                             Position::default(),
-                                            ptree_helpers::qualid(Box::new([record_field_idents
-                                                [field_id]
-                                                .as_str()
-                                                .into()])),
-                                            Box::new([ptree_helpers::eapply(
+                                            T::var(
                                                 Position::default(),
-                                                ptree_helpers::evar(
-                                                    Position::default(),
-                                                    Qualid(Box::new([
-                                                        variant_constructor_accessor_ident(
-                                                            constructor_ident,
-                                                        ),
-                                                    ])),
-                                                ),
-                                                base,
-                                            )]),
-                                        )
-                                    }
+                                                Qualid(Box::new([
+                                                    variant_constructor_accessor_ident(
+                                                        constructor_ident,
+                                                    ),
+                                                ])),
+                                            ),
+                                            base,
+                                        )]),
+                                    ),
                                 }
                             }
                             TypeDeclSubIdents::Abstract => unreachable!(),
                         }
                     };
-                let translate_tuple_field_proj = |self_: &mut Ctx, base, arity| {
+                let translate_tuple_field_proj = |self_: &mut Self, base, arity| {
                     self_.record_tuple_field_access(arity, field_id);
-                    ptree_helpers::eapply(
+                    T::apply(
                         Position::default(),
-                        ptree_helpers::evar(
+                        T::var(
                             Position::default(),
                             Qualid(Box::new([
                                 LIB_TUPLE_IDENT.clone(),
@@ -1019,46 +1454,76 @@ impl<'a> Ctx<'a> {
                 ProjectionElem::PtrMetadata => todo!(),
                 ProjectionElem::Index { .. } | ProjectionElem::Subslice { .. } => unreachable!(),
             }
-        }
-
+        };
         match &place.kind {
             PlaceKind::Local(local_id) => translate_local(*local_id),
             PlaceKind::Projection(base, proj) => translate_proj(self, base, proj),
-            PlaceKind::Global(global_ref) => self.translate_global_ref(global_ref),
+            PlaceKind::Global(global_ref) => self.translate_global_ref::<T>(global_ref),
         }
     }
 
-    fn translate_global_ref(&self, global_ref: &GlobalDeclRef) -> Expr {
+    fn translate_place_to_expr(&mut self, place: &Place) -> Expr {
+        self.translate_place::<ExprBuilder>(place)
+    }
+
+    fn translate_place_to_term(&mut self, place: &Place) -> Term {
+        self.translate_place::<TermBuilder>(place)
+    }
+
+    fn get_place_locals(&self, place: &Place) -> HashSet<LocalId> {
+        match &place.kind {
+            PlaceKind::Local(local_id) => HashSet::from([*local_id]),
+            PlaceKind::Projection(base, _proj) => self.get_place_locals(base),
+            PlaceKind::Global(_global_ref) => HashSet::new(),
+        }
+    }
+
+    fn translate_global_ref<T: Builder>(&self, global_ref: &GlobalDeclRef) -> T::T {
         assert!(global_ref.generics.types.is_empty());
         assert!(global_ref.generics.const_generics.is_empty());
         assert!(global_ref.generics.trait_refs.is_empty());
 
         let names = &self.name_map.global_names[global_ref.id];
 
-        ptree_helpers::evar(
+        T::var(
             Position::default(),
             ptree_helpers::qualid(Box::new([names.item_ident.as_str().into()])),
         )
     }
 
-    fn translate_operand(&mut self, operand: &Operand) -> Result<Expr> {
+    fn translate_operand<T: Builder>(&mut self, operand: &Operand) -> Result<T::T> {
         match operand {
-            Operand::Copy(place) | Operand::Move(place) => Ok(self.translate_place(place)),
-            Operand::Const(const_expr) => self.translate_const_expr(const_expr),
+            Operand::Copy(place) | Operand::Move(place) => Ok(self.translate_place::<T>(place)),
+            Operand::Const(const_expr) => self.translate_const_expr::<T>(const_expr),
         }
     }
 
-    fn translate_const_expr(&self, const_expr: &ConstantExpr) -> Result<Expr> {
+    fn translate_operand_to_expr(&mut self, operand: &Operand) -> Result<Expr> {
+        self.translate_operand::<ExprBuilder>(operand)
+    }
+
+    fn translate_operand_to_term(&mut self, operand: &Operand) -> Result<Term> {
+        self.translate_operand::<TermBuilder>(operand)
+    }
+
+    fn get_operand_locals(&self, operand: &Operand) -> HashSet<LocalId> {
+        match operand {
+            Operand::Copy(place) | Operand::Move(place) => self.get_place_locals(place),
+            Operand::Const(_const_expr) => HashSet::new(),
+        }
+    }
+
+    fn translate_const_expr<T: Builder>(&self, const_expr: &ConstantExpr) -> Result<T::T> {
         match &const_expr.kind {
-            ConstantExprKind::Literal(literal) => Ok(self.translate_literal(literal)),
-            ConstantExprKind::Adt(..) => unreachable!(),
+            ConstantExprKind::Literal(literal) => Ok(self.translate_literal::<T>(literal)),
+            ConstantExprKind::Adt(..) => Ok(T::unit_value()),
             ConstantExprKind::Array(..) => todo!(),
             ConstantExprKind::Global(..) => unreachable!(),
             ConstantExprKind::TraitConst(..) => todo!(),
             ConstantExprKind::VTableRef(..) => todo!(),
             ConstantExprKind::Ref(..) | ConstantExprKind::Ptr(..) => unreachable!(),
             ConstantExprKind::Var(..) => unreachable!(),
-            ConstantExprKind::FnDef(func_ref) => Ok(self.translate_func_ref(func_ref)),
+            ConstantExprKind::FnDef(func_ref) => Ok(self.translate_func_ref::<T>(func_ref)),
             ConstantExprKind::FnPtr(..) => unreachable!(),
             ConstantExprKind::PtrNoProvenance(..) => unreachable!(),
             ConstantExprKind::RawMemory(..) => Err(Error::RawBytesConst),
@@ -1066,36 +1531,35 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn translate_literal(&self, literal: &Literal) -> Expr {
-        fn translate_int_literal(self_: &Ctx, int_literal: ScalarValue) -> Expr {
+    fn translate_literal<T: Builder>(&self, literal: &Literal) -> T::T {
+        let translate_int_literal = |int_literal| {
             let (lib_alias, value) = match int_literal {
                 ScalarValue::Unsigned(uint_type, value) => {
-                    (self_.translate_uint_type_name(uint_type), value.into())
+                    (self.translate_uint_type_name(uint_type), value.into())
                 }
                 ScalarValue::Signed(int_type, value) => {
-                    (self_.translate_int_type_name(int_type), value.into())
+                    (self.translate_int_type_name(int_type), value.into())
                 }
             };
-            ptree_helpers::eapply(
+            T::apply(
                 Position::default(),
-                ptree_helpers::evar(
+                T::var(
                     Position::default(),
                     ptree_helpers::qualid(Box::new([lib_alias.as_str().into(), "of_int".into()])),
                 ),
-                ptree_helpers::expr(
+                T::const_(
                     Position::default(),
-                    ExprDesc::Const(Constant::Int(IntConstant {
+                    Constant::Int(IntConstant {
                         kind: IntLiteralKind::Unk,
                         int: value,
-                    })),
+                    }),
                 ),
             )
-        }
-
-        fn translate_float_literal(float_literal: &FloatValue) -> Expr {
+        };
+        let translate_float_literal = |float_literal: &FloatValue| {
             let value: Quad = float_literal.value.parse().unwrap();
             if !value.is_finite() {
-                return ABSURD.clone();
+                todo!();
             }
             let raw = value.to_bits();
 
@@ -1111,46 +1575,38 @@ impl<'a> Ctx<'a> {
                 significand = -significand;
             }
 
-            ptree_helpers::expr(
+            T::const_(
                 Position::default(),
-                ExprDesc::Const(Constant::Real(RealConstant {
+                Constant::Real(RealConstant {
                     kind: RealLiteralKind::Unk,
                     real: RealValue {
                         sig: significand.into(),
                         pow2: exp.into(),
                         pow5: Integer::ZERO,
                     },
-                })),
+                }),
             )
-        }
-
-        fn translate_bool_literal(bool_literal: bool) -> Expr {
+        };
+        let translate_bool_literal = |bool_literal| {
             if bool_literal {
-                TRUE.clone()
+                T::true_()
             } else {
-                FALSE.clone()
+                T::false_()
             }
-        }
-
-        fn translate_char_literal(char_literal: char) -> Expr {
-            ptree_helpers::expr(
+        };
+        let translate_char_literal = |char_literal| {
+            T::const_(
                 Position::default(),
-                ExprDesc::Const(Constant::Int(IntConstant {
+                Constant::Int(IntConstant {
                     kind: IntLiteralKind::Unk,
                     int: u32::from(char_literal).into(),
-                })),
+                }),
             )
-        }
-
-        fn translate_str_literal(str_literal: &str) -> Expr {
-            ptree_helpers::expr(
-                Position::default(),
-                ExprDesc::Const(Constant::Str(str_literal.into())),
-            )
-        }
-
+        };
+        let translate_str_literal =
+            |str_literal: &str| T::const_(Position::default(), Constant::Str(str_literal.into()));
         match literal {
-            Literal::Scalar(int_literal) => translate_int_literal(self, *int_literal),
+            Literal::Scalar(int_literal) => translate_int_literal(*int_literal),
             Literal::Float(float_literal) => translate_float_literal(float_literal),
             Literal::Bool(bool_literal) => translate_bool_literal(*bool_literal),
             Literal::Char(char_literal) => translate_char_literal(*char_literal),
@@ -1159,8 +1615,8 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn translate_func_ref(&self, func_ref: &FnPtr) -> Expr {
-        fn translate_builtin_func_ref(builtin_func_id: BuiltinFunId) -> Expr {
+    fn translate_func_ref<T: Builder>(&self, func_ref: &FnPtr) -> T::T {
+        let translate_builtin_func_ref = |builtin_func_id| {
             let builtin_func_ident = match builtin_func_id {
                 BuiltinFunId::BoxNew => "box_new",
                 BuiltinFunId::SpecEntry
@@ -1178,67 +1634,67 @@ impl<'a> Ctx<'a> {
                 BuiltinFunId::PtrFromParts(RefKind::Shared) => "ptr_from_parts_shared",
                 BuiltinFunId::PtrFromParts(RefKind::Mut) => "ptr_from_parts_mut",
             };
-            ptree_helpers::evar(
+            T::var(
                 Position::default(),
                 ptree_helpers::qualid(Box::new([
                     LIB_BUILTIN.1.as_str().into(),
                     builtin_func_ident.into(),
                 ])),
             )
-        }
-
+        };
         match &*func_ref.kind {
             FnPtrKind::Fun(FunId::Regular(func_decl_id)) => {
-                self.translate_func_decl_ref(*func_decl_id, &func_ref.generics)
+                self.translate_func_decl_ref::<T>(*func_decl_id, &func_ref.generics)
             }
             FnPtrKind::Fun(FunId::Builtin(builtin_func_id)) => {
                 translate_builtin_func_ref(*builtin_func_id)
             }
             FnPtrKind::Trait(_, _, func_decl_id) => {
-                self.translate_func_decl_ref(*func_decl_id, &func_ref.generics)
+                self.translate_func_decl_ref::<T>(*func_decl_id, &func_ref.generics)
             }
         }
     }
 
-    fn translate_func_decl_ref(&self, func_decl_id: FunDeclId, generic_args: &BoxedArgs) -> Expr {
+    fn translate_func_ref_to_expr(&self, func_ref: &FnPtr) -> Expr {
+        self.translate_func_ref::<ExprBuilder>(func_ref)
+    }
+
+    fn translate_func_ref_to_term(&self, func_ref: &FnPtr) -> Term {
+        self.translate_func_ref::<TermBuilder>(func_ref)
+    }
+
+    fn translate_func_decl_ref<T: Builder>(
+        &self,
+        func_decl_id: FunDeclId,
+        generic_args: &BoxedArgs,
+    ) -> T::T {
         assert!(generic_args.types.is_empty());
         assert!(generic_args.const_generics.is_empty());
         assert!(generic_args.trait_refs.is_empty());
 
         let names = &self.name_map.func_decl_names[func_decl_id];
 
-        ptree_helpers::evar(
+        T::var(
             Position::default(),
             ptree_helpers::qualid(Box::new([names.item_ident.as_str().into()])),
         )
     }
 
-    fn translate_rvalue(&mut self, rvalue: &Rvalue) -> Result<Expr> {
-        fn translate_ref(
-            self_: &mut Ctx,
-            place: &Place,
-            kind: BorrowKind,
-            ptr_metadata: &Operand,
-        ) -> Expr {
-            let place = self_.translate_place(place);
+    fn translate_rvalue<T: Builder>(&mut self, rvalue: &Rvalue) -> Result<T::T> {
+        let translate_ref = |self_: &mut Self, place, kind, _ptr_metadata| {
+            let place = self_.translate_place::<T>(place);
             match kind {
                 BorrowKind::Shared | BorrowKind::UniqueImmutable => place,
                 BorrowKind::Mut => todo!(),
                 BorrowKind::TwoPhaseMut => todo!(),
                 BorrowKind::Shallow => todo!(),
             }
-        }
-
-        fn translate_binary_op(
-            self_: &mut Ctx,
-            operator: BinOp,
-            lhs: &Operand,
-            rhs: &Operand,
-        ) -> Result<Expr> {
+        };
+        let translate_binary_op = |self_: &mut Self, operator, lhs: &Operand, rhs: &Operand| {
             let lhs_type = lhs.ty();
-            let lhs = self_.translate_operand(lhs)?;
+            let lhs = self_.translate_operand::<T>(lhs)?;
             let rhs_type = rhs.ty();
-            let rhs = self_.translate_operand(rhs)?;
+            let rhs = self_.translate_operand::<T>(rhs)?;
             let lhs_type = match lhs_type.kind() {
                 TyKind::Literal(lit_type) => *lit_type,
                 _ => todo!(),
@@ -1249,8 +1705,8 @@ impl<'a> Ctx<'a> {
                 _ => todo!(),
             };
             let apply = |lhs, rhs, func_ident: &str| {
-                self_.translate_apply(
-                    ptree_helpers::evar(
+                self_.translate_apply::<T>(
+                    T::var(
                         Position::default(),
                         ptree_helpers::qualid(Box::new([lhs_type_name.into(), func_ident.into()])),
                     ),
@@ -1258,37 +1714,27 @@ impl<'a> Ctx<'a> {
                 )
             };
             let infix = |lhs, rhs, operator_ident| {
-                ptree_helpers::expr(
+                T::scope(
                     Position::default(),
-                    ExprDesc::Scope(
-                        ptree_helpers::qualid(Box::new([lhs_type_name.into()])),
-                        Box::new(ptree_helpers::expr(
-                            Position::default(),
-                            ExprDesc::Infix(Box::new(lhs), operator_ident, Box::new(rhs)),
-                        )),
-                    ),
+                    ptree_helpers::qualid(Box::new([lhs_type_name.into()])),
+                    T::infix(Position::default(), lhs, operator_ident, rhs),
                 )
             };
             let apply_rhs_int = |lhs, rhs, func_ident: &str| {
-                self_.translate_apply(
-                    ptree_helpers::evar(
+                apply(
+                    lhs,
+                    T::apply(
                         Position::default(),
-                        ptree_helpers::qualid(Box::new([lhs_type_name.into(), func_ident.into()])),
-                    ),
-                    [
-                        lhs,
-                        ptree_helpers::eapply(
+                        T::var(
                             Position::default(),
-                            ptree_helpers::evar(
-                                Position::default(),
-                                ptree_helpers::qualid(Box::new([
-                                    self_.translate_literal_type_name(rhs_type).as_str().into(),
-                                    "to_int".into(),
-                                ])),
-                            ),
-                            rhs,
+                            ptree_helpers::qualid(Box::new([
+                                self_.translate_literal_type_name(rhs_type).as_str().into(),
+                                "to_int".into(),
+                            ])),
                         ),
-                    ],
+                        rhs,
+                    ),
+                    func_ident,
                 )
             };
             Ok(match operator {
@@ -1325,19 +1771,18 @@ impl<'a> Ctx<'a> {
                 BinOp::Offset => return Err(Error::RawPointer),
                 BinOp::Cmp => apply(lhs, rhs, "cmp"),
             })
-        }
-
-        fn translate_unary_op(self_: &mut Ctx, operator: &UnOp, operand: &Operand) -> Result<Expr> {
+        };
+        let translate_unary_op = |self_: &mut Self, operator: &_, operand: &Operand| {
             let operand_type = operand.ty();
-            let operand = self_.translate_operand(operand)?;
+            let operand = self_.translate_operand::<T>(operand)?;
             let operand_type = match operand_type.kind() {
                 TyKind::Literal(lit_type) => *lit_type,
                 _ => todo!(),
             };
             let apply = |func_ident: &str| {
-                ptree_helpers::eapply(
+                T::apply(
                     Position::default(),
-                    ptree_helpers::evar(
+                    T::var(
                         Position::default(),
                         ptree_helpers::qualid(Box::new([
                             self_
@@ -1356,55 +1801,45 @@ impl<'a> Ctx<'a> {
                 UnOp::Neg(OverflowMode::Wrap) => apply("neg"),
                 UnOp::Cast(..) => todo!(),
             })
-        }
-
-        fn translate_nullary_op(operator: &NullOp, ty: &Ty) -> Result<Expr> {
-            match operator {
-                NullOp::SizeOf => todo!(),
-                NullOp::AlignOf => todo!(),
-                NullOp::OffsetOf(type_ref, variant_id_opt, field_id) => todo!(),
-                NullOp::UbChecks => todo!(),
-                NullOp::OverflowChecks => todo!(),
-                NullOp::ContractChecks => todo!(),
-            }
-        }
-
-        fn translate_aggregate(
-            self_: &mut Ctx,
-            kind: &AggregateKind,
-            operands: &Vec<Operand>,
-        ) -> Result<Expr> {
+        };
+        let translate_nullary_op = |operator: &_, _ty| match operator {
+            NullOp::SizeOf => todo!(),
+            NullOp::AlignOf => todo!(),
+            NullOp::OffsetOf(_type_ref, _variant_id_opt, _field_id) => todo!(),
+            NullOp::UbChecks => todo!(),
+            NullOp::OverflowChecks => todo!(),
+            NullOp::ContractChecks => todo!(),
+        };
+        let translate_aggregate = |self_: &mut Self, kind: &_, operands: &[_]| {
             let translate_type_decl_aggregate =
-                |self_: &mut Ctx, type_decl_id, variant_id_opt: Option<_>, _field_id_opt| {
+                |self_: &mut Self, type_decl_id, variant_id_opt: Option<_>, _field_id_opt| {
                     let names = &self_.name_map.type_decl_names[type_decl_id];
 
                     let translate_struct_aggregate =
-                        |self_: &mut Ctx, field_idents: &IndexVec<_, _>| {
-                            Ok(ptree_helpers::expr(
+                        |self_: &mut Self, field_idents: &IndexVec<_, _>| {
+                            Ok(T::record(
                                 Position::default(),
-                                ExprDesc::Record(
-                                    field_idents
-                                        .iter()
-                                        .zip(operands)
-                                        .map(|(field_ident, operand): (&String, _)| {
-                                            Ok((
-                                                ptree_helpers::qualid(Box::new([field_ident
-                                                    .as_str()
-                                                    .into()])),
-                                                self_.translate_operand(operand)?,
-                                            ))
-                                        })
-                                        .collect::<Result<_>>()?,
-                                ),
+                                field_idents
+                                    .iter()
+                                    .zip(operands)
+                                    .map(|(field_ident, operand): (&String, _)| {
+                                        Ok((
+                                            ptree_helpers::qualid(Box::new([field_ident
+                                                .as_str()
+                                                .into()])),
+                                            self_.translate_operand::<T>(operand)?,
+                                        ))
+                                    })
+                                    .collect::<Result<_>>()?,
                             ))
                         };
                     let translate_enum_aggregate =
-                        |self_: &mut Ctx,
+                        |self_: &mut Self,
                          ConstructorIdents {
                              constructor_ident,
                              record_idents_opt,
                          }: &_| {
-                            let constructor_expr = ptree_helpers::evar(
+                            let constructor_expr = T::var(
                                 Position::default(),
                                 ptree_helpers::qualid(Box::new([constructor_ident
                                     .as_str()
@@ -1414,17 +1849,15 @@ impl<'a> Ctx<'a> {
                                 None => {
                                     let operands: Vec<_> = operands
                                         .iter()
-                                        .map(|operand| self_.translate_operand(operand))
+                                        .map(|operand| self_.translate_operand::<T>(operand))
                                         .collect::<Result<_>>()?;
-                                    self_.translate_apply(constructor_expr, operands)
+                                    self_.translate_apply::<T>(constructor_expr, operands)
                                 }
-                                Some((_record_ident, record_field_idents)) => {
-                                    ptree_helpers::eapply(
-                                        Position::default(),
-                                        constructor_expr,
-                                        translate_struct_aggregate(self_, record_field_idents)?,
-                                    )
-                                }
+                                Some((_record_ident, record_field_idents)) => T::apply(
+                                    Position::default(),
+                                    constructor_expr,
+                                    translate_struct_aggregate(self_, record_field_idents)?,
+                                ),
                             })
                         };
                     match &names.sub_idents {
@@ -1438,15 +1871,13 @@ impl<'a> Ctx<'a> {
                         TypeDeclSubIdents::Abstract => unreachable!(),
                     }
                 };
-            let translate_tuple_aggregate = |self_: &mut Ctx| {
-                Ok(ptree_helpers::expr(
+            let translate_tuple_aggregate = |self_: &mut Self| {
+                Ok(T::tuple(
                     Position::default(),
-                    ExprDesc::Tuple(
-                        operands
-                            .iter()
-                            .map(|operand| self_.translate_operand(operand))
-                            .collect::<Result<_>>()?,
-                    ),
+                    operands
+                        .iter()
+                        .map(|operand| self_.translate_operand::<T>(operand))
+                        .collect::<Result<_>>()?,
                 ))
             };
             match kind {
@@ -1481,19 +1912,19 @@ impl<'a> Ctx<'a> {
                 AggregateKind::Array(..) => todo!(),
                 AggregateKind::RawPtr(..) => Err(Error::RawPointer),
             }
-        }
+        };
 
         match rvalue {
-            Rvalue::Use(operand) => self.translate_operand(operand),
+            Rvalue::Use(operand) => self.translate_operand::<T>(operand),
             Rvalue::Ref {
                 place,
                 kind,
                 ptr_metadata,
             } => Ok(translate_ref(self, place, *kind, ptr_metadata)),
             Rvalue::RawPtr {
-                place,
-                kind,
-                ptr_metadata,
+                place: _,
+                kind: _,
+                ptr_metadata: _,
             } => Err(Error::RawPointer),
             Rvalue::BinaryOp(operator, lhs, rhs) => translate_binary_op(self, *operator, lhs, rhs),
             Rvalue::UnaryOp(operator, operand) => translate_unary_op(self, operator, operand),
@@ -1505,10 +1936,59 @@ impl<'a> Ctx<'a> {
         }
     }
 
-    fn translate_apply(&self, func: Expr, args: impl IntoIterator<Item = Expr>) -> Expr {
-        args.into_iter().fold(func, |expr, arg| {
-            ptree_helpers::eapply(Position::default(), expr, arg)
-        })
+    fn translate_rvalue_to_expr(&mut self, rvalue: &Rvalue) -> Result<Expr> {
+        self.translate_rvalue::<ExprBuilder>(rvalue)
+    }
+
+    fn translate_rvalue_to_term(&mut self, rvalue: &Rvalue) -> Result<Term> {
+        self.translate_rvalue::<TermBuilder>(rvalue)
+    }
+
+    fn get_rvalue_locals(&self, rvalue: &Rvalue) -> Result<HashSet<LocalId>> {
+        match rvalue {
+            Rvalue::Use(operand) => Ok(self.get_operand_locals(operand)),
+            Rvalue::Ref {
+                place,
+                kind: _,
+                ptr_metadata: _,
+            } => Ok(self.get_place_locals(place)),
+            Rvalue::RawPtr {
+                place: _,
+                kind: _,
+                ptr_metadata: _,
+            } => Err(Error::RawPointer),
+            Rvalue::BinaryOp(_operator, lhs, rhs) => Ok(self
+                .get_operand_locals(lhs)
+                .union(&self.get_operand_locals(rhs))
+                .copied()
+                .collect()),
+            Rvalue::UnaryOp(_operator, operand) => Ok(self.get_operand_locals(operand)),
+            Rvalue::NullaryOp(_operator, _ty) => Ok(HashSet::new()),
+            Rvalue::Discriminant(..) => todo!(),
+            Rvalue::Aggregate(_kind, operands) => Ok(operands
+                .iter()
+                .flat_map(|operand| self.get_operand_locals(operand))
+                .collect()),
+            Rvalue::Len(..) => todo!(),
+            Rvalue::Repeat(..) => unreachable!(),
+        }
+    }
+
+    fn translate_apply<T: Builder>(
+        &self,
+        func: T::T,
+        args: impl IntoIterator<Item = T::T>,
+    ) -> T::T {
+        args.into_iter()
+            .fold(func, |expr, arg| T::apply(Position::default(), expr, arg))
+    }
+
+    fn translate_apply_expr(&self, func: Expr, args: impl IntoIterator<Item = Expr>) -> Expr {
+        self.translate_apply::<ExprBuilder>(func, args)
+    }
+
+    fn translate_apply_term(&self, func: Term, args: impl IntoIterator<Item = Term>) -> Term {
+        self.translate_apply::<TermBuilder>(func, args)
     }
 
     fn translate_func_decl(&mut self, func_decl_id: FunDeclId) -> Result<Option<FuncData>> {
@@ -1536,7 +2016,7 @@ impl<'a> Ctx<'a> {
                 };
 
                 self_.set_locals(local_names);
-                let body_expr = self_.translate_block(&body.body)?;
+                let body_expr = self_.translate_block_to_expr(&body.body)?;
                 let local_idents = self_.locals.as_ref().unwrap();
                 let params = {
                     if func_sig.inputs.is_empty() {
@@ -1629,6 +2109,75 @@ impl<'a> Ctx<'a> {
                 }
                 Body::Error(..) => unreachable!(),
             };
+
+            fn translate_spec_body(self_: &mut Ctx, body: &Body) -> Result<Term> {
+                let body = body.as_structured().unwrap();
+                self_.translate_block_to_term(&body.body)
+            }
+
+            fn translate_precondition(
+                self_: &mut Ctx,
+                precondition: &Body,
+                local_names: &LocalNames,
+            ) -> Result<Pre> {
+                let LocalNames::Concrete(local_names) = local_names else {
+                    unreachable!();
+                };
+
+                self_.set_locals(local_names);
+                translate_spec_body(self_, precondition)
+            }
+
+            fn translate_postcondition(
+                self_: &mut Ctx,
+                postcondition: &Postcondition,
+                local_names: &LocalNames,
+            ) -> Result<Post> {
+                let LocalNames::Concrete(local_names) = local_names else {
+                    unreachable!();
+                };
+
+                self_.set_locals(local_names);
+                Ok(Post(
+                    Position::default(),
+                    Box::new([(
+                        ptree_helpers::pat_var(
+                            Position::default(),
+                            self_.get_local(postcondition.arg_id).clone(),
+                        ),
+                        translate_spec_body(self_, &postcondition.body)?,
+                    )]),
+                ))
+            }
+
+            let specs = Spec {
+                pre: func_decl
+                    .specs
+                    .preconditions
+                    .iter()
+                    .zip(&names.spec_local_names.precondition_local_names)
+                    .map(|(precondition, local_names)| {
+                        translate_precondition(self_, precondition, local_names)
+                    })
+                    .collect::<Result<_>>()?,
+                post: func_decl
+                    .specs
+                    .postconditions
+                    .iter()
+                    .zip(&names.spec_local_names.postcondition_local_names)
+                    .map(|(postcondition, local_names)| {
+                        translate_postcondition(self_, postcondition, local_names)
+                    })
+                    .collect::<Result<_>>()?,
+                xpost: Box::new([]),
+                reads: Box::new([]),
+                writes: Box::new([]),
+                alias: Box::new([]),
+                variant: Box::new([]),
+                checkrw: false,
+                diverge: false,
+                partial: false,
+            };
             Ok(Some(FuncData(
                 translate_ident(names.item_ident.as_str().into()),
                 false,
@@ -1637,7 +2186,7 @@ impl<'a> Ctx<'a> {
                 self_.translate_type(&func_sig.output)?,
                 WILDCARD.clone(),
                 Mask::Visible,
-                ptree_helpers::empty_spec(),
+                specs,
                 body,
             )))
         })
@@ -1666,7 +2215,7 @@ impl<'a> Ctx<'a> {
                             .as_str()
                             .into()])),
                     ),
-                    UNIT_VALUE.clone(),
+                    UNIT_EXPR.clone(),
                 )),
             )
         })
@@ -1859,6 +2408,10 @@ fn local_temp_ident(i: usize) -> Ident {
     translate_ident(name_map::local_temp_name(i).into())
 }
 
+fn local_block_ident(i: usize) -> Ident {
+    translate_ident(name_map::local_block_name(i).into())
+}
+
 fn tuple_field_accessor_ident(arity: usize, field_id: FieldId) -> Ident {
     translate_ident(name_map::tuple_field_accessor_ident(arity, field_id).into())
 }
@@ -1903,17 +2456,26 @@ static UNIT_TYPE: LazyLock<Pty> = LazyLock::new(|| Pty::Tuple(Box::new([])));
 static WILDCARD: LazyLock<Pattern> =
     LazyLock::new(|| ptree_helpers::pat(Position::default(), PatDesc::Wild));
 
-static ABSURD: LazyLock<Expr> =
+static ABSURD_EXPR: LazyLock<Expr> =
     LazyLock::new(|| ptree_helpers::expr(Position::default(), ExprDesc::Absurd));
 
-static UNIT_VALUE: LazyLock<Expr> =
+static UNIT_EXPR: LazyLock<Expr> =
     LazyLock::new(|| ptree_helpers::expr(Position::default(), ExprDesc::Tuple(Box::new([]))));
 
-static TRUE: LazyLock<Expr> =
+static UNIT_TERM: LazyLock<Term> =
+    LazyLock::new(|| ptree_helpers::term(Position::default(), TermDesc::Tuple(Box::new([]))));
+
+static TRUE_EXPR: LazyLock<Expr> =
     LazyLock::new(|| ptree_helpers::expr(Position::default(), ExprDesc::True));
 
-static FALSE: LazyLock<Expr> =
+static TRUE_TERM: LazyLock<Term> =
+    LazyLock::new(|| ptree_helpers::term(Position::default(), TermDesc::True));
+
+static FALSE_EXPR: LazyLock<Expr> =
     LazyLock::new(|| ptree_helpers::expr(Position::default(), ExprDesc::False));
+
+static FALSE_TERM: LazyLock<Term> =
+    LazyLock::new(|| ptree_helpers::term(Position::default(), TermDesc::False));
 
 static EQUAL: LazyLock<Ident> = LazyLock::new(|| translate_ident(OP_EQU.clone()));
 

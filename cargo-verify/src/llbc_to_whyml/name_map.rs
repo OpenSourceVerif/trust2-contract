@@ -71,6 +71,10 @@ pub fn local_temp_name(i: usize) -> String {
     format!("x{i}'")
 }
 
+pub fn local_block_name(i: usize) -> String {
+    format!("b{i}'")
+}
+
 pub fn tuple_field_accessor_ident(arity: usize, field_id: FieldId) -> String {
     format!("get_tuple{arity}{SEPARATOR}{field_id}")
 }
@@ -121,11 +125,17 @@ pub struct FuncDeclNames {
     pub item_ident: String,
     pub type_param_names: TypeParamNames,
     pub local_names: LocalNames,
+    pub spec_local_names: FuncSpecNames,
 }
 
 pub enum LocalNames {
     Concrete(IndexVec<LocalId, String>),
     Abstract(Vec<Option<String>>),
+}
+
+pub struct FuncSpecNames {
+    pub precondition_local_names: Vec<LocalNames>,
+    pub postcondition_local_names: Vec<LocalNames>,
 }
 
 pub struct GlobalNames {
@@ -359,6 +369,22 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
             item_ident,
             type_param_names: map_generic_params(&idents, &func_decl.generics),
             local_names: map_locals(&idents, &func_decl.body, &func_decl.signature),
+            spec_local_names: FuncSpecNames {
+                precondition_local_names: func_decl
+                    .specs
+                    .preconditions
+                    .iter()
+                    .map(|precondition| map_locals(&idents, precondition, &func_decl.signature))
+                    .collect(),
+                postcondition_local_names: func_decl
+                    .specs
+                    .postconditions
+                    .iter()
+                    .map(|postcondition| {
+                        map_locals(&idents, &postcondition.body, &func_decl.signature)
+                    })
+                    .collect(),
+            },
         }
     });
     let mut global_names_opt = global_names_opt.into_iter();
