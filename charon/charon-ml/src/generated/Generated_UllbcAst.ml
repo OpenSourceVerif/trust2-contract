@@ -115,6 +115,11 @@ and terminator_kind =
   | Abort of abort_kind  (** Handles panics and impossible cases. *)
   | Return
   | UnwindResume
+  | ContractAssert of contract_assert_kind * spec_closure_id * block_id
+      (** Fields:
+          - [kind]
+          - [spec_closure_id]
+          - [target] *)
 [@@deriving
   show,
   eq,

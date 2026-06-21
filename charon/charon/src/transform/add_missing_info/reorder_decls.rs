@@ -297,6 +297,16 @@ impl VisitAst for DepsForItem<'_> {
         // it belongs to.
         Continue(())
     }
+
+    fn visit_spec_body_id(&mut self, spec_body_id: &SpecBodyId) -> ControlFlow<Self::Break> {
+        self.visit(&self.ctx.translated.spec_bodies[*spec_body_id])
+    }
+    fn visit_spec_closure_id(
+        &mut self,
+        spec_closure_id: &SpecClosureId,
+    ) -> ControlFlow<Self::Break> {
+        self.visit(&self.ctx.translated.spec_closures[*spec_closure_id])
+    }
 }
 
 fn compute_declarations_graph(ctx: &TransformCtx) -> DiGraphMap<ItemId, ()> {

@@ -386,6 +386,19 @@ impl<C: AstFormatter> FmtWithCtx<C> for ConstGenericParam {
     }
 }
 
+impl Display for ContractAssertKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                ContractAssertKind::Assert => "contract_assert",
+                ContractAssertKind::Assume => "contract_assume",
+            },
+        )
+    }
+}
+
 impl Display for DeBruijnId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::result::Result<(), fmt::Error> {
         write!(f, "{}", self.index)
@@ -661,18 +674,13 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunDeclRef {
 impl<C: AstFormatter> FmtWithCtx<C> for FunSpecs {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ctx = &ctx.increase_indent();
-        let tab = ctx.indent();
         for precondition in &self.preconditions {
-            write!(f, "\n{tab}precondition")?;
-            write!(f, "{}", precondition.with_ctx(ctx))?;
+            writeln!(f)?;
+            precondition.fmt_with_ctx_and_kind(f, ctx, "precondition")?;
         }
         for postcondition in &self.postconditions {
-            write!(
-                f,
-                "\n{tab}postcondition({})",
-                postcondition.body.locals()[postcondition.arg_id],
-            )?;
-            write!(f, "{}", postcondition.body.with_ctx(ctx))?;
+            writeln!(f)?;
+            postcondition.fmt_with_ctx_and_kind(f, ctx, "postcondition")?;
         }
         Ok(())
     }
@@ -1666,6 +1674,81 @@ impl Display for ScalarValue {
     }
 }
 
+impl SpecBodyId {
+    fn fmt_with_ctx_and_kind<C: AstFormatter>(
+        &self,
+        f: &mut fmt::Formatter,
+        ctx: &C,
+        kind: &str,
+    ) -> fmt::Result {
+        let tab = ctx.indent();
+        write!(f, "{tab}{kind}")?;
+        if let Some(crate_) = ctx.get_crate() {
+            write!(f, "{}", crate_.spec_bodies[*self].with_ctx(ctx))
+        } else {
+            write!(f, ": {self}")
+        }
+    }
+}
+
+impl SpecClosure {
+    fn fmt_with_ctx_and_kind<C: AstFormatter>(
+        &self,
+        f: &mut fmt::Formatter,
+        ctx: &C,
+        kind: &str,
+    ) -> fmt::Result {
+        let tab = ctx.indent();
+        let ctx1 = &ctx.increase_indent();
+        let tab1 = ctx1.indent();
+        let locals = self.body.locals();
+        writeln!(f, "{tab}{kind}[")?;
+        for (local_id, rvalue) in self.captures.iter_enumerated() {
+            let local = &locals[local_id];
+            writeln!(
+                f,
+                "{tab1}{local}: {} = {},",
+                local.ty.with_ctx(ctx1),
+                rvalue.with_ctx(ctx1),
+            )?;
+        }
+        write!(
+            f,
+            "{tab}]({})",
+            locals
+                .locals
+                .iter()
+                .skip(1)
+                .take(locals.arg_count)
+                .filter_map(|local| {
+                    if self.captures.get(local.index).is_none() {
+                        Some(format!("{local}: {}", local.ty.with_ctx(ctx)))
+                    } else {
+                        None
+                    }
+                })
+                .format(", "),
+        )?;
+        write!(f, "{}", self.body.with_ctx(ctx))
+    }
+}
+
+impl SpecClosureId {
+    fn fmt_with_ctx_and_kind<C: AstFormatter>(
+        &self,
+        f: &mut fmt::Formatter,
+        ctx: &C,
+        kind: &str,
+    ) -> fmt::Result {
+        if let Some(crate_) = ctx.get_crate() {
+            crate_.spec_closures[*self].fmt_with_ctx_and_kind(f, ctx, kind)
+        } else {
+            let tab = ctx.indent();
+            write!(f, "{tab}{kind}: {self}")
+        }
+    }
+}
+
 impl<C: AstFormatter> FmtWithCtx<C> for ullbc::Statement {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let tab = ctx.indent();
@@ -1722,7 +1805,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
         for line in &self.comments_before {
             writeln!(f, "{tab}// {line}")?;
         }
-        write!(f, "{tab}")?;
+        if !matches!(self.kind, StatementKind::ContractAssert { .. }) {
+            write!(f, "{tab}")?;
+        }
         match &self.kind {
             StatementKind::Assign(place, rvalue) => {
                 write!(f, "{} = {}", place.with_ctx(ctx), rvalue.with_ctx(ctx),)
@@ -1867,6 +1952,10 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
                 let ctx = &ctx.increase_indent();
                 write!(f, "loop {{\n{}{tab}}}", body.with_ctx(ctx))
             }
+            StatementKind::ContractAssert {
+                kind,
+                spec_closure_id,
+            } => spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}")),
             StatementKind::Error(s) => write!(f, "@ERROR({})", s),
         }
     }
@@ -1878,7 +1967,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
         for line in &self.comments_before {
             writeln!(f, "{tab}// {line}")?;
         }
-        write!(f, "{tab}")?;
+        if !matches!(self.kind, TerminatorKind::ContractAssert { .. }) {
+            write!(f, "{tab}")?;
+        }
         match &self.kind {
             TerminatorKind::Goto { target } => write!(f, "goto bb{target}"),
             TerminatorKind::Switch { discr, targets } => match targets {
@@ -1951,6 +2042,14 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
             TerminatorKind::Abort(kind) => write!(f, "{}", kind.with_ctx(ctx)),
             TerminatorKind::Return => write!(f, "return"),
             TerminatorKind::UnwindResume => write!(f, "unwind_continue"),
+            TerminatorKind::ContractAssert {
+                kind,
+                spec_closure_id,
+                target,
+            } => {
+                spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}"))?;
+                write!(f, "\n{tab}-> {target}")
+            }
         }
     }
 }
@@ -2391,18 +2490,9 @@ impl<C: AstFormatter> FmtWithCtx<C> for TypeParam {
 impl<C: AstFormatter> FmtWithCtx<C> for TypeSpecs {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let ctx = &ctx.increase_indent();
-        let tab = ctx.indent();
         for invariant_body_id in &self.invariants {
-            write!(f, "\n{tab}invariant")?;
-            if let Some(crate_) = ctx.get_crate() {
-                write!(
-                    f,
-                    "{}",
-                    crate_.type_spec_bodies[*invariant_body_id].with_ctx(ctx),
-                )?;
-            } else {
-                write!(f, "({invariant_body_id})")?;
-            }
+            writeln!(f)?;
+            invariant_body_id.fmt_with_ctx_and_kind(f, ctx, "invariant")?;
         }
         Ok(())
     }

@@ -218,16 +218,15 @@ pub enum VTableField {
 
 // `Body` here can only be `Body::Unstructured` or `Body::Structured`.
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
-pub struct Postcondition {
-    pub arg_id: LocalId,
+pub struct SpecClosure {
     pub body: Body,
+    pub captures: IndexMap<LocalId, Rvalue>,
 }
 
-// `Body` here can only be `Body::Unstructured` or `Body::Structured`.
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct FunSpecs {
-    pub preconditions: Vec<Body>,
-    pub postconditions: Vec<Postcondition>,
+    pub preconditions: Vec<SpecClosure>,
+    pub postconditions: Vec<SpecClosure>,
 }
 
 /// A function definition
@@ -577,6 +576,14 @@ pub struct Assert {
     /// The kind of check performed by this assert. This is only used for error reporting, as the check
     /// is actually performed by the instructions preceding the assert.
     pub check_kind: Option<BuiltinAssertKind>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, SerializeState, DeserializeState, Drive, DriveMut)]
+pub enum ContractAssertKind {
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("CAssert"))]
+    Assert,
+    #[cfg_attr(feature = "charon_on_charon", charon::rename("CAssume"))]
+    Assume,
 }
 
 /// A generic `*DeclRef`-shaped struct, used when we're generic over the type of item.

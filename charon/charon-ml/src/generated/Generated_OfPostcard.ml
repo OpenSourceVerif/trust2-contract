@@ -454,6 +454,15 @@ and constant_expr_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state)
          Ok (COpaque x_0)
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
+and contract_assert_kind_of_postcard (ctx : of_postcard_ctx)
+    (st : postcard_state) : (contract_assert_kind, string) result =
+  combine_error_msgs st __FUNCTION__
+    (let* __tag = int_of_postcard ctx st in
+     match __tag with
+     | 0 -> Ok CAssert
+     | 1 -> Ok CAssume
+     | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
+
 and copy_non_overlapping_of_postcard (ctx : of_postcard_ctx)
     (st : postcard_state) : (copy_non_overlapping, string) result =
   combine_error_msgs st __FUNCTION__
@@ -1107,6 +1116,10 @@ and span_data_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      let* end_loc = loc_of_postcard ctx st in
      Ok ({ file; beg_loc; end_loc } : span_data))
 
+and spec_closure_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
+    (spec_closure_id, string) result =
+  combine_error_msgs st __FUNCTION__ (SpecClosureId.id_of_postcard ctx st)
+
 and trait_assoc_ty_impl_of_postcard (ctx : of_postcard_ctx)
     (st : postcard_state) : (trait_assoc_ty_impl, string) result =
   combine_error_msgs st __FUNCTION__
@@ -1511,6 +1524,11 @@ module Ullbc = struct
            Ok (Abort x_0)
        | 7 -> Ok Return
        | 8 -> Ok UnwindResume
+       | 9 ->
+           let* kind = contract_assert_kind_of_postcard ctx st in
+           let* spec_closure_id = spec_closure_id_of_postcard ctx st in
+           let* target = block_id_of_postcard ctx st in
+           Ok (ContractAssert (kind, spec_closure_id, target))
        | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 end
 
@@ -1600,6 +1618,10 @@ module Llbc = struct
            let* x_0 = block_of_postcard ctx st in
            Ok (Loop x_0)
        | 17 ->
+           let* kind = contract_assert_kind_of_postcard ctx st in
+           let* spec_closure_id = spec_closure_id_of_postcard ctx st in
+           Ok (ContractAssert (kind, spec_closure_id))
+       | 18 ->
            let* x_0 = string_of_postcard ctx st in
            Ok (Error x_0)
        | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
@@ -2024,8 +2046,8 @@ and fun_decl_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
 and fun_specs_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (fun_specs, string) result =
   combine_error_msgs st __FUNCTION__
-    (let* preconditions = list_of_postcard body_of_postcard ctx st in
-     let* postconditions = list_of_postcard postcondition_of_postcard ctx st in
+    (let* preconditions = list_of_postcard spec_closure_of_postcard ctx st in
+     let* postconditions = list_of_postcard spec_closure_of_postcard ctx st in
      Ok ({ preconditions; postconditions } : fun_specs))
 
 and g_declaration_group_of_postcard :
@@ -2272,13 +2294,6 @@ and monomorphize_mut_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      | 1 -> Ok ExceptTypes
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
-and postcondition_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
-    (postcondition, string) result =
-  combine_error_msgs st __FUNCTION__
-    (let* arg_id = local_id_of_postcard ctx st in
-     let* body = body_of_postcard ctx st in
-     Ok ({ arg_id; body } : postcondition))
-
 and preset_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (preset, string) result =
   combine_error_msgs st __FUNCTION__
@@ -2346,6 +2361,23 @@ and serialization_format_arg_of_postcard (ctx : of_postcard_ctx)
      | 1 -> Ok Postcard
      | 2 -> Ok AllFormats
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
+
+and spec_body_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
+    (spec_body_id, string) result =
+  combine_error_msgs st __FUNCTION__ (SpecBodyId.id_of_postcard ctx st)
+
+and spec_closure_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
+    (spec_closure, string) result =
+  combine_error_msgs st __FUNCTION__
+    (let* body = body_of_postcard ctx st in
+     let* captures =
+       (fun ctx st ->
+         Result.map LocalId.map_of_indexed_list
+           (opt_indexed_map_of_postcard local_id_of_postcard rvalue_of_postcard
+              ctx st))
+         ctx st
+     in
+     Ok ({ body; captures } : spec_closure))
 
 and target_info_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (target_info, string) result =
@@ -2518,13 +2550,6 @@ and translated_crate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
               type_decl_of_postcard ctx st))
          ctx st
      in
-     let* type_spec_bodies =
-       (fun ctx st ->
-         Result.map TypeSpecBodyId.map_of_indexed_list
-           (opt_indexed_map_of_postcard type_spec_body_id_of_postcard
-              body_of_postcard ctx st))
-         ctx st
-     in
      let* fun_decls =
        (fun ctx st ->
          Result.map FunDeclId.map_of_indexed_list
@@ -2553,6 +2578,20 @@ and translated_crate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
               trait_impl_of_postcard ctx st))
          ctx st
      in
+     let* spec_bodies =
+       (fun ctx st ->
+         Result.map SpecBodyId.map_of_indexed_list
+           (opt_indexed_map_of_postcard spec_body_id_of_postcard
+              body_of_postcard ctx st))
+         ctx st
+     in
+     let* spec_closures =
+       (fun ctx st ->
+         Result.map SpecClosureId.map_of_indexed_list
+           (opt_indexed_map_of_postcard spec_closure_id_of_postcard
+              spec_closure_of_postcard ctx st))
+         ctx st
+     in
      let* ordered_decls =
        option_of_postcard
          (list_of_postcard declaration_group_of_postcard)
@@ -2568,11 +2607,12 @@ and translated_crate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
           assoc_item_names;
           short_names;
           type_decls;
-          type_spec_bodies;
           fun_decls;
           global_decls;
           trait_decls;
           trait_impls;
+          spec_bodies;
+          spec_closures;
           ordered_decls;
         }
          : translated_crate))
@@ -2625,14 +2665,10 @@ and type_decl_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
          Ok (TDeclError x_0)
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
-and type_spec_body_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state)
-    : (type_spec_body_id, string) result =
-  combine_error_msgs st __FUNCTION__ (TypeSpecBodyId.id_of_postcard ctx st)
-
 and type_specs_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (type_specs, string) result =
   combine_error_msgs st __FUNCTION__
-    (let* invariants = list_of_postcard type_spec_body_id_of_postcard ctx st in
+    (let* invariants = list_of_postcard spec_body_id_of_postcard ctx st in
      Ok ({ invariants } : type_specs))
 
 and v_table_field_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :

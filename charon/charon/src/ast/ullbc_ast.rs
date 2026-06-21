@@ -156,6 +156,11 @@ pub enum TerminatorKind {
     Abort(AbortKind),
     Return,
     UnwindResume,
+    ContractAssert {
+        kind: ContractAssertKind,
+        spec_closure_id: SpecClosureId,
+        target: BlockId,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]

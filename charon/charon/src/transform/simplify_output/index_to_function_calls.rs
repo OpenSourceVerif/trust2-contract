@@ -285,7 +285,8 @@ impl LlbcPass for Transform {
                 | Return
                 | Break(..)
                 | Continue(..)
-                | Loop(..) => {
+                | Loop(..)
+                | ContractAssert { .. } => {
                     let _ = st.drive_body_mut(&mut visitor);
                 }
             }

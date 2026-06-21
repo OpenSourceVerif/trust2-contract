@@ -538,6 +538,7 @@ impl TransformPass for Transform {
         let Some(include_types) = ctx.options.monomorphize_mut else {
             return;
         };
+        let mut spec_closures = mem::take(&mut ctx.translated.spec_closures);
         // TODO: test name matcher, also with methods
         let mut visitor =
             PartialMonomorphizer::new(ctx, matches!(include_types, MonomorphizeMut::All));
@@ -558,8 +559,14 @@ impl TransformPass for Transform {
             // Visit the item, replacing type instantiations with references to soon-to-be-created
             // partially-monomorphized types.
             visitor.process_item(&mut decl.as_mut());
+            if let ItemByVal::Fun(func_decl) = &mut decl {
+                func_decl.dyn_visit(|spec_closure_id: &SpecClosureId| {
+                    visitor.visit(&mut spec_closures[*spec_closure_id]);
+                });
+            }
             // Put the item back.
             visitor.ctx.translated.set_item_slot(id, decl);
         }
+        ctx.translated.spec_closures = spec_closures;
     }
 }

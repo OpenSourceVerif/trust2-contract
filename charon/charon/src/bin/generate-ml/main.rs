@@ -287,6 +287,7 @@ fn generate_ml(
                     "TraitClauseId",
                     "DeBruijnVar",
                     "ItemId",
+                    "SpecClosureId",
                 ]),
                 // Can't merge into above because aeneas uses the above alongside their own partial
                 // copy of `ty`, which causes method type clashes.
@@ -349,6 +350,7 @@ fn generate_ml(
                     "CopyNonOverlapping",
                     "Error",
                     "AbortKind",
+                    "ContractAssertKind",
                 ]),
                 // These have to be kept separate to avoid field name clashes
                 (GenerationKind::TypeDecl(Some(DeriveVisitors {
@@ -416,7 +418,6 @@ fn generate_ml(
                     "CliOpts",
                     "DeclarationGroup",
                     "TranslatedCrate",
-                    "FunSpecs",
                 ]),
             ]),
         },

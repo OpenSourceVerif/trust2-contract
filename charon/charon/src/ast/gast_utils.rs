@@ -31,6 +31,17 @@ impl Body {
             _ => panic!("called `locals` on a missing body"),
         }
     }
+
+    pub fn for_each_body(
+        &mut self,
+        spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+        mut f: impl FnMut(&mut Body),
+    ) {
+        f(self);
+        self.dyn_visit_in_body(|spec_closure_id: &SpecClosureId| {
+            f(&mut spec_closures[*spec_closure_id].body);
+        });
+    }
 }
 
 impl Locals {
@@ -87,6 +98,28 @@ impl std::ops::IndexMut<LocalId> for Locals {
     }
 }
 
+impl FunSpecs {
+    pub fn new() -> Self {
+        Self {
+            preconditions: Vec::new(),
+            postconditions: Vec::new(),
+        }
+    }
+
+    pub fn iter_bodies_mut(&mut self) -> impl Iterator<Item = &mut Body> {
+        self.preconditions
+            .iter_mut()
+            .chain(&mut self.postconditions)
+            .map(|spec_closure| &mut spec_closure.body)
+    }
+}
+
+impl Default for FunSpecs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FunDecl {
     /// Replace the generic parameters of this function with the ones given by the binder.
     pub fn substitute_params(self, subst: Binder<GenericArgs>) -> Self {
@@ -115,6 +148,17 @@ impl FunDecl {
             specs,
         }
     }
+
+    pub fn for_each_body(
+        &mut self,
+        spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+        mut f: impl FnMut(&mut Body),
+    ) {
+        self.body.for_each_body(spec_closures, &mut f);
+        for body in self.specs.iter_bodies_mut() {
+            f(body);
+        }
+    }
 }
 impl TraitDecl {
     pub fn methods(&self) -> impl Iterator<Item = &Binder<TraitMethod>> {
@@ -135,20 +179,5 @@ impl Binder<TraitAssocTy> {
 impl Binder<TraitMethod> {
     pub fn name(&self) -> TraitItemName {
         self.skip_binder.name
-    }
-}
-
-impl FunSpecs {
-    pub fn new() -> Self {
-        Self {
-            preconditions: Vec::new(),
-            postconditions: Vec::new(),
-        }
-    }
-}
-
-impl Default for FunSpecs {
-    fn default() -> Self {
-        Self::new()
     }
 }

@@ -14,4 +14,6 @@ module LocalId = IdGen ()
 module GlobalDeclId = Types.GlobalDeclId
 module FunDeclId = Types.FunDeclId
 
+type 'a local_id_map = 'a LocalId.Map.t [@@deriving show, eq, ord]
+
 (* __REPLACE0__ *)

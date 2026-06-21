@@ -4,6 +4,7 @@ open Collections
 open Meta
 open MetaUtils
 open Types
+open Expressions
 open LlbcAst
 
 (** Returns a list of all functions in a crate *)
@@ -101,18 +102,19 @@ class ['self] map_crate =
       | MissingBody -> MissingBody
       | ErrorBody err -> ErrorBody (self#visit_error env err)
 
-    method visit_postcondition env (postcondition : postcondition) :
-        postcondition =
-      let { arg_id; body } = postcondition in
-      let arg_id = self#visit_local_id env arg_id in
+    method visit_spec_closure env (spec_closure : spec_closure) : spec_closure =
+      let { captures; body } = spec_closure in
+      let captures = LocalId.Map.map (self#visit_rvalue env) captures in
       let body = self#visit_body env body in
-      { arg_id; body }
+      { captures; body }
 
     method visit_fun_specs env (specs : fun_specs) : fun_specs =
       let { preconditions; postconditions } = specs in
-      let preconditions = List.map (self#visit_body env) preconditions in
+      let preconditions =
+        List.map (self#visit_spec_closure env) preconditions
+      in
       let postconditions =
-        List.map (self#visit_postcondition env) postconditions
+        List.map (self#visit_spec_closure env) postconditions
       in
       { preconditions; postconditions }
 
@@ -192,11 +194,12 @@ class ['self] map_crate =
         item_names;
         declarations;
         type_decls;
-        type_spec_bodies;
         fun_decls;
         global_decls;
         trait_decls;
         trait_impls;
+        spec_bodies;
+        spec_closures;
         assoc_item_names;
         short_names;
       } =
@@ -215,9 +218,6 @@ class ['self] map_crate =
       let type_decls =
         TypeDeclId.Map.map (self#visit_type_decl env) type_decls
       in
-      let type_spec_bodies =
-        TypeSpecBodyId.Map.map (self#visit_body env) type_spec_bodies
-      in
       let fun_decls = FunDeclId.Map.map (self#visit_fun_decl env) fun_decls in
       let global_decls =
         GlobalDeclId.Map.map (self#visit_global_decl env) global_decls
@@ -228,6 +228,10 @@ class ['self] map_crate =
       let trait_impls =
         TraitImplId.Map.map (self#visit_trait_impl env) trait_impls
       in
+      let spec_bodies = SpecBodyId.Map.map (self#visit_body env) spec_bodies in
+      let spec_closures =
+        SpecClosureId.Map.map (self#visit_spec_closure env) spec_closures
+      in
       {
         name;
         options;
@@ -235,11 +239,12 @@ class ['self] map_crate =
         item_names;
         declarations;
         type_decls;
-        type_spec_bodies;
         fun_decls;
         global_decls;
         trait_decls;
         trait_impls;
+        spec_bodies;
+        spec_closures;
         assoc_item_names;
         short_names;
       }
@@ -275,15 +280,15 @@ class ['self] iter_crate =
       | MissingBody -> ()
       | ErrorBody err -> self#visit_error env err
 
-    method visit_postcondition env (postcondition : postcondition) : unit =
-      let { arg_id; body } = postcondition in
-      self#visit_local_id env arg_id;
+    method visit_spec_closure env (spec_closure : spec_closure) : unit =
+      let { captures; body } = spec_closure in
+      LocalId.Map.iter (fun _ -> self#visit_rvalue env) captures;
       self#visit_body env body
 
     method visit_fun_specs env (specs : fun_specs) : unit =
       let { preconditions; postconditions } = specs in
-      List.iter (self#visit_body env) preconditions;
-      List.iter (self#visit_postcondition env) postconditions
+      List.iter (self#visit_spec_closure env) preconditions;
+      List.iter (self#visit_spec_closure env) postconditions
 
     method visit_fun_decl env (decl : fun_decl) : unit =
       let {
@@ -354,11 +359,12 @@ class ['self] iter_crate =
         item_names = _;
         declarations;
         type_decls;
-        type_spec_bodies;
         fun_decls;
         global_decls;
         trait_decls;
         trait_impls;
+        spec_bodies;
+        spec_closures;
         assoc_item_names = _;
         short_names = _;
       } =
@@ -368,11 +374,14 @@ class ['self] iter_crate =
       self#visit_cli_options env options;
       List.iter (self#visit_declaration_group env) declarations;
       TypeDeclId.Map.iter (fun _ -> self#visit_type_decl env) type_decls;
-      TypeSpecBodyId.Map.iter (fun _ -> self#visit_body env) type_spec_bodies;
       FunDeclId.Map.iter (fun _ -> self#visit_fun_decl env) fun_decls;
       GlobalDeclId.Map.iter (fun _ -> self#visit_global_decl env) global_decls;
       TraitDeclId.Map.iter (fun _ -> self#visit_trait_decl env) trait_decls;
-      TraitImplId.Map.iter (fun _ -> self#visit_trait_impl env) trait_impls
+      TraitImplId.Map.iter (fun _ -> self#visit_trait_impl env) trait_impls;
+      SpecBodyId.Map.iter (fun _ -> self#visit_body env) spec_bodies;
+      SpecClosureId.Map.iter
+        (fun _ -> self#visit_spec_closure env)
+        spec_closures
   end
 
 (** This visitor keeps track of the last (most precise) span it found, together

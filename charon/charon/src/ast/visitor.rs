@@ -44,17 +44,17 @@ use derive_generic_visitor::*;
     // Types that we unconditionally explore.
     drive(
         Assert, BinOp, BorrowKind, BuiltinAssertKind, BuiltinFunId, BuiltinIndexOp, BuiltinTy,
-        Call, CastKind, ClosureInfo, ClosureKind, ConstGenericParam, ConstGenericVarId,
+        Call, CastKind, ClosureInfo, ClosureKind, ConstGenericParam, ConstGenericVarId, ContractAssertKind,
         Disambiguator, DynPredicate, Field, FieldId, FieldProjKind, File, FloatTy, FloatValue,
         FnOperand, FunId, FnPtrKind, FunSig, FunSpecs, IntegerTy, IntTy, UIntTy, Literal, LiteralTy,
         llbc_ast::ExprBody, llbc_ast::StatementKind, llbc_ast::Switch,
-        Loc, Locals, NullOp, Operand, PathElem, PlaceKind, Postcondition, ConstantExprKind,
+        Loc, Locals, NullOp, Operand, PathElem, PlaceKind, ConstantExprKind,
         RefKind, RegionId, RegionParam, ScalarValue, TraitItemName, TraitMethodId, AssocTypeId, AssocConstId, AssocItemId,
-        TranslatedCrate, TypeDeclKind, TypeId, TypeParam, TypePattern, TypeVarId, llbc_ast::StatementId,
+        TranslatedCrate, TypeDeclKind, TypeId, TypeParam, TypePattern, TypeSpecs, TypeVarId, llbc_ast::StatementId,
         ullbc_ast::BlockData, ullbc_ast::BlockId, ullbc_ast::ExprBody, ullbc_ast::StatementKind,
         ullbc_ast::TerminatorKind, ullbc_ast::SwitchTargets,
         UnOp, UnsizingMetadata, Local, Variant, VariantId, LocalId, CopyNonOverlapping, Layout, VariantLayout, PtrMetadata,
-        SpanData, TraitAssocTy, TraitAssocConst, TraitMethod, TraitAssocTyImpl, TypeSpecs,
+        SpanData, TraitAssocTy, TraitAssocConst, TraitMethod, TraitAssocTyImpl,
         ItemByVal, VTableField, AssocItemNames,
         for<Id: AstVisitable> DeclRef<Id>, ItemId,
         for<T: AstVisitable> Box<T>,
@@ -80,7 +80,7 @@ use derive_generic_visitor::*;
         llbc_block: llbc_ast::Block, llbc_statement: llbc_ast::Statement,
         ullbc_statement: ullbc_ast::Statement, ullbc_terminator: ullbc_ast::Terminator,
         AbortKind, AggregateKind, FnPtr, ItemSource, ItemMeta, Name, Span, ConstantExpr, ProjectionElem,
-        FunDeclId, GlobalDeclId, TypeDeclId, TypeSpecBodyId, TraitDeclId, TraitImplId, FileId,
+        FunDeclId, GlobalDeclId, SpecBodyId, SpecClosure, SpecClosureId, TypeDeclId, TraitDeclId, TraitImplId, FileId,
         FunDecl, GlobalDecl, TypeDecl, TraitDecl, TraitImpl,
     )
 )]
@@ -153,7 +153,7 @@ impl<K: BodyVisitable + Hash + Eq, T: BodyVisitable> BodyVisitable for SeqHashMa
     visitor(drive_body_mut(&mut VisitBodyMut)),
     // Types that are ignored when encountered.
     skip(
-        AbortKind, BinOp, BorrowKind, BuiltinAssertKind, ConstantExpr, FieldId, FieldProjKind,
+        AbortKind, BinOp, BorrowKind, BuiltinAssertKind, ConstantExpr, ContractAssertKind, FieldId, FieldProjKind,
         TypeDeclRef, FunDeclId, FunDeclRef, FnPtrKind, GenericArgs, GlobalDeclRef, IntegerTy, IntTy, UIntTy,
         NullOp, RefKind, ScalarValue, Span, Ty, TypeDeclId, TypeId, UnOp, VariantId,
         TraitRef, LiteralTy, Literal, RegionId, (), String, bool,
@@ -165,7 +165,7 @@ impl<K: BodyVisitable + Hash + Eq, T: BodyVisitable> BodyVisitable for SeqHashMa
         ullbc_ast::BlockData, ullbc_ast::ExprBody, ullbc_ast::StatementKind,
         ullbc_ast::TerminatorKind, ullbc_ast::SwitchTargets, CopyNonOverlapping,
         llbc_ast::StatementId,
-        Body, Local, FunSpecs, Postcondition,
+        Body, Local, FunSpecs,
         for<T: BodyVisitable> Box<T>,
         for<T: BodyVisitable> Option<T>,
         for<T: BodyVisitable, E: BodyVisitable> Result<T, E>,
@@ -179,7 +179,7 @@ impl<K: BodyVisitable + Hash + Eq, T: BodyVisitable> BodyVisitable for SeqHashMa
     // type but can be overridden.
     override(
         AggregateKind, Call, FnOperand, FnPtr,
-        Operand, Place, ProjectionElem, Rvalue, Locals, LocalId,
+        Operand, Place, ProjectionElem, Rvalue, SpecClosure, SpecClosureId, Locals, LocalId,
         llbc_block: llbc_ast::Block,
         llbc_statement: llbc_ast::Statement,
         ullbc_statement: ullbc_ast::Statement,

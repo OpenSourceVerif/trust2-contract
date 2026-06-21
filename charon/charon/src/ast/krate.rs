@@ -16,10 +16,11 @@ use macros::{EnumAsGetters, EnumIsA, VariantIndexArity, VariantName};
 
 generate_index_type!(FunDeclId, "Fun");
 generate_index_type!(TypeDeclId, "Adt");
-generate_index_type!(TypeSpecBodyId, "TypeSpecBody");
 generate_index_type!(GlobalDeclId, "Global");
 generate_index_type!(TraitDeclId, "TraitDecl");
 generate_index_type!(TraitImplId, "TraitImpl");
+generate_index_type!(SpecBodyId, "SpecBody");
+generate_index_type!(SpecClosureId, "SpecClosure");
 
 /// The id of a translated item.
 #[derive(
@@ -254,8 +255,6 @@ pub struct TranslatedCrate {
 
     /// The translated type definitions
     pub type_decls: IndexMap<TypeDeclId, TypeDecl>,
-    /// Bodies for trust2-contract type specifications.
-    pub type_spec_bodies: IndexMap<TypeSpecBodyId, Body>,
     /// The translated function definitions
     pub fun_decls: IndexMap<FunDeclId, FunDecl>,
     /// The translated global definitions
@@ -264,6 +263,11 @@ pub struct TranslatedCrate {
     pub trait_decls: IndexMap<TraitDeclId, TraitDecl>,
     /// The translated trait declarations
     pub trait_impls: IndexMap<TraitImplId, TraitImpl>,
+    // `Body` here can only be `Body::Unstructured` or `Body::Structured`.
+    /// trust2-contract specification bodies
+    pub spec_bodies: IndexMap<SpecBodyId, Body>,
+    /// trust2-contract specification closures
+    pub spec_closures: IndexMap<SpecClosureId, SpecClosure>,
     /// The re-ordered groups of declarations, initialized as empty.
     #[drive(skip)]
     #[serde_state(stateless)]

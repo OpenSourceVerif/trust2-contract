@@ -59,48 +59,39 @@ impl CommentsCtx {
 pub struct Transform;
 impl TransformPass for Transform {
     fn transform_ctx(&self, ctx: &mut TransformCtx) {
-        ctx.for_each_fun_decl(|_ctx, fun| {
-            fn transform_body(body: &mut Body) {
-                if !body.has_contents() {
-                    return;
-                }
-                // Constraints in the ideal case:
-                // - each comment should be assigned to exactly one statement;
-                // - the order of comments in the source should refine the partial order of control flow;
-                // - a comment should come before the statement it was applied to.
+        ctx.for_each_body(|_ctx, body| {
+            // Constraints in the ideal case:
+            // - each comment should be assigned to exactly one statement;
+            // - the order of comments in the source should refine the partial order of control flow;
+            // - a comment should come before the statement it was applied to.
 
-                // This is a pretty simple heuristic which is good enough for now.
-                let mut ctx = CommentsCtx {
-                    comments: match body {
-                        Body::Unstructured(b) => b.comments.clone(),
-                        Body::Structured(b) => b.comments.clone(),
-                        _ => unreachable!(),
-                    },
-                };
-                match body {
-                    Body::Unstructured(b) => {
-                        for block in &mut b.body {
-                            for st in &mut block.statements {
-                                // Many assignments have a `storage_live` before them; we don't
-                                // want to put the comment there.
-                                if !st.kind.is_storage_live() {
-                                    ctx.visit(st);
-                                }
-                            }
-                            ctx.visit(&mut block.terminator);
-                        }
-                    }
-                    Body::Structured(b) => b.body.visit_statements(|st| {
-                        if !st.kind.is_storage_live() {
-                            ctx.visit(st);
-                        }
-                    }),
+            // This is a pretty simple heuristic which is good enough for now.
+            let mut ctx = CommentsCtx {
+                comments: match body {
+                    Body::Unstructured(b) => b.comments.clone(),
+                    Body::Structured(b) => b.comments.clone(),
                     _ => unreachable!(),
+                },
+            };
+            match body {
+                Body::Unstructured(b) => {
+                    for block in &mut b.body {
+                        for st in &mut block.statements {
+                            // Many assignments have a `storage_live` before them; we don't
+                            // want to put the comment there.
+                            if !st.kind.is_storage_live() {
+                                ctx.visit(st);
+                            }
+                        }
+                        ctx.visit(&mut block.terminator);
+                    }
                 }
-            }
-
-            for body in fun.iter_bodies_mut() {
-                transform_body(body);
+                Body::Structured(b) => b.body.visit_statements(|st| {
+                    if !st.kind.is_storage_live() {
+                        ctx.visit(st);
+                    }
+                }),
+                _ => unreachable!(),
             }
         });
     }

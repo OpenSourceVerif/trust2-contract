@@ -1,5 +1,5 @@
 use crate::{
-    ast::{TraitMethodId, TranslatedCrate, TyKind, TypeDecl, TypeId, TypeSpecBodyId},
+    ast::{SpecBodyId, TraitMethodId, TranslatedCrate, TyKind, TypeDecl, TypeId},
     ids::IndexMap,
     transform::{TransformCtx, ctx::TransformPass},
 };
@@ -10,7 +10,7 @@ impl TransformPass for Transform {
         fn collect_trait_impl(
             crate_: &mut TranslatedCrate,
             trait_name: &[&str],
-            mut collect: impl FnMut(&mut TypeDecl, IndexMap<TraitMethodId, TypeSpecBodyId>),
+            mut collect: impl FnMut(&mut TypeDecl, IndexMap<TraitMethodId, SpecBodyId>),
         ) {
             let trait_ids: Vec<_> = crate_
                 .trait_decls
@@ -49,8 +49,8 @@ impl TransformPass for Transform {
                     let TypeId::Adt(type_decl_id) = type_ref.id else {
                         unreachable!();
                     };
-                    let body_ids = trait_impl.methods.map(|impl_method| {
-                        crate_.type_spec_bodies.push(
+                    let spec_body_ids = trait_impl.methods.map(|impl_method| {
+                        crate_.spec_bodies.push(
                             crate_
                                 .fun_decls
                                 .remove(impl_method.skip_binder.id)
@@ -58,7 +58,7 @@ impl TransformPass for Transform {
                                 .body,
                         )
                     });
-                    collect(&mut crate_.type_decls[type_decl_id], body_ids);
+                    collect(&mut crate_.type_decls[type_decl_id], spec_body_ids);
                 }
             }
         }
@@ -66,7 +66,9 @@ impl TransformPass for Transform {
         collect_trait_impl(
             &mut ctx.translated,
             &["trust2_contract", "internal", "TypeInvariant"],
-            |type_decl, body_ids| type_decl.specs.invariants.extend(body_ids),
+            |type_decl, spec_body_ids| {
+                type_decl.specs.invariants = spec_body_ids.into_iter().collect();
+            },
         );
     }
 }

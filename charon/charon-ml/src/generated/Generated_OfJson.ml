@@ -484,6 +484,14 @@ and constant_expr_kind_of_json (ctx : of_json_ctx) (js : json) :
         Ok (COpaque opaque)
     | _ -> Error "")
 
+and contract_assert_kind_of_json (ctx : of_json_ctx) (js : json) :
+    (contract_assert_kind, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `String "Assert" -> Ok CAssert
+    | `String "Assume" -> Ok CAssume
+    | _ -> Error "")
+
 and copy_non_overlapping_of_json (ctx : of_json_ctx) (js : json) :
     (copy_non_overlapping, string) result =
   combine_error_msgs js __FUNCTION__
@@ -1203,6 +1211,13 @@ and span_data_of_json (ctx : of_json_ctx) (js : json) :
         Ok ({ file; beg_loc; end_loc } : span_data)
     | _ -> Error "")
 
+and spec_closure_id_of_json (ctx : of_json_ctx) (js : json) :
+    (spec_closure_id, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | x -> SpecClosureId.id_of_json ctx x
+    | _ -> Error "")
+
 and trait_assoc_ty_impl_of_json (ctx : of_json_ctx) (js : json) :
     (trait_assoc_ty_impl, string) result =
   combine_error_msgs js __FUNCTION__
@@ -1720,6 +1735,20 @@ module Ullbc = struct
           Ok (Abort abort)
       | `String "Return" -> Ok Return
       | `String "UnwindResume" -> Ok UnwindResume
+      | `Assoc
+          [
+            ( "ContractAssert",
+              `Assoc
+                [
+                  ("kind", kind);
+                  ("spec_closure_id", spec_closure_id);
+                  ("target", target);
+                ] );
+          ] ->
+          let* kind = contract_assert_kind_of_json ctx kind in
+          let* spec_closure_id = spec_closure_id_of_json ctx spec_closure_id in
+          let* target = block_id_of_json ctx target in
+          Ok (ContractAssert (kind, spec_closure_id, target))
       | _ -> Error "")
 end
 
@@ -1831,6 +1860,14 @@ module Llbc = struct
       | `Assoc [ ("Loop", loop) ] ->
           let* loop = block_of_json ctx loop in
           Ok (Loop loop)
+      | `Assoc
+          [
+            ( "ContractAssert",
+              `Assoc [ ("kind", kind); ("spec_closure_id", spec_closure_id) ] );
+          ] ->
+          let* kind = contract_assert_kind_of_json ctx kind in
+          let* spec_closure_id = spec_closure_id_of_json ctx spec_closure_id in
+          Ok (ContractAssert (kind, spec_closure_id))
       | `Assoc [ ("Error", error) ] ->
           let* error = string_of_json ctx error in
           Ok (Error error)
@@ -2373,9 +2410,11 @@ and fun_specs_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc
         [ ("preconditions", preconditions); ("postconditions", postconditions) ]
       ->
-        let* preconditions = list_of_json body_of_json ctx preconditions in
+        let* preconditions =
+          list_of_json spec_closure_of_json ctx preconditions
+        in
         let* postconditions =
-          list_of_json postcondition_of_json ctx postconditions
+          list_of_json spec_closure_of_json ctx postconditions
         in
         Ok ({ preconditions; postconditions } : fun_specs)
     | _ -> Error "")
@@ -2686,16 +2725,6 @@ and monomorphize_mut_of_json (ctx : of_json_ctx) (js : json) :
     | `String "ExceptTypes" -> Ok ExceptTypes
     | _ -> Error "")
 
-and postcondition_of_json (ctx : of_json_ctx) (js : json) :
-    (postcondition, string) result =
-  combine_error_msgs js __FUNCTION__
-    (match js with
-    | `Assoc [ ("arg_id", arg_id); ("body", body) ] ->
-        let* arg_id = local_id_of_json ctx arg_id in
-        let* body = body_of_json ctx body in
-        Ok ({ arg_id; body } : postcondition)
-    | _ -> Error "")
-
 and preset_of_json (ctx : of_json_ctx) (js : json) : (preset, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
@@ -2769,6 +2798,28 @@ and serialization_format_arg_of_json (ctx : of_json_ctx) (js : json) :
     | `String "Json" -> Ok Json
     | `String "Postcard" -> Ok Postcard
     | `String "All" -> Ok AllFormats
+    | _ -> Error "")
+
+and spec_body_id_of_json (ctx : of_json_ctx) (js : json) :
+    (spec_body_id, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | x -> SpecBodyId.id_of_json ctx x
+    | _ -> Error "")
+
+and spec_closure_of_json (ctx : of_json_ctx) (js : json) :
+    (spec_closure, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `Assoc [ ("body", body); ("captures", captures) ] ->
+        let* body = body_of_json ctx body in
+        let* captures =
+          (fun ctx json ->
+            Result.map LocalId.map_of_indexed_list
+              (opt_indexed_map_of_json local_id_of_json rvalue_of_json ctx json))
+            ctx captures
+        in
+        Ok ({ body; captures } : spec_closure)
     | _ -> Error "")
 
 and target_info_of_json (ctx : of_json_ctx) (js : json) :
@@ -2986,11 +3037,12 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
           ("assoc_item_names", assoc_item_names);
           ("short_names", short_names);
           ("type_decls", type_decls);
-          ("type_spec_bodies", type_spec_bodies);
           ("fun_decls", fun_decls);
           ("global_decls", global_decls);
           ("trait_decls", trait_decls);
           ("trait_impls", trait_impls);
+          ("spec_bodies", spec_bodies);
+          ("spec_closures", spec_closures);
           ("ordered_decls", ordered_decls);
         ] ->
         let* crate_name = string_of_json ctx crate_name in
@@ -3022,13 +3074,6 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
                  ctx json))
             ctx type_decls
         in
-        let* type_spec_bodies =
-          (fun ctx json ->
-            Result.map TypeSpecBodyId.map_of_indexed_list
-              (opt_indexed_map_of_json type_spec_body_id_of_json body_of_json
-                 ctx json))
-            ctx type_spec_bodies
-        in
         let* fun_decls =
           (fun ctx json ->
             Result.map FunDeclId.map_of_indexed_list
@@ -3057,6 +3102,20 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
                  ctx json))
             ctx trait_impls
         in
+        let* spec_bodies =
+          (fun ctx json ->
+            Result.map SpecBodyId.map_of_indexed_list
+              (opt_indexed_map_of_json spec_body_id_of_json body_of_json ctx
+                 json))
+            ctx spec_bodies
+        in
+        let* spec_closures =
+          (fun ctx json ->
+            Result.map SpecClosureId.map_of_indexed_list
+              (opt_indexed_map_of_json spec_closure_id_of_json
+                 spec_closure_of_json ctx json))
+            ctx spec_closures
+        in
         let* ordered_decls =
           option_of_json
             (list_of_json declaration_group_of_json)
@@ -3072,11 +3131,12 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
              assoc_item_names;
              short_names;
              type_decls;
-             type_spec_bodies;
              fun_decls;
              global_decls;
              trait_decls;
              trait_impls;
+             spec_bodies;
+             spec_closures;
              ordered_decls;
            }
             : translated_crate)
@@ -3149,21 +3209,12 @@ and type_decl_kind_of_json (ctx : of_json_ctx) (js : json) :
         Ok (TDeclError error)
     | _ -> Error "")
 
-and type_spec_body_id_of_json (ctx : of_json_ctx) (js : json) :
-    (type_spec_body_id, string) result =
-  combine_error_msgs js __FUNCTION__
-    (match js with
-    | x -> TypeSpecBodyId.id_of_json ctx x
-    | _ -> Error "")
-
 and type_specs_of_json (ctx : of_json_ctx) (js : json) :
     (type_specs, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
     | `Assoc [ ("invariants", invariants) ] ->
-        let* invariants =
-          list_of_json type_spec_body_id_of_json ctx invariants
-        in
+        let* invariants = list_of_json spec_body_id_of_json ctx invariants in
         Ok ({ invariants } : type_specs)
     | _ -> Error "")
 

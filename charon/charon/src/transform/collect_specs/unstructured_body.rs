@@ -1,15 +1,13 @@
 use crate::{
     ast::{
-        Body, BodyVisitable, BuiltinFunId, Call, FieldId, FnOperand, FnPtrKind, FunDecl, FunId,
-        FunSpecs, LocalId, Operand, Place, PlaceKind, ProjectionElem, Rvalue, Span, TraitDeclId,
-        Ty, TyKind, TypeId,
-    },
-    ids::{IndexMap, IndexVec},
-    transform::{TransformCtx, ctx::UllbcPass},
-    ullbc_ast::{
-        BlockData, BlockId, Postcondition, Statement, StatementKind, Terminator, TerminatorKind,
+        Body, BodyVisitable, BuiltinFunId, Call, ContractAssertKind, FnOperand, FnPtrKind, FunDecl,
+        FunId, FunSpecs, Local, LocalId, Locals, Operand, Place, PlaceKind, ProjectionElem, Rvalue,
+        Span, SpecClosure, TraitDeclId, TranslatedCrate, Ty, TyKind, TypeId,
         ullbc_ast_utils::BodyBuilder,
     },
+    ids::IndexMap,
+    transform::{TransformCtx, ctx::UllbcPass},
+    ullbc_ast::{BlockId, ExprBody, Statement, StatementKind, TerminatorKind},
 };
 
 use std::mem;
@@ -47,8 +45,8 @@ impl UllbcPass for Transform {
         } = &mut func_decl.specs;
 
         let crate_ = &mut ctx.translated;
-        let mut collect_spec_closure =
-            |call_span, is_precondition, call_args: Vec<_>, old_statements: Vec<Statement>| {
+        let collect_spec_closure =
+            |call_args: Vec<_>, closure_assigns: Vec<Statement>, crate_: &mut TranslatedCrate| {
                 let closure_type = {
                     let [closure] = call_args.try_into().unwrap();
                     let Operand::Move(closure) = closure else {
@@ -63,7 +61,6 @@ impl UllbcPass for Transform {
                 let TypeId::Adt(closure_type_decl_id) = type_ref.id else {
                     unreachable!();
                 };
-
                 crate_.type_decls.remove(closure_type_decl_id);
 
                 let fn_method_decl = {
@@ -115,87 +112,126 @@ impl UllbcPass for Transform {
                 assert!(fn_method_decl.signature.output == Ty::mk_bool());
                 let mut spec_body = fn_method_decl.body.to_unstructured().unwrap();
 
-                let arg_count = body.locals.arg_count;
-                spec_body.locals.arg_count = arg_count;
-                spec_body.dyn_visit_in_body_mut(|local_id: &mut LocalId| {
-                    if *local_id != 0 {
-                        *local_id += arg_count;
-                    }
-                });
-                spec_body.locals.locals.splice(
-                    LocalId::from(1)..LocalId::from(1),
-                    (*body.locals.locals)[LocalId::from(1)..=LocalId::from(arg_count)].to_vec(),
+                fn unpack_local<T: BodyVisitable>(
+                    body: &mut ExprBody,
+                    id: LocalId,
+                    replace_with: Vec<Local>,
+                    mut update_body: impl FnMut(&mut T, &Locals),
+                ) {
+                    let delta = replace_with.len() as isize - 1;
+                    body.locals.arg_count = body.locals.arg_count.strict_add_signed(delta);
+                    body.dyn_visit_in_body_mut(|local_id: &mut LocalId| {
+                        if *local_id > id {
+                            *local_id = local_id.raw().strict_add_signed(delta).into();
+                        }
+                    });
+                    body.locals.locals.splice(id..=id, replace_with);
+                    body.body
+                        .dyn_visit_in_body_mut(|node| update_body(node, &body.locals));
+                }
+
+                let tupled_args_id = LocalId::from(2);
+                let tupled_args = &spec_body.locals[tupled_args_id];
+                let TyKind::Adt(type_ref) = tupled_args.ty.kind() else {
+                    unreachable!();
+                };
+                assert!(matches!(type_ref.id, TypeId::Tuple));
+                let arg_types = &type_ref.generics.types;
+                let arg_locals = arg_types
+                    .iter_enumerated()
+                    .map(|(type_var_id, ty)| Local {
+                        index: tupled_args_id + type_var_id.raw(),
+                        name: None,
+                        span: tupled_args.span,
+                        ty: ty.clone(),
+                    })
+                    .collect();
+                unpack_local(
+                    &mut spec_body,
+                    tupled_args_id,
+                    arg_locals,
+                    |place: &mut Place, locals| {
+                        let PlaceKind::Projection(place_, ProjectionElem::Field(.., field_id)) =
+                            &place.kind
+                        else {
+                            return;
+                        };
+                        let PlaceKind::Local(local_id) = place_.kind else {
+                            return;
+                        };
+                        if local_id != tupled_args_id {
+                            return;
+                        }
+
+                        *place = locals.place_for_var(tupled_args_id + field_id.raw());
+                    },
                 );
 
-                let mut old_assigns = old_statements.into_iter().filter_map(|old_statement| {
+                let self_id = LocalId::from(1);
+                let mut closure_assigns = closure_assigns.into_iter().filter_map(|old_statement| {
                     match old_statement.kind {
-                        StatementKind::Assign(place, rvalue) => {
-                            Some((old_statement.span, place, rvalue))
-                        }
+                        StatementKind::Assign(place, rvalue) => Some((place, rvalue)),
                         StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => None,
                         _ => unreachable!(),
                     }
                 });
-                let closure_assign = old_assigns.next_back().unwrap();
-                let mut local_id_map = IndexMap::new();
-                let new_statements = old_assigns
-                    .map(|(span, old_place, rvalue)| {
-                        let PlaceKind::Local(old_local_id) = old_place.kind else {
-                            unreachable!();
-                        };
-                        let new_place = spec_body
-                            .locals
-                            .new_var(None, body.locals[old_local_id].ty.clone());
-                        local_id_map.set_slot_extend(old_local_id, new_place.clone());
-                        Statement::new(span, StatementKind::Assign(new_place, rvalue))
-                    })
-                    .collect();
-                spec_body.body.insert(
-                    BlockId::ZERO,
-                    BlockData {
-                        statements: new_statements,
-                        terminator: Terminator::goto(call_span, BlockId::ZERO),
-                    },
-                );
-                spec_body
-                    .body
-                    .dyn_visit_in_body_mut(|block_id: &mut BlockId| *block_id += 1);
-                let Rvalue::Aggregate(.., closure_env_map) = closure_assign.2 else {
+                let (_, rvalue) = closure_assigns.next_back().unwrap();
+                let Rvalue::Aggregate(.., closure_env) = rvalue else {
                     unreachable!();
                 };
-                let closure_env_map: IndexVec<FieldId, _> = closure_env_map
-                    .into_iter()
-                    .map(|operand| {
-                        let Operand::Move(place) = operand else {
-                            unreachable!();
+                let mut old_captures = IndexMap::new();
+                for (place, rvalue) in closure_assigns {
+                    let PlaceKind::Local(local_id) = place.kind else {
+                        unreachable!();
+                    };
+                    old_captures.set_slot_extend(local_id, rvalue);
+                }
+                let mut new_captures = IndexMap::with_capacity(1 + closure_env.len());
+                unpack_local(
+                    &mut spec_body,
+                    self_id,
+                    closure_env
+                        .iter()
+                        .enumerate()
+                        .map(|(id, operand)| {
+                            let Operand::Move(place) = operand else {
+                                unreachable!();
+                            };
+                            let PlaceKind::Local(old_local_id) = place.kind else {
+                                unreachable!();
+                            };
+                            let new_local_id = self_id + id;
+                            new_captures
+                                .set_slot_extend(new_local_id, old_captures[old_local_id].clone());
+                            Local {
+                                index: new_local_id,
+                                ..body.locals[old_local_id].clone()
+                            }
+                        })
+                        .collect(),
+                    |place: &mut Place, locals| {
+                        let PlaceKind::Projection(place_, ProjectionElem::Field(_, field_id)) =
+                            &place.kind
+                        else {
+                            return;
                         };
-                        let PlaceKind::Local(local_id) = place.kind else {
-                            unreachable!();
+                        let PlaceKind::Projection(place__, ProjectionElem::Deref) = &place_.kind
+                        else {
+                            return;
                         };
-                        local_id_map[local_id].clone()
-                    })
-                    .collect();
-                spec_body.body.dyn_visit_in_body_mut(|place: &mut Place| {
-                    let PlaceKind::Projection(place_, ProjectionElem::Field(_, field_id)) =
-                        &place.kind
-                    else {
-                        return;
-                    };
-                    let PlaceKind::Projection(place__, ProjectionElem::Deref) = &place_.kind else {
-                        return;
-                    };
-                    let PlaceKind::Local(local_id) = place__.kind else {
-                        return;
-                    };
-                    if local_id != arg_count + 1 {
-                        return;
-                    }
+                        let PlaceKind::Local(local_id) = place__.kind else {
+                            return;
+                        };
+                        if local_id != self_id {
+                            return;
+                        }
 
-                    *place = closure_env_map[*field_id].clone();
-                });
+                        *place = locals.place_for_var(self_id + field_id.raw());
+                    },
+                );
 
                 // Freshen regions.
-                let mut spec_body = BodyBuilder {
+                let spec_body = BodyBuilder {
                     span: Span::default(),
                     body: spec_body,
                     current_block: BlockId::default(),
@@ -203,65 +239,22 @@ impl UllbcPass for Transform {
                 }
                 .build();
 
-                if is_precondition {
-                    preconditions.push(Body::Unstructured(spec_body));
-                } else {
-                    spec_body.locals.arg_count += 1;
-                    let arg_id = LocalId::from(arg_count + 1);
-                    let self_id = LocalId::from(arg_count + 2);
-                    spec_body.dyn_visit_in_body_mut(|local_id: &mut LocalId| {
-                        if *local_id == arg_id {
-                            *local_id = self_id;
-                        } else if *local_id == self_id {
-                            *local_id = arg_id;
-                        }
-                    });
-                    spec_body.locals.locals.swap(arg_id, self_id);
-                    let tupled_args = &mut spec_body.locals[arg_id];
-                    tupled_args.name = None;
-                    let TyKind::Adt(type_ref) = tupled_args.ty.kind() else {
-                        unreachable!();
-                    };
-                    assert!(matches!(type_ref.id, TypeId::Tuple));
-                    let [ty] = type_ref.generics.types.as_raw_slice() else {
-                        unreachable!();
-                    };
-                    tupled_args.ty = ty.clone();
-                    spec_body.body.dyn_visit_in_body_mut(|place: &mut Place| {
-                        let PlaceKind::Projection(place_, _) = &place.kind else {
-                            return;
-                        };
-                        let PlaceKind::Local(local_id) = place_.kind else {
-                            return;
-                        };
-                        if local_id != arg_id {
-                            return;
-                        }
-
-                        *place = place_.as_ref().clone();
-                    });
-                    postconditions.push(Postcondition {
-                        arg_id,
-                        body: Body::Unstructured(spec_body),
-                    });
+                SpecClosure {
+                    body: Body::Unstructured(spec_body),
+                    captures: new_captures,
                 }
             };
         for block in &mut body.body {
-            let Terminator {
-                span,
-                kind:
-                    TerminatorKind::Call {
-                        call:
-                            Call {
-                                ref func,
-                                ref mut args,
-                                ..
-                            },
-                        target,
+            let TerminatorKind::Call {
+                call:
+                    Call {
+                        ref func,
+                        ref mut args,
                         ..
                     },
+                target,
                 ..
-            } = block.terminator
+            } = block.terminator.kind
             else {
                 continue;
             };
@@ -272,21 +265,36 @@ impl UllbcPass for Transform {
                 continue;
             };
 
+            let mut take_and_collect = |crate_| {
+                collect_spec_closure(mem::take(args), mem::take(&mut block.statements), crate_)
+            };
             match builtin_func_id {
                 BuiltinFunId::SpecEntry => {
                     block.terminator.kind = TerminatorKind::Goto { target };
                 }
                 BuiltinFunId::SpecPrecondition => {
-                    let args = mem::take(args);
-                    let new_block: BlockData = BlockData::new_goto(span, target);
-                    let old_block = mem::replace(block, new_block);
-                    collect_spec_closure(span, true, args, old_block.statements);
+                    preconditions.push(take_and_collect(crate_));
+                    block.terminator.kind = TerminatorKind::Goto { target };
                 }
                 BuiltinFunId::SpecPostcondition => {
-                    let args = mem::take(args);
-                    let new_block: BlockData = BlockData::new_goto(span, target);
-                    let old_block = mem::replace(block, new_block);
-                    collect_spec_closure(span, false, args, old_block.statements);
+                    postconditions.push(take_and_collect(crate_));
+                    block.terminator.kind = TerminatorKind::Goto { target };
+                }
+                BuiltinFunId::SpecAssert => {
+                    let spec_closure = take_and_collect(crate_);
+                    block.terminator.kind = TerminatorKind::ContractAssert {
+                        kind: ContractAssertKind::Assert,
+                        spec_closure_id: crate_.spec_closures.push(spec_closure),
+                        target,
+                    };
+                }
+                BuiltinFunId::SpecAssume => {
+                    let spec_closure = take_and_collect(crate_);
+                    block.terminator.kind = TerminatorKind::ContractAssert {
+                        kind: ContractAssertKind::Assume,
+                        spec_closure_id: crate_.spec_closures.push(spec_closure),
+                        target,
+                    };
                 }
                 _ => (),
             }

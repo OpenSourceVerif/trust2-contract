@@ -37,10 +37,11 @@ let crate_of_postcard_file (file : string) : (GAst.crate, string) result =
          short_names = crate.short_names;
          declarations = Option.value ~default:[] crate.ordered_decls;
          type_decls = crate.type_decls;
-         type_spec_bodies = crate.type_spec_bodies;
          fun_decls = crate.fun_decls;
          global_decls = crate.global_decls;
          trait_decls = crate.trait_decls;
          trait_impls = crate.trait_impls;
+         spec_bodies = crate.spec_bodies;
+         spec_closures = crate.spec_closures;
        }
         : GAst.crate)
