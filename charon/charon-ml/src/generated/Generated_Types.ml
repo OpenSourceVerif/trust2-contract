@@ -12,7 +12,6 @@ open Generated_Meta
 open Generated_Values
 module TypeVarId = IdGen ()
 module TypeDeclId = IdGen ()
-module TypeSpecBodyId = IdGen ()
 module VariantId = IdGen ()
 module FieldId = IdGen ()
 module GlobalDeclId = IdGen ()
@@ -28,6 +27,8 @@ module UnsolvedTraitId = IdGen ()
 module RegionId = IdGen ()
 module Disambiguator = IdGen ()
 module FunDeclId = IdGen ()
+module SpecBodyId = IdGen ()
+module SpecClosureId = IdGen ()
 
 type integer_type = Values.integer_type [@@deriving show, ord, eq]
 type float_type = Values.float_type [@@deriving show, ord, eq]
@@ -45,12 +46,13 @@ type trait_type_constraint_id = TraitTypeConstraintId.id
 type 'a fun_decl_id_map = 'a FunDeclId.Map.t
 and 'a global_decl_id_map = 'a GlobalDeclId.Map.t
 and 'a type_decl_id_map = 'a TypeDeclId.Map.t
-and 'a type_spec_body_id_map = 'a TypeSpecBodyId.Map.t
 and 'a trait_decl_id_map = 'a TraitDeclId.Map.t
 and 'a trait_impl_id_map = 'a TraitImplId.Map.t
 and 'a trait_method_id_map = 'a TraitMethodId.Map.t
 and 'a assoc_type_id_map = 'a AssocTypeId.Map.t [@@deriving show, eq, ord]
 and 'a assoc_const_id_map = 'a AssocConstId.Map.t [@@deriving show, eq, ord]
+and 'a spec_body_id_map = 'a SpecBodyId.Map.t
+and 'a spec_closure_id_map = 'a SpecClosureId.Map.t
 
 (** The index of a binder, counting from the innermost. See [[DeBruijnVar]] for
     details. *)
@@ -106,6 +108,7 @@ and item_id =
   | IdFun of fun_decl_id
   | IdGlobal of global_decl_id
 
+and spec_closure_id = (SpecClosureId.id[@visitors.opaque])
 and trait_clause_id = (TraitClauseId.id[@visitors.opaque])
 and trait_decl_id = (TraitDeclId.id[@visitors.opaque])
 and trait_impl_id = (TraitImplId.id[@visitors.opaque])
@@ -234,15 +237,17 @@ and builtin_fun_id =
   | BoxNew
       (** Used instead of [alloc::boxed::Box::new] when [--treat-box-as-builtin]
           is set. *)
-  | SpecEntry  (** trust2-contract entry marker *)
-  | SpecPrecondition  (** trust2-contract precondition *)
-  | SpecPostcondition  (** trust2-contract postcondition *)
-  | SpecForall  (** trust2-contract universal quantification *)
-  | SpecExists  (** trust2-contract existential quantification *)
+  | SpecEntry  (** trust2-contract entry marker Will be eliminated *)
+  | SpecPrecondition  (** trust2-contract precondition Will be eliminated *)
+  | SpecPostcondition  (** trust2-contract postcondition Will be eliminated *)
+  | SpecForall
+      (** trust2-contract universal quantification Will be eliminated *)
+  | SpecExists
+      (** trust2-contract existential quantification Will be eliminated *)
   | SpecImplies  (** trust2-contract implies logical operator *)
   | SpecOld  (** trust2-contract old marker *)
-  | SpecAssert  (** trust2-contract assertion *)
-  | SpecAssume  (** trust2-contract assumption *)
+  | SpecAssert  (** trust2-contract assertion Will be eliminated *)
+  | SpecAssume  (** trust2-contract assumption Will be eliminated *)
   | ArrayToSliceShared
       (** Cast [&[T; N]] to [&[T]].
 
@@ -1194,6 +1199,8 @@ and repr_options = {
   explicit_discr_type : bool;
 }
 
+and spec_body_id = (SpecBodyId.id[@visitors.opaque])
+
 (** A type declaration.
 
     Types can be opaque or transparent.
@@ -1239,8 +1246,7 @@ and type_decl_kind =
       (** Used if an error happened during the extraction, and we don't panic on
           error. *)
 
-and type_spec_body_id = (TypeSpecBodyId.id[@visitors.opaque])
-and type_specs = { invariants : type_spec_body_id list }
+and type_specs = { invariants : spec_body_id list }
 
 and v_table_field =
   | VTableSize

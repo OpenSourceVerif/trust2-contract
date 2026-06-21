@@ -81,6 +81,10 @@ and statement_kind =
   | Nop  (** No-op. *)
   | Switch of switch
   | Loop of block
+  | ContractAssert of contract_assert_kind * spec_closure_id
+      (** Fields:
+          - [kind]
+          - [spec_closure_id] *)
   | Error of string
 
 and switch =

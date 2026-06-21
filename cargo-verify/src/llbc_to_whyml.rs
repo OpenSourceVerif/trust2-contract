@@ -1,24 +1,24 @@
 use builder::{Builder, ExprBuilder, TermBuilder};
 use name_map::{
-    ConstructorIdents, EMPTY_TYPE_NAME, LIB_BOOL, LIB_BUILTIN, LIB_CHAR, LIB_DIR, LIB_I8, LIB_I16,
-    LIB_I32, LIB_I64, LIB_I128, LIB_TUPLE, LIB_U8, LIB_U16, LIB_U32, LIB_U64, LIB_U128, LocalNames,
-    NameMap, TypeDeclSubIdents, TypeParamNames,
+    ConstructorIdents, EMPTY_TYPE_NAME, FuncSpecNames, LIB_BOOL, LIB_BUILTIN, LIB_CHAR, LIB_DIR,
+    LIB_I8, LIB_I16, LIB_I32, LIB_I64, LIB_I128, LIB_TUPLE, LIB_U8, LIB_U16, LIB_U32, LIB_U64,
+    LIB_U128, LocalNames, NameMap, TypeDeclSubIdents, TypeParamNames,
 };
 
 use bumpalo::Bump;
 use charon_lib::{
     ast::{
-        self, AggregateKind, Assert, BinOp, BindingStack, Body, BorrowKind, BoxedArgs,
-        BuiltinFunId, BuiltinTy, Call, ConstantExpr, ConstantExprKind, CopyNonOverlapping,
-        DeclarationGroup, FieldId, FieldProjKind, FloatValue, FnOperand, FnPtr, FnPtrKind,
-        FunDeclId, FunId, FunSig, GDeclarationGroup, GenericArgs, GlobalDeclRef, ItemId, Literal,
-        LiteralTy, LocalId, NullOp, Operand, Place, PlaceKind, ProjectionElem, RefKind, Rvalue,
-        ScalarValue, TranslatedCrate, Ty, TyKind, TypeDbVar, TypeDeclId, TypeDeclKind, TypeDeclRef,
-        TypeId, TypeVarId, UIntTy, UnOp, VariantId,
+        self, AbortKind, AggregateKind, Assert, BinOp, BindingStack, Body, BorrowKind, BoxedArgs,
+        BuiltinFunId, BuiltinTy, Call, ConstantExpr, ConstantExprKind, ContractAssertKind,
+        CopyNonOverlapping, DeclarationGroup, FieldId, FieldProjKind, FloatValue, FnOperand, FnPtr,
+        FnPtrKind, FunDeclId, FunId, FunSig, FunSpecs, GDeclarationGroup, GenericArgs,
+        GlobalDeclId, GlobalDeclRef, IntTy, ItemId, ItemSource, Literal, LiteralTy, LocalId,
+        NullOp, Operand, OverflowMode, Place, PlaceKind, ProjectionElem, RefKind, Rvalue,
+        ScalarValue, SpecClosure, SpecClosureId, TranslatedCrate, Ty, TyKind, TypeDbVar,
+        TypeDeclId, TypeDeclKind, TypeDeclRef, TypeId, TypeVarId, UIntTy, UnOp, VariantId,
     },
     ids::IndexVec,
     llbc_ast::{Block, ExprBody, Statement, StatementKind, Switch},
-    ullbc_ast::{AbortKind, GlobalDeclId, IntTy, ItemSource, OverflowMode, Postcondition},
 };
 use include_dir::{Dir, include_dir};
 use itertools::Itertools;
@@ -31,7 +31,7 @@ use rustc_apfloat::{
 use why3_ptree::{
     constant::Constant,
     dterm::{Dbinop, Dquant},
-    expr::RsKind,
+    expr::{AssertionKind, RsKind},
     ident::{self, OP_EQU},
     ity::Mask,
     loc::Position,
@@ -69,6 +69,7 @@ pub enum Error {
     InlineAsm,
     CopyNonOverlappingInSpec,
     LoopInSpec,
+    NestedSpec,
 }
 
 impl error::Error for Error {}
@@ -93,6 +94,7 @@ impl Display for Error {
                 write!(f, "`CopyNonOverlapping` statement in specification")
             }
             Error::LoopInSpec => write!(f, "loop in specification"),
+            Error::NestedSpec => write!(f, "nested specification"),
         }
     }
 }
@@ -208,7 +210,7 @@ fn translate_crate(crate_: &mut TranslatedCrate) -> Result<(MlwFile, HashSet<(us
         whyml_decls: &mut whyml_decls,
         tuple_field_accesses: HashSet::new(),
         type_param_stack: BindingStack::empty(),
-        locals: None,
+        locals_stack: Vec::new(),
         loop_depth: 0,
     };
     for decl_group in crate_.ordered_decls.as_ref().unwrap() {
@@ -229,7 +231,7 @@ struct Ctx<'a> {
     whyml_decls: &'a mut Vec<Decl>,
     tuple_field_accesses: HashSet<(usize, FieldId)>,
     type_param_stack: BindingStack<IndexVec<TypeVarId, Ident>>,
-    locals: Option<IndexVec<LocalId, Ident>>,
+    locals_stack: Vec<IndexVec<LocalId, Ident>>,
     loop_depth: usize,
 }
 
@@ -258,12 +260,20 @@ impl<'a> Ctx<'a> {
         result
     }
 
-    fn set_locals(&mut self, local_names: &IndexVec<LocalId, String>) {
-        self.locals = Some(local_names.map_ref(|ident| translate_ident(ident.as_str().into())));
+    fn with_locals<T>(
+        &mut self,
+        local_names: &IndexVec<LocalId, String>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        self.locals_stack
+            .push(local_names.map_ref(|ident| translate_ident(ident.as_str().into())));
+        let result = f(self);
+        self.locals_stack.pop();
+        result
     }
 
     fn get_local(&self, local_id: LocalId) -> &Ident {
-        &self.locals.as_ref().unwrap()[local_id]
+        &self.locals_stack.last().unwrap()[local_id]
     }
 
     fn enter_loop<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
@@ -1053,6 +1063,28 @@ impl<'a> Ctx<'a> {
             Ok(sequence_expr(trailing_expr, expr))
         }
 
+        fn translate_contract_assert(
+            self_: &mut Ctx,
+            trailing_expr: Expr,
+            kind: ContractAssertKind,
+            spec_closure_id: SpecClosureId,
+        ) -> Result<Expr> {
+            let expr = ptree_helpers::expr(
+                Position::default(),
+                ExprDesc::Assert(
+                    match kind {
+                        ContractAssertKind::Assert => AssertionKind::Assert,
+                        ContractAssertKind::Assume => AssertionKind::Assume,
+                    },
+                    self_.translate_spec_closure(
+                        &self_.crate_.spec_closures[spec_closure_id],
+                        &self_.name_map.spec_closure_names[spec_closure_id],
+                    )?,
+                ),
+            );
+            Ok(sequence_expr(trailing_expr, expr))
+        }
+
         match &stmt.kind {
             StatementKind::Assign(place, rvalue) => {
                 translate_assign_rvalue(self, trailing_expr, place, rvalue)
@@ -1078,6 +1110,10 @@ impl<'a> Ctx<'a> {
             StatementKind::Nop => unreachable!(),
             StatementKind::Switch(switch) => translate_switch(self, trailing_expr, switch),
             StatementKind::Loop(block) => translate_loop(self, trailing_expr, block),
+            StatementKind::ContractAssert {
+                kind,
+                spec_closure_id,
+            } => translate_contract_assert(self, trailing_expr, *kind, *spec_closure_id),
             StatementKind::Error(..) => unreachable!(),
         }
     }
@@ -1356,6 +1392,7 @@ impl<'a> Ctx<'a> {
             StatementKind::Switch(switch) => {
                 translate_switch(self, trailing_term, switch, in_locals)
             }
+            StatementKind::ContractAssert { .. } => Err(Error::NestedSpec),
             StatementKind::Error(..) => unreachable!(),
         }
     }
@@ -1626,7 +1663,7 @@ impl<'a> Ctx<'a> {
                 | BuiltinFunId::SpecExists
                 | BuiltinFunId::SpecImplies
                 | BuiltinFunId::SpecOld => todo!(),
-                BuiltinFunId::SpecAssert | BuiltinFunId::SpecAssume => todo!(),
+                BuiltinFunId::SpecAssert | BuiltinFunId::SpecAssume => unreachable!(),
                 BuiltinFunId::ArrayToSliceShared => todo!(),
                 BuiltinFunId::ArrayToSliceMut => todo!(),
                 BuiltinFunId::ArrayRepeat => todo!(),
@@ -1991,6 +2028,37 @@ impl<'a> Ctx<'a> {
         self.translate_apply::<TermBuilder>(func, args)
     }
 
+    fn translate_spec_closure(
+        &mut self,
+        spec_closure: &SpecClosure,
+        local_names: &LocalNames,
+    ) -> Result<Term> {
+        let LocalNames::Concrete(local_names) = local_names else {
+            unreachable!();
+        };
+
+        let term = self.with_locals(local_names, |self_| {
+            let body = spec_closure.body.as_structured().unwrap();
+            self_.translate_block_to_term(&body.body)
+        })?;
+        spec_closure
+            .captures
+            .iter_enumerated()
+            .collect::<Vec<_>>()
+            .into_iter()
+            .rev()
+            .try_fold(term, |term, (local_id, rvalue)| {
+                Ok(ptree_helpers::term(
+                    Position::default(),
+                    TermDesc::Let(
+                        translate_ident(local_names[local_id].as_str().into()),
+                        Box::new(self.translate_rvalue_to_term(rvalue)?),
+                        Box::new(term),
+                    ),
+                ))
+            })
+    }
+
     fn translate_func_decl(&mut self, func_decl_id: FunDeclId) -> Result<Option<FuncData>> {
         let func_decl = &self.crate_.fun_decls[func_decl_id];
 
@@ -2015,62 +2083,130 @@ impl<'a> Ctx<'a> {
                     unreachable!();
                 };
 
-                self_.set_locals(local_names);
-                let body_expr = self_.translate_block_to_expr(&body.body)?;
-                let local_idents = self_.locals.as_ref().unwrap();
-                let params = {
-                    if func_sig.inputs.is_empty() {
-                        ptree_helpers::unit_binder(Position::default())
-                    } else {
-                        local_idents
-                            .iter()
-                            .skip(1)
-                            .zip(&func_sig.inputs)
-                            .map(|(param_ident, param_type)| {
-                                Ok(Binder(
-                                    Position::default(),
-                                    Some(param_ident.clone()),
-                                    false,
-                                    Some(self_.translate_type(param_type)?),
-                                ))
-                            })
-                            .collect::<Result<_>>()?
+                self_.with_locals(local_names, |self_| {
+                    fn translate_precondition(
+                        self_: &mut Ctx,
+                        precondition: &SpecClosure,
+                        local_names: &LocalNames,
+                    ) -> Result<Pre> {
+                        self_.translate_spec_closure(precondition, local_names)
                     }
-                };
-                let body_expr = local_idents
-                    .indices()
-                    .rev()
-                    .filter(|local_id| {
-                        *local_id == LocalId::ZERO || *local_id > body.locals.arg_count
-                    })
-                    .try_fold(body_expr, |body_expr, local_id| {
-                        Ok(ptree_helpers::expr(
+
+                    fn translate_postcondition(
+                        self_: &mut Ctx,
+                        postcondition: &SpecClosure,
+                        local_names: &LocalNames,
+                    ) -> Result<Post> {
+                        let LocalNames::Concrete(local_names_) = local_names else {
+                            unreachable!();
+                        };
+                        let [arg_id] = (1..=postcondition.body.locals().arg_count)
+                            .filter(|local_id| {
+                                postcondition.captures.get((*local_id).into()).is_none()
+                            })
+                            .collect::<Vec<_>>()
+                            .try_into()
+                            .unwrap();
+                        Ok(Post(
                             Position::default(),
-                            ExprDesc::Let(
-                                Ident {
-                                    ats: Box::new([Attr::Str(REF_ATTR.clone())]),
-                                    ..local_idents[local_id].clone()
-                                },
-                                false,
-                                RsKind::None,
-                                Box::new(ptree_helpers::expr(
+                            Box::new([(
+                                ptree_helpers::pat_var(
                                     Position::default(),
-                                    ExprDesc::Any(
-                                        Box::new([]),
-                                        RsKind::None,
-                                        Some(Pty::Ref(Box::new([
-                                            self_.translate_type(&body.locals[local_id].ty)?
-                                        ]))),
-                                        WILDCARD.clone(),
-                                        Mask::Visible,
-                                        ptree_helpers::empty_spec(),
-                                    ),
-                                )),
-                                Box::new(body_expr),
-                            ),
+                                    translate_ident(local_names_[arg_id].as_str().into()),
+                                ),
+                                self_.translate_spec_closure(postcondition, local_names)?,
+                            )]),
                         ))
-                    })?;
-                Ok((params, Some(body_expr)))
+                    }
+
+                    let FunSpecs {
+                        preconditions,
+                        postconditions,
+                    } = &func_decl.specs;
+                    let FuncSpecNames {
+                        precondition_local_names,
+                        postcondition_local_names,
+                    } = &names.spec_names;
+                    let specs = Spec {
+                        pre: preconditions
+                            .iter()
+                            .zip(precondition_local_names)
+                            .map(|(precondition, local_names)| {
+                                translate_precondition(self_, precondition, local_names)
+                            })
+                            .collect::<Result<_>>()?,
+                        post: postconditions
+                            .iter()
+                            .zip(postcondition_local_names)
+                            .map(|(postcondition, local_names)| {
+                                translate_postcondition(self_, postcondition, local_names)
+                            })
+                            .collect::<Result<_>>()?,
+                        xpost: Box::new([]),
+                        reads: Box::new([]),
+                        writes: Box::new([]),
+                        alias: Box::new([]),
+                        variant: Box::new([]),
+                        checkrw: false,
+                        diverge: false,
+                        partial: false,
+                    };
+                    let body_expr: Expr = self_.translate_block_to_expr(&body.body)?;
+                    let local_idents = self_.locals_stack.last().unwrap();
+                    let params = {
+                        if func_sig.inputs.is_empty() {
+                            ptree_helpers::unit_binder(Position::default())
+                        } else {
+                            local_idents
+                                .iter()
+                                .skip(1)
+                                .zip(&func_sig.inputs)
+                                .map(|(param_ident, param_type)| {
+                                    Ok(Binder(
+                                        Position::default(),
+                                        Some(param_ident.clone()),
+                                        false,
+                                        Some(self_.translate_type(param_type)?),
+                                    ))
+                                })
+                                .collect::<Result<_>>()?
+                        }
+                    };
+                    let body_expr = local_idents
+                        .indices()
+                        .rev()
+                        .filter(|local_id| {
+                            *local_id == LocalId::ZERO || *local_id > body.locals.arg_count
+                        })
+                        .try_fold(body_expr, |body_expr, local_id| {
+                            Ok(ptree_helpers::expr(
+                                Position::default(),
+                                ExprDesc::Let(
+                                    Ident {
+                                        ats: Box::new([Attr::Str(REF_ATTR.clone())]),
+                                        ..local_idents[local_id].clone()
+                                    },
+                                    false,
+                                    RsKind::None,
+                                    Box::new(ptree_helpers::expr(
+                                        Position::default(),
+                                        ExprDesc::Any(
+                                            Box::new([]),
+                                            RsKind::None,
+                                            Some(Pty::Ref(Box::new([
+                                                self_.translate_type(&body.locals[local_id].ty)?
+                                            ]))),
+                                            WILDCARD.clone(),
+                                            Mask::Visible,
+                                            ptree_helpers::empty_spec(),
+                                        ),
+                                    )),
+                                    Box::new(body_expr),
+                                ),
+                            ))
+                        })?;
+                    Ok((params, specs, Some(body_expr)))
+                })
             };
             let translate_abstract_body = || {
                 let LocalNames::Abstract(param_names_opt) = &names.local_names else {
@@ -2097,9 +2233,9 @@ impl<'a> Ctx<'a> {
                             .collect::<Result<_>>()?
                     }
                 };
-                Ok((params, None))
+                Ok((params, ptree_helpers::empty_spec(), None))
             };
-            let (params, body) = match &func_decl.body {
+            let (params, specs, body) = match &func_decl.body {
                 Body::Unstructured(..) => unreachable!(),
                 Body::Structured(body) => translate_structured_body(self_, body)?,
                 Body::TargetDispatch(..) => todo!(),
@@ -2108,75 +2244,6 @@ impl<'a> Ctx<'a> {
                     translate_abstract_body()?
                 }
                 Body::Error(..) => unreachable!(),
-            };
-
-            fn translate_spec_body(self_: &mut Ctx, body: &Body) -> Result<Term> {
-                let body = body.as_structured().unwrap();
-                self_.translate_block_to_term(&body.body)
-            }
-
-            fn translate_precondition(
-                self_: &mut Ctx,
-                precondition: &Body,
-                local_names: &LocalNames,
-            ) -> Result<Pre> {
-                let LocalNames::Concrete(local_names) = local_names else {
-                    unreachable!();
-                };
-
-                self_.set_locals(local_names);
-                translate_spec_body(self_, precondition)
-            }
-
-            fn translate_postcondition(
-                self_: &mut Ctx,
-                postcondition: &Postcondition,
-                local_names: &LocalNames,
-            ) -> Result<Post> {
-                let LocalNames::Concrete(local_names) = local_names else {
-                    unreachable!();
-                };
-
-                self_.set_locals(local_names);
-                Ok(Post(
-                    Position::default(),
-                    Box::new([(
-                        ptree_helpers::pat_var(
-                            Position::default(),
-                            self_.get_local(postcondition.arg_id).clone(),
-                        ),
-                        translate_spec_body(self_, &postcondition.body)?,
-                    )]),
-                ))
-            }
-
-            let specs = Spec {
-                pre: func_decl
-                    .specs
-                    .preconditions
-                    .iter()
-                    .zip(&names.spec_local_names.precondition_local_names)
-                    .map(|(precondition, local_names)| {
-                        translate_precondition(self_, precondition, local_names)
-                    })
-                    .collect::<Result<_>>()?,
-                post: func_decl
-                    .specs
-                    .postconditions
-                    .iter()
-                    .zip(&names.spec_local_names.postcondition_local_names)
-                    .map(|(postcondition, local_names)| {
-                        translate_postcondition(self_, postcondition, local_names)
-                    })
-                    .collect::<Result<_>>()?,
-                xpost: Box::new([]),
-                reads: Box::new([]),
-                writes: Box::new([]),
-                alias: Box::new([]),
-                variant: Box::new([]),
-                checkrw: false,
-                diverge: false,
-                partial: false,
             };
             Ok(Some(FuncData(
                 translate_ident(names.item_ident.as_str().into()),

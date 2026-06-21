@@ -1076,5 +1076,5 @@ pub enum TypePattern {
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TypeSpecs {
     // Indirection to avoid creating a cycle in OCaml.
-    pub invariants: Vec<TypeSpecBodyId>,
+    pub invariants: Vec<SpecBodyId>,
 }

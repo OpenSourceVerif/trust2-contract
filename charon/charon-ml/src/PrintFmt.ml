@@ -1665,6 +1665,12 @@ let pp_global_decl (env : fmt_env) (indent : string) (indent_incr : string)
     (if clauses = "" then " " else "\n ")
     (pp_fun_decl_id env) def.init
 
+let pp_contract_assert_kind (fmt : Format.formatter)
+    (kind : contract_assert_kind) : unit =
+  match kind with
+  | CAssert -> pp_string fmt "contract_assert"
+  | CAssume -> pp_string fmt "contract_assume"
+
 module Llbc = struct
   (** Pretty-printing for LLBC AST (generic functions) *)
 
@@ -1813,6 +1819,9 @@ module Llbc = struct
           (pp_block env (indent ^ indent_incr) indent_incr)
           loop_blk indent
     | Error s -> Format.fprintf fmt "%sERROR(' %s')" indent s
+    | ContractAssert (kind, spec_closure_id) ->
+        Format.fprintf fmt "%s%a: %s" indent pp_contract_assert_kind kind
+          (SpecClosureId.to_string spec_closure_id)
 
   and pp_block (env : fmt_env) (indent : string) (indent_incr : string)
       (fmt : Format.formatter) (b : block) : unit =
@@ -1923,6 +1932,12 @@ module Ullbc = struct
     | Abort _ -> Format.fprintf fmt "%spanic" indent
     | Return -> Format.fprintf fmt "%sreturn" indent
     | UnwindResume -> Format.fprintf fmt "%sunwind_continue" indent
+    | ContractAssert (kind, spec_closure_id, target) ->
+        Format.fprintf fmt "%s%a: %s\n%s-> %s" indent pp_contract_assert_kind
+          kind
+          (SpecClosureId.to_string spec_closure_id)
+          indent
+          (block_id_to_string target)
 
   let pp_block (env : fmt_env) (indent : string) (indent_incr : string)
       (fmt : Format.formatter) (id : BlockId.id) (block : block) : unit =

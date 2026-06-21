@@ -95,7 +95,8 @@ impl Terminator {
             | Call { .. }
             | Drop { .. }
             | UnwindResume
-            | Assert { .. } => false,
+            | Assert { .. }
+            | ContractAssert { .. } => false,
         }
     }
 
@@ -108,7 +109,7 @@ impl Terminator {
 
     pub fn targets(&self) -> SmallVec<[BlockId; 2]> {
         match &self.kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target } | TerminatorKind::ContractAssert { target, .. } => {
                 smallvec![*target]
             }
             TerminatorKind::Switch { targets, .. } => targets.targets(),
@@ -131,7 +132,7 @@ impl Terminator {
     }
     pub fn targets_mut(&mut self) -> SmallVec<[&mut BlockId; 2]> {
         match &mut self.kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target } | TerminatorKind::ContractAssert { target, .. } => {
                 smallvec![target]
             }
             TerminatorKind::Switch { targets, .. } => targets.targets_mut(),
@@ -155,7 +156,7 @@ impl Terminator {
 
     pub fn targets_ignoring_unwind(&self) -> SmallVec<[BlockId; 2]> {
         match &self.kind {
-            TerminatorKind::Goto { target } => {
+            TerminatorKind::Goto { target } | TerminatorKind::ContractAssert { target, .. } => {
                 smallvec![*target]
             }
             TerminatorKind::Switch { targets, .. } => targets.targets(),

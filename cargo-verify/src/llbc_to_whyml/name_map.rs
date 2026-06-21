@@ -1,12 +1,12 @@
 use charon_lib::{
     ast::{
-        Body, FieldId, FunDeclId, GenericParams, GlobalDeclId, ItemId, LocalId, Name, PathElem,
-        TranslatedCrate, TypeDeclId, TypeDeclKind, TypeVarId, VariantId,
+        Body, FieldId, FunDeclId, FunSig, FunSpecs, GenericParams, GlobalDeclId, ItemId, LocalId,
+        Name, PathElem, SpecBodyId, SpecClosureId, TranslatedCrate, TypeDeclId, TypeDeclKind,
+        TypeVarId, VariantId,
     },
     formatter::FmtCtx,
     ids::{IndexMap, IndexVec},
     pretty::FmtWithCtx,
-    ullbc_ast::FunSig,
 };
 use utils::case;
 
@@ -102,6 +102,8 @@ pub struct NameMap {
     pub type_decl_names: IndexMap<TypeDeclId, TypeDeclNames>,
     pub func_decl_names: IndexMap<FunDeclId, FuncDeclNames>,
     pub global_names: IndexMap<GlobalDeclId, GlobalNames>,
+    pub spec_body_names: IndexMap<SpecBodyId, LocalNames>,
+    pub spec_closure_names: IndexMap<SpecClosureId, LocalNames>,
 }
 
 pub struct TypeDeclNames {
@@ -125,12 +127,7 @@ pub struct FuncDeclNames {
     pub item_ident: String,
     pub type_param_names: TypeParamNames,
     pub local_names: LocalNames,
-    pub spec_local_names: FuncSpecNames,
-}
-
-pub enum LocalNames {
-    Concrete(IndexVec<LocalId, String>),
-    Abstract(Vec<Option<String>>),
+    pub spec_names: FuncSpecNames,
 }
 
 pub struct FuncSpecNames {
@@ -141,6 +138,11 @@ pub struct FuncSpecNames {
 pub struct GlobalNames {
     pub item_ident: String,
     pub type_param_names: TypeParamNames,
+}
+
+pub enum LocalNames {
+    Concrete(IndexVec<LocalId, String>),
+    Abstract(Vec<Option<String>>),
 }
 
 pub type TypeParamNames = IndexVec<TypeVarId, String>;
@@ -264,55 +266,47 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
         None
     });
 
-    let mut idents = HashSet::new();
-
     let mut set_map = |(item_id, sub_id_opt), path: Vec<_>| {
         let ident = path.join(SEPARATOR);
-        {
-            let ident = ident.clone();
-            match item_id {
-                ItemId::Type(type_decl_id) => {
-                    let names_opt = &mut type_decl_names_opt[type_decl_id];
-                    match sub_id_opt {
-                        None => {
-                            names_opt.0 = Some(ident);
+        match item_id {
+            ItemId::Type(type_decl_id) => {
+                let names_opt = &mut type_decl_names_opt[type_decl_id];
+                match sub_id_opt {
+                    None => {
+                        names_opt.0 = Some(ident);
+                    }
+                    Some((sub_id, record_id_opt)) => match &mut names_opt.1 {
+                        TypeDeclSubIdentsOpt::Record(field_idents_opt) => {
+                            field_idents_opt[sub_id] = Some(ident);
                         }
-                        Some((sub_id, record_id_opt)) => match &mut names_opt.1 {
-                            TypeDeclSubIdentsOpt::Record(field_idents_opt) => {
-                                field_idents_opt[sub_id] = Some(ident);
-                            }
-                            TypeDeclSubIdentsOpt::Variant(variant_idents_opt) => {
-                                let constructor_idents_opt = &mut variant_idents_opt[sub_id];
-                                match record_id_opt {
-                                    None => constructor_idents_opt.ident = Some(ident),
-                                    Some(record_id) => {
-                                        let record_idents_opt = constructor_idents_opt
-                                            .record_idents_opt
-                                            .as_mut()
-                                            .unwrap();
-                                        match record_id {
-                                            None => record_idents_opt.0 = Some(ident),
-                                            Some(record_field_id) => {
-                                                record_idents_opt.1[record_field_id] = Some(ident);
-                                            }
+                        TypeDeclSubIdentsOpt::Variant(variant_idents_opt) => {
+                            let constructor_idents_opt = &mut variant_idents_opt[sub_id];
+                            match record_id_opt {
+                                None => constructor_idents_opt.ident = Some(ident),
+                                Some(record_id) => {
+                                    let record_idents_opt =
+                                        constructor_idents_opt.record_idents_opt.as_mut().unwrap();
+                                    match record_id {
+                                        None => record_idents_opt.0 = Some(ident),
+                                        Some(record_field_id) => {
+                                            record_idents_opt.1[record_field_id] = Some(ident);
                                         }
                                     }
                                 }
                             }
-                            TypeDeclSubIdentsOpt::Abstract => unreachable!(),
-                        },
-                    }
+                        }
+                        TypeDeclSubIdentsOpt::Abstract => unreachable!(),
+                    },
                 }
-                ItemId::Fun(func_decl_id) => {
-                    func_decl_names_opt[func_decl_id] = Some(ident);
-                }
-                ItemId::Global(global_id) => {
-                    global_names_opt[global_id] = Some(ident);
-                }
-                ItemId::TraitDecl(..) | ItemId::TraitImpl(..) => unreachable!(),
             }
+            ItemId::Fun(func_decl_id) => {
+                func_decl_names_opt[func_decl_id] = Some(ident);
+            }
+            ItemId::Global(global_id) => {
+                global_names_opt[global_id] = Some(ident);
+            }
+            ItemId::TraitDecl(..) | ItemId::TraitImpl(..) => unreachable!(),
         }
-        idents.insert(ident);
     };
     for (path, ids) in inv_map {
         if !(path.len() == 1 && TAKEN_WORDS_SET.contains(path[0].as_str())) && ids.len() == 1 {
@@ -333,7 +327,7 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
         let item_ident = item_ident_opt.unwrap();
         TypeDeclNames {
             item_ident,
-            type_param_names: map_generic_params(&idents, &type_decl.generics),
+            type_param_names: map_generic_params(&type_decl.generics, 0),
             sub_idents: match sub_idents_opt {
                 TypeDeclSubIdentsOpt::Record(record_idents_opt) => {
                     TypeDeclSubIdents::Record(record_idents_opt.map(Option::unwrap))
@@ -365,24 +359,22 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
     let mut func_decl_names_opt = func_decl_names_opt.into_iter();
     let func_decl_names = crate_.fun_decls.map_ref(|func_decl| {
         let item_ident = func_decl_names_opt.next().unwrap().unwrap();
+        let FunSpecs {
+            preconditions,
+            postconditions,
+        } = &func_decl.specs;
         FuncDeclNames {
             item_ident,
-            type_param_names: map_generic_params(&idents, &func_decl.generics),
-            local_names: map_locals(&idents, &func_decl.body, &func_decl.signature),
-            spec_local_names: FuncSpecNames {
-                precondition_local_names: func_decl
-                    .specs
-                    .preconditions
+            type_param_names: map_generic_params(&func_decl.generics, 0),
+            local_names: map_locals(&func_decl.body, Some(&func_decl.signature), 0),
+            spec_names: FuncSpecNames {
+                precondition_local_names: preconditions
                     .iter()
-                    .map(|precondition| map_locals(&idents, precondition, &func_decl.signature))
+                    .map(|precondition| map_locals(&precondition.body, None, 1))
                     .collect(),
-                postcondition_local_names: func_decl
-                    .specs
-                    .postconditions
+                postcondition_local_names: postconditions
                     .iter()
-                    .map(|postcondition| {
-                        map_locals(&idents, &postcondition.body, &func_decl.signature)
-                    })
+                    .map(|postcondition| map_locals(&postcondition.body, None, 1))
                     .collect(),
             },
         }
@@ -392,13 +384,21 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
         let item_ident = global_names_opt.next().unwrap().unwrap();
         GlobalNames {
             item_ident,
-            type_param_names: map_generic_params(&idents, &global.generics),
+            type_param_names: map_generic_params(&global.generics, 0),
         }
     });
+    let spec_body_names = crate_
+        .spec_bodies
+        .map_ref(|spec_body| map_locals(spec_body, None, 1));
+    let spec_closure_names = crate_
+        .spec_closures
+        .map_ref(|spec_closure| map_locals(&spec_closure.body, None, 1));
     NameMap {
         type_decl_names,
         func_decl_names,
         global_names,
+        spec_body_names,
+        spec_closure_names,
     }
 }
 
@@ -426,10 +426,7 @@ fn process_path(path: &Name, conv: impl Fn(String) -> String) -> Vec<String> {
         .collect()
 }
 
-fn map_generic_params(
-    existing_idents: &HashSet<String>,
-    generic_params: &GenericParams,
-) -> TypeParamNames {
+fn map_generic_params(generic_params: &GenericParams, depth: usize) -> TypeParamNames {
     let type_param = &generic_params.types;
 
     let mut inv_map: HashMap<_, Vec<_>> = HashMap::new();
@@ -443,17 +440,13 @@ fn map_generic_params(
         String::default()
     });
 
-    resolve_collision(
-        existing_idents,
-        inv_map,
-        |type_param_id, type_param_name| {
-            type_param_names[type_param_id] = type_param_name;
-        },
-    );
+    resolve_collision(inv_map, depth, |type_param_id, type_param_name| {
+        type_param_names[type_param_id] = type_param_name;
+    });
     type_param_names
 }
 
-fn map_locals(existing_idents: &HashSet<String>, body: &Body, signature: &FunSig) -> LocalNames {
+fn map_locals(body: &Body, signature_opt: Option<&FunSig>, depth: usize) -> LocalNames {
     match body {
         Body::Unstructured(_body) => unreachable!(),
         Body::Structured(body) => {
@@ -467,14 +460,14 @@ fn map_locals(existing_idents: &HashSet<String>, body: &Body, signature: &FunSig
                 String::default()
             });
 
-            resolve_collision(existing_idents, inv_map, |local_id, local_name| {
+            resolve_collision(inv_map, depth, |local_id, local_name| {
                 local_names[local_id] = local_name;
             });
             LocalNames::Concrete(local_names)
         }
         Body::TargetDispatch(..) => todo!(),
         Body::TraitMethodWithoutDefault | Body::Extern(..) | Body::Opaque | Body::Missing => {
-            LocalNames::Abstract(vec![None; signature.inputs.len()])
+            LocalNames::Abstract(vec![None; signature_opt.unwrap().inputs.len()])
         }
         Body::Intrinsic { arg_names, .. } => LocalNames::Abstract(
             arg_names
@@ -491,25 +484,17 @@ fn map_locals(existing_idents: &HashSet<String>, body: &Body, signature: &FunSig
 }
 
 fn resolve_collision<I: Copy>(
-    existing_idents: &HashSet<String>,
     inv_map: HashMap<String, Vec<I>>,
+    depth: usize,
     mut set_map: impl FnMut(I, String),
 ) {
     for (name, ids) in inv_map {
-        if !TAKEN_WORDS_SET.contains(name.as_str())
-            && !existing_idents.contains(&name)
-            && ids.len() == 1
-        {
+        if !TAKEN_WORDS_SET.contains(name.as_str()) && ids.len() == 1 {
             let id = ids[0];
-            set_map(id, name);
+            set_map(id, format!("{name}'{depth}"));
         } else {
-            let mut disambiguator = 0;
-            while existing_idents.contains(&format!("{name}'{disambiguator}")) {
-                disambiguator += 1;
-            }
-            for id in ids {
-                set_map(id, format!("{name}'{disambiguator}"));
-                disambiguator += 1;
+            for (disambiguator, id) in ids.into_iter().enumerate() {
+                set_map(id, format!("{name}'{disambiguator}'{depth}"));
             }
         }
     }

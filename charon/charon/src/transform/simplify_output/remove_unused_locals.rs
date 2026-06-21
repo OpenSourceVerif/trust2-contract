@@ -12,11 +12,12 @@ use crate::transform::TransformCtx;
 use crate::transform::ctx::{TransformPass, UllbcPass};
 
 #[derive(Visitor)]
-struct LocalsUsageVisitor {
+struct LocalsUsageVisitor<'a> {
     used_locals: IndexVec<LocalId, bool>,
+    spec_closures: &'a IndexMap<SpecClosureId, SpecClosure>,
 }
 
-impl VisitBody for LocalsUsageVisitor {
+impl<'a> VisitBody for LocalsUsageVisitor<'a> {
     fn enter_local_id(&mut self, lid: &LocalId) {
         self.used_locals[*lid] = true;
     }
@@ -37,6 +38,15 @@ impl VisitBody for LocalsUsageVisitor {
             }
             _ => self.visit_inner(st),
         }
+    }
+    fn visit_spec_closure(&mut self, spec_closure: &SpecClosure) -> ControlFlow<Self::Break> {
+        self.visit(&spec_closure.captures)
+    }
+    fn visit_spec_closure_id(
+        &mut self,
+        spec_closure_id: &SpecClosureId,
+    ) -> ControlFlow<Self::Break> {
+        self.visit(&self.spec_closures[*spec_closure_id])
     }
 }
 
@@ -71,9 +81,22 @@ impl VisitBodyMut for LocalsRenumberVisitor {
             _ => {}
         }
     }
+    fn visit_spec_closure(&mut self, spec_closure: &mut SpecClosure) -> ControlFlow<Self::Break> {
+        self.visit(&mut spec_closure.captures)
+    }
+    fn visit_spec_closure_id(
+        &mut self,
+        _spec_closure_id: &mut SpecClosureId,
+    ) -> ControlFlow<Self::Break> {
+        // self.visit(&mut self.spec_closures[*spec_closure_id])
+        ControlFlow::Continue(())
+    }
 }
 
-fn remove_unused_locals<Body: BodyVisitable>(body: &mut GExprBody<Body>) {
+fn remove_unused_locals<Body: BodyVisitable>(
+    body: &mut GExprBody<Body>,
+    spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+) {
     // Compute the set of used locals.
     // We always register the return variable and the input arguments.
     let mut visitor = LocalsUsageVisitor {
@@ -81,6 +104,7 @@ fn remove_unused_locals<Body: BodyVisitable>(body: &mut GExprBody<Body>) {
             .locals
             .locals
             .map_ref(|local| body.locals.is_return_or_arg(local.index)),
+        spec_closures,
     };
     let _ = body.body.drive_body(&mut visitor);
     let used_locals = visitor.used_locals;
@@ -104,20 +128,42 @@ fn remove_unused_locals<Body: BodyVisitable>(body: &mut GExprBody<Body>) {
     // Update all `LocalId`s.
     let mut visitor = LocalsRenumberVisitor { ids_map };
     let _ = body.body.drive_body_mut(&mut visitor);
+    body.body
+        .dyn_visit_in_body(|spec_closure_id: &SpecClosureId| {
+            spec_closures[*spec_closure_id].drive_body_mut(&mut visitor);
+        });
 }
 
 pub struct Transform;
 impl UllbcPass for Transform {
-    fn transform_body(&self, _ctx: &mut TransformCtx, body: &mut ullbc_ast::ExprBody) {
-        remove_unused_locals(body)
+    fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
+        fn transform_body(
+            body: &mut Body,
+            spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+        ) {
+            match body {
+                Body::Unstructured(body) => remove_unused_locals(body, spec_closures),
+                Body::Structured(body) => remove_unused_locals(body, spec_closures),
+                _ => {}
+            }
+        }
+
+        let spec_closures = &mut ctx.translated.spec_closures;
+        transform_body(&mut decl.body, spec_closures);
+        decl.body
+            .dyn_visit_in_body(|spec_closure_id: &SpecClosureId| {
+                transform_body(
+                    &mut spec_closures[*spec_closure_id].body,
+                    &mut IndexMap::new(),
+                );
+            });
+        for body in decl.specs.iter_bodies_mut() {
+            transform_body(body, spec_closures);
+        }
     }
 }
 impl TransformPass for Transform {
     fn transform_ctx(&self, ctx: &mut TransformCtx) {
-        ctx.for_each_fun_decl(|_ctx, fun| match &mut fun.body {
-            Body::Unstructured(body) => remove_unused_locals(body),
-            Body::Structured(body) => remove_unused_locals(body),
-            _ => {}
-        });
+        ctx.for_each_fun_decl(|ctx, fun| self.transform_function(ctx, fun));
     }
 }

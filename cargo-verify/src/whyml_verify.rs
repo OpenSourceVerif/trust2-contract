@@ -1,5 +1,5 @@
 use anyhow::{Result, bail};
-use charon_lib::ullbc_ast::TranslatedCrate;
+use charon_lib::ast::TranslatedCrate;
 use yansi::Paint;
 
 use std::{collections::HashMap, path::Path, process::Command};

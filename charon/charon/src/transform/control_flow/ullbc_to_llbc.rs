@@ -1114,6 +1114,19 @@ impl<'a> ReconstructCtx<'a> {
                 let st = tgt::StatementKind::Switch(switch);
                 tgt::Statement::new(span, st).into_block()
             }
+            src::TerminatorKind::ContractAssert {
+                kind,
+                spec_closure_id,
+                target,
+            } => tgt::Statement::new(
+                src_span,
+                tgt::StatementKind::ContractAssert {
+                    kind: *kind,
+                    spec_closure_id: *spec_closure_id,
+                },
+            )
+            .into_block()
+            .merge(self.translate_jump(terminator.span, *target)),
         }
     }
 

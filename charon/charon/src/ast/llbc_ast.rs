@@ -88,6 +88,10 @@ pub enum StatementKind {
     Nop,
     Switch(Switch),
     Loop(Block),
+    ContractAssert {
+        kind: ContractAssertKind,
+        spec_closure_id: SpecClosureId,
+    },
     #[drive(skip)]
     Error(String),
 }

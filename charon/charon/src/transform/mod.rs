@@ -179,7 +179,7 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
         // Duplicate the return blocks
         CowBox::Borrowed(&control_flow::duplicate_return::Transform),
         // Collect and move trust2-contract specifications, unstructured body part.
-        // This pass happens before `merge_goto_chains` and `remove_unused_locals`,
+        // This pass happens before `remove_unused_locals` and `merge_goto_chains`,
         // because they are useful to clean up the output of this pass.
         CowBox::Owned(Box::new(collect_specs::unstructured_body::Transform::new(
             ctx,

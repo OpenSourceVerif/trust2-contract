@@ -39,10 +39,11 @@ type crate = {
   short_names : (item_id * name) list;
   declarations : declaration_group list;
   type_decls : type_decl TypeDeclId.Map.t;
-  type_spec_bodies : body TypeSpecBodyId.Map.t;
   fun_decls : fun_decl FunDeclId.Map.t;
   global_decls : global_decl GlobalDeclId.Map.t;
   trait_decls : trait_decl TraitDeclId.Map.t;
   trait_impls : trait_impl TraitImplId.Map.t;
+  spec_bodies : body SpecBodyId.Map.t;
+  spec_closures : spec_closure SpecClosureId.Map.t;
 }
 [@@deriving show]

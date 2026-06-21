@@ -81,6 +81,7 @@ and builtin_assert_kind =
   | ResumedAfterDrop
 
 and call = { func : fn_operand; args : operand list; dest : place }
+and contract_assert_kind = CAssert | CAssume
 and copy_non_overlapping = { src : operand; dst : operand; count : operand }
 
 (** A [Drop] statement/terminator can mean two things, depending on what MIR

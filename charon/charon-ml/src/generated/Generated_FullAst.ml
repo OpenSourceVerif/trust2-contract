@@ -243,8 +243,8 @@ and fun_decl = {
 }
 
 and fun_specs = {
-  preconditions : body list;
-  postconditions : postcondition list;
+  preconditions : spec_closure list;
+  postconditions : spec_closure list;
 }
 
 (** A (group of) top-level declaration(s), properly reordered. "G" stands for
@@ -273,8 +273,6 @@ and monomorphize_mut =
   | ExceptTypes
       (** Monomorphize all non-typedecl items instantiated with [&mut]. *)
 
-and postcondition = { arg_id : local_id; body : body }
-
 (** Presets to make it easier to tweak options without breaking dependent
     projects. Eventually we should define semantically-meaningful presets
     instead of project-specific ones. *)
@@ -292,6 +290,7 @@ and preset =
   | Tests
 
 and serialization_format_arg = Json | Postcard | AllFormats
+and spec_closure = { body : body; captures : rvalue local_id_map }
 
 and target_info = {
   target_pointer_size : int;  (** The pointer size of the target in bytes. *)
@@ -328,8 +327,6 @@ and translated_crate = {
       (** Short names, for items whose last PathElem is unique. *)
   type_decls : type_decl type_decl_id_map;
       (** The translated type definitions *)
-  type_spec_bodies : body type_spec_body_id_map;
-      (** Bodies for trust2-contract type specifications. *)
   fun_decls : fun_decl fun_decl_id_map;
       (** The translated function definitions *)
   global_decls : global_decl global_decl_id_map;
@@ -338,6 +335,10 @@ and translated_crate = {
       (** The translated trait declarations *)
   trait_impls : trait_impl trait_impl_id_map;
       (** The translated trait declarations *)
+  spec_bodies : body spec_body_id_map;
+      (** trust2-contract specification bodies *)
+  spec_closures : spec_closure spec_closure_id_map;
+      (** trust2-contract specification closures *)
   ordered_decls : declaration_group list option;
       (** The re-ordered groups of declarations, initialized as empty. *)
 }

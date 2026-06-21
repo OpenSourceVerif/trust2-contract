@@ -103,11 +103,12 @@ impl CrateMerger {
                 target: TargetTriple,
                 file_id_map: IndexVec<FileId, FileId>,
                 type_offset: usize,
-                type_spec_body_offset: usize,
                 fun_offset: usize,
                 global_offset: usize,
                 trait_decl_offset: usize,
                 trait_impl_offset: usize,
+                spec_body_offset: usize,
+                spec_closure_offset: usize,
             }
 
             impl VisitAstMut for RemapIdsVisitor {
@@ -116,9 +117,6 @@ impl CrateMerger {
                 }
                 fn enter_type_decl_id(&mut self, id: &mut TypeDeclId) {
                     *id += self.type_offset;
-                }
-                fn enter_type_spec_body_id(&mut self, id: &mut TypeSpecBodyId) {
-                    *id += self.type_spec_body_offset;
                 }
                 fn enter_fun_decl_id(&mut self, id: &mut FunDeclId) {
                     *id += self.fun_offset;
@@ -131,6 +129,12 @@ impl CrateMerger {
                 }
                 fn enter_trait_impl_id(&mut self, id: &mut TraitImplId) {
                     *id += self.trait_impl_offset;
+                }
+                fn enter_spec_body_id(&mut self, id: &mut SpecBodyId) {
+                    *id += self.spec_body_offset;
+                }
+                fn enter_spec_closure_id(&mut self, id: &mut SpecClosureId) {
+                    *id += self.spec_closure_offset;
                 }
                 fn visit_abort_kind(&mut self, _x: &mut AbortKind) -> ControlFlow<Self::Break> {
                     // Don't modify the name found there
@@ -145,11 +149,12 @@ impl CrateMerger {
                 target,
                 file_id_map,
                 type_offset: self.merged.translated.type_decls.slot_count(),
-                type_spec_body_offset: self.merged.translated.type_spec_bodies.slot_count(),
                 fun_offset: self.merged.translated.fun_decls.slot_count(),
                 global_offset: self.merged.translated.global_decls.slot_count(),
                 trait_decl_offset: self.merged.translated.trait_decls.slot_count(),
                 trait_impl_offset: self.merged.translated.trait_impls.slot_count(),
+                spec_body_offset: self.merged.translated.spec_bodies.slot_count(),
+                spec_closure_offset: self.merged.translated.spec_closures.slot_count(),
             }
         });
 
@@ -162,11 +167,12 @@ impl CrateMerger {
             short_names: _, // TODO
             files: _,       // Done above
             type_decls,
-            type_spec_bodies,
             fun_decls,
             global_decls,
             trait_decls,
             trait_impls,
+            spec_bodies,
+            spec_closures,
             ordered_decls: _, // Recomputed on the merged crate
         } = krate;
         if self.merged.translated.crate_name.is_empty() {
@@ -187,10 +193,6 @@ impl CrateMerger {
             .extend_from_other(type_decls);
         self.merged
             .translated
-            .type_spec_bodies
-            .extend_from_other(type_spec_bodies);
-        self.merged
-            .translated
             .fun_decls
             .extend_from_other(fun_decls);
         self.merged
@@ -205,6 +207,14 @@ impl CrateMerger {
             .translated
             .trait_impls
             .extend_from_other(trait_impls);
+        self.merged
+            .translated
+            .spec_bodies
+            .extend_from_other(spec_bodies);
+        self.merged
+            .translated
+            .spec_closures
+            .extend_from_other(spec_closures);
     }
 }
 
@@ -567,8 +577,8 @@ impl<'a> ItemDeduplicator<'a> {
                 if let ItemId::Type(type_decl_id) = id
                     && let Some(type_decl) = self.krate.type_decls.get(type_decl_id)
                 {
-                    for type_spec_body_id in &type_decl.specs.invariants {
-                        self.krate.type_spec_bodies.remove(*type_spec_body_id);
+                    for spec_body_id in &type_decl.specs.invariants {
+                        self.krate.spec_bodies.remove(*spec_body_id);
                     }
                 }
                 self.krate.remove_item(id);

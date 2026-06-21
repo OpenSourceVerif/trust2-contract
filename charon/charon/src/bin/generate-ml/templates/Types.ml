@@ -15,7 +15,6 @@ open Generated_Values
 
 module TypeVarId = IdGen ()
 module TypeDeclId = IdGen ()
-module TypeSpecBodyId = IdGen ()
 module VariantId = IdGen ()
 module FieldId = IdGen ()
 module GlobalDeclId = IdGen ()
@@ -31,6 +30,8 @@ module UnsolvedTraitId = IdGen ()
 module RegionId = IdGen ()
 module Disambiguator = IdGen ()
 module FunDeclId = IdGen ()
+module SpecBodyId = IdGen ()
+module SpecClosureId = IdGen ()
 
 type integer_type = Values.integer_type [@@deriving show, ord, eq]
 type float_type = Values.float_type [@@deriving show, ord, eq]
@@ -47,12 +48,13 @@ type trait_type_constraint_id = TraitTypeConstraintId.id [@@deriving show, ord, 
 type 'a fun_decl_id_map = 'a FunDeclId.Map.t
 and 'a global_decl_id_map = 'a GlobalDeclId.Map.t
 and 'a type_decl_id_map = 'a TypeDeclId.Map.t
-and 'a type_spec_body_id_map = 'a TypeSpecBodyId.Map.t
 and 'a trait_decl_id_map = 'a TraitDeclId.Map.t
 and 'a trait_impl_id_map = 'a TraitImplId.Map.t
 and 'a trait_method_id_map = 'a TraitMethodId.Map.t
 and 'a assoc_type_id_map = 'a AssocTypeId.Map.t [@@deriving show, eq, ord]
 and 'a assoc_const_id_map = 'a AssocConstId.Map.t [@@deriving show, eq, ord]
+and 'a spec_body_id_map = 'a SpecBodyId.Map.t
+and 'a spec_closure_id_map = 'a SpecClosureId.Map.t
 
 
 (* __REPLACE0__ *)

@@ -7,30 +7,24 @@ use crate::transform::ctx::TransformPass;
 pub struct Transform;
 impl TransformPass for Transform {
     fn transform_ctx(&self, ctx: &mut TransformCtx) {
-        ctx.for_each_fun_decl(|_ctx, fun| {
-            fn transform_body(body: &mut Body) {
-                match body {
-                    Body::Unstructured(body) => {
-                        for blk in &mut body.body {
-                            if blk.statements.iter().any(|st| st.kind.is_nop()) {
-                                blk.statements.retain(|st| !st.kind.is_nop())
-                            }
+        ctx.for_each_body(|_ctx, body| {
+            match body {
+                Body::Unstructured(body) => {
+                    for blk in &mut body.body {
+                        if blk.statements.iter().any(|st| st.kind.is_nop()) {
+                            blk.statements.retain(|st| !st.kind.is_nop())
                         }
                     }
-                    Body::Structured(body) => {
-                        body.body.visit_blocks_bwd(|blk: &mut llbc_ast::Block| {
-                            // Remove all the `Nop`s from this sequence.
-                            if blk.statements.iter().any(|st| st.kind.is_nop()) {
-                                blk.statements.retain(|st| !st.kind.is_nop())
-                            }
-                        });
-                    }
-                    _ => {}
                 }
-            }
-
-            for body in fun.iter_bodies_mut() {
-                transform_body(body);
+                Body::Structured(body) => {
+                    body.body.visit_blocks_bwd(|blk: &mut llbc_ast::Block| {
+                        // Remove all the `Nop`s from this sequence.
+                        if blk.statements.iter().any(|st| st.kind.is_nop()) {
+                            blk.statements.retain(|st| !st.kind.is_nop())
+                        }
+                    });
+                }
+                _ => {}
             }
         });
     }
