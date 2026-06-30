@@ -34,7 +34,7 @@ pub trait UllbcPass: Sync {
     /// Transform a function declaration. This forwards to `transform_body` by default.
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
         let mut spec_closures = mem::take(&mut ctx.translated.spec_closures);
-        decl.for_each_body(&mut spec_closures, |body| {
+        decl.for_each_body(&mut spec_closures, |body, _| {
             if let Some(body) = body.as_unstructured_mut() {
                 self.transform_body(ctx, body);
             }
@@ -82,7 +82,7 @@ pub trait LlbcPass: Sync {
     /// Transform a function declaration. This forwards to `transform_body` by default.
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
         let mut spec_closures = mem::take(&mut ctx.translated.spec_closures);
-        decl.for_each_body(&mut spec_closures, |body| {
+        decl.for_each_body(&mut spec_closures, |body, _| {
             if let Some(body) = body.as_structured_mut() {
                 self.transform_body(ctx, body);
             }
@@ -153,47 +153,65 @@ impl TransformCtx {
     /// Warning: we replace each body with `Err(Opaque)` while inspecting it so we can keep access
     /// to the rest of the crate.
     pub(crate) fn for_each_body(&mut self, mut f: impl FnMut(&mut Self, &mut Body)) {
+        let mut spec_closures = mem::take(&mut self.translated.spec_closures);
+
         let fn_ids = self.translated.fun_decls.all_indices();
         for id in fn_ids {
             if let Some(decl) = self.translated.fun_decls.get_mut(id) {
+                let fun_decl_id = decl.def_id;
+                let is_local = decl.item_meta.is_local;
                 if decl.body.has_contents() {
                     let mut body = mem::replace(&mut decl.body, Body::Opaque);
-                    let mut spec_closures = mem::take(&mut self.translated.spec_closures);
-                    let fun_decl_id = decl.def_id;
-                    let is_local = decl.item_meta.is_local;
                     self.with_def_id(fun_decl_id, is_local, |ctx| {
-                        f(ctx, &mut body);
-                        body.dyn_visit_in_body(|spec_closure_id: &SpecClosureId| {
-                            f(ctx, &mut spec_closures[*spec_closure_id].body);
-                        });
+                        body.for_each_body(&mut spec_closures, |body, _| f(ctx, body));
                     });
-                    self.translated.spec_closures = spec_closures;
                     self.translated.fun_decls[id].body = body;
                 }
                 for precondition_id in 0..self.translated.fun_decls[id].specs.preconditions.len() {
-                    let decl = &mut self.translated.fun_decls[id];
                     let mut body = mem::replace(
-                        &mut decl.specs.preconditions[precondition_id].body,
+                        &mut self.translated.fun_decls[id].specs.preconditions[precondition_id]
+                            .body,
                         Body::Opaque,
                     );
-                    let is_local = decl.item_meta.is_local;
-                    self.with_def_id(id, is_local, |ctx| f(ctx, &mut body));
+                    self.with_def_id(fun_decl_id, is_local, |ctx| {
+                        body.for_each_body(&mut spec_closures, |body, _| f(ctx, body));
+                    });
                     self.translated.fun_decls[id].specs.preconditions[precondition_id].body = body;
                 }
                 for postcondition_id in 0..self.translated.fun_decls[id].specs.postconditions.len()
                 {
-                    let decl = &mut self.translated.fun_decls[id];
                     let mut body = mem::replace(
-                        &mut decl.specs.postconditions[postcondition_id].body,
+                        &mut self.translated.fun_decls[id].specs.postconditions[postcondition_id]
+                            .body,
                         Body::Opaque,
                     );
-                    let is_local = decl.item_meta.is_local;
-                    self.with_def_id(id, is_local, |ctx| f(ctx, &mut body));
+                    self.with_def_id(fun_decl_id, is_local, |ctx| {
+                        body.for_each_body(&mut spec_closures, |body, _| f(ctx, body));
+                    });
                     self.translated.fun_decls[id].specs.postconditions[postcondition_id].body =
                         body;
                 }
             }
         }
+
+        // for type_decl_id in self.translated.type_decls.all_indices() {
+        //     if let Some(type_decl) = self.translated.type_decls.get_mut(type_decl_id) {
+        //         let is_local = type_decl.item_meta.is_local;
+        //         for invariant_id in 0..self.translated.type_decls[type_decl_id].specs.invariants.len() {
+        //             let spec_body_id = self.translated.type_decls[type_decl_id].specs.invariants[invariant_id];
+        //             let mut body = mem::replace(
+        //                 &mut self.translated.spec_bodies[spec_body_id],
+        //                 Body::Opaque,
+        //             );
+        //             self.with_def_id(type_decl_id, is_local, |ctx| {
+        //                 body.for_each_body(&mut spec_closures, |body, _| f(ctx, body));
+        //             });
+        //             self.translated.spec_bodies[spec_body_id] = body;
+        //         }
+        //     }
+        // }
+
+        self.translated.spec_closures = spec_closures;
     }
 
     /// Mutably iterate over the function declarations.
@@ -555,7 +573,7 @@ impl FunDecl {
         mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut ullbc_ast::Statement),
     ) {
         let mut spec_closures = mem::take(&mut ctx.translated.spec_closures);
-        let mut transform = |body: &mut Body| {
+        let mut transform = |body: &mut Body, _: &mut IndexMap<SpecClosureId, SpecClosure>| {
             if let Some(body) = body.as_unstructured_mut() {
                 let mut ctx = UllbcStatementTransformCtx {
                     ctx,
@@ -577,9 +595,7 @@ impl FunDecl {
         };
         // Borrow splitting to pass borrowck.
         self.body.for_each_body(&mut spec_closures, &mut transform);
-        for body in self.specs.iter_bodies_mut() {
-            transform(body);
-        }
+        self.specs.for_each_body(&mut spec_closures, transform);
         ctx.translated.spec_closures = spec_closures;
     }
 
@@ -589,7 +605,7 @@ impl FunDecl {
         mut f: impl FnMut(&mut UllbcStatementTransformCtx, &mut ullbc_ast::Terminator),
     ) {
         let mut spec_closures = mem::take(&mut ctx.translated.spec_closures);
-        let mut transform = |body: &mut Body| {
+        let mut transform = |body: &mut Body, _: &mut IndexMap<SpecClosureId, SpecClosure>| {
             if let Some(body) = body.as_unstructured_mut() {
                 let mut ctx = UllbcStatementTransformCtx {
                     ctx,
@@ -608,9 +624,7 @@ impl FunDecl {
         };
         // Borrow splitting to pass borrowck.
         self.body.for_each_body(&mut spec_closures, &mut transform);
-        for body in self.specs.iter_bodies_mut() {
-            transform(body);
-        }
+        self.specs.for_each_body(&mut spec_closures, transform);
         ctx.translated.spec_closures = spec_closures;
     }
 
@@ -633,7 +647,7 @@ impl FunDecl {
         mut f: impl FnMut(&mut LlbcStatementTransformCtx, &mut llbc_ast::Statement),
     ) {
         let mut spec_closures = mem::take(&mut ctx.translated.spec_closures);
-        let mut transform = |body: &mut Body| {
+        let mut transform = |body: &mut Body, _: &mut IndexMap<SpecClosureId, SpecClosure>| {
             if let Some(body) = body.as_structured_mut() {
                 let mut ctx = LlbcStatementTransformCtx {
                     ctx,
@@ -655,9 +669,7 @@ impl FunDecl {
         };
         // Borrow splitting to pass borrowck.
         self.body.for_each_body(&mut spec_closures, &mut transform);
-        for body in self.specs.iter_bodies_mut() {
-            transform(body);
-        }
+        self.specs.for_each_body(&mut spec_closures, transform);
         ctx.translated.spec_closures = spec_closures;
     }
 }

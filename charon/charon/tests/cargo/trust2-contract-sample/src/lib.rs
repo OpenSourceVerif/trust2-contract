@@ -18,7 +18,7 @@ pub struct RefRange<'a, T: PartialOrd> {
     end: &'a T,
 }
 
-#[postcondition(|b| forall(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1])))]
+#[postcondition(|b| forall!(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1])))]
 pub fn to_sorted(a: &[i32]) -> Vec<i32> {
     vec![]
 }

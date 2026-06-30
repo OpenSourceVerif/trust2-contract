@@ -146,6 +146,8 @@ and locals = {
           - the [arg_count] input arguments
           - the remaining locals, used for the intermediate computations *)
 }
+
+and quant_kind = ForAll | Exists
 [@@deriving
   show,
   eq,

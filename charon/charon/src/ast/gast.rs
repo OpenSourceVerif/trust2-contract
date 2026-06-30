@@ -586,6 +586,12 @@ pub enum ContractAssertKind {
     Assume,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy, SerializeState, DeserializeState, Drive, DriveMut)]
+pub enum QuantKind {
+    ForAll,
+    Exists,
+}
+
 /// A generic `*DeclRef`-shaped struct, used when we're generic over the type of item.
 #[derive(Debug, PartialEq, Eq, Clone, Drive, DriveMut)]
 pub struct DeclRef<Id> {

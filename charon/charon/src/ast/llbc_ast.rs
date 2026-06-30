@@ -92,6 +92,11 @@ pub enum StatementKind {
         kind: ContractAssertKind,
         spec_closure_id: SpecClosureId,
     },
+    Quant {
+        kind: QuantKind,
+        spec_closure_id: SpecClosureId,
+        dest: Place,
+    },
     #[drive(skip)]
     Error(String),
 }

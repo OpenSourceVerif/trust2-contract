@@ -48,7 +48,7 @@ use derive_generic_visitor::*;
         Disambiguator, DynPredicate, Field, FieldId, FieldProjKind, File, FloatTy, FloatValue,
         FnOperand, FunId, FnPtrKind, FunSig, FunSpecs, IntegerTy, IntTy, UIntTy, Literal, LiteralTy,
         llbc_ast::ExprBody, llbc_ast::StatementKind, llbc_ast::Switch,
-        Loc, Locals, NullOp, Operand, PathElem, PlaceKind, ConstantExprKind,
+        Loc, Locals, NullOp, Operand, PathElem, PlaceKind, ConstantExprKind, QuantKind,
         RefKind, RegionId, RegionParam, ScalarValue, TraitItemName, TraitMethodId, AssocTypeId, AssocConstId, AssocItemId,
         TranslatedCrate, TypeDeclKind, TypeId, TypeParam, TypePattern, TypeSpecs, TypeVarId, llbc_ast::StatementId,
         ullbc_ast::BlockData, ullbc_ast::BlockId, ullbc_ast::ExprBody, ullbc_ast::StatementKind,
@@ -155,7 +155,7 @@ impl<K: BodyVisitable + Hash + Eq, T: BodyVisitable> BodyVisitable for SeqHashMa
     skip(
         AbortKind, BinOp, BorrowKind, BuiltinAssertKind, ConstantExpr, ContractAssertKind, FieldId, FieldProjKind,
         TypeDeclRef, FunDeclId, FunDeclRef, FnPtrKind, GenericArgs, GlobalDeclRef, IntegerTy, IntTy, UIntTy,
-        NullOp, RefKind, ScalarValue, Span, Ty, TypeDeclId, TypeId, UnOp, VariantId,
+        NullOp, QuantKind, RefKind, ScalarValue, Span, Ty, TypeDeclId, TypeId, UnOp, VariantId,
         TraitRef, LiteralTy, Literal, RegionId, (), String, bool,
     ),
     // Types that we unconditionally explore.

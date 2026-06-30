@@ -429,23 +429,30 @@ pub enum BuiltinFunId {
     /// Used instead of `alloc::boxed::Box::new` when `--treat-box-as-builtin` is set.
     BoxNew,
     /// trust2-contract entry marker
+    /// Will be eliminated
     SpecEntry,
     /// trust2-contract precondition
+    /// Will be eliminated
     SpecPrecondition,
     /// trust2-contract postcondition
+    /// Will be eliminated
     SpecPostcondition,
+    /// trust2-contract assertion
+    /// Will be eliminated
+    SpecAssert,
+    /// trust2-contract assumption
+    /// Will be eliminated
+    SpecAssume,
     /// trust2-contract universal quantification
-    SpecForall,
+    /// Will be eliminated
+    SpecForAll,
     /// trust2-contract existential quantification
+    /// Will be eliminated
     SpecExists,
     /// trust2-contract implies logical operator
     SpecImplies,
     /// trust2-contract old marker
     SpecOld,
-    /// trust2-contract assertion
-    SpecAssert,
-    /// trust2-contract assumption
-    SpecAssume,
     /// Cast `&[T; N]` to `&[T]`.
     ///
     /// This is used instead of unsizing coercions when `--ops-to-function-calls` is set.

@@ -120,6 +120,12 @@ and terminator_kind =
           - [kind]
           - [spec_closure_id]
           - [target] *)
+  | Quant of quant_kind * spec_closure_id * place * block_id
+      (** Fields:
+          - [kind]
+          - [spec_closure_id]
+          - [dest]
+          - [target] *)
 [@@deriving
   show,
   eq,

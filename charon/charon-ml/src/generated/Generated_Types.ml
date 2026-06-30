@@ -240,14 +240,14 @@ and builtin_fun_id =
   | SpecEntry  (** trust2-contract entry marker Will be eliminated *)
   | SpecPrecondition  (** trust2-contract precondition Will be eliminated *)
   | SpecPostcondition  (** trust2-contract postcondition Will be eliminated *)
-  | SpecForall
+  | SpecAssert  (** trust2-contract assertion Will be eliminated *)
+  | SpecAssume  (** trust2-contract assumption Will be eliminated *)
+  | SpecForAll
       (** trust2-contract universal quantification Will be eliminated *)
   | SpecExists
       (** trust2-contract existential quantification Will be eliminated *)
   | SpecImplies  (** trust2-contract implies logical operator *)
   | SpecOld  (** trust2-contract old marker *)
-  | SpecAssert  (** trust2-contract assertion Will be eliminated *)
-  | SpecAssume  (** trust2-contract assumption Will be eliminated *)
   | ArrayToSliceShared
       (** Cast [&[T; N]] to [&[T]].
 

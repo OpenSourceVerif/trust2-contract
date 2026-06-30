@@ -269,12 +269,12 @@ and builtin_fun_id_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      | 1 -> Ok SpecEntry
      | 2 -> Ok SpecPrecondition
      | 3 -> Ok SpecPostcondition
-     | 4 -> Ok SpecForall
-     | 5 -> Ok SpecExists
-     | 6 -> Ok SpecImplies
-     | 7 -> Ok SpecOld
-     | 8 -> Ok SpecAssert
-     | 9 -> Ok SpecAssume
+     | 4 -> Ok SpecAssert
+     | 5 -> Ok SpecAssume
+     | 6 -> Ok SpecForAll
+     | 7 -> Ok SpecExists
+     | 8 -> Ok SpecImplies
+     | 9 -> Ok SpecOld
      | 10 -> Ok ArrayToSliceShared
      | 11 -> Ok ArrayToSliceMut
      | 12 -> Ok ArrayRepeat
@@ -981,6 +981,15 @@ and provenance_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      | 2 -> Ok ProvUnknown
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
+and quant_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
+    (quant_kind, string) result =
+  combine_error_msgs st __FUNCTION__
+    (let* __tag = int_of_postcard ctx st in
+     match __tag with
+     | 0 -> Ok ForAll
+     | 1 -> Ok Exists
+     | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
+
 and ref_kind_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (ref_kind, string) result =
   combine_error_msgs st __FUNCTION__
@@ -1529,6 +1538,12 @@ module Ullbc = struct
            let* spec_closure_id = spec_closure_id_of_postcard ctx st in
            let* target = block_id_of_postcard ctx st in
            Ok (ContractAssert (kind, spec_closure_id, target))
+       | 10 ->
+           let* kind = quant_kind_of_postcard ctx st in
+           let* spec_closure_id = spec_closure_id_of_postcard ctx st in
+           let* dest = place_of_postcard ctx st in
+           let* target = block_id_of_postcard ctx st in
+           Ok (Quant (kind, spec_closure_id, dest, target))
        | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 end
 
@@ -1622,6 +1637,11 @@ module Llbc = struct
            let* spec_closure_id = spec_closure_id_of_postcard ctx st in
            Ok (ContractAssert (kind, spec_closure_id))
        | 18 ->
+           let* kind = quant_kind_of_postcard ctx st in
+           let* spec_closure_id = spec_closure_id_of_postcard ctx st in
+           let* dest = place_of_postcard ctx st in
+           Ok (Quant (kind, spec_closure_id, dest))
+       | 19 ->
            let* x_0 = string_of_postcard ctx st in
            Ok (Error x_0)
        | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))

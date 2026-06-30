@@ -2,6 +2,8 @@
 
 use crate::ast::*;
 
+use std::mem;
+
 impl FnPtrKind {
     pub fn mk_builtin(aid: BuiltinFunId) -> Self {
         Self::Fun(FunId::Builtin(aid))
@@ -35,11 +37,21 @@ impl Body {
     pub fn for_each_body(
         &mut self,
         spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
-        mut f: impl FnMut(&mut Body),
+        mut f: impl FnMut(&mut Body, &mut IndexMap<SpecClosureId, SpecClosure>),
     ) {
-        f(self);
-        self.dyn_visit_in_body(|spec_closure_id: &SpecClosureId| {
-            f(&mut spec_closures[*spec_closure_id].body);
+        self.for_each_body_inner(spec_closures, &mut f);
+    }
+
+    fn for_each_body_inner(
+        &mut self,
+        spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+        f: &mut impl FnMut(&mut Body, &mut IndexMap<SpecClosureId, SpecClosure>),
+    ) {
+        f(self, spec_closures);
+        self.dyn_visit_in_body(|&spec_closure_id: &SpecClosureId| {
+            let mut body = mem::replace(&mut spec_closures[spec_closure_id].body, Body::Opaque);
+            body.for_each_body_inner(spec_closures, f);
+            spec_closures[spec_closure_id].body = body;
         });
     }
 }
@@ -98,6 +110,13 @@ impl std::ops::IndexMut<LocalId> for Locals {
     }
 }
 
+impl SpecClosure {
+    pub fn non_captured_argument_ids(&self) -> impl Iterator<Item = usize> {
+        (1..=self.body.locals().arg_count)
+            .filter(|&local_id| self.captures.get(local_id.into()).is_none())
+    }
+}
+
 impl FunSpecs {
     pub fn new() -> Self {
         Self {
@@ -106,11 +125,15 @@ impl FunSpecs {
         }
     }
 
-    pub fn iter_bodies_mut(&mut self) -> impl Iterator<Item = &mut Body> {
+    pub fn for_each_body(
+        &mut self,
+        spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+        mut f: impl FnMut(&mut Body, &mut IndexMap<SpecClosureId, SpecClosure>),
+    ) {
         self.preconditions
             .iter_mut()
             .chain(&mut self.postconditions)
-            .map(|spec_closure| &mut spec_closure.body)
+            .for_each(|spec_closure| spec_closure.body.for_each_body(spec_closures, &mut f));
     }
 }
 
@@ -152,12 +175,10 @@ impl FunDecl {
     pub fn for_each_body(
         &mut self,
         spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
-        mut f: impl FnMut(&mut Body),
+        mut f: impl FnMut(&mut Body, &mut IndexMap<SpecClosureId, SpecClosure>),
     ) {
         self.body.for_each_body(spec_closures, &mut f);
-        for body in self.specs.iter_bodies_mut() {
-            f(body);
-        }
+        self.specs.for_each_body(spec_closures, f);
     }
 }
 impl TraitDecl {

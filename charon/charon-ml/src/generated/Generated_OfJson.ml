@@ -288,12 +288,12 @@ and builtin_fun_id_of_json (ctx : of_json_ctx) (js : json) :
     | `String "SpecEntry" -> Ok SpecEntry
     | `String "SpecPrecondition" -> Ok SpecPrecondition
     | `String "SpecPostcondition" -> Ok SpecPostcondition
-    | `String "SpecForall" -> Ok SpecForall
+    | `String "SpecAssert" -> Ok SpecAssert
+    | `String "SpecAssume" -> Ok SpecAssume
+    | `String "SpecForAll" -> Ok SpecForAll
     | `String "SpecExists" -> Ok SpecExists
     | `String "SpecImplies" -> Ok SpecImplies
     | `String "SpecOld" -> Ok SpecOld
-    | `String "SpecAssert" -> Ok SpecAssert
-    | `String "SpecAssume" -> Ok SpecAssume
     | `String "ArrayToSliceShared" -> Ok ArrayToSliceShared
     | `String "ArrayToSliceMut" -> Ok ArrayToSliceMut
     | `String "ArrayRepeat" -> Ok ArrayRepeat
@@ -1057,6 +1057,14 @@ and provenance_of_json (ctx : of_json_ctx) (js : json) :
     | `String "Unknown" -> Ok ProvUnknown
     | _ -> Error "")
 
+and quant_kind_of_json (ctx : of_json_ctx) (js : json) :
+    (quant_kind, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `String "ForAll" -> Ok ForAll
+    | `String "Exists" -> Ok Exists
+    | _ -> Error "")
+
 and ref_kind_of_json (ctx : of_json_ctx) (js : json) : (ref_kind, string) result
     =
   combine_error_msgs js __FUNCTION__
@@ -1749,6 +1757,22 @@ module Ullbc = struct
           let* spec_closure_id = spec_closure_id_of_json ctx spec_closure_id in
           let* target = block_id_of_json ctx target in
           Ok (ContractAssert (kind, spec_closure_id, target))
+      | `Assoc
+          [
+            ( "Quant",
+              `Assoc
+                [
+                  ("kind", kind);
+                  ("spec_closure_id", spec_closure_id);
+                  ("dest", dest);
+                  ("target", target);
+                ] );
+          ] ->
+          let* kind = quant_kind_of_json ctx kind in
+          let* spec_closure_id = spec_closure_id_of_json ctx spec_closure_id in
+          let* dest = place_of_json ctx dest in
+          let* target = block_id_of_json ctx target in
+          Ok (Quant (kind, spec_closure_id, dest, target))
       | _ -> Error "")
 end
 
@@ -1868,6 +1892,20 @@ module Llbc = struct
           let* kind = contract_assert_kind_of_json ctx kind in
           let* spec_closure_id = spec_closure_id_of_json ctx spec_closure_id in
           Ok (ContractAssert (kind, spec_closure_id))
+      | `Assoc
+          [
+            ( "Quant",
+              `Assoc
+                [
+                  ("kind", kind);
+                  ("spec_closure_id", spec_closure_id);
+                  ("dest", dest);
+                ] );
+          ] ->
+          let* kind = quant_kind_of_json ctx kind in
+          let* spec_closure_id = spec_closure_id_of_json ctx spec_closure_id in
+          let* dest = place_of_json ctx dest in
+          Ok (Quant (kind, spec_closure_id, dest))
       | `Assoc [ ("Error", error) ] ->
           let* error = string_of_json ctx error in
           Ok (Error error)

@@ -288,7 +288,7 @@ impl Display for BuiltinFunId {
             BuiltinFunId::SpecEntry => "SpecEntry",
             BuiltinFunId::SpecPrecondition => "SpecPrecondition",
             BuiltinFunId::SpecPostcondition => "SpecPostcondition",
-            BuiltinFunId::SpecForall => "SpecForall",
+            BuiltinFunId::SpecForAll => "SpecForAll",
             BuiltinFunId::SpecExists => "SpecExists",
             BuiltinFunId::SpecImplies => "SpecImplies",
             BuiltinFunId::SpecOld => "SpecOld",
@@ -676,11 +676,11 @@ impl<C: AstFormatter> FmtWithCtx<C> for FunSpecs {
         let ctx = &ctx.increase_indent();
         for precondition in &self.preconditions {
             writeln!(f)?;
-            precondition.fmt_with_ctx_and_kind(f, ctx, "precondition")?;
+            precondition.fmt_with_ctx_and_kind(f, ctx, "precondition", true)?;
         }
         for postcondition in &self.postconditions {
             writeln!(f)?;
-            postcondition.fmt_with_ctx_and_kind(f, ctx, "postcondition")?;
+            postcondition.fmt_with_ctx_and_kind(f, ctx, "postcondition", true)?;
         }
         Ok(())
     }
@@ -1447,6 +1447,19 @@ impl<C: AstFormatter> FmtWithCtx<C> for ConstantExpr {
     }
 }
 
+impl Display for QuantKind {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                QuantKind::ForAll => "forall",
+                QuantKind::Exists => "exists",
+            },
+        )
+    }
+}
+
 impl<C: AstFormatter> FmtWithCtx<C> for Region {
     fn fmt_with_ctx(&self, ctx: &C, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -1697,12 +1710,16 @@ impl SpecClosure {
         f: &mut fmt::Formatter,
         ctx: &C,
         kind: &str,
+        first_line_indent: bool,
     ) -> fmt::Result {
         let tab = ctx.indent();
         let ctx1 = &ctx.increase_indent();
         let tab1 = ctx1.indent();
         let locals = self.body.locals();
-        writeln!(f, "{tab}{kind}[")?;
+        if first_line_indent {
+            write!(f, "{tab}")?;
+        }
+        writeln!(f, "{kind}[")?;
         for (local_id, rvalue) in self.captures.iter_enumerated() {
             let local = &locals[local_id];
             writeln!(
@@ -1739,12 +1756,16 @@ impl SpecClosureId {
         f: &mut fmt::Formatter,
         ctx: &C,
         kind: &str,
+        first_line_indent: bool,
     ) -> fmt::Result {
         if let Some(crate_) = ctx.get_crate() {
-            crate_.spec_closures[*self].fmt_with_ctx_and_kind(f, ctx, kind)
+            crate_.spec_closures[*self].fmt_with_ctx_and_kind(f, ctx, kind, first_line_indent)
         } else {
-            let tab = ctx.indent();
-            write!(f, "{tab}{kind}: {self}")
+            if first_line_indent {
+                let tab = ctx.indent();
+                write!(f, "{tab}")?;
+            }
+            write!(f, "{kind}: {self}")
         }
     }
 }
@@ -1805,9 +1826,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
         for line in &self.comments_before {
             writeln!(f, "{tab}// {line}")?;
         }
-        if !matches!(self.kind, StatementKind::ContractAssert { .. }) {
-            write!(f, "{tab}")?;
-        }
+        write!(f, "{tab}")?;
         match &self.kind {
             StatementKind::Assign(place, rvalue) => {
                 write!(f, "{} = {}", place.with_ctx(ctx), rvalue.with_ctx(ctx),)
@@ -1955,7 +1974,15 @@ impl<C: AstFormatter> FmtWithCtx<C> for llbc::Statement {
             StatementKind::ContractAssert {
                 kind,
                 spec_closure_id,
-            } => spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}")),
+            } => spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}"), false),
+            StatementKind::Quant {
+                kind,
+                spec_closure_id,
+                dest,
+            } => {
+                write!(f, "{dest} = ")?;
+                spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}"), false)
+            }
             StatementKind::Error(s) => write!(f, "@ERROR({})", s),
         }
     }
@@ -1967,9 +1994,7 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
         for line in &self.comments_before {
             writeln!(f, "{tab}// {line}")?;
         }
-        if !matches!(self.kind, TerminatorKind::ContractAssert { .. }) {
-            write!(f, "{tab}")?;
-        }
+        write!(f, "{tab}")?;
         match &self.kind {
             TerminatorKind::Goto { target } => write!(f, "goto bb{target}"),
             TerminatorKind::Switch { discr, targets } => match targets {
@@ -2047,8 +2072,18 @@ impl<C: AstFormatter> FmtWithCtx<C> for Terminator {
                 spec_closure_id,
                 target,
             } => {
-                spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}"))?;
-                write!(f, "\n{tab}-> {target}")
+                spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}"), false)?;
+                write!(f, "\n{tab}-> bb{target}")
+            }
+            TerminatorKind::Quant {
+                kind,
+                spec_closure_id,
+                dest,
+                target,
+            } => {
+                write!(f, "{dest} = ")?;
+                spec_closure_id.fmt_with_ctx_and_kind(f, ctx, &format!("{kind}"), false)?;
+                write!(f, "\n{tab}-> bb{target}")
             }
         }
     }

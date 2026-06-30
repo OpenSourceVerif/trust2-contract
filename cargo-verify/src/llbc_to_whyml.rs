@@ -13,8 +13,8 @@ use charon_lib::{
         CopyNonOverlapping, DeclarationGroup, FieldId, FieldProjKind, FloatValue, FnOperand, FnPtr,
         FnPtrKind, FunDeclId, FunId, FunSig, FunSpecs, GDeclarationGroup, GenericArgs,
         GlobalDeclId, GlobalDeclRef, IntTy, ItemId, ItemSource, Literal, LiteralTy, LocalId,
-        NullOp, Operand, OverflowMode, Place, PlaceKind, ProjectionElem, RefKind, Rvalue,
-        ScalarValue, SpecClosure, SpecClosureId, TranslatedCrate, Ty, TyKind, TypeDbVar,
+        NullOp, Operand, OverflowMode, Place, PlaceKind, ProjectionElem, QuantKind, RefKind,
+        Rvalue, ScalarValue, SpecClosure, SpecClosureId, TranslatedCrate, Ty, TyKind, TypeDbVar,
         TypeDeclId, TypeDeclKind, TypeDeclRef, TypeId, TypeVarId, UIntTy, UnOp, VariantId,
     },
     ids::IndexVec,
@@ -646,7 +646,7 @@ impl<'a> Ctx<'a> {
         Ok(expr)
     }
 
-    fn translate_block_to_term(&mut self, block: &Block) -> Result<Term> {
+    fn translate_outermost_block_to_term(&mut self, block: &Block) -> Result<Term> {
         let blocks: Vec<_> = block
             .statements
             .split_inclusive(|stmt| matches!(stmt.kind, StatementKind::Switch(..)))
@@ -1114,6 +1114,11 @@ impl<'a> Ctx<'a> {
                 kind,
                 spec_closure_id,
             } => translate_contract_assert(self, trailing_expr, *kind, *spec_closure_id),
+            StatementKind::Quant {
+                kind: _,
+                spec_closure_id: _,
+                dest: _,
+            } => unreachable!(),
             StatementKind::Error(..) => unreachable!(),
         }
     }
@@ -1369,6 +1374,59 @@ impl<'a> Ctx<'a> {
             }
         }
 
+        fn translate_quant(
+            self_: &mut Ctx,
+            trailing_term: Term,
+            kind: QuantKind,
+            spec_closure_id: SpecClosureId,
+            dst: &Place,
+            in_locals: &mut BTreeSet<LocalId>,
+        ) -> Result<Term> {
+            let spec_closure = &self_.crate_.spec_closures[spec_closure_id];
+            let locals = &spec_closure.body.locals().locals;
+            let local_names = &self_.name_map.spec_closure_names[spec_closure_id];
+            let LocalNames::Concrete(local_names_) = local_names else {
+                unreachable!();
+            };
+
+            let mut locals_set = HashSet::new();
+            for rvalue in &spec_closure.captures {
+                locals_set.extend(self_.get_rvalue_locals(rvalue)?);
+            }
+            let term = ptree_helpers::term(
+                Position::default(),
+                TermDesc::Quant(
+                    match kind {
+                        QuantKind::ForAll => Dquant::Forall,
+                        QuantKind::Exists => Dquant::Exists,
+                    },
+                    spec_closure
+                        .non_captured_argument_ids()
+                        .map(|local_id| {
+                            Ok(Binder(
+                                Position::default(),
+                                Some(translate_ident(local_names_[local_id].as_str().into())),
+                                false,
+                                Some(self_.translate_type(&locals[local_id].ty)?),
+                            ))
+                        })
+                        .collect::<Result<_>>()?,
+                    Box::new([]),
+                    Box::new(self_.translate_spec_closure(spec_closure, local_names)?),
+                ),
+            );
+            Ok(translate_assign(
+                self_,
+                trailing_term,
+                dst,
+                term,
+                in_locals,
+                |in_locals| {
+                    in_locals.extend(locals_set);
+                },
+            ))
+        }
+
         match &stmt.kind {
             StatementKind::Assign(place, rvalue) => {
                 translate_assign_rvalue(self, trailing_term, place, rvalue, in_locals)
@@ -1393,6 +1451,18 @@ impl<'a> Ctx<'a> {
                 translate_switch(self, trailing_term, switch, in_locals)
             }
             StatementKind::ContractAssert { .. } => Err(Error::NestedSpec),
+            StatementKind::Quant {
+                kind,
+                spec_closure_id,
+                dest,
+            } => translate_quant(
+                self,
+                trailing_term,
+                *kind,
+                *spec_closure_id,
+                dest,
+                in_locals,
+            ),
             StatementKind::Error(..) => unreachable!(),
         }
     }
@@ -1658,12 +1728,12 @@ impl<'a> Ctx<'a> {
                 BuiltinFunId::BoxNew => "box_new",
                 BuiltinFunId::SpecEntry
                 | BuiltinFunId::SpecPrecondition
-                | BuiltinFunId::SpecPostcondition => unreachable!(),
-                BuiltinFunId::SpecForall
-                | BuiltinFunId::SpecExists
-                | BuiltinFunId::SpecImplies
-                | BuiltinFunId::SpecOld => todo!(),
-                BuiltinFunId::SpecAssert | BuiltinFunId::SpecAssume => unreachable!(),
+                | BuiltinFunId::SpecPostcondition
+                | BuiltinFunId::SpecAssert
+                | BuiltinFunId::SpecAssume
+                | BuiltinFunId::SpecForAll
+                | BuiltinFunId::SpecExists => unreachable!(),
+                BuiltinFunId::SpecImplies | BuiltinFunId::SpecOld => todo!(),
                 BuiltinFunId::ArrayToSliceShared => todo!(),
                 BuiltinFunId::ArrayToSliceMut => todo!(),
                 BuiltinFunId::ArrayRepeat => todo!(),
@@ -2039,7 +2109,7 @@ impl<'a> Ctx<'a> {
 
         let term = self.with_locals(local_names, |self_| {
             let body = spec_closure.body.as_structured().unwrap();
-            self_.translate_block_to_term(&body.body)
+            self_.translate_outermost_block_to_term(&body.body)
         })?;
         spec_closure
             .captures
@@ -2100,10 +2170,8 @@ impl<'a> Ctx<'a> {
                         let LocalNames::Concrete(local_names_) = local_names else {
                             unreachable!();
                         };
-                        let [arg_id] = (1..=postcondition.body.locals().arg_count)
-                            .filter(|local_id| {
-                                postcondition.captures.get((*local_id).into()).is_none()
-                            })
+                        let [arg_id] = postcondition
+                            .non_captured_argument_ids()
                             .collect::<Vec<_>>()
                             .try_into()
                             .unwrap();

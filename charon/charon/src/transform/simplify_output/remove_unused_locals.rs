@@ -137,29 +137,13 @@ fn remove_unused_locals<Body: BodyVisitable>(
 pub struct Transform;
 impl UllbcPass for Transform {
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
-        fn transform_body(
-            body: &mut Body,
-            spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
-        ) {
-            match body {
-                Body::Unstructured(body) => remove_unused_locals(body, spec_closures),
-                Body::Structured(body) => remove_unused_locals(body, spec_closures),
-                _ => {}
-            }
-        }
-
-        let spec_closures = &mut ctx.translated.spec_closures;
-        transform_body(&mut decl.body, spec_closures);
-        decl.body
-            .dyn_visit_in_body(|spec_closure_id: &SpecClosureId| {
-                transform_body(
-                    &mut spec_closures[*spec_closure_id].body,
-                    &mut IndexMap::new(),
-                );
-            });
-        for body in decl.specs.iter_bodies_mut() {
-            transform_body(body, spec_closures);
-        }
+        let spec_closures: &mut IndexMap<SpecClosureId, SpecClosure> =
+            &mut ctx.translated.spec_closures;
+        decl.for_each_body(spec_closures, |body, spec_closures| match body {
+            Body::Unstructured(body) => remove_unused_locals(body, spec_closures),
+            Body::Structured(body) => remove_unused_locals(body, spec_closures),
+            _ => {}
+        });
     }
 }
 impl TransformPass for Transform {

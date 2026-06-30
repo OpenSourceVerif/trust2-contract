@@ -161,6 +161,12 @@ pub enum TerminatorKind {
         spec_closure_id: SpecClosureId,
         target: BlockId,
     },
+    Quant {
+        kind: QuantKind,
+        spec_closure_id: SpecClosureId,
+        dest: Place,
+        target: BlockId,
+    },
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
