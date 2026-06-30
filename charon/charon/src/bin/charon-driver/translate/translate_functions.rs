@@ -64,7 +64,7 @@ fn recognize_spec_call(name: &Name) -> Option<BuiltinFunId> {
         "entry" => Some(BuiltinFunId::SpecEntry),
         "precondition" => Some(BuiltinFunId::SpecPrecondition),
         "postcondition" => Some(BuiltinFunId::SpecPostcondition),
-        "forall" => Some(BuiltinFunId::SpecForall),
+        "forall" => Some(BuiltinFunId::SpecForAll),
         "exists" => Some(BuiltinFunId::SpecExists),
         "implies" => Some(BuiltinFunId::SpecImplies),
         "old" => Some(BuiltinFunId::SpecOld),

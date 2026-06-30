@@ -1,6 +1,8 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::{Error, Expr, ItemEnum, ItemFn, ItemStruct, ItemUnion, ReturnType, parse_quote, parse2 as parse};
+use syn::{
+    Error, Expr, ItemEnum, ItemFn, ItemStruct, ItemUnion, ReturnType, parse_quote, parse2 as parse,
+};
 
 use std::sync::LazyLock;
 
@@ -80,8 +82,9 @@ pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
             }
             Err(Error::new(
                 Span::mixed_site(),
-                "expect a type declaration (struct, enum, or union)"
-            ).into_compile_error())
+                "expect a type declaration (struct, enum, or union)",
+            )
+            .into_compile_error())
         })(&item);
         match type_name {
             Ok(type_name) => type_name,
@@ -127,6 +130,30 @@ pub fn contract_assume(expr: TokenStream) -> TokenStream {
     }
 }
 
+pub fn forall(expr: TokenStream) -> TokenStream {
+    let crate_name_ident = crate_name_ident();
+    let expr = parse_macro_input!(expr as Expr);
+
+    quote! {
+        {
+            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::forall(#expr)
+        }
+    }
+}
+
+pub fn exists(expr: TokenStream) -> TokenStream {
+    let crate_name_ident = crate_name_ident();
+    let expr = parse_macro_input!(expr as Expr);
+
+    quote! {
+        {
+            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::exists(#expr)
+        }
+    }
+}
+
 fn crate_name_ident() -> Ident {
     Ident::new(&CRATE_NAME, Span::mixed_site())
 }
@@ -135,19 +162,17 @@ fn crate_name_ident() -> Ident {
 static CRATE_NAME: LazyLock<String> = {
     use proc_macro_crate::FoundCrate;
 
-    LazyLock::new(|| {
-        match proc_macro_crate::crate_name("trust2-contract") {
-            Ok(FoundCrate::Name(name)) => name,
-            Ok(_) => unreachable!(),
-            Err(_) => panic!(),
-        }
+    LazyLock::new(|| match proc_macro_crate::crate_name("trust2-contract") {
+        Ok(FoundCrate::Name(name)) => name,
+        Ok(_) => unreachable!(),
+        Err(_) => panic!(),
     })
 };
 
 #[cfg(test)]
 static CRATE_NAME: LazyLock<String> = LazyLock::new(|| "trust2_contract".into());
 
-const COMMON_KEYWORDS: &[&str] = &["forall", "exists", "implies"];
+const COMMON_KEYWORDS: &[&str] = &["implies"];
 
 const POSTCONDITION_KEYWORDS: &[&str] = &["old"];
 
@@ -185,6 +210,33 @@ mod tests {
     }
 
     #[test]
+    fn test_postcondition() {
+        let item = quote! {
+            fn square(x: u8) -> u8 {
+                x * x
+            }
+        };
+        let expr = quote! {
+            |x2| x2 >= x
+        };
+        let crate_name_ident = crate_name_ident();
+        let expect = quote! {
+            fn square(x: u8) -> u8 {
+                {
+                    ::#crate_name_ident::internal::entry();
+                    ::#crate_name_ident::internal::postcondition::<u8, _>(|x2| x2 >= x);
+                }
+                x * x
+            }
+        };
+        let result = postcondition(expr, item);
+        assert_eq!(
+            parse::<ItemFn>(expect).unwrap(),
+            parse::<ItemFn>(result).unwrap(),
+        );
+    }
+
+    #[test]
     fn test_invariant() {
         let item = quote! {
             struct RefRange<'a, T: PartialOrd> {
@@ -209,33 +261,6 @@ mod tests {
         assert_eq!(
             parse::<File>(expect).unwrap(),
             parse::<File>(result).unwrap(),
-        );
-    }
-
-    #[test]
-    fn test_postcondition_forall_implies() {
-        let item = quote! {
-            fn to_sorted(a: &[i32]) -> Vec<i32> {
-                vec![]
-            }
-        };
-        let expr = quote! {
-            |b| forall(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1]))
-        };
-        let crate_name_ident = crate_name_ident();
-        let expect = quote! {
-            fn to_sorted(a: &[i32]) -> Vec<i32> {
-                {
-                    ::#crate_name_ident::internal::entry();
-                    ::#crate_name_ident::internal::postcondition::<Vec<i32>, _>(|b| ::#crate_name_ident::internal::forall(|i: usize| ::#crate_name_ident::internal::implies(i + 1 < a.len(), b[i] <= b[i + 1])));
-                }
-                vec![]
-            }
-        };
-        let result = postcondition(expr, item);
-        assert_eq!(
-            parse::<ItemFn>(expect).unwrap(),
-            parse::<ItemFn>(result).unwrap(),
         );
     }
 }

@@ -1127,6 +1127,21 @@ impl<'a> ReconstructCtx<'a> {
             )
             .into_block()
             .merge(self.translate_jump(terminator.span, *target)),
+            src::TerminatorKind::Quant {
+                kind,
+                spec_closure_id,
+                dest,
+                target,
+            } => tgt::Statement::new(
+                src_span,
+                tgt::StatementKind::Quant {
+                    kind: *kind,
+                    spec_closure_id: *spec_closure_id,
+                    dest: dest.clone(),
+                },
+            )
+            .into_block()
+            .merge(self.translate_jump(terminator.span, *target)),
         }
     }
 

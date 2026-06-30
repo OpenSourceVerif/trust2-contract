@@ -351,6 +351,7 @@ fn generate_ml(
                     "Error",
                     "AbortKind",
                     "ContractAssertKind",
+                    "QuantKind",
                 ]),
                 // These have to be kept separate to avoid field name clashes
                 (GenerationKind::TypeDecl(Some(DeriveVisitors {

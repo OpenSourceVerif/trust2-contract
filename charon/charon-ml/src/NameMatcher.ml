@@ -747,7 +747,7 @@ let builtin_fun_id_to_string (fid : T.builtin_fun_id) : string =
   | SpecEntry -> "SpecEntry"
   | SpecPrecondition -> "SpecPrecondition"
   | SpecPostcondition -> "SpecPostcondition"
-  | SpecForall -> "SpecForall"
+  | SpecForAll -> "SpecForAll"
   | SpecExists -> "SpecExists"
   | SpecImplies -> "SpecImplies"
   | SpecOld -> "SpecOld"

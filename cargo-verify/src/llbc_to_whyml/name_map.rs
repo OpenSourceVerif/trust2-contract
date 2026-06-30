@@ -1,11 +1,12 @@
 use charon_lib::{
     ast::{
         Body, FieldId, FunDeclId, FunSig, FunSpecs, GenericParams, GlobalDeclId, ItemId, LocalId,
-        Name, PathElem, SpecBodyId, SpecClosureId, TranslatedCrate, TypeDeclId, TypeDeclKind,
-        TypeVarId, VariantId,
+        Name, PathElem, SpecBodyId, SpecClosure, SpecClosureId, TranslatedCrate, TypeDeclId,
+        TypeDeclKind, TypeVarId, VariantId,
     },
     formatter::FmtCtx,
     ids::{IndexMap, IndexVec},
+    llbc_ast::{Block, StatementKind, Switch},
     pretty::FmtWithCtx,
 };
 use utils::case;
@@ -265,6 +266,8 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
 
         None
     });
+    let mut spec_body_names_opt = crate_.spec_bodies.map_ref(|_| None);
+    let mut spec_closure_names_opt = crate_.spec_closures.map_ref(|_| None);
 
     let mut set_map = |(item_id, sub_id_opt), path: Vec<_>| {
         let ident = path.join(SEPARATOR);
@@ -321,10 +324,20 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
         }
     }
 
+    let mut local_mapper = LocalMapper {
+        spec_closures: &crate_.spec_closures,
+        spec_closure_names_opt: &mut spec_closure_names_opt,
+    };
     let mut type_decl_names_opt = type_decl_names_opt.into_iter();
     let type_decl_names = crate_.type_decls.map_ref(|type_decl| {
         let (item_ident_opt, sub_idents_opt) = type_decl_names_opt.next().unwrap();
         let item_ident = item_ident_opt.unwrap();
+
+        for &spec_body_id in &type_decl.specs.invariants {
+            spec_body_names_opt[spec_body_id] =
+                Some(local_mapper.map(&crate_.spec_bodies[spec_body_id], None, 0));
+        }
+
         TypeDeclNames {
             item_ident,
             type_param_names: map_generic_params(&type_decl.generics, 0),
@@ -366,15 +379,15 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
         FuncDeclNames {
             item_ident,
             type_param_names: map_generic_params(&func_decl.generics, 0),
-            local_names: map_locals(&func_decl.body, Some(&func_decl.signature), 0),
+            local_names: local_mapper.map(&func_decl.body, Some(&func_decl.signature), 0),
             spec_names: FuncSpecNames {
                 precondition_local_names: preconditions
                     .iter()
-                    .map(|precondition| map_locals(&precondition.body, None, 1))
+                    .map(|precondition| local_mapper.map(&precondition.body, None, 1))
                     .collect(),
                 postcondition_local_names: postconditions
                     .iter()
-                    .map(|postcondition| map_locals(&postcondition.body, None, 1))
+                    .map(|postcondition| local_mapper.map(&postcondition.body, None, 1))
                     .collect(),
             },
         }
@@ -387,12 +400,8 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
             type_param_names: map_generic_params(&global.generics, 0),
         }
     });
-    let spec_body_names = crate_
-        .spec_bodies
-        .map_ref(|spec_body| map_locals(spec_body, None, 1));
-    let spec_closure_names = crate_
-        .spec_closures
-        .map_ref(|spec_closure| map_locals(&spec_closure.body, None, 1));
+    let spec_body_names = spec_body_names_opt.map(Option::unwrap);
+    let spec_closure_names = spec_closure_names_opt.map(Option::unwrap);
     NameMap {
         type_decl_names,
         func_decl_names,
@@ -439,47 +448,86 @@ fn map_generic_params(generic_params: &GenericParams, depth: usize) -> TypeParam
 
         String::default()
     });
-
     resolve_collision(inv_map, depth, |type_param_id, type_param_name| {
         type_param_names[type_param_id] = type_param_name;
     });
     type_param_names
 }
 
-fn map_locals(body: &Body, signature_opt: Option<&FunSig>, depth: usize) -> LocalNames {
-    match body {
-        Body::Unstructured(_body) => unreachable!(),
-        Body::Structured(body) => {
-            let locals = &body.locals.locals;
+struct LocalMapper<'a> {
+    spec_closures: &'a IndexMap<SpecClosureId, SpecClosure>,
+    spec_closure_names_opt: &'a mut IndexMap<SpecClosureId, Option<LocalNames>>,
+}
 
-            let mut inv_map: HashMap<_, Vec<_>> = HashMap::new();
-            let mut local_names = locals.map_ref_indexed(|local_id, local| {
-                let local_name = to_whyml(&ensure_l(format!("{local}").into()));
-                inv_map.entry(local_name).or_default().push(local_id);
+impl<'a> LocalMapper<'a> {
+    fn map(&mut self, body: &Body, signature_opt: Option<&FunSig>, depth: usize) -> LocalNames {
+        match body {
+            Body::Unstructured(_body) => unreachable!(),
+            Body::Structured(body) => {
+                self.traverse_spec_closures(&body.body, depth + 1);
 
-                String::default()
-            });
+                let locals = &body.locals.locals;
 
-            resolve_collision(inv_map, depth, |local_id, local_name| {
-                local_names[local_id] = local_name;
-            });
-            LocalNames::Concrete(local_names)
+                let mut inv_map: HashMap<_, Vec<_>> = HashMap::new();
+                let mut local_names = locals.map_ref_indexed(|local_id, local| {
+                    let local_name = to_whyml(&ensure_l(format!("{local}").into()));
+                    inv_map.entry(local_name).or_default().push(local_id);
+
+                    String::default()
+                });
+                resolve_collision(inv_map, depth, |local_id, local_name| {
+                    local_names[local_id] = local_name;
+                });
+                LocalNames::Concrete(local_names)
+            }
+            Body::TargetDispatch(..) => todo!(),
+            Body::TraitMethodWithoutDefault | Body::Extern(..) | Body::Opaque | Body::Missing => {
+                LocalNames::Abstract(vec![None; signature_opt.unwrap().inputs.len()])
+            }
+            Body::Intrinsic { arg_names, .. } => LocalNames::Abstract(
+                arg_names
+                    .iter()
+                    .map(|param_name_opt| {
+                        param_name_opt
+                            .as_ref()
+                            .map(|param_name| to_whyml(&ensure_l(param_name.into())))
+                    })
+                    .collect(),
+            ),
+            Body::Error(..) => unreachable!(),
         }
-        Body::TargetDispatch(..) => todo!(),
-        Body::TraitMethodWithoutDefault | Body::Extern(..) | Body::Opaque | Body::Missing => {
-            LocalNames::Abstract(vec![None; signature_opt.unwrap().inputs.len()])
+    }
+
+    fn traverse_spec_closures(&mut self, block: &Block, depth: usize) {
+        for stmt in &block.statements {
+            match &stmt.kind {
+                StatementKind::InlineAsm { .. } => todo!(),
+                StatementKind::Switch(Switch::If(_, block_t, block_f)) => {
+                    self.traverse_spec_closures(block_t, depth);
+                    self.traverse_spec_closures(block_f, depth);
+                }
+                StatementKind::Switch(Switch::SwitchInt(..)) => unreachable!(),
+                StatementKind::Switch(Switch::Match(_, blocks, block_opt)) => {
+                    for (_, block) in blocks {
+                        self.traverse_spec_closures(block, depth);
+                    }
+                    block_opt
+                        .iter()
+                        .for_each(|block| self.traverse_spec_closures(block, depth));
+                }
+                StatementKind::Loop(block) => self.traverse_spec_closures(block, depth),
+                StatementKind::ContractAssert {
+                    spec_closure_id, ..
+                }
+                | StatementKind::Quant {
+                    spec_closure_id, ..
+                } => {
+                    self.spec_closure_names_opt[*spec_closure_id] =
+                        Some(self.map(&self.spec_closures[*spec_closure_id].body, None, depth));
+                }
+                _ => (),
+            }
         }
-        Body::Intrinsic { arg_names, .. } => LocalNames::Abstract(
-            arg_names
-                .iter()
-                .map(|param_name_opt| {
-                    param_name_opt
-                        .as_ref()
-                        .map(|param_name| to_whyml(&ensure_l(param_name.into())))
-                })
-                .collect(),
-        ),
-        Body::Error(..) => unreachable!(),
     }
 }
 

@@ -542,7 +542,7 @@ and pp_builtin_fun_id (fmt : Format.formatter) (aid : builtin_fun_id) : unit =
   | SpecEntry -> pp_string fmt "SpecEntry"
   | SpecPrecondition -> pp_string fmt "SpecPrecondition"
   | SpecPostcondition -> pp_string fmt "SpecPostcondition"
-  | SpecForall -> pp_string fmt "SpecForall"
+  | SpecForAll -> pp_string fmt "SpecForAll"
   | SpecExists -> pp_string fmt "SpecExists"
   | SpecImplies -> pp_string fmt "SpecImplies"
   | SpecOld -> pp_string fmt "SpecOld"
@@ -1671,6 +1671,11 @@ let pp_contract_assert_kind (fmt : Format.formatter)
   | CAssert -> pp_string fmt "contract_assert"
   | CAssume -> pp_string fmt "contract_assume"
 
+let pp_quant_kind (fmt : Format.formatter) (kind : quant_kind) : unit =
+  match kind with
+  | ForAll -> pp_string fmt "forall"
+  | Exists -> pp_string fmt "exists"
+
 module Llbc = struct
   (** Pretty-printing for LLBC AST (generic functions) *)
 
@@ -1822,6 +1827,9 @@ module Llbc = struct
     | ContractAssert (kind, spec_closure_id) ->
         Format.fprintf fmt "%s%a: %s" indent pp_contract_assert_kind kind
           (SpecClosureId.to_string spec_closure_id)
+    | Quant (kind, spec_closure_id, dest) ->
+        Format.fprintf fmt "%s%a: %s" indent pp_quant_kind kind
+          (SpecClosureId.to_string spec_closure_id)
 
   and pp_block (env : fmt_env) (indent : string) (indent_incr : string)
       (fmt : Format.formatter) (b : block) : unit =
@@ -1935,6 +1943,11 @@ module Ullbc = struct
     | ContractAssert (kind, spec_closure_id, target) ->
         Format.fprintf fmt "%s%a: %s\n%s-> %s" indent pp_contract_assert_kind
           kind
+          (SpecClosureId.to_string spec_closure_id)
+          indent
+          (block_id_to_string target)
+    | Quant (kind, spec_closure_id, dest, target) ->
+        Format.fprintf fmt "%s%a: %s\n%s-> %s" indent pp_quant_kind kind
           (SpecClosureId.to_string spec_closure_id)
           indent
           (block_id_to_string target)

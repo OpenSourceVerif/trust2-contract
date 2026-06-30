@@ -1,18 +1,19 @@
 use crate::{
     ast::{
         Body, BodyVisitable, BuiltinFunId, Call, ContractAssertKind, FnOperand, FnPtrKind, FunDecl,
-        FunId, FunSpecs, Local, LocalId, Locals, Operand, Place, PlaceKind, ProjectionElem, Rvalue,
-        Span, SpecClosure, TraitDeclId, TranslatedCrate, Ty, TyKind, TypeId,
-        ullbc_ast_utils::BodyBuilder,
+        FunDeclId, FunId, FunSpecs, Local, LocalId, Locals, Operand, Place, PlaceKind,
+        ProjectionElem, QuantKind, Rvalue, Span, SpecClosure, SpecClosureId, TraitDeclId, Ty,
+        TyKind, TypeId, ullbc_ast_utils::BodyBuilder,
     },
     ids::IndexMap,
     transform::{TransformCtx, ctx::UllbcPass},
     ullbc_ast::{BlockId, ExprBody, Statement, StatementKind, TerminatorKind},
 };
 
-use std::mem;
+use std::{collections::HashSet, mem, sync::Mutex};
 
 pub struct Transform {
+    transformed: Mutex<HashSet<FunDeclId>>,
     fn_trait_id: Option<TraitDeclId>,
 }
 
@@ -30,12 +31,19 @@ impl Transform {
             }
             None
         };
-        Self { fn_trait_id }
+        Self {
+            transformed: Mutex::new(HashSet::new()),
+            fn_trait_id,
+        }
     }
 }
 
 impl UllbcPass for Transform {
     fn transform_function(&self, ctx: &mut TransformCtx, func_decl: &mut FunDecl) {
+        if !self.transformed.lock().unwrap().insert(func_decl.def_id) {
+            return;
+        }
+
         let Some(body) = func_decl.body.as_unstructured_mut() else {
             return;
         };
@@ -44,9 +52,10 @@ impl UllbcPass for Transform {
             postconditions,
         } = &mut func_decl.specs;
 
-        let crate_ = &mut ctx.translated;
         let collect_spec_closure =
-            |call_args: Vec<_>, closure_assigns: Vec<Statement>, crate_: &mut TranslatedCrate| {
+            |call_args: Vec<_>, closure_assigns: Vec<Statement>, ctx: &mut TransformCtx| {
+                let crate_ = &mut ctx.translated;
+
                 let closure_type = {
                     let [closure] = call_args.try_into().unwrap();
                     let Operand::Move(closure) = closure else {
@@ -63,7 +72,7 @@ impl UllbcPass for Transform {
                 };
                 crate_.type_decls.remove(closure_type_decl_id);
 
-                let fn_method_decl = {
+                let mut fn_method_decl = {
                     let trait_impl_ids: Vec<_> = crate_
                         .trait_impls
                         .iter_enumerated()
@@ -108,6 +117,7 @@ impl UllbcPass for Transform {
                     let [trait_method_decl] = trait_method_decls.try_into().unwrap();
                     trait_method_decl
                 };
+                self.transform_function(ctx, &mut fn_method_decl);
                 assert!(fn_method_decl.signature.inputs.len() == 2);
                 assert!(fn_method_decl.signature.output == Ty::mk_bool());
                 let mut spec_body = fn_method_decl.body.to_unstructured().unwrap();
@@ -117,17 +127,31 @@ impl UllbcPass for Transform {
                     id: LocalId,
                     replace_with: Vec<Local>,
                     mut update_body: impl FnMut(&mut T, &Locals),
+                    spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
                 ) {
                     let delta = replace_with.len() as isize - 1;
                     body.locals.arg_count = body.locals.arg_count.strict_add_signed(delta);
-                    body.dyn_visit_in_body_mut(|local_id: &mut LocalId| {
+                    let update_local_ids = |local_id: &mut LocalId| {
                         if *local_id > id {
                             *local_id = local_id.raw().strict_add_signed(delta).into();
                         }
-                    });
-                    body.locals.locals.splice(id..=id, replace_with);
+                    };
+                    body.dyn_visit_in_body_mut(update_local_ids);
                     body.body
-                        .dyn_visit_in_body_mut(|node| update_body(node, &body.locals));
+                        .dyn_visit_in_body(|&spec_closure_id: &SpecClosureId| {
+                            spec_closures[spec_closure_id]
+                                .captures
+                                .dyn_visit_in_body_mut(update_local_ids);
+                        });
+                    body.locals.locals.splice(id..=id, replace_with);
+                    let mut update_body = |node: &mut _| update_body(node, &body.locals);
+                    body.body.dyn_visit_in_body_mut(&mut update_body);
+                    body.body
+                        .dyn_visit_in_body(|&spec_closure_id: &SpecClosureId| {
+                            spec_closures[spec_closure_id]
+                                .captures
+                                .dyn_visit_in_body_mut(&mut update_body);
+                        });
                 }
 
                 let tupled_args_id = LocalId::from(2);
@@ -165,6 +189,7 @@ impl UllbcPass for Transform {
 
                         *place = locals.place_for_var(tupled_args_id + field_id.raw());
                     },
+                    &mut ctx.translated.spec_closures,
                 );
 
                 let self_id = LocalId::from(1);
@@ -228,6 +253,7 @@ impl UllbcPass for Transform {
 
                         *place = locals.place_for_var(self_id + field_id.raw());
                     },
+                    &mut ctx.translated.spec_closures,
                 );
 
                 // Freshen regions.
@@ -250,7 +276,7 @@ impl UllbcPass for Transform {
                     Call {
                         ref func,
                         ref mut args,
-                        ..
+                        ref dest,
                     },
                 target,
                 ..
@@ -265,36 +291,53 @@ impl UllbcPass for Transform {
                 continue;
             };
 
-            let mut take_and_collect = |crate_| {
-                collect_spec_closure(mem::take(args), mem::take(&mut block.statements), crate_)
-            };
+            let mut take_and_collect =
+                |ctx| collect_spec_closure(mem::take(args), mem::take(&mut block.statements), ctx);
             match builtin_func_id {
                 BuiltinFunId::SpecEntry => {
                     block.terminator.kind = TerminatorKind::Goto { target };
                 }
                 BuiltinFunId::SpecPrecondition => {
-                    preconditions.push(take_and_collect(crate_));
+                    preconditions.push(take_and_collect(ctx));
                     block.terminator.kind = TerminatorKind::Goto { target };
                 }
                 BuiltinFunId::SpecPostcondition => {
-                    postconditions.push(take_and_collect(crate_));
+                    postconditions.push(take_and_collect(ctx));
                     block.terminator.kind = TerminatorKind::Goto { target };
                 }
                 BuiltinFunId::SpecAssert => {
-                    let spec_closure = take_and_collect(crate_);
+                    let spec_closure = take_and_collect(ctx);
                     block.terminator.kind = TerminatorKind::ContractAssert {
                         kind: ContractAssertKind::Assert,
-                        spec_closure_id: crate_.spec_closures.push(spec_closure),
+                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
                         target,
                     };
                 }
                 BuiltinFunId::SpecAssume => {
-                    let spec_closure = take_and_collect(crate_);
+                    let spec_closure = take_and_collect(ctx);
                     block.terminator.kind = TerminatorKind::ContractAssert {
                         kind: ContractAssertKind::Assume,
-                        spec_closure_id: crate_.spec_closures.push(spec_closure),
+                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
                         target,
                     };
+                }
+                BuiltinFunId::SpecForAll => {
+                    let spec_closure = take_and_collect(ctx);
+                    block.terminator.kind = TerminatorKind::Quant {
+                        kind: QuantKind::ForAll,
+                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
+                        dest: dest.clone(),
+                        target,
+                    }
+                }
+                BuiltinFunId::SpecExists => {
+                    let spec_closure = take_and_collect(ctx);
+                    block.terminator.kind = TerminatorKind::Quant {
+                        kind: QuantKind::Exists,
+                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
+                        dest: dest.clone(),
+                        target,
+                    }
                 }
                 _ => (),
             }

@@ -85,6 +85,11 @@ and statement_kind =
       (** Fields:
           - [kind]
           - [spec_closure_id] *)
+  | Quant of quant_kind * spec_closure_id * place
+      (** Fields:
+          - [kind]
+          - [spec_closure_id]
+          - [dest] *)
   | Error of string
 
 and switch =
