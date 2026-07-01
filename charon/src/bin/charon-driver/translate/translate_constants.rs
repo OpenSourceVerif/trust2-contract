@@ -101,8 +101,8 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 ConstantExprKind::Adt(None, fields)
             }
             hax::ConstantExprKind::NamedGlobal(item) => match &item.in_trait {
-                Some(impl_expr) => {
-                    let trait_ref = self.translate_trait_impl_expr(span, impl_expr)?;
+                Some(trait_proof) => {
+                    let trait_ref = self.translate_trait_proof(span, trait_proof)?;
                     // Trait consts can't have their own generics.
                     assert!(item.generic_args.is_empty());
                     let const_id =
@@ -149,14 +149,6 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                     _ => None,
                 };
                 ConstantExprKind::Ref(Box::new(val), metadata)
-            }
-            hax::ConstantExprKind::Cast { .. } => {
-                register_error!(
-                    self,
-                    span,
-                    "Unsupported constant: `ConstantExprKind::Cast {{..}}`",
-                );
-                ConstantExprKind::Opaque("`ConstantExprKind::Cast {{..}}`".into())
             }
             hax::ConstantExprKind::RawBorrow { mutability, arg } => {
                 let arg = self.translate_constant_expr(span, arg)?;

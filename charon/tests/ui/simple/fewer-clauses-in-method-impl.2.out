@@ -8,26 +8,20 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
 // Full name: test_crate::Trait
 trait Trait<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn method<[@TraitClause0_1]: Sized<Self>> = test_crate::Trait::method<Self>[Self, @TraitClause0_1]
+    proof ImpliedClause0: (Self: MetaSized)
+    fn method<TraitClause0_1: (Self: Sized)>;
     vtable: test_crate::Trait::{vtable}
 }
 
-fn test_crate::Trait::method<Self>()
-where
-    [@TraitClause0]: Trait<Self>,
-    [@TraitClause1]: Sized<Self>,
-= <method_without_default_body>
-
 // Full name: test_crate::{impl Trait for ()}::method
-fn {impl Trait for ()}::method()
+fn method()
 {
     let _0: (); // return
 
@@ -37,10 +31,10 @@ fn {impl Trait for ()}::method()
 }
 
 // Full name: test_crate::{impl Trait for ()}
-impl Trait for () {
-    parent_clause0 = {built_in impl MetaSized for ()}
-    fn method = {impl Trait for ()}::method
-    vtable: {impl Trait for ()}::{vtable}
+impl "impl_Trait_for_unit" Trait for () {
+    proof ImpliedClause0: ((): MetaSized) = {built_in impl MetaSized for ()}
+    fn method<TraitClause0_1: ((): Sized)> = method
+    vtable: impl_Trait_for_unit::{vtable}
 }
 
 // Full name: test_crate::main
@@ -49,7 +43,7 @@ pub fn main()
     let _0: (); // return
 
     _0 = ()
-    _0 = {impl Trait for ()}::method()
+    _0 = method()
     return
 }
 

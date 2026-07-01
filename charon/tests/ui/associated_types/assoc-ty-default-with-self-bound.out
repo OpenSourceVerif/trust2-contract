@@ -8,28 +8,32 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
 // Full name: test_crate::MyTrait
 pub trait MyTrait<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Sized<Self::Ret>
-    type Ret<[@TraitClause0_1]: Sized<Self>>
-    vtable: test_crate::MyTrait::{vtable}<Self::Ret>
+    proof ImpliedClause0: (Self: MetaSized)
+    type Ret = ()
+    where
+        TraitClause0_1: (Self: Sized),
+        proof ImpliedClause0: (Self::Ret[TraitClause0_1]: Sized);
+    vtable: test_crate::MyTrait::{vtable}
 }
 
 // Full name: test_crate::S
 pub struct S {}
 
 // Full name: test_crate::{impl MyTrait for S}
-impl MyTrait for S {
-    parent_clause0 = {built_in impl MetaSized for S}
-    parent_clause1 = {impl MyTrait for S}::parent_clause1
-    type Ret<[@TraitClause0_1]: Sized<S>> = ()
-    vtable: {impl MyTrait for S}::{vtable}
+impl "impl_MyTrait_for_S" MyTrait for S {
+    proof ImpliedClause0: (S: MetaSized) = {built_in impl MetaSized for S}
+    type Ret = ()
+    where
+        TraitClause0_1: (S: Sized),
+        proof ImpliedClause0: (impl_MyTrait_for_S::Ret[TraitClause0_1]: Sized) = impl_MyTrait_for_S::Ret::ImpliedClause0;
+    vtable: impl_MyTrait_for_S::{vtable}
 }
 
 

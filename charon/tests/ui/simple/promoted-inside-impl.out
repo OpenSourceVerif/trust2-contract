@@ -8,26 +8,26 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
 // Full name: test_crate::Foo
 pub struct Foo<F>
 where
-    [@TraitClause0]: Sized<F>,
+    TraitClause0: (F: Sized),
 {
   F,
 }
 
-// Full name: test_crate::{Foo<F>[@TraitClause0]}::method
+// Full name: test_crate::{Foo<F>[TraitClause0]}::method
 pub fn method<F, T>()
 where
-    [@TraitClause0]: Sized<F>,
-    [@TraitClause1]: Sized<T>,
+    TraitClause0: (F: Sized),
+    TraitClause1: (T: Sized),
 {
     let _0: (); // return
-    let _promoted_1: &'1 i32; // local
+    let _promoted: &'1 i32; // local
     let _2: &'2 i32; // anonymous local
     let _3: &'3 i32; // anonymous local
     let _4: &'4 i32; // anonymous local
@@ -36,16 +36,16 @@ where
     storage_live(_3)
     storage_live(_4)
     storage_live(_5)
-    _5 = const 0 : i32
+    _5 = const 0i32
     _4 = &_5
     _3 = move _4
     storage_live(_2)
     _0 = ()
-    storage_live(_promoted_1)
+    storage_live(_promoted)
     _2 = move _3
-    _promoted_1 = &(*_2)
+    _promoted = &(*_2)
     _0 = ()
-    storage_dead(_promoted_1)
+    storage_dead(_promoted)
     return
 }
 

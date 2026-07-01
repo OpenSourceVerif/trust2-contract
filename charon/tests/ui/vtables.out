@@ -10,7 +10,7 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
@@ -18,74 +18,27 @@ pub trait Sized<Self>
 #[lang_item("clone")]
 pub trait Clone<Self>
 {
-    parent_clause0 : [@TraitClause0]: Sized<Self>
-    fn clone<'_0_1> = core::clone::Clone::clone<'_0_1, Self>[Self]
+    proof ImpliedClause0: (Self: Sized)
+    fn clone<'_0_1>;
     non-dyn-compatible
 }
 
-#[lang_item("clone_fn")]
-pub fn core::clone::Clone::clone<'_0, Self>(_1: &'_0 Self) -> Self
-where
-    [@TraitClause0]: Clone<Self>,
-= <opaque>
-
 // Full name: core::clone::impls::{impl Clone for i32}::clone
-pub fn {impl Clone for i32}::clone<'_0>(_1: &'_0 i32) -> i32
+pub fn impl_Clone_for_i32::clone<'_0>(_1: &'_0 i32) -> i32
 = <opaque>
 
 // Full name: core::clone::impls::{impl Clone for i32}
-impl Clone for i32 {
-    parent_clause0 = {built_in impl Sized for i32}
-    fn clone<'_0_1> = {impl Clone for i32}::clone<'_0_1>
+impl "impl_Clone_for_i32" Clone for i32 {
+    proof ImpliedClause0: (i32: Sized) = {built_in impl Sized for i32}
+    fn clone<'_0_1> = impl_Clone_for_i32::clone<'_0_1>
     non-dyn-compatible
-}
-
-// Full name: core::fmt::Error
-pub struct Error {}
-
-// Full name: core::fmt::Arguments
-#[lang_item("format_arguments")]
-pub opaque type Arguments<'a>
-
-// Full name: core::result::Result
-#[lang_item("Result")]
-pub enum Result<T, E>
-where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Sized<E>,
-{
-  Ok(T),
-  Err(E),
-}
-
-// Full name: core::fmt::Display
-#[lang_item("Display")]
-pub trait Display<Self>
-{
-    fn fmt<'_0_1, '_1_1, '_2_1> = core::fmt::Display::fmt<'_0_1, '_1_1, '_2_1, Self>[Self]
-    vtable: core::fmt::Display::{vtable}
-}
-
-pub fn core::fmt::Display::fmt<'_0, '_1, '_2, Self>(_1: &'_0 Self, _2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
-where
-    [@TraitClause0]: Display<Self>,
-= <opaque>
-
-// Full name: core::fmt::{impl Display for str}::fmt
-pub fn {impl Display for str}::fmt<'_0, '_1, '_2>(_1: &'_0 str, _2: &'_1 mut Formatter<'_2>) -> Result<(), Error>[{built_in impl Sized for ()}, {built_in impl Sized for Error}]
-= <opaque>
-
-// Full name: core::fmt::{impl Display for str}
-impl Display for str {
-    fn fmt<'_0_1, '_1_1, '_2_1> = {impl Display for str}::fmt<'_0_1, '_1_1, '_2_1>
-    vtable: {impl Display for str}::{vtable}
 }
 
 // Full name: core::option::Option
 #[lang_item("Option")]
 pub enum Option<T>
 where
-    [@TraitClause0]: Sized<T>,
+    TraitClause0: (T: Sized),
 {
   None,
   Some(T),
@@ -102,8 +55,8 @@ pub enum AssertKind {
 #[lang_item("String")]
 pub opaque type String
 
-// Full name: alloc::string::String::{impl Destruct for String}::drop_in_place
-unsafe fn {impl Destruct for String}::drop_in_place(_1: *mut String)
+// Full name: alloc::string::String::{impl Destruct for String}::drop_glue
+unsafe fn drop_glue<'_0>(_1: &'_0 mut String)
 = <opaque>
 
 // Full name: alloc::string::{String}::is_empty
@@ -111,27 +64,27 @@ pub fn is_empty<'_0>(_1: &'_0 String) -> bool
 = <opaque>
 
 // Full name: alloc::string::{impl Clone for String}::clone
-pub fn {impl Clone for String}::clone<'_0>(_1: &'_0 String) -> String
+pub fn impl_Clone_for_String::clone<'_0>(_1: &'_0 String) -> String
 = <opaque>
 
 // Full name: alloc::string::{impl Clone for String}
-impl Clone for String {
-    parent_clause0 = {built_in impl Sized for String}
-    fn clone<'_0_1> = {impl Clone for String}::clone<'_0_1>
+impl "impl_Clone_for_String" Clone for String {
+    proof ImpliedClause0: (String: Sized) = {built_in impl Sized for String}
+    fn clone<'_0_1> = impl_Clone_for_String::clone<'_0_1>
     non-dyn-compatible
 }
 
 // Full name: alloc::string::{impl ToString for T}::to_string
-pub fn {impl ToString for T}::to_string<'_0, T>(_1: &'_0 T) -> String
+pub fn to_string<'_0, T>(_1: &'_0 T) -> String
 where
-    [@TraitClause0]: MetaSized<T>,
-    [@TraitClause1]: Display<T>,
+    TraitClause0: (T: MetaSized),
+    TraitClause1: (T: Display),
 = <opaque>
 
 struct test_crate::Super::{vtable}<T> {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn Super<T>)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn Super<T>)),
   method_super_method: fn<'_0_1>(&'_0_1 (dyn Super<T>), T) -> i32,
   super_trait_0: &'static core::marker::MetaSized::{vtable},
 }
@@ -139,21 +92,16 @@ struct test_crate::Super::{vtable}<T> {
 // Full name: test_crate::Super
 trait Super<Self, T>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Sized<T>
-    fn super_method<'_0_1> = test_crate::Super::super_method<'_0_1, Self, T>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (T: Sized)
+    fn super_method<'_0_1>;
     vtable: test_crate::Super::{vtable}<T>
 }
-
-fn test_crate::Super::super_method<'_0, Self, T>(_1: &'_0 Self, _2: T) -> i32
-where
-    [@TraitClause0]: Super<Self, T>,
-= <method_without_default_body>
 
 struct test_crate::Checkable::{vtable}<T> {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn Checkable<T>)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn Checkable<T>)),
   method_check: fn<'_0_1>(&'_0_1 (dyn Checkable<T>)) -> bool,
   super_trait_0: &'static core::marker::MetaSized::{vtable},
   super_trait_1: &'static test_crate::Super::{vtable}<T>,
@@ -162,33 +110,28 @@ struct test_crate::Checkable::{vtable}<T> {
 // Full name: test_crate::Checkable
 trait Checkable<Self, T>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Super<Self, T>
-    parent_clause2 : [@TraitClause2]: Sized<T>
-    fn check<'_0_1> = test_crate::Checkable::check<'_0_1, Self, T>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: Super<T>)
+    proof ImpliedClause2: (T: Sized)
+    fn check<'_0_1>;
     vtable: test_crate::Checkable::{vtable}<T>
 }
 
-fn test_crate::Checkable::check<'_0, Self, T>(_1: &'_0 Self) -> bool
-where
-    [@TraitClause0]: Checkable<Self, T>,
-= <method_without_default_body>
-
 // Full name: test_crate::{impl Super<i32> for i32}::super_method
-fn {impl Super<i32> for i32}::super_method<'_0>(self_1: &'_0 i32, arg_2: i32) -> i32
+fn super_method<'_0>(self: &'_0 i32, arg: i32) -> i32
 {
     let _0: i32; // return
-    let self_1: &'1 i32; // arg #1
-    let arg_2: i32; // arg #2
+    let self: &'1 i32; // arg #1
+    let arg: i32; // arg #2
     let _3: i32; // anonymous local
     let _4: i32; // anonymous local
     let _5: i32; // anonymous local
 
     storage_live(_5)
     storage_live(_3)
-    _3 = copy (*self_1)
+    _3 = copy (*self)
     storage_live(_4)
-    _4 = copy arg_2
+    _4 = copy arg
     _5 = copy _3 panic.+ copy _4
     _0 = move _5
     storage_dead(_4)
@@ -197,7 +140,7 @@ fn {impl Super<i32> for i32}::super_method<'_0>(self_1: &'_0 i32, arg_2: i32) ->
 }
 
 // Full name: test_crate::{impl Super<i32> for i32}::super_method::{vtable_method}
-fn {impl Super<i32> for i32}::super_method::{vtable_method}<'_0>(_1: &'_0 (dyn Super<i32>), _2: i32) -> i32
+fn impl_Super_i32_for_i32::super_method::{vtable_method}<'_0>(_1: &'_0 (dyn Super<i32>), _2: i32) -> i32
 {
     let _0: i32; // return
     let _1: &'_0 (dyn Super<i32> + '0); // arg #1
@@ -206,69 +149,75 @@ fn {impl Super<i32> for i32}::super_method::{vtable_method}<'_0>(_1: &'_0 (dyn S
 
     storage_live(_3)
     _3 = concretize<&'_0 (dyn Super<i32> + '1), &'_0 i32>(move _1)
-    _0 = {impl Super<i32> for i32}::super_method<'_0>(move _3, move _2)
+    _0 = super_method<'_0>(move _3, move _2)
     return
 }
 
 // Full name: test_crate::{impl Super<i32> for i32}::{vtable_drop_shim}
-unsafe fn {impl Super<i32> for i32}::{vtable_drop_shim}(dyn_self_1: *mut (dyn Super<i32>))
+unsafe fn impl_Super_i32_for_i32::{vtable_drop_shim}<'_0>(dyn_self: &'_0 mut (dyn Super<i32>))
 {
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn Super<i32> + '0); // arg #1
-    let target_self_2: *mut i32; // local
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn Super<i32> + '0); // arg #1
+    let target_self: &'_0 mut i32; // local
 
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn Super<i32> + '1), *mut i32>(move dyn_self_1)
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn Super<i32> + '1), &'_0 mut i32>(move dyn_self)
     return
 }
 
 // Full name: test_crate::{impl Super<i32> for i32}::{vtable}
-fn {impl Super<i32> for i32}::{vtable}() -> test_crate::Super::{vtable}<i32>
+fn impl_Super_i32_for_i32::{vtable}() -> test_crate::Super::{vtable}<i32>
 {
-    let ret_0: test_crate::Super::{vtable}<i32>; // return
-    let size_1: usize; // local
-    let align_2: usize; // local
+    let ret: test_crate::Super::{vtable}<i32>; // return
+    let size: usize; // local
+    let align: usize; // local
+    let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn Super<i32> + '1)); // anonymous local
+    let _4: fn<'_0_1>(&'_0_1 (dyn Super<i32> + '3), i32) -> i32; // anonymous local
 
-    storage_live(size_1)
-    size_1 = size_of<i32>
-    storage_live(align_2)
-    align_2 = align_of<i32>
-    ret_0 = test_crate::Super::{vtable} { size: move size_1, align: move align_2, drop: const {impl Super<i32> for i32}::{vtable_drop_shim}, method_super_method: const {impl Super<i32> for i32}::super_method::{vtable_method}<'1>, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
+    storage_live(size)
+    size = size_of<i32>
+    storage_live(align)
+    align = align_of<i32>
+    storage_live(_3)
+    _3 = cast<for<'_0_1> impl_Super_i32_for_i32::{vtable_drop_shim}<'0>, unsafe fn<'_0_1>(&'_0_1 mut (dyn Super<i32> + '1))>(const impl_Super_i32_for_i32::{vtable_drop_shim}<'0>)
+    storage_live(_4)
+    _4 = cast<for<'_0_1> impl_Super_i32_for_i32::super_method::{vtable_method}<'2>, fn<'_0_1>(&'_0_1 (dyn Super<i32> + '3), i32) -> i32>(const impl_Super_i32_for_i32::super_method::{vtable_method}<'2>)
+    ret = test_crate::Super::{vtable} { size: move size, align: move align, drop: move _3, method_super_method: move _4, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
     return
 }
 
 // Full name: test_crate::{impl Super<i32> for i32}::{vtable}
-static {impl Super<i32> for i32}::{vtable}: test_crate::Super::{vtable}<i32> = {impl Super<i32> for i32}::{vtable}()
+static impl_Super_i32_for_i32::{vtable}: test_crate::Super::{vtable}<i32> = impl_Super_i32_for_i32::{vtable}()
 
 // Full name: test_crate::{impl Super<i32> for i32}
-impl Super<i32> for i32 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    parent_clause1 = {built_in impl Sized for i32}
-    fn super_method<'_0_1> = {impl Super<i32> for i32}::super_method<'_0_1>
-    vtable: {impl Super<i32> for i32}::{vtable}
+impl "impl_Super_i32_for_i32" Super<i32> for i32 {
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    proof ImpliedClause1: (i32: Sized) = {built_in impl Sized for i32}
+    fn super_method<'_0_1> = super_method<'_0_1>
+    vtable: impl_Super_i32_for_i32::{vtable}
 }
 
 // Full name: test_crate::{impl Checkable<i32> for i32}::check
-fn {impl Checkable<i32> for i32}::check<'_0>(self_1: &'_0 i32) -> bool
+fn check<'_0>(self: &'_0 i32) -> bool
 {
     let _0: bool; // return
-    let self_1: &'1 i32; // arg #1
+    let self: &'1 i32; // arg #1
     let _2: i32; // anonymous local
     let _3: &'2 i32; // anonymous local
 
     storage_live(_2)
     storage_live(_3)
-    _3 = &(*self_1)
-    _2 = {impl Super<i32> for i32}::super_method<'4>(move _3, const 10 : i32)
+    _3 = &(*self)
+    _2 = super_method<'4>(move _3, const 10i32)
     storage_dead(_3)
-    _0 = move _2 > const 0 : i32
+    _0 = move _2 > const 0i32
     storage_dead(_2)
     return
 }
 
 // Full name: test_crate::{impl Checkable<i32> for i32}::check::{vtable_method}
-fn {impl Checkable<i32> for i32}::check::{vtable_method}<'_0>(_1: &'_0 (dyn Checkable<i32>)) -> bool
+fn impl_Checkable_i32_for_i32::check::{vtable_method}<'_0>(_1: &'_0 (dyn Checkable<i32>)) -> bool
 {
     let _0: bool; // return
     let _1: &'_0 (dyn Checkable<i32> + '0); // arg #1
@@ -276,57 +225,63 @@ fn {impl Checkable<i32> for i32}::check::{vtable_method}<'_0>(_1: &'_0 (dyn Chec
 
     storage_live(_2)
     _2 = concretize<&'_0 (dyn Checkable<i32> + '1), &'_0 i32>(move _1)
-    _0 = {impl Checkable<i32> for i32}::check<'_0>(move _2)
+    _0 = check<'_0>(move _2)
     return
 }
 
 // Full name: test_crate::{impl Checkable<i32> for i32}::{vtable_drop_shim}
-unsafe fn {impl Checkable<i32> for i32}::{vtable_drop_shim}(dyn_self_1: *mut (dyn Checkable<i32>))
+unsafe fn impl_Checkable_i32_for_i32::{vtable_drop_shim}<'_0>(dyn_self: &'_0 mut (dyn Checkable<i32>))
 {
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn Checkable<i32> + '0); // arg #1
-    let target_self_2: *mut i32; // local
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn Checkable<i32> + '0); // arg #1
+    let target_self: &'_0 mut i32; // local
 
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn Checkable<i32> + '1), *mut i32>(move dyn_self_1)
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn Checkable<i32> + '1), &'_0 mut i32>(move dyn_self)
     return
 }
 
 // Full name: test_crate::{impl Checkable<i32> for i32}::{vtable}
-fn {impl Checkable<i32> for i32}::{vtable}() -> test_crate::Checkable::{vtable}<i32>
+fn impl_Checkable_i32_for_i32::{vtable}() -> test_crate::Checkable::{vtable}<i32>
 {
-    let ret_0: test_crate::Checkable::{vtable}<i32>; // return
-    let size_1: usize; // local
-    let align_2: usize; // local
-    let _3: &'static test_crate::Super::{vtable}<i32>; // anonymous local
+    let ret: test_crate::Checkable::{vtable}<i32>; // return
+    let size: usize; // local
+    let align: usize; // local
+    let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn Checkable<i32> + '1)); // anonymous local
+    let _4: fn<'_0_1>(&'_0_1 (dyn Checkable<i32> + '3)) -> bool; // anonymous local
+    let _5: &'static test_crate::Super::{vtable}<i32>; // anonymous local
 
-    storage_live(size_1)
-    size_1 = size_of<i32>
-    storage_live(align_2)
-    align_2 = align_of<i32>
+    storage_live(size)
+    size = size_of<i32>
+    storage_live(align)
+    align = align_of<i32>
     storage_live(_3)
-    _3 = &{impl Super<i32> for i32}::{vtable}
-    ret_0 = test_crate::Checkable::{vtable} { size: move size_1, align: move align_2, drop: const {impl Checkable<i32> for i32}::{vtable_drop_shim}, method_check: const {impl Checkable<i32> for i32}::check::{vtable_method}<'1>, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}), super_trait_1: move _3 }
+    _3 = cast<for<'_0_1> impl_Checkable_i32_for_i32::{vtable_drop_shim}<'0>, unsafe fn<'_0_1>(&'_0_1 mut (dyn Checkable<i32> + '1))>(const impl_Checkable_i32_for_i32::{vtable_drop_shim}<'0>)
+    storage_live(_4)
+    _4 = cast<for<'_0_1> impl_Checkable_i32_for_i32::check::{vtable_method}<'2>, fn<'_0_1>(&'_0_1 (dyn Checkable<i32> + '3)) -> bool>(const impl_Checkable_i32_for_i32::check::{vtable_method}<'2>)
+    storage_live(_5)
+    _5 = &impl_Super_i32_for_i32::{vtable}
+    ret = test_crate::Checkable::{vtable} { size: move size, align: move align, drop: move _3, method_check: move _4, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}), super_trait_1: move _5 }
     return
 }
 
 // Full name: test_crate::{impl Checkable<i32> for i32}::{vtable}
-static {impl Checkable<i32> for i32}::{vtable}: test_crate::Checkable::{vtable}<i32> = {impl Checkable<i32> for i32}::{vtable}()
+static impl_Checkable_i32_for_i32::{vtable}: test_crate::Checkable::{vtable}<i32> = impl_Checkable_i32_for_i32::{vtable}()
 
 // Full name: test_crate::{impl Checkable<i32> for i32}
-impl Checkable<i32> for i32 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    parent_clause1 = {impl Super<i32> for i32}
-    parent_clause2 = {built_in impl Sized for i32}
-    fn check<'_0_1> = {impl Checkable<i32> for i32}::check<'_0_1>
-    vtable: {impl Checkable<i32> for i32}::{vtable}
+impl "impl_Checkable_i32_for_i32" Checkable<i32> for i32 {
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    proof ImpliedClause1: (i32: Super<i32>) = impl_Super_i32_for_i32
+    proof ImpliedClause2: (i32: Sized) = {built_in impl Sized for i32}
+    fn check<'_0_1> = check<'_0_1>
+    vtable: impl_Checkable_i32_for_i32::{vtable}
 }
 
 struct test_crate::NoParam::{vtable} {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn NoParam)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn NoParam)),
   method_dummy: fn<'_0_1>(&'_0_1 (dyn NoParam)),
   super_trait_0: &'static core::marker::MetaSized::{vtable},
 }
@@ -334,29 +289,24 @@ struct test_crate::NoParam::{vtable} {
 // Full name: test_crate::NoParam
 trait NoParam<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn dummy<'_0_1> = test_crate::NoParam::dummy<'_0_1, Self>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    fn dummy<'_0_1>;
     vtable: test_crate::NoParam::{vtable}
 }
 
-fn test_crate::NoParam::dummy<'_0, Self>(_1: &'_0 Self)
-where
-    [@TraitClause0]: NoParam<Self>,
-= <method_without_default_body>
-
 // Full name: test_crate::{impl NoParam for i32}::dummy
-fn {impl NoParam for i32}::dummy<'_0>(self_1: &'_0 i32)
+fn dummy<'_0>(self: &'_0 i32)
 {
     let _0: (); // return
-    let self_1: &'1 i32; // arg #1
+    let self: &'1 i32; // arg #1
     let _2: bool; // anonymous local
     let _3: i32; // anonymous local
 
     _0 = ()
     storage_live(_2)
     storage_live(_3)
-    _3 = copy (*self_1)
-    _2 = move _3 > const 0 : i32
+    _3 = copy (*self)
+    _2 = move _3 > const 0i32
     if move _2 {
     } else {
         storage_dead(_3)
@@ -369,20 +319,20 @@ fn {impl NoParam for i32}::dummy<'_0>(self_1: &'_0 i32)
 }
 
 // Full name: test_crate::{impl NoParam for i32}
-impl NoParam for i32 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    fn dummy<'_0_1> = {impl NoParam for i32}::dummy<'_0_1>
-    vtable: {impl NoParam for i32}::{vtable}
+impl "impl_NoParam_for_i32" NoParam for i32 {
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    fn dummy<'_0_1> = dummy<'_0_1>
+    vtable: impl_NoParam_for_i32::{vtable}
 }
 
 // Full name: test_crate::to_dyn_obj
-fn to_dyn_obj<'_0, T>(arg_1: &'_0 T) -> &'_0 (dyn NoParam + '_0)
+fn to_dyn_obj<'_0, T>(arg: &'_0 T) -> &'_0 (dyn NoParam + '_0)
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: NoParam<T>,
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: NoParam),
 {
     let _0: &'3 (dyn NoParam + '4); // return
-    let arg_1: &'6 T; // arg #1
+    let arg: &'6 T; // arg #1
     let _2: &'7 (dyn NoParam + '8); // anonymous local
     let _3: &'9 (dyn NoParam + '10); // anonymous local
     let _4: &'11 T; // anonymous local
@@ -390,8 +340,8 @@ where
     storage_live(_2)
     storage_live(_3)
     storage_live(_4)
-    _4 = &(*arg_1)
-    _3 = unsize_cast<&'11 T, &'12 (dyn NoParam + '13), &vtable_of(@TraitClause1)>(move _4)
+    _4 = &(*arg)
+    _3 = unsize_cast<&'11 T, &'12 (dyn NoParam + '13), &vtable_of(TraitClause1)>(move _4)
     storage_dead(_4)
     _2 = &(*_3) with_metadata(copy _3.metadata)
     _0 = unsize_cast<&'7 (dyn NoParam + '8), &'15 (dyn NoParam + '16),  at []>(move _2)
@@ -403,7 +353,7 @@ where
 struct test_crate::Modifiable::{vtable}<T> {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn Modifiable<T>)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn Modifiable<T>)),
   method_modify: fn<'_0_1, '_1_1>(&'_0_1 mut (dyn Modifiable<T>), &'_1_1 T) -> T,
   super_trait_0: &'static core::marker::MetaSized::{vtable},
 }
@@ -411,44 +361,39 @@ struct test_crate::Modifiable::{vtable}<T> {
 // Full name: test_crate::Modifiable
 trait Modifiable<Self, T>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Sized<T>
-    fn modify<'_0_1, '_1_1> = test_crate::Modifiable::modify<'_0_1, '_1_1, Self, T>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (T: Sized)
+    fn modify<'_0_1, '_1_1>;
     vtable: test_crate::Modifiable::{vtable}<T>
 }
 
-fn test_crate::Modifiable::modify<'_0, '_1, Self, T>(_1: &'_0 mut Self, _2: &'_1 T) -> T
-where
-    [@TraitClause0]: Modifiable<Self, T>,
-= <method_without_default_body>
-
 // Full name: test_crate::{impl Modifiable<T> for i32}::modify
-fn {impl Modifiable<T> for i32}::modify<'_0, '_1, T>(self_1: &'_0 mut i32, arg_2: &'_1 T) -> T
+fn modify<'_0, '_1, T>(self: &'_0 mut i32, arg: &'_1 T) -> T
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: Clone),
 {
     let _0: T; // return
-    let self_1: &'1 mut i32; // arg #1
-    let arg_2: &'3 T; // arg #2
+    let self: &'1 mut i32; // arg #1
+    let arg: &'3 T; // arg #2
     let _3: i32; // anonymous local
     let _4: &'4 T; // anonymous local
 
     storage_live(_3)
-    _3 = copy (*self_1) panic.+ const 1 : i32
-    (*self_1) = move _3
+    _3 = copy (*self) panic.+ const 1i32
+    (*self) = move _3
     storage_live(_4)
-    _4 = &(*arg_2)
-    _0 = @TraitClause1::clone<'6>(move _4)
+    _4 = &(*arg)
+    _0 = TraitClause1::clone<'5>(move _4)
     storage_dead(_4)
     return
 }
 
 // Full name: test_crate::{impl Modifiable<T> for i32}::modify::{vtable_method}
-fn {impl Modifiable<T> for i32}::modify::{vtable_method}<'_0, '_1, T>(_1: &'_0 mut (dyn Modifiable<T>), _2: &'_1 T) -> T
+fn impl_Modifiable_for_i32::modify::{vtable_method}<'_0, '_1, T>(_1: &'_0 mut (dyn Modifiable<T>), _2: &'_1 T) -> T
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: Clone),
 {
     let _0: T; // return
     let _1: &'_0 mut (dyn Modifiable<T> + '0); // arg #1
@@ -457,104 +402,110 @@ where
 
     storage_live(_3)
     _3 = concretize<&'_0 mut (dyn Modifiable<T> + '1), &'_0 mut i32>(move _1)
-    _0 = {impl Modifiable<T> for i32}::modify<'_0, '_1, T>[@TraitClause0, @TraitClause1](move _3, move _2)
+    _0 = modify<'_0, '_1, T>[TraitClause0, TraitClause1](move _3, move _2)
     return
 }
 
 // Full name: test_crate::{impl Modifiable<T> for i32}::{vtable_drop_shim}
-unsafe fn {impl Modifiable<T> for i32}::{vtable_drop_shim}<T>(dyn_self_1: *mut (dyn Modifiable<T>))
+unsafe fn impl_Modifiable_for_i32::{vtable_drop_shim}<'_0, T>(dyn_self: &'_0 mut (dyn Modifiable<T>))
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: Clone),
 {
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn Modifiable<T> + '0); // arg #1
-    let target_self_2: *mut i32; // local
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn Modifiable<T> + '0); // arg #1
+    let target_self: &'_0 mut i32; // local
 
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn Modifiable<T> + '1), *mut i32>(move dyn_self_1)
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn Modifiable<T> + '1), &'_0 mut i32>(move dyn_self)
     return
 }
 
 // Full name: test_crate::{impl Modifiable<T> for i32}::{vtable}
-fn {impl Modifiable<T> for i32}::{vtable}<T>() -> test_crate::Modifiable::{vtable}<T>
+fn impl_Modifiable_for_i32::{vtable}<T>() -> test_crate::Modifiable::{vtable}<T>
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: Clone),
 {
-    let ret_0: test_crate::Modifiable::{vtable}<T>; // return
-    let size_1: usize; // local
-    let align_2: usize; // local
+    let ret: test_crate::Modifiable::{vtable}<T>; // return
+    let size: usize; // local
+    let align: usize; // local
+    let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn Modifiable<T> + '1)); // anonymous local
+    let _4: fn<'_0_1, '_1_1>(&'_0_1 mut (dyn Modifiable<T> + '4), &'_1_1 T) -> T; // anonymous local
 
-    storage_live(size_1)
-    size_1 = size_of<i32>
-    storage_live(align_2)
-    align_2 = align_of<i32>
-    ret_0 = test_crate::Modifiable::{vtable} { size: move size_1, align: move align_2, drop: const {impl Modifiable<T> for i32}::{vtable_drop_shim}<T>[@TraitClause0, @TraitClause1], method_modify: const {impl Modifiable<T> for i32}::modify::{vtable_method}<'1, '2, T>[@TraitClause0, @TraitClause1], super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
+    storage_live(size)
+    size = size_of<i32>
+    storage_live(align)
+    align = align_of<i32>
+    storage_live(_3)
+    _3 = cast<for<'_0_1> impl_Modifiable_for_i32::{vtable_drop_shim}<'0, T>[TraitClause0, TraitClause1], unsafe fn<'_0_1>(&'_0_1 mut (dyn Modifiable<T> + '1))>(const impl_Modifiable_for_i32::{vtable_drop_shim}<'0, T>[TraitClause0, TraitClause1])
+    storage_live(_4)
+    _4 = cast<for<'_0_1, '_1_1> impl_Modifiable_for_i32::modify::{vtable_method}<'2, '3, T>[TraitClause0, TraitClause1], fn<'_0_1, '_1_1>(&'_0_1 mut (dyn Modifiable<T> + '4), &'_1_1 T) -> T>(const impl_Modifiable_for_i32::modify::{vtable_method}<'2, '3, T>[TraitClause0, TraitClause1])
+    ret = test_crate::Modifiable::{vtable} { size: move size, align: move align, drop: move _3, method_modify: move _4, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
     return
 }
 
 // Full name: test_crate::{impl Modifiable<T> for i32}::{vtable}
-static {impl Modifiable<T> for i32}::{vtable}<T>: test_crate::Modifiable::{vtable}<T>
+static impl_Modifiable_for_i32::{vtable}<T>: test_crate::Modifiable::{vtable}<T>
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
- = {impl Modifiable<T> for i32}::{vtable}()
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: Clone),
+ = impl_Modifiable_for_i32::{vtable}<T>[TraitClause0, TraitClause1]()
 
 // Full name: test_crate::{impl Modifiable<T> for i32}
-impl<T> Modifiable<T> for i32
+impl<T> "impl_Modifiable_for_i32" Modifiable<T> for i32
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: Clone),
 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    parent_clause1 = @TraitClause0
-    fn modify<'_0_1, '_1_1> = {impl Modifiable<T> for i32}::modify<'_0_1, '_1_1, T>[@TraitClause0, @TraitClause1]
-    vtable: {impl Modifiable<T> for i32}::{vtable}<T>[@TraitClause0, @TraitClause1]
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    proof ImpliedClause1: (T: Sized) = TraitClause0
+    fn modify<'_0_1, '_1_1> = modify<'_0_1, '_1_1, T>[TraitClause0, TraitClause1]
+    vtable: impl_Modifiable_for_i32::{vtable}<T>[TraitClause0, TraitClause1]
 }
 
 // Full name: test_crate::modify_trait_object
-fn modify_trait_object<'_0, T>(arg_1: &'_0 T) -> T
+fn modify_trait_object<'_0, T>(arg: &'_0 T) -> T
 where
-    [@TraitClause0]: Sized<T>,
-    [@TraitClause1]: Clone<T>,
+    TraitClause0: (T: Sized),
+    TraitClause1: (T: Clone),
 {
     let _0: T; // return
-    let arg_1: &'1 T; // arg #1
-    let x_2: &'5 mut (dyn Modifiable<T> + '6); // local
+    let arg: &'1 T; // arg #1
+    let x: &'5 mut (dyn Modifiable<T> + '6); // local
     let _3: &'8 mut i32; // anonymous local
     let _4: &'9 mut i32; // anonymous local
     let _5: i32; // anonymous local
     let _6: &'10 mut (dyn Modifiable<T> + '11); // anonymous local
     let _7: &'12 T; // anonymous local
 
-    storage_live(x_2)
+    storage_live(x)
     storage_live(_3)
     storage_live(_4)
     storage_live(_5)
-    _5 = const 199 : i32
+    _5 = const 199i32
     _4 = &mut _5
     _3 = &mut (*_4)
-    x_2 = unsize_cast<&'8 mut i32, &'13 mut (dyn Modifiable<T> + '14), &{impl Modifiable<T> for i32}::{vtable}<T>[@TraitClause0, @TraitClause1]>(move _3)
+    x = unsize_cast<&'8 mut i32, &'13 mut (dyn Modifiable<T> + '14), &impl_Modifiable_for_i32::{vtable}<T>[TraitClause0, TraitClause1]>(move _3)
     storage_dead(_3)
     storage_dead(_4)
     storage_live(_6)
-    _6 = &two-phase-mut (*x_2) with_metadata(copy x_2.metadata)
+    _6 = &two-phase-mut (*x) with_metadata(copy x.metadata)
     storage_live(_7)
-    _7 = &(*arg_1)
+    _7 = &(*arg)
     _0 = (copy ((*_6.metadata)).method_modify)(move _6, move _7)
     storage_dead(_7)
     storage_dead(_6)
     storage_dead(_5)
-    storage_dead(x_2)
+    storage_dead(x)
     return
 }
 
 struct test_crate::BaseOn::{vtable}<T> {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn BaseOn<T>)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn BaseOn<T>)),
   method_operate_on: fn<'_0_1, '_1_1>(&'_0_1 (dyn BaseOn<T>), &'_1_1 T),
   super_trait_0: &'static core::marker::MetaSized::{vtable},
 }
@@ -562,21 +513,16 @@ struct test_crate::BaseOn::{vtable}<T> {
 // Full name: test_crate::BaseOn
 trait BaseOn<Self, T>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Sized<T>
-    fn operate_on<'_0_1, '_1_1> = test_crate::BaseOn::operate_on<'_0_1, '_1_1, Self, T>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (T: Sized)
+    fn operate_on<'_0_1, '_1_1>;
     vtable: test_crate::BaseOn::{vtable}<T>
 }
-
-fn test_crate::BaseOn::operate_on<'_0, '_1, Self, T>(_1: &'_0 Self, _2: &'_1 T)
-where
-    [@TraitClause0]: BaseOn<Self, T>,
-= <method_without_default_body>
 
 struct test_crate::Both32And64::{vtable} {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn Both32And64)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn Both32And64)),
   method_both_operate: fn<'_0_1, '_1_1, '_2_1>(&'_0_1 (dyn Both32And64), &'_1_1 i32, &'_2_1 i64),
   super_trait_0: &'static core::marker::MetaSized::{vtable},
   super_trait_1: &'static test_crate::BaseOn::{vtable}<i32>,
@@ -586,21 +532,21 @@ struct test_crate::Both32And64::{vtable} {
 // Full name: test_crate::Both32And64
 trait Both32And64<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: BaseOn<Self, i32>
-    parent_clause2 : [@TraitClause2]: BaseOn<Self, i64>
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: BaseOn<i32>)
+    proof ImpliedClause2: (Self: BaseOn<i64>)
     fn both_operate<'_0_1, '_1_1, '_2_1> = test_crate::Both32And64::both_operate<'_0_1, '_1_1, '_2_1, Self>[Self]
     vtable: test_crate::Both32And64::{vtable}
 }
 
-fn test_crate::Both32And64::both_operate<'_0, '_1, '_2, Self>(self_1: &'_0 Self, t32_2: &'_1 i32, t64_3: &'_2 i64)
+fn test_crate::Both32And64::both_operate<'_0, '_1, '_2, Self>(self: &'_0 Self, t32: &'_1 i32, t64: &'_2 i64)
 where
-    [@TraitClause0]: Both32And64<Self>,
+    TraitClause0: (Self: Both32And64),
 {
     let _0: (); // return
-    let self_1: &'1 Self; // arg #1
-    let t32_2: &'3 i32; // arg #2
-    let t64_3: &'5 i64; // arg #3
+    let self: &'1 Self; // arg #1
+    let t32: &'3 i32; // arg #2
+    let t64: &'5 i64; // arg #3
     let _4: (); // anonymous local
     let _5: &'6 Self; // anonymous local
     let _6: &'7 i32; // anonymous local
@@ -611,19 +557,19 @@ where
     _0 = ()
     storage_live(_4)
     storage_live(_5)
-    _5 = &(*self_1) with_metadata(copy self_1.metadata)
+    _5 = &(*self) with_metadata(copy self.metadata)
     storage_live(_6)
-    _6 = &(*t32_2)
-    _4 = @TraitClause0::parent_clause1::operate_on<'12, '13>(move _5, move _6)
+    _6 = &(*t32)
+    _4 = TraitClause0::ImpliedClause1::operate_on<'10, '11>(move _5, move _6)
     storage_dead(_6)
     storage_dead(_5)
     storage_dead(_4)
     storage_live(_7)
     storage_live(_8)
-    _8 = &(*self_1) with_metadata(copy self_1.metadata)
+    _8 = &(*self) with_metadata(copy self.metadata)
     storage_live(_9)
-    _9 = &(*t64_3)
-    _7 = @TraitClause0::parent_clause2::operate_on<'16, '17>(move _8, move _9)
+    _9 = &(*t64)
+    _7 = TraitClause0::ImpliedClause2::operate_on<'12, '13>(move _8, move _9)
     storage_dead(_9)
     storage_dead(_8)
     storage_dead(_7)
@@ -632,11 +578,11 @@ where
 }
 
 // Full name: test_crate::{impl BaseOn<i32> for i32}::operate_on
-fn {impl BaseOn<i32> for i32}::operate_on<'_0, '_1>(self_1: &'_0 i32, t_2: &'_1 i32)
+fn impl_BaseOn_i32_for_i32::operate_on<'_0, '_1>(self: &'_0 i32, t: &'_1 i32)
 {
     let _0: (); // return
-    let self_1: &'1 i32; // arg #1
-    let t_2: &'2 i32; // arg #2
+    let self: &'1 i32; // arg #1
+    let t: &'2 i32; // arg #2
     let _3: bool; // anonymous local
     let _4: i32; // anonymous local
     let _5: i32; // anonymous local
@@ -644,9 +590,9 @@ fn {impl BaseOn<i32> for i32}::operate_on<'_0, '_1>(self_1: &'_0 i32, t_2: &'_1 
     _0 = ()
     storage_live(_3)
     storage_live(_4)
-    _4 = copy (*self_1)
+    _4 = copy (*self)
     storage_live(_5)
-    _5 = copy (*t_2)
+    _5 = copy (*t)
     _3 = move _4 > move _5
     if move _3 {
     } else {
@@ -662,7 +608,7 @@ fn {impl BaseOn<i32> for i32}::operate_on<'_0, '_1>(self_1: &'_0 i32, t_2: &'_1 
 }
 
 // Full name: test_crate::{impl BaseOn<i32> for i32}::operate_on::{vtable_method}
-fn {impl BaseOn<i32> for i32}::operate_on::{vtable_method}<'_0, '_1>(_1: &'_0 (dyn BaseOn<i32>), _2: &'_1 i32)
+fn impl_BaseOn_i32_for_i32::operate_on::{vtable_method}<'_0, '_1>(_1: &'_0 (dyn BaseOn<i32>), _2: &'_1 i32)
 {
     let _0: (); // return
     let _1: &'_0 (dyn BaseOn<i32> + '0); // arg #1
@@ -672,55 +618,61 @@ fn {impl BaseOn<i32> for i32}::operate_on::{vtable_method}<'_0, '_1>(_1: &'_0 (d
     _0 = ()
     storage_live(_3)
     _3 = concretize<&'_0 (dyn BaseOn<i32> + '1), &'_0 i32>(move _1)
-    _0 = {impl BaseOn<i32> for i32}::operate_on<'_0, '_1>(move _3, move _2)
+    _0 = impl_BaseOn_i32_for_i32::operate_on<'_0, '_1>(move _3, move _2)
     return
 }
 
 // Full name: test_crate::{impl BaseOn<i32> for i32}::{vtable_drop_shim}
-unsafe fn {impl BaseOn<i32> for i32}::{vtable_drop_shim}(dyn_self_1: *mut (dyn BaseOn<i32>))
+unsafe fn impl_BaseOn_i32_for_i32::{vtable_drop_shim}<'_0>(dyn_self: &'_0 mut (dyn BaseOn<i32>))
 {
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn BaseOn<i32> + '0); // arg #1
-    let target_self_2: *mut i32; // local
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn BaseOn<i32> + '0); // arg #1
+    let target_self: &'_0 mut i32; // local
 
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn BaseOn<i32> + '1), *mut i32>(move dyn_self_1)
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn BaseOn<i32> + '1), &'_0 mut i32>(move dyn_self)
     return
 }
 
 // Full name: test_crate::{impl BaseOn<i32> for i32}::{vtable}
-fn {impl BaseOn<i32> for i32}::{vtable}() -> test_crate::BaseOn::{vtable}<i32>
+fn impl_BaseOn_i32_for_i32::{vtable}() -> test_crate::BaseOn::{vtable}<i32>
 {
-    let ret_0: test_crate::BaseOn::{vtable}<i32>; // return
-    let size_1: usize; // local
-    let align_2: usize; // local
+    let ret: test_crate::BaseOn::{vtable}<i32>; // return
+    let size: usize; // local
+    let align: usize; // local
+    let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn BaseOn<i32> + '1)); // anonymous local
+    let _4: fn<'_0_1, '_1_1>(&'_0_1 (dyn BaseOn<i32> + '4), &'_1_1 i32); // anonymous local
 
-    storage_live(size_1)
-    size_1 = size_of<i32>
-    storage_live(align_2)
-    align_2 = align_of<i32>
-    ret_0 = test_crate::BaseOn::{vtable} { size: move size_1, align: move align_2, drop: const {impl BaseOn<i32> for i32}::{vtable_drop_shim}, method_operate_on: const {impl BaseOn<i32> for i32}::operate_on::{vtable_method}<'1, '2>, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
+    storage_live(size)
+    size = size_of<i32>
+    storage_live(align)
+    align = align_of<i32>
+    storage_live(_3)
+    _3 = cast<for<'_0_1> impl_BaseOn_i32_for_i32::{vtable_drop_shim}<'0>, unsafe fn<'_0_1>(&'_0_1 mut (dyn BaseOn<i32> + '1))>(const impl_BaseOn_i32_for_i32::{vtable_drop_shim}<'0>)
+    storage_live(_4)
+    _4 = cast<for<'_0_1, '_1_1> impl_BaseOn_i32_for_i32::operate_on::{vtable_method}<'2, '3>, fn<'_0_1, '_1_1>(&'_0_1 (dyn BaseOn<i32> + '4), &'_1_1 i32)>(const impl_BaseOn_i32_for_i32::operate_on::{vtable_method}<'2, '3>)
+    ret = test_crate::BaseOn::{vtable} { size: move size, align: move align, drop: move _3, method_operate_on: move _4, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
     return
 }
 
 // Full name: test_crate::{impl BaseOn<i32> for i32}::{vtable}
-static {impl BaseOn<i32> for i32}::{vtable}: test_crate::BaseOn::{vtable}<i32> = {impl BaseOn<i32> for i32}::{vtable}()
+static impl_BaseOn_i32_for_i32::{vtable}: test_crate::BaseOn::{vtable}<i32> = impl_BaseOn_i32_for_i32::{vtable}()
 
 // Full name: test_crate::{impl BaseOn<i32> for i32}
-impl BaseOn<i32> for i32 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    parent_clause1 = {built_in impl Sized for i32}
-    fn operate_on<'_0_1, '_1_1> = {impl BaseOn<i32> for i32}::operate_on<'_0_1, '_1_1>
-    vtable: {impl BaseOn<i32> for i32}::{vtable}
+impl "impl_BaseOn_i32_for_i32" BaseOn<i32> for i32 {
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    proof ImpliedClause1: (i32: Sized) = {built_in impl Sized for i32}
+    fn operate_on<'_0_1, '_1_1> = impl_BaseOn_i32_for_i32::operate_on<'_0_1, '_1_1>
+    vtable: impl_BaseOn_i32_for_i32::{vtable}
 }
 
 // Full name: test_crate::{impl BaseOn<i64> for i32}::operate_on
-fn {impl BaseOn<i64> for i32}::operate_on<'_0, '_1>(self_1: &'_0 i32, t_2: &'_1 i64)
+fn impl_BaseOn_i64_for_i32::operate_on<'_0, '_1>(self: &'_0 i32, t: &'_1 i64)
 {
     let _0: (); // return
-    let self_1: &'1 i32; // arg #1
-    let t_2: &'3 i64; // arg #2
+    let self: &'1 i32; // arg #1
+    let t: &'3 i64; // arg #2
     let _3: bool; // anonymous local
     let _4: i64; // anonymous local
     let _5: i32; // anonymous local
@@ -730,11 +682,11 @@ fn {impl BaseOn<i64> for i32}::operate_on<'_0, '_1>(self_1: &'_0 i32, t_2: &'_1 
     storage_live(_3)
     storage_live(_4)
     storage_live(_5)
-    _5 = copy (*self_1)
+    _5 = copy (*self)
     _4 = cast<i32, i64>(move _5)
     storage_dead(_5)
     storage_live(_6)
-    _6 = copy (*t_2)
+    _6 = copy (*t)
     _3 = move _4 > move _6
     if move _3 {
     } else {
@@ -750,7 +702,7 @@ fn {impl BaseOn<i64> for i32}::operate_on<'_0, '_1>(self_1: &'_0 i32, t_2: &'_1 
 }
 
 // Full name: test_crate::{impl BaseOn<i64> for i32}::operate_on::{vtable_method}
-fn {impl BaseOn<i64> for i32}::operate_on::{vtable_method}<'_0, '_1>(_1: &'_0 (dyn BaseOn<i64>), _2: &'_1 i64)
+fn impl_BaseOn_i64_for_i32::operate_on::{vtable_method}<'_0, '_1>(_1: &'_0 (dyn BaseOn<i64>), _2: &'_1 i64)
 {
     let _0: (); // return
     let _1: &'_0 (dyn BaseOn<i64> + '0); // arg #1
@@ -760,93 +712,102 @@ fn {impl BaseOn<i64> for i32}::operate_on::{vtable_method}<'_0, '_1>(_1: &'_0 (d
     _0 = ()
     storage_live(_3)
     _3 = concretize<&'_0 (dyn BaseOn<i64> + '1), &'_0 i32>(move _1)
-    _0 = {impl BaseOn<i64> for i32}::operate_on<'_0, '_1>(move _3, move _2)
+    _0 = impl_BaseOn_i64_for_i32::operate_on<'_0, '_1>(move _3, move _2)
     return
 }
 
 // Full name: test_crate::{impl BaseOn<i64> for i32}::{vtable_drop_shim}
-unsafe fn {impl BaseOn<i64> for i32}::{vtable_drop_shim}(dyn_self_1: *mut (dyn BaseOn<i64>))
+unsafe fn impl_BaseOn_i64_for_i32::{vtable_drop_shim}<'_0>(dyn_self: &'_0 mut (dyn BaseOn<i64>))
 {
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn BaseOn<i64> + '0); // arg #1
-    let target_self_2: *mut i32; // local
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn BaseOn<i64> + '0); // arg #1
+    let target_self: &'_0 mut i32; // local
 
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn BaseOn<i64> + '1), *mut i32>(move dyn_self_1)
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn BaseOn<i64> + '1), &'_0 mut i32>(move dyn_self)
     return
 }
 
 // Full name: test_crate::{impl BaseOn<i64> for i32}::{vtable}
-fn {impl BaseOn<i64> for i32}::{vtable}() -> test_crate::BaseOn::{vtable}<i64>
+fn impl_BaseOn_i64_for_i32::{vtable}() -> test_crate::BaseOn::{vtable}<i64>
 {
-    let ret_0: test_crate::BaseOn::{vtable}<i64>; // return
-    let size_1: usize; // local
-    let align_2: usize; // local
+    let ret: test_crate::BaseOn::{vtable}<i64>; // return
+    let size: usize; // local
+    let align: usize; // local
+    let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn BaseOn<i64> + '1)); // anonymous local
+    let _4: fn<'_0_1, '_1_1>(&'_0_1 (dyn BaseOn<i64> + '4), &'_1_1 i64); // anonymous local
 
-    storage_live(size_1)
-    size_1 = size_of<i32>
-    storage_live(align_2)
-    align_2 = align_of<i32>
-    ret_0 = test_crate::BaseOn::{vtable} { size: move size_1, align: move align_2, drop: const {impl BaseOn<i64> for i32}::{vtable_drop_shim}, method_operate_on: const {impl BaseOn<i64> for i32}::operate_on::{vtable_method}<'1, '2>, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
+    storage_live(size)
+    size = size_of<i32>
+    storage_live(align)
+    align = align_of<i32>
+    storage_live(_3)
+    _3 = cast<for<'_0_1> impl_BaseOn_i64_for_i32::{vtable_drop_shim}<'0>, unsafe fn<'_0_1>(&'_0_1 mut (dyn BaseOn<i64> + '1))>(const impl_BaseOn_i64_for_i32::{vtable_drop_shim}<'0>)
+    storage_live(_4)
+    _4 = cast<for<'_0_1, '_1_1> impl_BaseOn_i64_for_i32::operate_on::{vtable_method}<'2, '3>, fn<'_0_1, '_1_1>(&'_0_1 (dyn BaseOn<i64> + '4), &'_1_1 i64)>(const impl_BaseOn_i64_for_i32::operate_on::{vtable_method}<'2, '3>)
+    ret = test_crate::BaseOn::{vtable} { size: move size, align: move align, drop: move _3, method_operate_on: move _4, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
     return
 }
 
 // Full name: test_crate::{impl BaseOn<i64> for i32}::{vtable}
-static {impl BaseOn<i64> for i32}::{vtable}: test_crate::BaseOn::{vtable}<i64> = {impl BaseOn<i64> for i32}::{vtable}()
+static impl_BaseOn_i64_for_i32::{vtable}: test_crate::BaseOn::{vtable}<i64> = impl_BaseOn_i64_for_i32::{vtable}()
 
 // Full name: test_crate::{impl BaseOn<i64> for i32}
-impl BaseOn<i64> for i32 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    parent_clause1 = {built_in impl Sized for i64}
-    fn operate_on<'_0_1, '_1_1> = {impl BaseOn<i64> for i32}::operate_on<'_0_1, '_1_1>
-    vtable: {impl BaseOn<i64> for i32}::{vtable}
+impl "impl_BaseOn_i64_for_i32" BaseOn<i64> for i32 {
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    proof ImpliedClause1: (i64: Sized) = {built_in impl Sized for i64}
+    fn operate_on<'_0_1, '_1_1> = impl_BaseOn_i64_for_i32::operate_on<'_0_1, '_1_1>
+    vtable: impl_BaseOn_i64_for_i32::{vtable}
 }
 
 // Full name: test_crate::{impl Both32And64 for i32}::{vtable_drop_shim}
-unsafe fn {impl Both32And64 for i32}::{vtable_drop_shim}(dyn_self_1: *mut (dyn Both32And64))
+unsafe fn impl_Both32And64_for_i32::{vtable_drop_shim}<'_0>(dyn_self: &'_0 mut (dyn Both32And64))
 {
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn Both32And64 + '0); // arg #1
-    let target_self_2: *mut i32; // local
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn Both32And64 + '0); // arg #1
+    let target_self: &'_0 mut i32; // local
 
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn Both32And64 + '1), *mut i32>(move dyn_self_1)
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn Both32And64 + '1), &'_0 mut i32>(move dyn_self)
     return
 }
 
 // Full name: test_crate::{impl Both32And64 for i32}::{vtable}
-fn {impl Both32And64 for i32}::{vtable}() -> test_crate::Both32And64::{vtable}
+fn impl_Both32And64_for_i32::{vtable}() -> test_crate::Both32And64::{vtable}
 {
-    let ret_0: test_crate::Both32And64::{vtable}; // return
-    let size_1: usize; // local
-    let align_2: usize; // local
-    let _3: &'static test_crate::BaseOn::{vtable}<i32>; // anonymous local
-    let _4: &'static test_crate::BaseOn::{vtable}<i64>; // anonymous local
+    let ret: test_crate::Both32And64::{vtable}; // return
+    let size: usize; // local
+    let align: usize; // local
+    let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn Both32And64 + '1)); // anonymous local
+    let _4: &'static test_crate::BaseOn::{vtable}<i32>; // anonymous local
+    let _5: &'static test_crate::BaseOn::{vtable}<i64>; // anonymous local
 
-    storage_live(size_1)
-    size_1 = size_of<i32>
-    storage_live(align_2)
-    align_2 = align_of<i32>
+    storage_live(size)
+    size = size_of<i32>
+    storage_live(align)
+    align = align_of<i32>
     storage_live(_3)
-    _3 = &{impl BaseOn<i32> for i32}::{vtable}
+    _3 = cast<for<'_0_1> impl_Both32And64_for_i32::{vtable_drop_shim}<'0>, unsafe fn<'_0_1>(&'_0_1 mut (dyn Both32And64 + '1))>(const impl_Both32And64_for_i32::{vtable_drop_shim}<'0>)
     storage_live(_4)
-    _4 = &{impl BaseOn<i64> for i32}::{vtable}
-    ret_0 = test_crate::Both32And64::{vtable} { size: move size_1, align: move align_2, drop: const {impl Both32And64 for i32}::{vtable_drop_shim}, method_both_operate: const Opaque(shim for default methods aren't yet supported), super_trait_0: const &vtable_of({built_in impl MetaSized for i32}), super_trait_1: move _3, super_trait_2: move _4 }
+    _4 = &impl_BaseOn_i32_for_i32::{vtable}
+    storage_live(_5)
+    _5 = &impl_BaseOn_i64_for_i32::{vtable}
+    ret = test_crate::Both32And64::{vtable} { size: move size, align: move align, drop: move _3, method_both_operate: const Opaque(shim for default methods aren't yet supported), super_trait_0: const &vtable_of({built_in impl MetaSized for i32}), super_trait_1: move _4, super_trait_2: move _5 }
     return
 }
 
 // Full name: test_crate::{impl Both32And64 for i32}::{vtable}
-static {impl Both32And64 for i32}::{vtable}: test_crate::Both32And64::{vtable} = {impl Both32And64 for i32}::{vtable}()
+static impl_Both32And64_for_i32::{vtable}: test_crate::Both32And64::{vtable} = impl_Both32And64_for_i32::{vtable}()
 
 // Full name: test_crate::{impl Both32And64 for i32}::both_operate
-fn {impl Both32And64 for i32}::both_operate<'_0, '_1, '_2>(self_1: &'_0 i32, t32_2: &'_1 i32, t64_3: &'_2 i64)
+fn impl_Both32And64_for_i32::both_operate<'_0, '_1, '_2>(self: &'_0 i32, t32: &'_1 i32, t64: &'_2 i64)
 {
     let _0: (); // return
-    let self_1: &'1 i32; // arg #1
-    let t32_2: &'3 i32; // arg #2
-    let t64_3: &'5 i64; // arg #3
+    let self: &'1 i32; // arg #1
+    let t32: &'3 i32; // arg #2
+    let t64: &'5 i64; // arg #3
     let _4: (); // anonymous local
     let _5: &'6 i32; // anonymous local
     let _6: &'7 i32; // anonymous local
@@ -857,19 +818,19 @@ fn {impl Both32And64 for i32}::both_operate<'_0, '_1, '_2>(self_1: &'_0 i32, t32
     _0 = ()
     storage_live(_4)
     storage_live(_5)
-    _5 = &(*self_1)
+    _5 = &(*self)
     storage_live(_6)
-    _6 = &(*t32_2)
-    _4 = {impl Both32And64 for i32}::parent_clause1::operate_on<'12, '13>(move _5, move _6)
+    _6 = &(*t32)
+    _4 = impl_Both32And64_for_i32::ImpliedClause1::operate_on<'10, '11>(move _5, move _6)
     storage_dead(_6)
     storage_dead(_5)
     storage_dead(_4)
     storage_live(_7)
     storage_live(_8)
-    _8 = &(*self_1)
+    _8 = &(*self)
     storage_live(_9)
-    _9 = &(*t64_3)
-    _7 = {impl Both32And64 for i32}::parent_clause2::operate_on<'16, '17>(move _8, move _9)
+    _9 = &(*t64)
+    _7 = impl_Both32And64_for_i32::ImpliedClause2::operate_on<'12, '13>(move _8, move _9)
     storage_dead(_9)
     storage_dead(_8)
     storage_dead(_7)
@@ -878,26 +839,26 @@ fn {impl Both32And64 for i32}::both_operate<'_0, '_1, '_2>(self_1: &'_0 i32, t32
 }
 
 // Full name: test_crate::{impl Both32And64 for i32}
-impl Both32And64 for i32 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    parent_clause1 = {impl BaseOn<i32> for i32}
-    parent_clause2 = {impl BaseOn<i64> for i32}
-    fn both_operate<'_0_1, '_1_1, '_2_1> = {impl Both32And64 for i32}::both_operate<'_0_1, '_1_1, '_2_1>
-    vtable: {impl Both32And64 for i32}::{vtable}
+impl "impl_Both32And64_for_i32" Both32And64 for i32 {
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    proof ImpliedClause1: (i32: BaseOn<i32>) = impl_BaseOn_i32_for_i32
+    proof ImpliedClause2: (i32: BaseOn<i64>) = impl_BaseOn_i64_for_i32
+    fn both_operate<'_0_1, '_1_1, '_2_1> = impl_Both32And64_for_i32::both_operate<'_0_1, '_1_1, '_2_1>
+    vtable: impl_Both32And64_for_i32::{vtable}
 }
 
 // Full name: test_crate::Alias
 trait Alias<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Both32And64<Self>
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: Both32And64)
     vtable: test_crate::Alias::{vtable}
 }
 
 struct test_crate::LifetimeTrait::{vtable}<Ty0> {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn LifetimeTrait<Ty = Ty0>)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn LifetimeTrait<Ty = Ty0>)),
   method_lifetime_method: fn<'a, '_1_1>(&'_1_1 (dyn LifetimeTrait<Ty = Ty0>), &'a Ty0) -> &'a Ty0,
   super_trait_0: &'static core::marker::MetaSized::{vtable},
 }
@@ -905,33 +866,28 @@ struct test_crate::LifetimeTrait::{vtable}<Ty0> {
 // Full name: test_crate::LifetimeTrait
 trait LifetimeTrait<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Sized<Self::Ty>
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self::Ty: Sized)
     type Ty
-    fn lifetime_method<'a, '_1_1> = test_crate::LifetimeTrait::lifetime_method<'a, '_1_1, Self>[Self]
+    fn lifetime_method<'a, '_1_1>;
     vtable: test_crate::LifetimeTrait::{vtable}<Self::Ty>
 }
 
-fn test_crate::LifetimeTrait::lifetime_method<'a, '_1, Self>(_1: &'_1 Self, _2: &'a @TraitClause0::Ty) -> &'a @TraitClause0::Ty
-where
-    [@TraitClause0]: LifetimeTrait<Self>,
-= <method_without_default_body>
-
 // Full name: test_crate::{impl LifetimeTrait for i32}::lifetime_method
-fn {impl LifetimeTrait for i32}::lifetime_method<'a, '_1>(self_1: &'_1 i32, arg_2: &'a i32) -> &'a i32
+fn lifetime_method<'a, '_1>(self: &'_1 i32, arg: &'a i32) -> &'a i32
 {
     let _0: &'1 i32; // return
-    let self_1: &'2 i32; // arg #1
-    let arg_2: &'3 i32; // arg #2
+    let self: &'2 i32; // arg #1
+    let arg: &'3 i32; // arg #2
     let _3: bool; // anonymous local
     let _4: i32; // anonymous local
     let _5: i32; // anonymous local
 
     storage_live(_3)
     storage_live(_4)
-    _4 = copy (*self_1)
+    _4 = copy (*self)
     storage_live(_5)
-    _5 = copy (*arg_2)
+    _5 = copy (*arg)
     _3 = move _4 > move _5
     if move _3 {
     } else {
@@ -942,12 +898,12 @@ fn {impl LifetimeTrait for i32}::lifetime_method<'a, '_1>(self_1: &'_1 i32, arg_
     storage_dead(_5)
     storage_dead(_4)
     storage_dead(_3)
-    _0 = copy arg_2
+    _0 = copy arg
     return
 }
 
 // Full name: test_crate::{impl LifetimeTrait for i32}::lifetime_method::{vtable_method}
-fn {impl LifetimeTrait for i32}::lifetime_method::{vtable_method}<'a, '_1>(_1: &'_1 (dyn LifetimeTrait<Ty = i32>), _2: &'a i32) -> &'a i32
+fn impl_LifetimeTrait_for_i32::lifetime_method::{vtable_method}<'a, '_1>(_1: &'_1 (dyn LifetimeTrait<Ty = i32>), _2: &'a i32) -> &'a i32
 {
     let _0: &'a i32; // return
     let _1: &'_1 (dyn LifetimeTrait<Ty = i32> + '0); // arg #1
@@ -956,65 +912,71 @@ fn {impl LifetimeTrait for i32}::lifetime_method::{vtable_method}<'a, '_1>(_1: &
 
     storage_live(_3)
     _3 = concretize<&'_1 (dyn LifetimeTrait<Ty = i32> + '1), &'_1 i32>(move _1)
-    _0 = {impl LifetimeTrait for i32}::lifetime_method<'a, '_1>(move _3, move _2)
+    _0 = lifetime_method<'a, '_1>(move _3, move _2)
     return
 }
 
 // Full name: test_crate::{impl LifetimeTrait for i32}::{vtable_drop_shim}
-unsafe fn {impl LifetimeTrait for i32}::{vtable_drop_shim}(dyn_self_1: *mut (dyn LifetimeTrait<Ty = i32>))
+unsafe fn impl_LifetimeTrait_for_i32::{vtable_drop_shim}<'_0>(dyn_self: &'_0 mut (dyn LifetimeTrait<Ty = i32>))
 {
-    let ret_0: (); // return
-    let dyn_self_1: *mut (dyn LifetimeTrait<Ty = i32> + '0); // arg #1
-    let target_self_2: *mut i32; // local
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn LifetimeTrait<Ty = i32> + '0); // arg #1
+    let target_self: &'_0 mut i32; // local
 
-    ret_0 = ()
-    storage_live(target_self_2)
-    target_self_2 = concretize<*mut (dyn LifetimeTrait<Ty = i32> + '1), *mut i32>(move dyn_self_1)
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn LifetimeTrait<Ty = i32> + '1), &'_0 mut i32>(move dyn_self)
     return
 }
 
 // Full name: test_crate::{impl LifetimeTrait for i32}::{vtable}
-fn {impl LifetimeTrait for i32}::{vtable}() -> test_crate::LifetimeTrait::{vtable}<i32>
+fn impl_LifetimeTrait_for_i32::{vtable}() -> test_crate::LifetimeTrait::{vtable}<i32>
 {
-    let ret_0: test_crate::LifetimeTrait::{vtable}<i32>; // return
-    let size_1: usize; // local
-    let align_2: usize; // local
+    let ret: test_crate::LifetimeTrait::{vtable}<i32>; // return
+    let size: usize; // local
+    let align: usize; // local
+    let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn LifetimeTrait<Ty = i32> + '1)); // anonymous local
+    let _4: fn<'a, '_1_1>(&'_1_1 (dyn LifetimeTrait<Ty = i32> + '4), &'a i32) -> &'a i32; // anonymous local
 
-    storage_live(size_1)
-    size_1 = size_of<i32>
-    storage_live(align_2)
-    align_2 = align_of<i32>
-    ret_0 = test_crate::LifetimeTrait::{vtable} { size: move size_1, align: move align_2, drop: const {impl LifetimeTrait for i32}::{vtable_drop_shim}, method_lifetime_method: const {impl LifetimeTrait for i32}::lifetime_method::{vtable_method}<'1, '2>, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
+    storage_live(size)
+    size = size_of<i32>
+    storage_live(align)
+    align = align_of<i32>
+    storage_live(_3)
+    _3 = cast<for<'_0_1> impl_LifetimeTrait_for_i32::{vtable_drop_shim}<'0>, unsafe fn<'_0_1>(&'_0_1 mut (dyn LifetimeTrait<Ty = i32> + '1))>(const impl_LifetimeTrait_for_i32::{vtable_drop_shim}<'0>)
+    storage_live(_4)
+    _4 = cast<for<'a, '_1_1> impl_LifetimeTrait_for_i32::lifetime_method::{vtable_method}<'2, '3>, fn<'a, '_1_1>(&'_1_1 (dyn LifetimeTrait<Ty = i32> + '4), &'a i32) -> &'a i32>(const impl_LifetimeTrait_for_i32::lifetime_method::{vtable_method}<'2, '3>)
+    ret = test_crate::LifetimeTrait::{vtable} { size: move size, align: move align, drop: move _3, method_lifetime_method: move _4, super_trait_0: const &vtable_of({built_in impl MetaSized for i32}) }
     return
 }
 
 // Full name: test_crate::{impl LifetimeTrait for i32}::{vtable}
-static {impl LifetimeTrait for i32}::{vtable}: test_crate::LifetimeTrait::{vtable}<i32> = {impl LifetimeTrait for i32}::{vtable}()
+static impl_LifetimeTrait_for_i32::{vtable}: test_crate::LifetimeTrait::{vtable}<i32> = impl_LifetimeTrait_for_i32::{vtable}()
 
 // Full name: test_crate::{impl LifetimeTrait for i32}
-impl LifetimeTrait for i32 {
-    parent_clause0 = {built_in impl MetaSized for i32}
-    parent_clause1 = {built_in impl Sized for i32}
+impl "impl_LifetimeTrait_for_i32" LifetimeTrait for i32 {
+    proof ImpliedClause0: (i32: MetaSized) = {built_in impl MetaSized for i32}
+    proof ImpliedClause1: (i32: Sized) = {built_in impl Sized for i32}
     type Ty = i32
-    fn lifetime_method<'a, '_1_1> = {impl LifetimeTrait for i32}::lifetime_method<'a, '_1_1>
-    vtable: {impl LifetimeTrait for i32}::{vtable}
+    fn lifetime_method<'a, '_1_1> = lifetime_method<'a, '_1_1>
+    vtable: impl_LifetimeTrait_for_i32::{vtable}
 }
 
 // Full name: test_crate::use_lifetime_trait
-fn use_lifetime_trait<'a, '_1>(x_1: &'_1 (dyn LifetimeTrait<Ty = i32> + '_1), y_2: &'a i32) -> &'a i32
+fn use_lifetime_trait<'a, '_1>(x: &'_1 (dyn LifetimeTrait<Ty = i32> + '_1), y: &'a i32) -> &'a i32
 {
     let _0: &'1 i32; // return
-    let x_1: &'5 (dyn LifetimeTrait<Ty = i32> + '6); // arg #1
-    let y_2: &'7 i32; // arg #2
+    let x: &'5 (dyn LifetimeTrait<Ty = i32> + '6); // arg #1
+    let y: &'7 i32; // arg #2
     let _3: &'8 i32; // anonymous local
     let _4: &'9 (dyn LifetimeTrait<Ty = i32> + '10); // anonymous local
     let _5: &'11 i32; // anonymous local
 
     storage_live(_3)
     storage_live(_4)
-    _4 = &(*x_1) with_metadata(copy x_1.metadata)
+    _4 = &(*x) with_metadata(copy x.metadata)
     storage_live(_5)
-    _5 = &(*y_2)
+    _5 = &(*y)
     _3 = (copy ((*_4.metadata)).method_lifetime_method)(move _4, move _5)
     _0 = &(*_3)
     storage_dead(_5)
@@ -1024,10 +986,10 @@ fn use_lifetime_trait<'a, '_1>(x_1: &'_1 (dyn LifetimeTrait<Ty = i32> + '_1), y_
 }
 
 // Full name: test_crate::use_alias
-fn use_alias<'_0>(x_1: &'_0 (dyn Both32And64 + '_0))
+fn use_alias<'_0>(x: &'_0 (dyn Both32And64 + '_0))
 {
     let _0: (); // return
-    let x_1: &'3 (dyn Both32And64 + '4); // arg #1
+    let x: &'3 (dyn Both32And64 + '4); // arg #1
     let _2: (); // anonymous local
     let _3: &'5 (dyn Both32And64 + '6); // anonymous local
     let _4: &'8 i32; // anonymous local
@@ -1038,21 +1000,21 @@ fn use_alias<'_0>(x_1: &'_0 (dyn Both32And64 + '_0))
     let _9: &'14 i32; // anonymous local
     let _10: &'16 i32; // anonymous local
     let _11: &'17 i64; // anonymous local
-    let _12: &'26 i32; // anonymous local
+    let _12: &'23 i32; // anonymous local
     let _13: i32; // anonymous local
-    let _14: &'27 i64; // anonymous local
+    let _14: &'24 i64; // anonymous local
     let _15: i64; // anonymous local
 
     storage_live(_11)
     storage_live(_14)
     storage_live(_15)
-    _15 = const 200 : i64
+    _15 = const 200i64
     _14 = &_15
     _11 = move _14
     storage_live(_10)
     storage_live(_12)
     storage_live(_13)
-    _13 = const 100 : i32
+    _13 = const 100i32
     _12 = &_13
     _10 = move _12
     storage_live(_8)
@@ -1060,7 +1022,7 @@ fn use_alias<'_0>(x_1: &'_0 (dyn Both32And64 + '_0))
     _0 = ()
     storage_live(_2)
     storage_live(_3)
-    _3 = &(*x_1) with_metadata(copy x_1.metadata)
+    _3 = &(*x) with_metadata(copy x.metadata)
     storage_live(_4)
     storage_live(_5)
     _9 = move _10
@@ -1086,12 +1048,12 @@ fn use_alias<'_0>(x_1: &'_0 (dyn Both32And64 + '_0))
 fn main()
 {
     let _0: (); // return
-    let x_1: &'3 (dyn Checkable<i32> + '4); // local
+    let x: &'3 (dyn Checkable<i32> + '4); // local
     let _2: &'6 i32; // anonymous local
     let _3: &'7 i32; // anonymous local
     let _4: bool; // anonymous local
     let _5: &'8 (dyn Checkable<i32> + '9); // anonymous local
-    let y_6: &'13 mut (dyn Modifiable<i32> + '14); // local
+    let y: &'13 mut (dyn Modifiable<i32> + '14); // local
     let _7: &'16 mut i32; // anonymous local
     let _8: &'17 mut i32; // anonymous local
     let _9: i32; // anonymous local
@@ -1123,14 +1085,14 @@ fn main()
     let _35: &'39 i32; // anonymous local
     let _36: &'40 i32; // anonymous local
     let _37: Option<Arguments<'47>>[{built_in impl Sized for Arguments<'47>}]; // anonymous local
-    let z_38: &'53 (dyn NoParam + '54); // local
+    let z: &'53 (dyn NoParam + '54); // local
     let _39: &'55 (dyn NoParam + '56); // anonymous local
     let _40: &'57 (dyn NoParam + '58); // anonymous local
     let _41: &'59 i32; // anonymous local
     let _42: &'60 i32; // anonymous local
     let _43: (); // anonymous local
     let _44: &'61 (dyn NoParam + '62); // anonymous local
-    let a_45: &'66 (dyn Both32And64 + '67); // local
+    let a: &'66 (dyn Both32And64 + '67); // local
     let _46: &'68 i32; // anonymous local
     let _47: &'69 i32; // anonymous local
     let _48: (); // anonymous local
@@ -1139,7 +1101,7 @@ fn main()
     let _51: &'73 i32; // anonymous local
     let _52: &'75 i64; // anonymous local
     let _53: &'76 i64; // anonymous local
-    let b_54: &'80 (dyn LifetimeTrait<Ty = i32> + '81); // local
+    let b: &'80 (dyn LifetimeTrait<Ty = i32> + '81); // local
     let _55: &'82 i32; // anonymous local
     let _56: &'83 i32; // anonymous local
     let _57: (&'84 i32, &'85 i32); // anonymous local
@@ -1172,37 +1134,37 @@ fn main()
     let _84: &'111 i32; // anonymous local
     let _85: &'112 i32; // anonymous local
     let _86: &'113 i32; // anonymous local
-    let _87: &'137 i32; // anonymous local
-    let _88: &'140 i32; // anonymous local
-    let _89: &'156 i32; // anonymous local
-    let _90: &'160 i32; // anonymous local
-    let _91: &'161 i64; // anonymous local
-    let _92: &'170 i32; // anonymous local
-    let _93: &'176 i32; // anonymous local
-    let _94: &'181 i32; // anonymous local
-    let _95: &'189 i32; // anonymous local
+    let _87: &'140 i32; // anonymous local
+    let _88: &'143 i32; // anonymous local
+    let _89: &'158 i32; // anonymous local
+    let _90: &'162 i32; // anonymous local
+    let _91: &'163 i64; // anonymous local
+    let _92: &'169 i32; // anonymous local
+    let _93: &'175 i32; // anonymous local
+    let _94: &'180 i32; // anonymous local
+    let _95: &'188 i32; // anonymous local
     let _96: i32; // anonymous local
-    let _97: &'190 i32; // anonymous local
+    let _97: &'189 i32; // anonymous local
     let _98: i32; // anonymous local
-    let _99: &'191 i32; // anonymous local
+    let _99: &'190 i32; // anonymous local
     let _100: i32; // anonymous local
-    let _101: &'192 i32; // anonymous local
+    let _101: &'191 i32; // anonymous local
     let _102: i32; // anonymous local
-    let _103: &'193 i32; // anonymous local
+    let _103: &'192 i32; // anonymous local
     let _104: i32; // anonymous local
-    let _105: &'194 i64; // anonymous local
+    let _105: &'193 i64; // anonymous local
     let _106: i64; // anonymous local
-    let _107: &'195 i32; // anonymous local
+    let _107: &'194 i32; // anonymous local
     let _108: i32; // anonymous local
-    let _109: &'196 i32; // anonymous local
+    let _109: &'195 i32; // anonymous local
     let _110: i32; // anonymous local
-    let _111: &'197 i32; // anonymous local
+    let _111: &'196 i32; // anonymous local
     let _112: i32; // anonymous local
 
     storage_live(_86)
     storage_live(_95)
     storage_live(_96)
-    _96 = const 42 : i32
+    _96 = const 42i32
     _95 = &_96
     _86 = move _95
     storage_live(_77)
@@ -1215,18 +1177,18 @@ fn main()
     storage_live(_84)
     storage_live(_85)
     _0 = ()
-    storage_live(x_1)
+    storage_live(x)
     storage_live(_2)
     storage_live(_3)
     _85 = move _86
     _3 = &(*_85)
     _2 = &(*_3)
-    x_1 = unsize_cast<&'6 i32, &'114 (dyn Checkable<i32> + '115), &{impl Checkable<i32> for i32}::{vtable}>(move _2)
+    x = unsize_cast<&'6 i32, &'114 (dyn Checkable<i32> + '115), &impl_Checkable_i32_for_i32::{vtable}>(move _2)
     storage_dead(_2)
     storage_dead(_3)
     storage_live(_4)
     storage_live(_5)
-    _5 = &(*x_1) with_metadata(copy x_1.metadata)
+    _5 = &(*x) with_metadata(copy x.metadata)
     _4 = (copy ((*_5.metadata)).method_check)(move _5)
     if move _4 {
     } else {
@@ -1235,14 +1197,14 @@ fn main()
     }
     storage_dead(_5)
     storage_dead(_4)
-    storage_live(y_6)
+    storage_live(y)
     storage_live(_7)
     storage_live(_8)
     storage_live(_9)
-    _9 = const 99 : i32
+    _9 = const 99i32
     _8 = &mut _9
     _7 = &mut (*_8)
-    y_6 = unsize_cast<&'16 mut i32, &'121 mut (dyn Modifiable<i32> + '122), &{impl Modifiable<T> for i32}::{vtable}<i32>[{built_in impl Sized for i32}, {impl Clone for i32}]>(move _7)
+    y = unsize_cast<&'16 mut i32, &'120 mut (dyn Modifiable<i32> + '121), &impl_Modifiable_for_i32::{vtable}<i32>[{built_in impl Sized for i32}, impl_Clone_for_i32]>(move _7)
     storage_dead(_7)
     storage_dead(_8)
     storage_live(_10)
@@ -1255,19 +1217,19 @@ fn main()
     storage_live(_17)
     _17 = const "Hello"
     _16 = &(*_17) with_metadata(copy _17.metadata)
-    _15 = {impl ToString for T}::to_string<'125, str>[{built_in impl MetaSized for str}, {impl Display for str}](move _16)
+    _15 = to_string<'124, str>[{built_in impl MetaSized for str}, {impl#10}](move _16)
     storage_dead(_16)
     _14 = &_15
     _13 = &(*_14)
-    _12 = modify_trait_object<'127, String>[{built_in impl Sized for String}, {impl Clone for String}](move _13)
+    _12 = modify_trait_object<'126, String>[{built_in impl Sized for String}, impl_Clone_for_String](move _13)
     _11 = &_12
     storage_dead(_13)
     _10 = is_empty<'129>(move _11)
     if move _10 {
     } else {
         storage_dead(_11)
-        conditional_drop[{impl Destruct for String}::drop_in_place] _12
-        conditional_drop[{impl Destruct for String}::drop_in_place] _15
+        conditional_drop[drop_glue<'132>] _12
+        conditional_drop[drop_glue<'134>] _15
         storage_dead(_17)
         storage_dead(_15)
         storage_dead(_14)
@@ -1277,18 +1239,18 @@ fn main()
         storage_live(_19)
         storage_live(_20)
         storage_live(_21)
-        _21 = &two-phase-mut (*y_6) with_metadata(copy y_6.metadata)
+        _21 = &two-phase-mut (*y) with_metadata(copy y.metadata)
         storage_live(_22)
         storage_live(_23)
         storage_live(_24)
-        _24 = const 100 : i32
+        _24 = const 100i32
         _23 = &mut _24
         _22 = &(*_23)
         _20 = (copy ((*_21.metadata)).method_modify)(move _21, move _22)
         storage_live(_87)
         storage_live(_97)
         storage_live(_98)
-        _98 = const 100 : i32
+        _98 = const 100i32
         _97 = &_98
         _87 = move _97
         storage_dead(_22)
@@ -1333,7 +1295,7 @@ fn main()
         storage_live(_88)
         storage_live(_99)
         storage_live(_100)
-        _100 = const 42 : i32
+        _100 = const 42i32
         _99 = &_100
         _88 = move _99
         storage_dead(_30)
@@ -1345,7 +1307,7 @@ fn main()
         storage_dead(_23)
         storage_dead(_20)
         storage_dead(_18)
-        storage_live(z_38)
+        storage_live(z)
         storage_live(_39)
         storage_live(_40)
         storage_live(_41)
@@ -1353,49 +1315,49 @@ fn main()
         _83 = move _88
         _42 = &(*_83)
         _41 = &(*_42)
-        _40 = to_dyn_obj<'142, i32>[{built_in impl Sized for i32}, {impl NoParam for i32}](move _41)
+        _40 = to_dyn_obj<'145, i32>[{built_in impl Sized for i32}, impl_NoParam_for_i32](move _41)
         _39 = &(*_40) with_metadata(copy _40.metadata)
-        z_38 = unsize_cast<&'55 (dyn NoParam + '56), &'149 (dyn NoParam + '150),  at []>(move _39)
+        z = unsize_cast<&'55 (dyn NoParam + '56), &'152 (dyn NoParam + '153),  at []>(move _39)
         storage_dead(_41)
         storage_dead(_39)
         storage_dead(_42)
         storage_dead(_40)
         storage_live(_43)
         storage_live(_44)
-        _44 = &(*z_38) with_metadata(copy z_38.metadata)
+        _44 = &(*z) with_metadata(copy z.metadata)
         _43 = (copy ((*_44.metadata)).method_dummy)(move _44)
         storage_live(_91)
         storage_live(_105)
         storage_live(_106)
-        _106 = const 200 : i64
+        _106 = const 200i64
         _105 = &_106
         _91 = move _105
         storage_live(_90)
         storage_live(_103)
         storage_live(_104)
-        _104 = const 100 : i32
+        _104 = const 100i32
         _103 = &_104
         _90 = move _103
         storage_live(_89)
         storage_live(_101)
         storage_live(_102)
-        _102 = const 42 : i32
+        _102 = const 42i32
         _101 = &_102
         _89 = move _101
         storage_dead(_44)
         storage_dead(_43)
-        storage_live(a_45)
+        storage_live(a)
         storage_live(_46)
         storage_live(_47)
         _82 = move _89
         _47 = &(*_82)
         _46 = &(*_47)
-        a_45 = unsize_cast<&'68 i32, &'157 (dyn Both32And64 + '158), &{impl Both32And64 for i32}::{vtable}>(move _46)
+        a = unsize_cast<&'68 i32, &'159 (dyn Both32And64 + '160), &impl_Both32And64_for_i32::{vtable}>(move _46)
         storage_dead(_46)
         storage_dead(_47)
         storage_live(_48)
         storage_live(_49)
-        _49 = &(*a_45) with_metadata(copy a_45.metadata)
+        _49 = &(*a) with_metadata(copy a.metadata)
         storage_live(_50)
         storage_live(_51)
         _81 = move _90
@@ -1410,13 +1372,13 @@ fn main()
         storage_live(_93)
         storage_live(_109)
         storage_live(_110)
-        _110 = const 10 : i32
+        _110 = const 10i32
         _109 = &_110
         _93 = move _109
         storage_live(_92)
         storage_live(_107)
         storage_live(_108)
-        _108 = const 42 : i32
+        _108 = const 42i32
         _107 = &_108
         _92 = move _107
         storage_dead(_52)
@@ -1425,13 +1387,13 @@ fn main()
         storage_dead(_53)
         storage_dead(_51)
         storage_dead(_48)
-        storage_live(b_54)
+        storage_live(b)
         storage_live(_55)
         storage_live(_56)
         _79 = move _92
         _56 = &(*_79)
         _55 = &(*_56)
-        b_54 = unsize_cast<&'82 i32, &'171 (dyn LifetimeTrait<Ty = i32> + '172), &{impl LifetimeTrait for i32}::{vtable}>(move _55)
+        b = unsize_cast<&'82 i32, &'170 (dyn LifetimeTrait<Ty = i32> + '171), &impl_LifetimeTrait_for_i32::{vtable}>(move _55)
         storage_dead(_55)
         storage_dead(_56)
         storage_live(_57)
@@ -1439,19 +1401,19 @@ fn main()
         storage_live(_59)
         storage_live(_60)
         storage_live(_61)
-        _61 = &(*b_54) with_metadata(copy b_54.metadata)
-        _60 = unsize_cast<&'90 (dyn LifetimeTrait<Ty = i32> + '91), &'174 (dyn LifetimeTrait<Ty = i32> + '175),  at []>(move _61)
+        _61 = &(*b) with_metadata(copy b.metadata)
+        _60 = unsize_cast<&'90 (dyn LifetimeTrait<Ty = i32> + '91), &'173 (dyn LifetimeTrait<Ty = i32> + '174),  at []>(move _61)
         storage_dead(_61)
         storage_live(_62)
         storage_live(_63)
         _78 = move _93
         _63 = &(*_78)
         _62 = &(*_63)
-        _59 = use_lifetime_trait<'179, '180>(move _60, move _62)
+        _59 = use_lifetime_trait<'178, '179>(move _60, move _62)
         storage_live(_94)
         storage_live(_111)
         storage_live(_112)
-        _112 = const 10 : i32
+        _112 = const 10i32
         _111 = &_112
         _94 = move _111
         storage_dead(_62)
@@ -1502,17 +1464,17 @@ fn main()
         storage_dead(_59)
         storage_dead(_57)
         _0 = ()
-        storage_dead(b_54)
-        storage_dead(a_45)
-        storage_dead(z_38)
+        storage_dead(b)
+        storage_dead(a)
+        storage_dead(z)
         storage_dead(_9)
-        storage_dead(y_6)
-        storage_dead(x_1)
+        storage_dead(y)
+        storage_dead(x)
         return
     }
     storage_dead(_11)
-    conditional_drop[{impl Destruct for String}::drop_in_place] _12
-    conditional_drop[{impl Destruct for String}::drop_in_place] _15
+    conditional_drop[drop_glue<'131>] _12
+    conditional_drop[drop_glue<'133>] _15
     storage_dead(_17)
     storage_dead(_15)
     storage_dead(_14)

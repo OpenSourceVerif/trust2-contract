@@ -9,9 +9,12 @@ use itertools::Itertools;
 use rustc_driver::{Callbacks, Compilation};
 use rustc_interface::Config;
 use rustc_interface::interface::Compiler;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{InstanceKind, TyCtxt};
 use rustc_middle::util::Providers;
 use rustc_session::config::{OutputType, OutputTypes};
+use rustc_span::ErrorGuaranteed;
+use std::path::PathBuf;
+use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::{env, fmt};
 
@@ -28,9 +31,8 @@ fn run_compiler_with_callbacks(
 fn set_mir_options(config: &mut Config) {
     config.opts.unstable_opts.always_encode_mir = true;
     config.opts.unstable_opts.mir_opt_level = Some(0);
-    config.opts.unstable_opts.mir_emit_retag = true;
     config.opts.unstable_opts.mir_preserve_ub = true;
-    let disabled_mir_passes = ["CheckAlignment"];
+    let disabled_mir_passes = ["CheckAlignment", "CheckNull"];
     for pass in disabled_mir_passes {
         config
             .opts
@@ -42,21 +44,15 @@ fn set_mir_options(config: &mut Config) {
 
 /// Enable rustc's parallel front-end.
 fn set_parallel_frontend(config: &mut Config) {
-    if config.opts.unstable_opts.threads <= 1 {
+    if config.opts.unstable_opts.threads.is_none_or(|t| t <= 1) {
         // Match rustc's `-Zthreads=0` behavior.
         const RUSTC_MAX_THREADS_CAP: usize = 256;
-        config.opts.unstable_opts.threads = std::thread::available_parallelism()
-            .map_or(1, |n| n.get())
-            .min(RUSTC_MAX_THREADS_CAP);
+        config.opts.unstable_opts.threads = Some(
+            std::thread::available_parallelism()
+                .map_or(1, |n| n.get())
+                .min(RUSTC_MAX_THREADS_CAP),
+        );
     }
-}
-
-/// Don't even try to codegen. This avoids errors due to checking if the output filename is
-/// available (despite the fact that we won't emit it because we stop compilation early).
-fn set_no_codegen(config: &mut Config) {
-    config.opts.unstable_opts.no_codegen = true;
-    // Only emit metadata.
-    config.opts.output_types = OutputTypes::new(&[(OutputType::Metadata, None)]);
 }
 
 // We use a static to be able to pass data to `override_queries`.
@@ -73,7 +69,13 @@ fn skip_borrowck_if_set(providers: &mut Providers) {
     }
 }
 
-fn setup_compiler(config: &mut Config, options: &CliOpts, do_translate: bool) {
+fn setup_compiler(
+    config: &mut Config,
+    options: &CliOpts,
+    do_translate: bool,
+    emit_artifacts: bool,
+    codegen: bool,
+) {
     if do_translate {
         if options.skip_borrowck {
             // We use a static to be able to pass data to `override_queries`.
@@ -92,10 +94,106 @@ fn setup_compiler(config: &mut Config, options: &CliOpts, do_translate: bool) {
             // };
         });
 
-        set_no_codegen(config);
+        config.opts.unstable_opts.no_codegen = !codegen;
+        if !emit_artifacts {
+            config.opts.output_types = OutputTypes::new(&[(OutputType::Object, None)]);
+        }
         set_parallel_frontend(config);
     }
     set_mir_options(config);
+}
+
+/// Run a couple of rustc queries that don't involve MIR (so that they don't steal it). Returns
+/// whether rustc reported errors. This lets us avoid running Charon translation on crates rustc
+/// already rejects.
+fn precheck_rustc_errors(tcx: TyCtxt<'_>) -> bool {
+    type QueryResult = Result<(), ErrorGuaranteed>;
+
+    tcx.par_hir_for_each_module(|module| {
+        tcx.ensure_ok().check_mod_attrs(module);
+        tcx.ensure_ok().check_mod_unstable_api_usage(module);
+    });
+
+    let _: QueryResult = tcx.ensure_result().check_type_wf(());
+    for &trait_def_id in tcx.all_local_trait_impls(()).keys() {
+        let _: QueryResult = tcx.ensure_result().coherent_trait(trait_def_id);
+    }
+    let _: QueryResult = tcx.ensure_result().crate_inherent_impls_validity_check(());
+    let _: QueryResult = tcx.ensure_result().crate_inherent_impls_overlap_check(());
+
+    tcx.par_hir_body_owners(|def_id| {
+        let def_kind = tcx.def_kind(def_id);
+        if !matches!(def_kind, rustc_hir::def::DefKind::AnonConst) && !def_kind.is_typeck_child() {
+            tcx.ensure_ok().typeck(def_id);
+        }
+    });
+
+    tcx.dcx().has_errors().is_some()
+}
+
+/// Run rustc checks that normally happen close to codegen, so that we get all the post-mono errors
+/// etc.
+fn check_late_rustc_errors(tcx: TyCtxt<'_>) {
+    tcx.par_hir_body_owners(|def_id| {
+        let _ = tcx.instance_mir(InstanceKind::Item(def_id.to_def_id()));
+    });
+
+    if tcx.dcx().err_count() == 0 {
+        let _ = tcx.collect_and_partition_mono_items(());
+    }
+}
+
+/// `cargo miri setup` sets up a sysroot containing a standard library built with
+/// `-Zalways-encode-mir`.
+fn setup_miri_sysroot(target: &str) -> Option<PathBuf> {
+    if let Some(root) = env::var_os("CHARON_MIRI_SYSROOTS")
+        && let sysroot = PathBuf::from(root)
+        && sysroot.join("lib").join("rustlib").join(target).is_dir()
+    {
+        return Some(sysroot);
+    }
+
+    let mut cmd = Command::new("cargo");
+    cmd.arg("miri")
+        .arg("setup")
+        .arg(format!("--target={target}"))
+        .arg("--print-sysroot")
+        .env_remove("RUSTC_WORKSPACE_WRAPPER")
+        .env_remove("RUSTC_WRAPPER");
+
+    let output = match cmd.output() {
+        Ok(output) => output,
+        Err(err) => {
+            eprintln!(
+                "warning: failed to run `cargo miri setup` for target `{target}`; \
+                falling back to rustc's default sysroot: {err}"
+            );
+            return None;
+        }
+    };
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        eprintln!(
+            "warning: `cargo miri setup` failed for target `{target}`; \
+            falling back to rustc's default sysroot: {}",
+            stderr.trim()
+        );
+        return None;
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let sysroot = stdout.lines().map(str::trim).find(|line| !line.is_empty());
+    match sysroot {
+        Some(sysroot) => Some(PathBuf::from(sysroot)),
+        None => {
+            eprintln!(
+                "warning: `cargo miri setup --print-sysroot` printed no sysroot for target \
+                `{target}`; falling back to rustc's default sysroot"
+            );
+            None
+        }
+    }
 }
 
 /// Run the rustc driver with our custom hooks. Returns `None` if the crate was not compiled with
@@ -105,6 +203,14 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
     // Retreive the command-line arguments pased to `charon_driver`. The first arg is the path to
     // the current executable, we skip it.
     let mut compiler_args: Vec<String> = env::args().skip(1).collect();
+    // We use `RUSTC_WORKSPACE_WRAPPER` to break cargo's caching; that value ends up as our first
+    // argument.
+    if compiler_args
+        .first()
+        .is_some_and(|arg| arg.starts_with("charon-dont-cache-this-"))
+    {
+        compiler_args.remove(0);
+    }
     trace!(
         "charon-driver called with args: {}",
         compiler_args.iter().format(" ")
@@ -116,6 +222,12 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
     // whether the crate was specifically selected or is a dependency.
     let is_workspace_dependency =
         env::var("CHARON_USING_CARGO").is_ok() && env::var("CARGO_PRIMARY_PACKAGE").is_err();
+    // Let rustc emit artifacts (metadata, binaries) normally if invoked by `cargo` or when
+    // explicitly requested.
+    let emit_artifacts =
+        env::var("CHARON_USING_CARGO").is_ok() || env::var("CHARON_EMIT_ARTIFACTS").is_ok();
+    // Let rustc emit codegen artifacts, more specifically.
+    let mut codegen = emit_artifacts;
     // Determines if we are being invoked to build a crate for the "target" architecture, in
     // contrast to the "host" architecture. Host crates are for build scripts and proc macros and
     // still need to be built like normal; target crates need to be processed by Charon.
@@ -123,9 +235,46 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
     // Currently, we detect this by checking for "--target=", which is never set for host crates.
     // This matches what Miri does, which hopefully makes it reliable enough. This relies on us
     // always invoking cargo itself with `--target`, which `charon` ensures.
-    let is_target = arg_value(&compiler_args, "--target").is_some();
+    let target = arg_value(&compiler_args, "--target");
     // Whether this is the crate we want to translate.
-    let is_selected_crate = !is_workspace_dependency && is_target;
+    let is_selected_crate = !is_workspace_dependency && target.is_some();
+
+    let mut error_ctx = ErrorCtx::new();
+
+    // Retrieve the Charon options by deserializing them from the environment variable
+    // (cargo-charon serialized the arguments and stored them in a specific environment
+    // variable before calling cargo with `RUSTC_WRAPPER=charon-driver`).
+    let mut options = match env::var(options::CHARON_ARGS)
+        .ok()
+        .map(|opts| serde_json::from_str::<options::CliOpts>(&opts).unwrap())
+    {
+        Some(options) => options,
+        None if !is_selected_crate => Default::default(),
+        None => {
+            register_error!(
+                error_ctx,
+                no_crate,
+                "environment variable `CHARON_ARGS` not set; \
+                don't call `charon-driver` directly, call `charon rustc` instead"
+            );
+            return Err(CharonFailure::CharonError(1));
+        }
+    };
+
+    if options.sysroot.as_deref() == Some("default") {
+        // Do nothing
+    } else if let Some(sysroot) = options.sysroot.as_ref()
+        && sysroot != "miri"
+    {
+        compiler_args.push(format!("--sysroot={sysroot}"));
+    } else if let Some(target) = target
+        && let Some(sysroot) = setup_miri_sysroot(target)
+    {
+        // In the default case, or `--sysroot=miri`, we ask Miri to build a full-mir syroot for us.
+        compiler_args.push(format!("--sysroot={}", sysroot.display()));
+        // The Miri sysroot doesn't support codegen.
+        codegen = false;
+    }
 
     let output = if !is_selected_crate {
         trace!("Skipping charon; running compiler normally instead.");
@@ -133,23 +282,6 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
         run_compiler_with_callbacks(compiler_args, &mut RunCompilerNormallyCallbacks)?;
         None
     } else {
-        let mut error_ctx = ErrorCtx::new();
-
-        // Retrieve the Charon options by deserializing them from the environment variable
-        // (cargo-charon serialized the arguments and stored them in a specific environment
-        // variable before calling cargo with RUSTC_WRAPPER=charon-driver).
-        let mut options: options::CliOpts = match env::var(options::CHARON_ARGS) {
-            Ok(opts) => serde_json::from_str(opts.as_str()).unwrap(),
-            Err(_) => {
-                register_error!(
-                    error_ctx,
-                    no_crate,
-                    "environment variable `CHARON_ARGS` not set; \
-                    don't call `charon-driver` directly, call `charon rustc` instead"
-                );
-                return Err(CharonFailure::CharonError(1));
-            }
-        };
         options.apply_preset();
 
         error_ctx.continue_on_failure = !options.abort_on_error;
@@ -162,6 +294,8 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
         // Call the Rust compiler with our custom callback.
         let mut callback = CharonCallbacks {
             options: &options,
+            emit_artifacts,
+            codegen,
             error_ctx: Some(error_ctx),
             transform_ctx: None,
         };
@@ -176,6 +310,11 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
 /// The callbacks for Charon
 pub struct CharonCallbacks<'a> {
     options: &'a CliOpts,
+    /// Whether rustc should emit the artifacts (metadata, binaries) it normally would. This is
+    /// needed under cargo so later crate invocations can consume earlier selected crates.
+    emit_artifacts: bool,
+    /// Whether to let rustc run codegen as it normally would.
+    codegen: bool,
     /// Context for errors; `take()`n by translation.
     error_ctx: Option<ErrorCtx>,
     /// This is to be filled during the extraction; it contains the translated crate. `None` at the
@@ -184,7 +323,13 @@ pub struct CharonCallbacks<'a> {
 }
 impl<'a> Callbacks for CharonCallbacks<'a> {
     fn config(&mut self, config: &mut Config) {
-        setup_compiler(config, self.options, true);
+        setup_compiler(
+            config,
+            self.options,
+            true,
+            self.emit_artifacts,
+            self.codegen,
+        );
     }
 
     /// The MIR is modified in place: borrow-checking requires the "promoted" MIR, which causes the
@@ -196,6 +341,10 @@ impl<'a> Callbacks for CharonCallbacks<'a> {
         rustc_hir::def_id::DEF_ID_DEBUG
             .swap(&(def_id_debug as fn(_, &mut fmt::Formatter<'_>) -> _));
 
+        if precheck_rustc_errors(tcx) {
+            return Compilation::Continue;
+        }
+
         self.transform_ctx = translate_crate::translate(
             tcx,
             self.options,
@@ -206,9 +355,11 @@ impl<'a> Callbacks for CharonCallbacks<'a> {
 
         Compilation::Continue
     }
-    fn after_analysis<'tcx>(&mut self, _: &Compiler, _: TyCtxt<'tcx>) -> Compilation {
-        // Don't continue to codegen etc.
-        Compilation::Stop
+    fn after_analysis<'tcx>(&mut self, _compiler: &Compiler, tcx: TyCtxt<'tcx>) -> Compilation {
+        if !self.emit_artifacts {
+            check_late_rustc_errors(tcx);
+        }
+        Compilation::Continue
     }
 }
 
@@ -217,7 +368,7 @@ pub struct RunCompilerNormallyCallbacks;
 
 impl Callbacks for RunCompilerNormallyCallbacks {
     fn config(&mut self, config: &mut Config) {
-        setup_compiler(config, &Default::default(), false);
+        setup_compiler(config, &Default::default(), false, true, true);
     }
 }
 

@@ -8,24 +8,26 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
 // Full name: test_crate::MyTrait
 pub trait MyTrait<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    parent_clause1 : [@TraitClause1]: Sized<Self::foo_ty>
-    type foo_ty<[@TraitClause0_1]: Sized<Self>>
-    fn foo<[@TraitClause0_1]: Sized<Self>> = test_crate::MyTrait::foo<Self>[Self, @TraitClause0_1]
-    vtable: test_crate::MyTrait::{vtable}<Self::foo_ty>
+    proof ImpliedClause0: (Self: MetaSized)
+    type foo_ty = ()
+    where
+        TraitClause0_1: (Self: Sized),
+        proof ImpliedClause0: (Self::foo_ty[TraitClause0_1]: Sized);
+    fn foo<TraitClause0_1: (Self: Sized)> = test_crate::MyTrait::foo<Self>[Self, TraitClause0_1]
+    vtable: test_crate::MyTrait::{vtable}
 }
 
 pub fn test_crate::MyTrait::foo<Self>()
 where
-    [@TraitClause0]: MyTrait<Self>,
-    [@TraitClause1]: Sized<Self>,
+    TraitClause0: (Self: MyTrait),
+    TraitClause1: (Self: Sized),
 {
     let _0: (); // return
 
@@ -38,9 +40,9 @@ where
 pub struct S {}
 
 // Full name: test_crate::{impl MyTrait for S}::foo
-pub fn {impl MyTrait for S}::foo()
+pub fn impl_MyTrait_for_S::foo()
 where
-    [@TraitClause0]: Sized<S>,
+    TraitClause0: (S: Sized),
 {
     let _0: (); // return
 
@@ -50,12 +52,14 @@ where
 }
 
 // Full name: test_crate::{impl MyTrait for S}
-impl MyTrait for S {
-    parent_clause0 = {built_in impl MetaSized for S}
-    parent_clause1 = {impl MyTrait for S}::parent_clause1
-    type foo_ty<[@TraitClause0_1]: Sized<S>> = ()
-    fn foo<[@TraitClause0_1]: Sized<S>> = {impl MyTrait for S}::foo[@TraitClause0_1]
-    vtable: {impl MyTrait for S}::{vtable}
+impl "impl_MyTrait_for_S" MyTrait for S {
+    proof ImpliedClause0: (S: MetaSized) = {built_in impl MetaSized for S}
+    type foo_ty = ()
+    where
+        TraitClause0_1: (S: Sized),
+        proof ImpliedClause0: (impl_MyTrait_for_S::foo_ty[TraitClause0_1]: Sized) = impl_MyTrait_for_S::foo_ty::ImpliedClause0;
+    fn foo<TraitClause0_1: (S: Sized)> = impl_MyTrait_for_S::foo[TraitClause0_1]
+    vtable: impl_MyTrait_for_S::{vtable}
 }
 
 

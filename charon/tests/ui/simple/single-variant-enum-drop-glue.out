@@ -8,7 +8,7 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
@@ -16,22 +16,19 @@ pub trait Sized<Self>
 #[lang_item("destruct")]
 pub trait Destruct<Self>
 {
-    fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
+    fn drop_glue<'_0_1>;
     non-dyn-compatible
 }
-
-unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
-= <opaque>
 
 // Full name: alloc::alloc::Global
 #[lang_item("global_alloc_ty")]
 pub struct Global {}
 
-// Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop_in_place
-unsafe fn {impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop_in_place<T, A>(_1: *mut alloc::boxed::Box<T>[@TraitClause0, @TraitClause1])
+// Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<T>[TraitClause0, TraitClause1]}::drop_glue
+unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut alloc::boxed::Box<T>[TraitClause0, TraitClause1])
 where
-    [@TraitClause0]: MetaSized<T>,
-    [@TraitClause1]: Sized<A>,
+    TraitClause0: (T: MetaSized),
+    TraitClause1: (A: Sized),
 = <opaque>
 
 // Full name: test_crate::Thing
@@ -39,27 +36,24 @@ pub enum Thing {
   A(alloc::boxed::Box<()>[{built_in impl MetaSized for ()}, {built_in impl Sized for Global}]),
 }
 
-// Full name: test_crate::Thing::{impl Destruct for Thing}::drop_in_place
-unsafe fn {impl Destruct for Thing}::drop_in_place(_1: *mut Thing)
+// Full name: test_crate::Thing::{impl Destruct for Thing}::drop_glue
+unsafe fn impl_Destruct_for_Thing::drop_glue<'_0>(_1: &'_0 mut Thing)
 {
     let _0: (); // return
-    let _1: *mut Thing; // arg #1
-    let _2: &'1 mut Thing; // anonymous local
+    let _1: &'1 mut Thing; // arg #1
 
-    storage_live(_2)
     _0 = ()
-    _2 = &mut (*_1)
-    match (*_2) {
+    match (*_1) {
         _ => {
         },
     }
-    drop[{impl Destruct for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop_in_place<(), Global>[{built_in impl MetaSized for ()}, {built_in impl Sized for Global}]] ((*_2) as variant Thing::A).0
+    drop[impl_Destruct_for_Box::drop_glue<'2, (), Global>[{built_in impl MetaSized for ()}, {built_in impl Sized for Global}]] ((*_1) as variant Thing::A).0
     return
 }
 
 // Full name: test_crate::Thing::{impl Destruct for Thing}
-impl Destruct for Thing {
-    fn drop_in_place = {impl Destruct for Thing}::drop_in_place
+impl "impl_Destruct_for_Thing" Destruct for Thing {
+    fn drop_glue<'_0_1> = impl_Destruct_for_Thing::drop_glue<'_0_1>
     non-dyn-compatible
 }
 
@@ -71,7 +65,7 @@ fn foo(_1: Thing)
 
     _0 = ()
     _0 = ()
-    conditional_drop[{impl Destruct for Thing}::drop_in_place] _1
+    conditional_drop[impl_Destruct_for_Thing::drop_glue<'0>] _1
     return
 }
 

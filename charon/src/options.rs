@@ -35,12 +35,7 @@ pub struct CliOpts {
     #[serde(default)]
     pub ullbc: bool,
     /// Whether to precisely translate drops and drop-related code. For this, we add explicit
-    /// `Destruct` bounds to all generic parameters, set the MIR level to at least `elaborated`,
-    /// and attempt to retrieve drop glue for all types.
-    ///
-    /// This option is known to cause panics inside rustc, because their drop handling is not
-    /// design to work on polymorphic types. To silence the warning, pass appropriate `--opaque
-    /// '{impl core::marker::Destruct for some::Type}'` options.
+    /// `Destruct` bounds to all generic parameters and set the MIR level to at least `elaborated`.
     ///
     /// Without this option, drops may be "conditional" and we may lack information about what code
     /// is run on drop in a given polymorphic function body.
@@ -66,6 +61,13 @@ pub struct CliOpts {
     #[clap(long, value_delimiter = ',')]
     #[serde(default)]
     pub targets: Vec<String>,
+    /// Sysroot to use for rustc invocations. By default Charon builds a sysroot that has full MIR
+    /// for the standard library. You can pass a custom sysroot to use instead, or pass "default"
+    /// to use the normal distributed sysroot, which lacks MIR bodies for many standard library
+    /// functions.
+    #[clap(long)]
+    #[serde(default)]
+    pub sysroot: Option<String>,
 
     /// Monomorphize the items encountered when possible. Generic items found in the crate are
     /// skipped. To only translate a particular call graph, use `--start-from`. Note: this doesn't
@@ -97,18 +99,19 @@ pub struct CliOpts {
     #[clap(long, value_delimiter = ',')]
     #[serde(default)]
     pub start_from_if_exists: Vec<String>,
-    /// Use all the items annotated with the given attribute as starting points for translation
+    /// Use all the items annotated with the given attribute(s) as starting points for translation
     /// (except modules).
     /// If an attribute name is not specified, `verify::start_from` is used.
     #[clap(
         long,
         value_name("ATTRIBUTE"),
-        num_args(0..=1),
+        num_args(0..),
         require_equals(true),
+        value_delimiter = ',',
         default_missing_value("verify::start_from"),
     )]
     #[serde(default)]
-    pub start_from_attribute: Option<String>,
+    pub start_from_attribute: Vec<String>,
     /// Use all the `pub` items as starting points for translation (except modules).
     #[clap(long)]
     #[serde(default)]
@@ -158,6 +161,12 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub translate_all_methods: bool,
+    /// Whenever an impl doesn't implement a method (because it has a default body), this creates a
+    /// duplicate method as if it had been implemented. This can simplify the call-graphs as
+    /// otherwise calls within the default body would be indirected through trait proofs.
+    #[clap(long)]
+    #[serde(default)]
+    pub duplicate_defaulted_methods: bool,
 
     /// Transform the associate types of traits to be type parameters instead. This takes a list
     /// of name patterns of the traits to transform, using the same syntax as `--include`.
@@ -169,25 +178,31 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub hide_marker_traits: bool,
-    /// Remove trait clauses from type declarations. Must be combined with
-    /// `--lift-associated-types` for type declarations that use trait associated types in their
-    /// fields, otherwise this will result in errors.
-    #[clap(long)]
-    #[serde(default)]
-    pub remove_adt_clauses: bool,
     /// Hide the `A` type parameter on standard library containers (`Box`, `Vec`, etc).
     #[clap(long)]
     #[serde(default)]
     pub hide_allocator: bool,
-    /// Trait method declarations take a `Self: Trait` clause as parameter, so that they can be
+
+    /// Remove trait clauses that aren't ultimately used anywhere. This is potentially incorrect as
+    /// sometimes the mere presence of a trait clause is used to justify an operation, e.g. copying
+    /// `Copy` data using `unsafe`.
+    #[clap(long)]
+    #[serde(default)]
+    pub remove_unused_clauses: bool,
+    /// Trait method default bodies take a `Self: Trait` clause as parameter, so that they can be
     /// reused by multiple trait impls. This however causes trait definitions to be mutually
-    /// recursive with their method declarations. This flag removes `Self` clauses that aren't used
-    /// to break this mutual recursion when possible.
+    /// recursive with their default methods. This flag removes `Self` clauses that aren't used to
+    /// break this mutual recursion when possible.
     #[clap(long)]
     #[serde(default)]
     pub remove_unused_self_clauses: bool,
+    /// Remove trait clauses from type declarations. Best combined with `--lift-associated-types`
+    /// for type declarations that use trait associated types in their fields.
+    #[clap(long)]
+    #[serde(default)]
+    pub remove_adt_clauses: bool,
 
-    /// Transform precise drops to the equivalent `drop_in_place(&raw mut p)` call.
+    /// Transform precise drops to the equivalent `drop_glue(&mut p)` call.
     #[clap(long)]
     #[serde(default)]
     pub desugar_drops: bool,
@@ -399,6 +414,7 @@ impl CliOpts {
                     self.reconstruct_fallible_operations = true;
                     self.reconstruct_asserts = true;
                     self.unbind_item_vars = true;
+                    self.duplicate_defaulted_methods = true;
                 }
                 Preset::RawMir => {
                     self.extract_opaque_bodies = true;
@@ -424,6 +440,7 @@ impl CliOpts {
                     self.remove_unused_self_clauses = true;
                     self.remove_adt_clauses = true;
                     self.unbind_item_vars = true;
+                    self.duplicate_defaulted_methods = true;
                 }
                 Preset::Eurydice => {
                     self.hide_allocator = true;
@@ -434,13 +451,18 @@ impl CliOpts {
                     self.reconstruct_asserts = true;
                     self.lift_associated_types.push("*".to_owned());
                     self.unbind_item_vars = true;
+                    self.duplicate_defaulted_methods = true;
                     // Eurydice doesn't support opaque vtables it seems?
                     self.include.push("core::marker::MetaSized".to_owned());
                 }
                 Preset::Soteria => {
+                    self.desugar_drops = true;
                     self.extract_opaque_bodies = true;
-                    self.monomorphize = true;
                     self.mir = Some(MirLevel::Elaborated);
+                    self.monomorphize = true;
+                    self.no_normalize = true;
+                    self.precise_drops = true;
+                    self.raw_consts = true;
                     self.ullbc = true;
                 }
                 Preset::Tests => {
@@ -451,12 +473,13 @@ impl CliOpts {
                     self.reconstruct_asserts = true;
                     self.ops_to_function_calls = true;
                     self.index_to_function_calls = true;
+                    self.duplicate_defaulted_methods = true;
                     self.rustc_args.push("--edition=2021".to_owned());
                     self.rustc_args
                         .push("-Zcrate-attr=feature(register_tool)".to_owned());
                     self.rustc_args
                         .push("-Zcrate-attr=register_tool(charon)".to_owned());
-                    self.exclude.push("core::fmt::Formatter".to_owned());
+                    self.exclude.push("core::fmt".to_owned());
                 }
             }
         }
@@ -551,7 +574,7 @@ impl StartFrom {
                 .iter()
                 .filter_map(|a| a.as_unknown())
                 .any(|raw_attr| raw_attr.path == *attr),
-            StartFrom::Pub => item_meta.attr_info.public,
+            StartFrom::Pub => item_meta.attr_info.public && item_meta.is_local,
         }
     }
 }
@@ -565,11 +588,11 @@ pub struct TranslateOptions {
     /// Usually we skip the provided methods that aren't used. When this flag is on, we translate
     /// them all.
     pub translate_all_methods: bool,
+    /// Duplicate trait default methods into impls that use them.
+    pub duplicate_defaulted_methods: bool,
     /// If `Some(_)`, run the partial mutability monomorphization pass. The contained enum
     /// indicates whether to partially monomorphize types.
     pub monomorphize_mut: Option<MonomorphizeMut>,
-    /// Remove trait clauses attached to type declarations.
-    pub remove_adt_clauses: bool,
     /// Whether to hide various marker traits such as `*Sized` and `Destruct` anywhere they show
     /// up.
     pub hide_marker_traits: bool,
@@ -578,8 +601,14 @@ pub struct TranslateOptions {
     /// List of traits to remove any mentions of. Influenced by `hide_marker_traits`,
     /// `hide_allocator`, and `precise_drops`.
     pub hide_traits: Vec<NamePattern>,
+    /// Remove trait clauses that aren't ultimately used anywhere. This is potentially incorrect as
+    /// sometimes the mere presence of a trait clause is used to justify an operation, e.g. copying
+    /// `Copy` data using `unsafe`.
+    pub remove_unused_clauses: bool,
     /// Remove unused `Self: Trait` clauses on method declarations.
     pub remove_unused_self_clauses: bool,
+    /// Remove trait clauses attached to type declarations.
+    pub remove_adt_clauses: bool,
     /// Monomorphize code using hax's instantiation mechanism.
     pub monomorphize_with_hax: bool,
     /// Transform array-to-slice unsizing, repeat expressions, and raw pointer construction into
@@ -612,12 +641,10 @@ pub struct TranslateOptions {
     pub no_typecheck: bool,
     /// Don't normalize associated types.
     pub no_normalize: bool,
-    /// Transform Drop to Call drop_in_place
+    /// Transform Drop to Call drop_glue
     pub desugar_drops: bool,
     /// Add `Destruct` bounds to all generic params.
     pub add_destruct_bounds: bool,
-    /// Translate drop glue for poly types, knowing that this may cause ICEs.
-    pub translate_poly_drop_glue: bool,
 }
 
 impl TranslateOptions {
@@ -653,7 +680,7 @@ impl TranslateOptions {
                     strict: false,
                 }),
         );
-        if let Some(attr) = options.start_from_attribute.clone() {
+        for attr in options.start_from_attribute.iter().cloned() {
             start_from.push(StartFrom::Attribute(attr));
         }
         if options.start_from_pub {
@@ -740,11 +767,12 @@ impl TranslateOptions {
             start_from,
             mir_level,
             monomorphize_mut: options.monomorphize_mut,
-            remove_adt_clauses: options.remove_adt_clauses,
             hide_marker_traits: options.hide_marker_traits,
             hide_allocator: options.hide_allocator,
             hide_traits,
+            remove_unused_clauses: options.remove_unused_clauses,
             remove_unused_self_clauses: options.remove_unused_self_clauses,
+            remove_adt_clauses: options.remove_adt_clauses,
             monomorphize_with_hax: options.monomorphize,
             ops_to_function_calls: options.ops_to_function_calls,
             index_to_function_calls: options.index_to_function_calls,
@@ -758,11 +786,11 @@ impl TranslateOptions {
             lift_associated_types,
             unbind_item_vars: options.unbind_item_vars,
             translate_all_methods: options.translate_all_methods,
+            duplicate_defaulted_methods: options.duplicate_defaulted_methods,
             no_typecheck: options.no_typecheck,
             no_normalize: options.no_normalize,
             desugar_drops: options.desugar_drops,
             add_destruct_bounds: options.precise_drops,
-            translate_poly_drop_glue: options.precise_drops,
         }
     }
 

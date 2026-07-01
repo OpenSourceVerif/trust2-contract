@@ -8,7 +8,7 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
@@ -16,25 +16,21 @@ pub trait Sized<Self>
 #[lang_item("destruct")]
 pub trait Destruct<Self>
 {
-    fn drop_in_place = drop_in_place<Self>
+    fn drop_glue<'_0_1>;
     non-dyn-compatible
 }
 
-// Full name: core::marker::Destruct::drop_in_place
-unsafe fn drop_in_place<Self>(_1: *mut Self)
-= <opaque>
-
 // Full name: test_crate::ignore
-fn ignore<T>(t_1: T)
+fn ignore<T>(t: T)
 where
-    [@TraitClause0]: Sized<T>,
+    TraitClause0: (T: Sized),
 {
     let _0: (); // return
-    let t_1: T; // arg #1
+    let t: T; // arg #1
 
     _0 = ()
     _0 = ()
-    conditional_drop[{built_in impl Destruct for T}::drop_in_place] t_1
+    conditional_drop[{built_in impl Destruct for T}::drop_glue<'0>] t
     return
 }
 

@@ -3,7 +3,7 @@
 use std::panic;
 
 use crate::hax;
-use crate::hax::HasParamEnv;
+use crate::hax::UnderOwnerState;
 use rustc_middle::mir;
 use rustc_middle::ty;
 
@@ -94,9 +94,9 @@ fn get_mir_for_def_id_and_level<'tcx>(
             // generic or inlineable functions.
             let is_global = matches!(
                 def_id.kind,
-                hax::DefKind::Const
+                hax::DefKind::Const { .. }
                     | hax::DefKind::AnonConst
-                    | hax::DefKind::AssocConst
+                    | hax::DefKind::AssocConst { .. }
                     | hax::DefKind::InlineConst
             );
             let mir_available = tcx.is_mir_available(rust_def_id);

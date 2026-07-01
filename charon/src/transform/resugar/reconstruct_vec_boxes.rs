@@ -177,7 +177,7 @@ fn find_next_move_of(
         let block = &body.body[cursor.block];
         while cursor.statement < block.statements.len() {
             let st = &body[cursor];
-            if let Some((dst_place, Rvalue::Use(Operand::Move(src_place)))) = st.kind.as_assign()
+            if let Some((dst_place, Rvalue::Use(Operand::Move(src_place), _))) = st.kind.as_assign()
                 && src_place == src
             {
                 return Some((cursor, dst_place.clone()));
@@ -220,7 +220,7 @@ fn find_move_in_block(
 ) -> Option<StmtLoc> {
     let mut out = None;
     for (statement, st) in body.body[block].statements.iter().enumerate() {
-        if let Some((dst_place, Rvalue::Use(Operand::Move(src_place)))) = st.kind.as_assign()
+        if let Some((dst_place, Rvalue::Use(Operand::Move(src_place), _))) = st.kind.as_assign()
             && dst_place == dst
             && src_place == src
         {
@@ -329,7 +329,10 @@ impl UllbcPass for Transform {
                 // check uninit_box: Box<MaybeUninit<_>>
                 let uninit_box = call.dest.clone();
                 let maybe_uninit_array_ty = box_inner(uninit_box.ty())?;
-                let mu_decl = &ctx.translated.type_decls[maybe_uninit_array_ty.as_adt_id()?];
+                let mu_decl = &ctx
+                    .translated
+                    .type_decls
+                    .get(maybe_uninit_array_ty.as_adt_id()?)?;
                 if mu_decl.item_meta.lang_item.as_deref() != Some("maybe_uninit") {
                     return None;
                 };
@@ -406,10 +409,12 @@ impl UllbcPass for Transform {
                 body.body[rw.new_uninit_bid].terminator.kind = TerminatorKind::Goto {
                     target: rw.new_uninit_target,
                 };
+                let mut box_new_generics = rw.box_array_generics.clone();
+                box_new_generics.types.pop(); // pop the allocator param
                 (
                     FnPtr::new(
                         FnPtrKind::Fun(FunId::Builtin(BuiltinFunId::BoxNew)),
-                        rw.box_array_generics,
+                        box_new_generics,
                     ),
                     vec![Operand::Move(array_local.clone())],
                 )
@@ -437,7 +442,10 @@ impl UllbcPass for Transform {
             ));
             target_block.statements.push(Statement::new(
                 rw.span,
-                StatementKind::Assign(rw.box_array, Rvalue::Use(Operand::Move(box_array_local))),
+                StatementKind::Assign(
+                    rw.box_array,
+                    Rvalue::Use(Operand::Move(box_array_local), WithRetag::No),
+                ),
             ));
             target_block.statements.push(Statement::new(
                 rw.span,

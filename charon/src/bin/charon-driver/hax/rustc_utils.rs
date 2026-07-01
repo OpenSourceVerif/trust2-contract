@@ -1,6 +1,11 @@
-use crate::hax::prelude::*;
+use std::collections::HashSet;
+
 use rustc_hir::def::DefKind as RDefKind;
 use rustc_middle::{mir, ty};
+use rustc_span::kw;
+use rustc_type_ir::Interner;
+
+use crate::hax::prelude::*;
 
 pub fn inst_binder<'tcx, T>(
     tcx: ty::TyCtxt<'tcx>,
@@ -12,7 +17,7 @@ where
     T: ty::TypeFoldable<ty::TyCtxt<'tcx>> + Clone,
 {
     match args {
-        None => x.instantiate_identity(),
+        None => x.instantiate_identity().skip_normalization(),
         Some(args) => normalize(tcx, typing_env, x.instantiate(tcx, args)),
     }
 }
@@ -29,6 +34,16 @@ where
     inst_binder(tcx, typing_env, args, ty::EarlyBinder::bind(x))
 }
 
+/// Make a new `ParamEnv` from a list of clauses.
+pub fn param_env_from_clauses<'tcx>(
+    tcx: ty::TyCtxt<'tcx>,
+    predicates: impl Iterator<Item = ty::Clause<'tcx>>,
+) -> ty::ParamEnv<'tcx> {
+    let cause = rustc_trait_selection::traits::ObligationCause::dummy();
+    let param_env = ty::ParamEnv::new(tcx.mk_clauses_from_iter(predicates));
+    rustc_trait_selection::traits::normalize_param_env_or_error(tcx, param_env, cause)
+}
+
 #[extension_traits::extension(pub trait SubstBinder)]
 impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
     fn subst(
@@ -36,7 +51,9 @@ impl<'tcx, T: ty::TypeFoldable<ty::TyCtxt<'tcx>>> ty::Binder<'tcx, T> {
         tcx: ty::TyCtxt<'tcx>,
         generics: &[ty::GenericArg<'tcx>],
     ) -> ty::Binder<'tcx, T> {
-        ty::EarlyBinder::bind(self).instantiate(tcx, generics)
+        ty::EarlyBinder::bind(self)
+            .instantiate(tcx, generics)
+            .skip_normalization()
     }
 }
 
@@ -69,29 +86,6 @@ pub(crate) fn get_variant_kind<'s, S: UnderOwnerState<'s>>(
     } else {
         let index = variant_index;
         VariantKind::Enum { index }
-    }
-}
-
-pub trait HasParamEnv<'tcx> {
-    fn param_env(&self) -> ty::ParamEnv<'tcx>;
-    fn typing_env(&self) -> ty::TypingEnv<'tcx>;
-}
-
-impl<'tcx, S: UnderOwnerState<'tcx>> HasParamEnv<'tcx> for S {
-    fn param_env(&self) -> ty::ParamEnv<'tcx> {
-        let tcx = self.base().tcx;
-        let def_id = self.owner_id();
-        if can_have_generics(tcx, def_id) {
-            tcx.param_env(def_id)
-        } else {
-            ty::ParamEnv::empty()
-        }
-    }
-    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
-        ty::TypingEnv {
-            param_env: self.param_env(),
-            typing_mode: ty::TypingMode::PostAnalysis,
-        }
     }
 }
 
@@ -174,15 +168,6 @@ pub fn get_method_sig<'tcx>(
     };
     let declared_sig = tcx.fn_sig(decl_method_id);
 
-    // TODO(Nadrieril): Temporary hack: if the signatures have the same number of bound vars, we
-    // keep the real signature. While the declared signature is more correct, it is also less
-    // normalized and we can't normalize without erasing regions but regions are crucial in
-    // function signatures. Hence we cheat here, until charon gains proper normalization
-    // capabilities.
-    if declared_sig.skip_binder().bound_vars().len() == real_sig.bound_vars().len() {
-        return real_sig;
-    }
-
     let impl_def_id = item.container_id(tcx);
     let method_args =
         method_args.unwrap_or_else(|| ty::GenericArgs::identity_for_item(tcx, def_id));
@@ -190,14 +175,34 @@ pub fn get_method_sig<'tcx>(
     let implemented_trait_ref = tcx
         .impl_trait_ref(impl_def_id)
         .instantiate(tcx, method_args);
+    let implemented_trait_ref = normalize(tcx, typing_env, implemented_trait_ref);
     // Construct arguments for the declared method generics in the context of the implemented
     // method generics.
     let decl_args = method_args.rebase_onto(tcx, impl_def_id, implemented_trait_ref.args);
     let sig = declared_sig.instantiate(tcx, decl_args);
-    // Avoids accidentally using the same lifetime name twice in the same scope
-    // (once in impl parameters, second in the method declaration late-bound vars).
-    let sig = tcx.anonymize_bound_vars(sig);
-    normalize(tcx, typing_env, sig)
+    let sig = normalize(tcx, typing_env, sig);
+
+    if let container_named_lts = tcx
+        .generics_of(impl_def_id)
+        .own_params
+        .iter()
+        .filter(|p| matches!(p.kind, ty::GenericParamDefKind::Lifetime))
+        .filter(|p| p.name != kw::UnderscoreLifetime)
+        .map(|p| p.name)
+        .collect::<HashSet<_>>()
+        && sig
+            .bound_vars()
+            .iter()
+            .map(|v| v.expect_region())
+            .filter_map(|v| v.get_name(tcx))
+            .any(|lt| container_named_lts.contains(&lt))
+    {
+        // Avoids using the same lifetime name twice in the same scope (once in impl parameters,
+        // second in the method declaration late-bound vars).
+        tcx.anonymize_bound_vars(sig)
+    } else {
+        sig
+    }
 }
 
 /// Generates a list of `<trait_ref>::Ty` type aliases for each non-gat associated type of the
@@ -217,8 +222,13 @@ pub fn assoc_tys_for_trait<'tcx>(
             tcx.associated_items(tref.def_id)
                 .in_definition_order()
                 .filter(|assoc| matches!(assoc.kind, ty::AssocKind::Type { .. }))
-                .filter(|assoc| tcx.generics_of(assoc.def_id).own_params.is_empty())
-                .map(|assoc| ty::AliasTy::new(tcx, assoc.def_id, tref.args)),
+                .filter(|assoc| {
+                    tcx.generics_of(assoc.def_id).own_params.is_empty()
+                        && tcx.predicates_of(assoc.def_id).predicates.is_empty()
+                })
+                .map(|assoc| {
+                    ty::AliasTy::new(tcx, tcx.alias_ty_kind_from_def_id(assoc.def_id), tref.args)
+                }),
         );
         for clause in tcx
             .explicit_super_predicates_of(tref.def_id)
@@ -226,7 +236,7 @@ pub fn assoc_tys_for_trait<'tcx>(
             .iter_instantiated(tcx, tref.args)
         {
             if let Some(pred) = clause.as_trait_clause() {
-                let tref = erase_and_norm(tcx, typing_env, pred.skip_binder().trait_ref);
+                let tref = erase_and_norm(tcx, typing_env, pred.map(|b| b.skip_binder().trait_ref));
                 gather_assoc_tys(tcx, typing_env, assoc_tys, tref);
             }
         }
@@ -257,7 +267,7 @@ pub fn dyn_self_ty<'tcx>(
         .map(|alias_ty| {
             let proj = ty::ProjectionPredicate {
                 projection_term: alias_ty.into(),
-                term: ty::Ty::new_alias(tcx, ty::Projection, alias_ty).into(),
+                term: ty::Ty::new_alias(tcx, alias_ty).into(),
             };
             let proj = ty::ExistentialProjection::erase_self_ty(tcx, proj);
             ty::Binder::dummy(ty::ExistentialPredicate::Projection(proj))
@@ -273,7 +283,7 @@ pub fn dyn_self_ty<'tcx>(
         tcx.mk_poly_existential_predicates(&preds)
     };
     let ty = tcx.mk_ty_from_kind(ty::Dynamic(preds, re_erased));
-    let ty = normalize(tcx, typing_env, ty);
+    let ty = normalize(tcx, typing_env, ty::Unnormalized::new_wip(ty));
     Some(ty)
 }
 
@@ -291,22 +301,22 @@ pub fn closure_once_shim<'tcx>(
         ty::ClosureKind::FnOnce => return None,
     };
     let mir = tcx.instance_mir(instance.def).clone();
-    let mir = ty::EarlyBinder::bind(mir).instantiate(tcx, instance.args);
+    let mir = ty::EarlyBinder::bind(mir)
+        .instantiate(tcx, instance.args)
+        .skip_normalization();
     Some(mir)
 }
 
 pub fn drop_glue_shim<'tcx>(
-    tcx: ty::TyCtxt<'tcx>,
-    def_id: RDefId,
+    s: &impl UnderOwnerState<'tcx>,
+    def_id: &DefId,
     instantiate: Option<ty::GenericArgsRef<'tcx>>,
 ) -> mir::Body<'tcx> {
-    let drop_in_place =
-        tcx.require_lang_item(rustc_hir::LangItem::DropInPlace, rustc_span::DUMMY_SP);
-    let ty = tcx.type_of(def_id);
-    let ty = match instantiate {
-        None => ty.instantiate_identity(),
-        Some(args) => ty.instantiate(tcx, args),
-    };
-    let instance_kind = ty::InstanceKind::DropGlue(drop_in_place, Some(ty));
-    tcx.instance_mir(instance_kind).clone()
+    let tcx = s.base().tcx;
+    let drop_glue = tcx.require_lang_item(rustc_hir::LangItem::DropGlue, rustc_span::DUMMY_SP);
+    let ty = inst_binder(tcx, s.typing_env(), instantiate, def_id.type_of(s));
+    let mut body = rustc_mir_transform::build_drop_shim(tcx, drop_glue, Some(ty), s.typing_env());
+    // Set the mir phase so that charon knows the contained drops are precise.
+    body.phase = mir::MirPhase::Runtime(mir::RuntimePhase::Optimized);
+    body
 }

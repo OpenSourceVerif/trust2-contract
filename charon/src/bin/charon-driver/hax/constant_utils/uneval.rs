@@ -42,6 +42,7 @@ pub(crate) fn scalar_int_to_constant_literal<'tcx, S: UnderOwnerState<'tcx>>(
             let v = x.to_bits_unchecked();
             bits_and_type_to_float_constant_literal(v, kind.sinto(s))
         }
+        ty::Pat(inner, _) => scalar_int_to_constant_literal(s, x, *inner),
         _ => {
             let ty_sinto: Ty = ty.sinto(s);
             supposely_unreachable_fatal!(
@@ -108,6 +109,7 @@ pub fn eval_ty_constant<'tcx, S: UnderOwnerState<'tcx>>(
         .ok()?
         .ok()?;
     let ty = tcx.type_of(uv.def).instantiate(tcx, uv.args);
+    let ty = normalize(tcx, typing_env, ty);
     Some(ty::Const::new_value(tcx, val, ty))
 }
 
@@ -133,7 +135,7 @@ impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ConstantExpr> for ty::Const<'tcx> 
                 {
                     val.sinto(s)
                 } else {
-                    use rustc_middle::query::Key;
+                    use rustc_middle::query::QueryKey;
                     let span = tcx
                         .def_ident_span(ucv.def)
                         .unwrap_or_else(|| ucv.def.default_span(tcx));
@@ -171,7 +173,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
     ty: rustc_middle::ty::Ty<'tcx>,
     span: rustc_span::Span,
 ) -> ConstantExpr {
-    let ty = normalize(s.base().tcx, s.typing_env(), ty);
+    let ty = normalize(s.base().tcx, s.typing_env(), ty::Unnormalized::new_wip(ty));
 
     let kind = match (&*valtree, ty.kind()) {
         (_, ty::Ref(_, inner_ty, _)) => {
@@ -192,7 +194,7 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
             ConstantExprKind::Literal(ConstantLiteral::byte_str(bytes))
         }
         (ty::ValTreeKind::Branch(fields), ty::Array(..) | ty::Slice(..) | ty::Tuple(..)) => {
-            let fields = fields.iter().copied().map(|field| field.sinto(s)).collect();
+            let fields = fields.iter().map(|field| field.sinto(s)).collect();
             match ty.kind() {
                 ty::Array(..) | ty::Slice(..) => ConstantExprKind::Array { fields },
                 ty::Tuple(_) => ConstantExprKind::Tuple { fields },
@@ -220,14 +222,8 @@ pub(crate) fn valtree_to_constant_expr<'tcx, S: UnderOwnerState<'tcx>>(
             }
         }
         (ty::ValTreeKind::Leaf(x), ty::RawPtr(_, _)) => {
-            use rustc_type_ir::inherent::Ty;
             let raw_address = x.to_bits_unchecked();
-            let uint_ty = UintTy::Usize;
-            let usize_ty = rustc_middle::ty::Ty::new_usize(s.base().tcx).sinto(s);
-            let lit = ConstantLiteral::Int(ConstantInt::Uint(raw_address, uint_ty));
-            ConstantExprKind::Cast {
-                source: ConstantExprKind::Literal(lit).decorate(usize_ty, span.sinto(s)),
-            }
+            ConstantExprKind::Literal(ConstantLiteral::PtrNoProvenance(raw_address))
         }
         (ty::ValTreeKind::Leaf(x), _) => {
             ConstantExprKind::Literal(scalar_int_to_constant_literal(s, *x, ty))
@@ -371,9 +367,12 @@ fn op_to_const<'tcx, S: UnderOwnerState<'tcx>>(
                 ConstantExprKind::Literal(lit)
             }
         }
+        ty::Pat(..) => {
+            let op = ecx.project_field(&op, FieldIdx::from_u16(0))?;
+            *op_to_const(s, span, ecx, op)?.contents
+        }
         ty::Dynamic(..)
         | ty::Foreign(..)
-        | ty::Pat(..)
         | ty::UnsafeBinder(..)
         | ty::CoroutineClosure(..)
         | ty::Coroutine(..)

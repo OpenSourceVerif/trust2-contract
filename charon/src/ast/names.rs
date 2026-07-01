@@ -44,7 +44,19 @@ pub enum PathElem {
 ///   impl<T> PartialEq for List<T> { ...}
 ///   ```
 /// We distinguish the two.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+    EnumIsA,
+    EnumAsGetters,
+)]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("ImplElem"))]
 pub enum ImplElem {
     Ty(Box<Binder<Ty>>),
@@ -77,9 +89,10 @@ pub enum ImplElem {
 /// disambiguator.
 ///
 /// On our side, we want to stay high-level and simple: we use string identifiers
-/// as much as possible, insert disambiguators only when necessary (whenever
-/// we find an "impl" block, typically) and check that the disambiguator is useless
-/// in the other situations (i.e., the disambiguator is always equal to 0).
+/// as much as possible, insert disambiguators only when necessary (for instance
+/// when we find an "impl" block or when two loaded crates have the same name)
+/// and check that the disambiguator is useless in the other situations (i.e.,
+/// the disambiguator is always equal to 0).
 ///
 /// Moreover, the items are uniquely disambiguated by their (integer) ids
 /// (`TypeDeclId`, etc.), and when extracting the code we have to deal with
@@ -90,6 +103,7 @@ pub enum ImplElem {
     Debug, Default, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut,
 )]
 #[serde(transparent)]
+#[cfg_attr(feature = "charon_on_charon", charon::transparent)]
 pub struct Name {
     pub name: Vec<PathElem>,
 }

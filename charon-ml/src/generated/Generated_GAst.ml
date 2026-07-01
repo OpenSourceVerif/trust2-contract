@@ -89,15 +89,13 @@ and copy_non_overlapping = { src : operand; dst : operand; count : operand }
     borrow-checker determines a drop is needed. *)
 and drop_kind =
   | Precise
-      (** A real drop. This calls
-          [<T as Destruct>::drop_in_place(&raw mut place)] and marks the place
-          as moved-out-of. Use [--desugar-drops] to transform all such drops to
-          an actual function call.
+      (** A real drop. This calls [<T as Destruct>::drop_glue(&mut place)] and
+          marks the place as moved-out-of. Use [--desugar-drops] to transform
+          all such drops to an actual function call.
 
-          The [drop_in_place] method is added by Charon to the [Destruct] trait
-          to make it possible to track drop code in polymorphic code. It
-          contains the same code as the [core::ptr::drop_in_place<T>] builtin
-          would.
+          The [drop_glue] method is added by Charon to the [Destruct] trait to
+          make it possible to track drop code in polymorphic code. It contains
+          the same code as the [core::ptr::drop_glue<T>] builtin would.
 
           Drop are precise in MIR [elaborated] and [optimized]. *)
   | Conditional
@@ -176,9 +174,11 @@ type global_decl = {
       (** The context of the global: distinguishes top-level items from
           trait-associated items. *)
   global_kind : global_kind;  (** The kind of global (static or const). *)
-  init : fun_decl_id;
-      (** The initializer function used to compute the initial value for this
-          constant/static. It uses the same generic parameters as the global. *)
+  value : constant_expr;
+      (** The value of this constant/static. By default this is a
+          [[ConstantExprKind::Call]] to the initializer function that computes
+          the value (the function uses the same generic parameters as the
+          global). *)
 }
 
 and global_kind =
@@ -328,13 +328,10 @@ and trait_item_name = string
 (** A trait method. *)
 and trait_method = {
   name : trait_item_name;
-  attr_info : attr_info;
+  item_meta : item_meta;
   signature : fun_sig;
-  item : fun_decl_ref;
-      (** Each method declaration is represented by a function item. That
-          function contains the signature of the method as well as information
-          like attributes. It has a body iff the method declaration has a
-          default implementation; otherwise it has an [Opaque] body. *)
+  default : fun_decl_ref option;
+      (** The default method implementation, if there is one. *)
 }
 [@@deriving
   show,

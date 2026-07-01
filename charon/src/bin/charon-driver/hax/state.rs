@@ -1,6 +1,6 @@
 use crate::hax::prelude::*;
 use paste::paste;
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{self, TyCtxt};
 
 macro_rules! mk_aux {
     ($state:ident {$($lts:lifetime)*} $field:ident {$($field_type:tt)+} {$($gen:tt)*} {$($gen_full:tt)*} {$($params:tt)*} {$($fields:tt)*}) => {
@@ -59,7 +59,11 @@ macro_rules! mk {
 
 mod types {
     use crate::hax::prelude::*;
+    use itertools::Itertools;
+    use rustc_hash::FxHashMap;
+    use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
     use rustc_middle::ty;
+    use rustc_span::symbol::Symbol;
     use rustc_trait_elaboration::ElaborationCtx;
     use std::{cell::RefCell, sync::Arc};
 
@@ -85,20 +89,67 @@ mod types {
     #[derive(Default)]
     pub struct GlobalCache<'tcx> {
         /// Per-item cache.
-        pub per_item: HashMap<RDefId, ItemCache<'tcx>>,
+        pub per_item: HashMap<DefId, ItemCache<'tcx>>,
+        /// Map rustc def ids to their hax counterpart.
+        pub def_ids: HashMap<RDefId, DefId>,
         /// Map that recovers rustc args for a given `ItemRef`.
         pub reverse_item_refs_map: HashMap<ItemRef, ty::GenericArgsRef<'tcx>>,
-        /// We create some artificial items; their def_ids are stored here. See the
-        /// `synthetic_items` module.
-        pub synthetic_def_ids: HashMap<SyntheticItem, RDefId>,
-        pub reverse_synthetic_map: HashMap<RDefId, SyntheticItem>,
+        /// Data for synthetic items. See the `synthetic_items` module.
+        pub synthetic_item_data: HashMap<SyntheticItem, SyntheticItemData<'tcx>>,
+        /// Cached names and disambiguators for crate names.
+        pub disambiguated_crate_names: Option<FxHashMap<CrateNum, (Symbol, u32)>>,
+    }
+
+    impl<'tcx> GlobalCache<'tcx> {
+        pub fn crate_name(&mut self, tcx: ty::TyCtxt<'tcx>, krate: CrateNum) -> (Symbol, u32) {
+            self.disambiguated_crate_names
+                .get_or_insert_with(|| {
+                    std::iter::once(LOCAL_CRATE)
+                        .chain(tcx.crates(()).iter().copied())
+                        .into_group_map_by(|&cnum| tcx.crate_name(cnum))
+                        .into_iter()
+                        .filter(|(_, crates_by_this_name)| crates_by_this_name.len() > 1)
+                        .flat_map(|(name, mut crates_by_this_name)| {
+                            crates_by_this_name.sort_by_key(|&cnum| {
+                                // `tcx.stable_crate_id` isn't actually so stable across machines.
+                                // We try our own stability here based on paths.
+                                let source_file = tcx
+                                    .sess
+                                    .source_map()
+                                    .span_to_filename(tcx.def_span(cnum.as_def_id()))
+                                    .prefer_remapped_unconditionally()
+                                    .to_string_lossy()
+                                    .into_owned();
+                                let extern_paths = if cnum == LOCAL_CRATE {
+                                    Vec::new()
+                                } else {
+                                    tcx.crate_extern_paths(cnum)
+                                        .iter()
+                                        .map(|path| path.display().to_string())
+                                        .collect_vec()
+                                };
+                                (
+                                    cnum != LOCAL_CRATE,
+                                    source_file,
+                                    extern_paths,
+                                    cnum.as_u32(),
+                                )
+                            });
+                            crates_by_this_name.into_iter().enumerate().map(
+                                move |(disambiguator, cnum)| (cnum, (name, disambiguator as u32)),
+                            )
+                        })
+                        .collect()
+                })
+                .get(&krate)
+                .copied()
+                .unwrap_or_else(|| (tcx.crate_name(krate), 0))
+        }
     }
 
     /// Per-item cache
     #[derive(Default)]
     pub struct ItemCache<'tcx> {
-        /// The translated `DefId`.
-        pub def_id: Option<DefId>,
         /// The translated definitions, generic in the Body kind.
         /// Each rustc `DefId` gives several hax `DefId`s: one for each promoted constant (if any),
         /// and the base one represented by `None`. Moreover we can instantiate definitions with
@@ -108,9 +159,11 @@ mod types {
         /// Cache the `Ty` translations.
         pub tys: HashMap<ty::Ty<'tcx>, Ty>,
         /// Cache the `ItemRef` translations. This is fast because `GenericArgsRef` is interned.
-        pub item_refs: HashMap<(DefId, ty::GenericArgsRef<'tcx>, bool), ItemRef>,
-        /// Cache of trait refs to resolved impl expressions.
-        pub impl_exprs: HashMap<ty::PolyTraitRef<'tcx>, crate::hax::traits::ImplExpr>,
+        pub item_refs: HashMap<(DefId, ty::GenericArgsRef<'tcx>, AssocItemResolution), ItemRef>,
+        /// Cache of trait refs to resolved trait proofs.
+        pub trait_proofs: HashMap<ty::PolyTraitRef<'tcx>, crate::hax::traits::TraitProof>,
+        /// Generics for this item, if it is virtual.
+        pub virtual_generics: Option<&'tcx ty::Generics>,
     }
 
     #[derive(Clone)]
@@ -119,7 +172,7 @@ mod types {
         pub local_ctx: Rc<RefCell<LocalContextS>>,
         pub opt_def_id: Option<rustc_hir::def_id::DefId>,
         pub cache: Rc<RefCell<GlobalCache<'tcx>>>,
-        pub elab_ctx: crate::hax::traits::ElaborationCtx<'tcx>,
+        pub elab_ctx: crate::hax::traits::ElaborationCtx<'tcx, DefId>,
         pub tcx: ty::TyCtxt<'tcx>,
     }
 
@@ -181,7 +234,7 @@ pub trait BaseState<'tcx>: HasBase<'tcx> + Clone {
     /// Create a state with the given owner.
     fn with_hax_owner(&self, owner: &DefId) -> StateWithOwner<'tcx> {
         let mut base = self.base();
-        base.opt_def_id = owner.underlying_rust_def_id();
+        base.opt_def_id = owner.as_real_or_promoted();
         State {
             owner: owner.clone(),
             base,
@@ -193,13 +246,25 @@ pub trait BaseState<'tcx>: HasBase<'tcx> + Clone {
         let owner = &owner_id.sinto(self);
         Self::with_hax_owner(self, owner)
     }
+
+    /// State with only access to the global state.
+    fn base_state(&self) -> StateWithBase<'tcx> {
+        State {
+            base: self.base(),
+            owner: (),
+            binder: (),
+        }
+    }
 }
 impl<'tcx, T: HasBase<'tcx> + Clone> BaseState<'tcx> for T {}
 
 /// State of anything below an `owner`.
 pub trait UnderOwnerState<'tcx>: BaseState<'tcx> + HasOwner {
-    fn owner_id(&self) -> RDefId {
-        self.owner().as_def_id_even_synthetic()
+    fn param_env(&self) -> ty::ParamEnv<'tcx> {
+        self.owner().param_env(self)
+    }
+    fn typing_env(&self) -> ty::TypingEnv<'tcx> {
+        self.owner().typing_env(self)
     }
     fn with_base(&self, base: types::Base<'tcx>) -> StateWithOwner<'tcx> {
         State {
@@ -231,8 +296,8 @@ pub trait WithGlobalCacheExt<'tcx>: BaseState<'tcx> {
     }
     /// Access the cache for a given item. You must not call `sinto` within this function as this
     /// will likely result in `BorrowMut` panics.
-    fn with_item_cache<T>(&self, def_id: RDefId, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
-        self.with_global_cache(|cache| f(cache.per_item.entry(def_id).or_default()))
+    fn with_item_cache<T>(&self, def_id: &DefId, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
+        self.with_global_cache(|cache| f(cache.per_item.entry(def_id.clone()).or_default()))
     }
 }
 impl<'tcx, S: BaseState<'tcx>> WithGlobalCacheExt<'tcx> for S {}
@@ -241,12 +306,18 @@ pub trait WithItemCacheExt<'tcx>: UnderOwnerState<'tcx> {
     /// Access the cache for the current item. You must not call `sinto` within this function as
     /// this will likely result in `BorrowMut` panics.
     fn with_cache<T>(&self, f: impl FnOnce(&mut ItemCache<'tcx>) -> T) -> T {
-        self.with_item_cache(self.owner_id(), f)
+        self.with_item_cache(&self.owner(), f)
     }
-    fn with_predicate_searcher<T>(&self, f: impl FnOnce(&mut PredicateSearcher<'tcx>) -> T) -> T {
-        let base = self.base();
-        let mut predicate_searcher = base.elab_ctx.predicate_searcher_for(self.owner_id());
-        f(&mut predicate_searcher)
+    fn with_predicate_searcher<T>(
+        &self,
+        f: impl FnOnce(&mut PredicateSearcher<'tcx>, &StateWithBase<'tcx>) -> T,
+    ) -> T {
+        let s = self;
+        let base = s.base();
+        let owner = s.owner();
+        let base_state = s.base_state();
+        let mut predicate_searcher = base.elab_ctx.predicate_searcher_for(&base_state, owner);
+        f(&mut predicate_searcher, &base_state)
     }
 }
 impl<'tcx, S: UnderOwnerState<'tcx>> WithItemCacheExt<'tcx> for S {}

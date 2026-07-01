@@ -2,6 +2,21 @@
 
 Guidance for AI agents working on Charon.
 
+## Collaboration Style
+
+- I like to work together in the same workspace. You make edits as I request them, and I amend the
+  code you produced until it meets my standards.
+- This does mean the code may change under you while you're editing something else. That's how
+  I work, I do my best to not break what you're working on. Do not revert my changes even if you
+  preferred your way. If you think I missed why you did things a certain way, tell me! I can often
+  be shortsighted.
+
+- I will carefully review all your changes. I am in charge of commits and PRs etc.
+- Treat the git state as my domain: I will stage the bits I have reviewed. I may sometimes ask you
+  to make commits but otherwise don't touch the git state.
+- Always try to keep git diffs small to make my job easier. I particularly dislike small helpers
+  used only once; I prefer a well-placed comment to make the code easy to follow.
+
 ## Working Style
 
 - Charon is written with the following values in mind: correctness, robustness, maintainability, and
@@ -24,11 +39,22 @@ Guidance for AI agents working on Charon.
   introduces a ton of code at once is suspicious; there's often a cleaner way. I'm the sole
   maintainer so any unneeded complexity is a cost I'll have to bear in the future.
 - If in doubt, ask, and exercise judgment as a good OSS maintainer would.
+- If you can't find a true solution, stop and ask rather than compromising with a workaround. This
+  is particularly important for global invariants like having the right generics/trait clauses.
+- Once you're done with a change, review it from the pov of an architect: does it use the right
+  abstractions for the job, does it make use or/enforce the important invariants, will the code be
+  easy to evolve.
+
+- I will likely work in the same repo in parallel to start cleaning up your changes; I try not to
+  interfere too much but don't be surprised.
+- Don't make or amend commits unless explicitly asked, I like to handcraft commits.
 
 ## Implementing Translation and Transformations
 
 - Avoid constructing generic arguments manually to avoid getting trait references wrong. Prefer
   obtaining generics from an existing call, type, translated item, or Hax/rustc API.
+- Binder handling must be explicit and correct. When visiting under binders, you can use
+  visitor wrappers (`VisitWithBinderDepth` and `VisitWithBinderStack`) to help.
 - Be careful about monomorphized mode: it can break some assumptions such as the fact that a given
   item exists only once. If an approach relies on polymorphic item paths, function names, or
   non-monomorphized generic structure, either make it work in mono deliberately or gate the pass off
@@ -47,14 +73,20 @@ Guidance for AI agents working on Charon.
 
 ## Testing
 
-- Every fix should ideally have a reproducer. The test suite is quite flexible, use it.
+- Every fix should have a reproducer whenever feasible. The test suite is quite flexible, use it.
+  Note that it supports negative tests, with `//@ known-failure`.
+- Start by adding relevant tests before changing behavior. Make a commit named "Add tests" that
+  includes the generated output, so that we can observe changes to it.
+- Prefer precise flags over using `--preset` as this makes more obvious which pass is at fault.
 - Changes to the generated output are to be double-checked: they can often indicate a bug.
   Well-motivated changes are however totally fine.
+- Always do a full `make test && make clippy` at the end of a change.
 
 ## OCaml vs Rust
 
 Charon is a hybrid codebase. A typical feature is mostly on the Rust side. However when the AST
 changes, this must be propagated. Use `make generate-ml` to regenerate the generated OCaml files.
+`make test` at the root of the repo tests both the OCaml and Rust sides.
 
 ## Versioning
 

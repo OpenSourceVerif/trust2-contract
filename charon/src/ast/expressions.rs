@@ -496,10 +496,8 @@ pub enum FnPtrKind {
     #[cfg_attr(feature = "charon_on_charon", charon::rename("FunId"))]
     Fun(FunId),
     /// If a trait: the reference to the trait and the id of the trait method.
-    /// The fun decl id is not really necessary - we put it here for convenience
-    /// purposes.
     #[cfg_attr(feature = "charon_on_charon", charon::rename("TraitMethod"))]
-    Trait(TraitRef, TraitMethodId, FunDeclId),
+    Trait(TraitRef, TraitMethodId),
 }
 
 impl From<FunId> for FnPtrKind {
@@ -644,17 +642,21 @@ pub enum ConstantExprKind {
     Ptr(RefKind, Box<ConstantExpr>, Option<UnsizingMetadata>),
     /// A const generic var
     Var(ConstGenericDbVar),
+    /// A call to a `const fn` or a constant's initializer.
+    Call(FnPtr, Vec<ConstantExpr>),
     /// Function definition -- this is a ZST constant
     FnDef(FnPtr),
     /// A function pointer to a function item; this is an actual pointer to that function item.
     ///
     /// We eliminate this case in a micro-pass.
     FnPtr(FnPtr),
+    /// The `TypeId` value for a type.
+    TypeId(Ty),
     /// A pointer with no provenance (e.g. 0 for the null pointer)
     ///
     /// We eliminate this case in a micro-pass.
     #[drive(skip)]
-    PtrNoProvenance(u128),
+    PtrNoProvenance(#[serde(with = "crate::ast::values_utils::scalar_value_ser_de")] u128),
     /// Raw memory value obtained from constant evaluation. Used when a more structured
     /// representation isn't possible (e.g. for unions) or just isn't implemented yet.
     #[drive(skip)]
@@ -669,6 +671,15 @@ pub enum ConstantExprKind {
 pub struct ConstantExpr {
     pub kind: ConstantExprKind,
     pub ty: Ty,
+}
+
+/// Used for [`Rvalue::Use`] to indicate whether the operand should be retagged (this is used
+/// for Rust's aliasing model).
+#[derive(Debug, Hash, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[cfg_attr(feature = "charon_on_charon", charon::variants_suffix("Retag"))]
+pub enum WithRetag {
+    No,
+    Yes,
 }
 
 /// TODO: we could factor out [Rvalue] and function calls (for LLBC, not ULLBC).
@@ -690,7 +701,7 @@ pub struct ConstantExpr {
 )]
 pub enum Rvalue {
     /// Lifts an operand as an rvalue.
-    Use(Operand),
+    Use(Operand, #[drive(skip)] WithRetag),
     /// Takes a reference to the given place.
     /// The `Operand` refers to the init value of the metadata, it is `()` if no metadata
     #[cfg_attr(feature = "charon_on_charon", charon::rename("RvRef"))]

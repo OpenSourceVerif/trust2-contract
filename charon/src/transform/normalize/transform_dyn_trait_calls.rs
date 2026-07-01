@@ -40,7 +40,7 @@ fn transform_dyn_trait_call(
     let FnOperand::Regular(fn_ptr) = &call.func else {
         return Ok(()); // Not a regular function call
     };
-    let FnPtrKind::Trait(trait_ref, method_id, _) = fn_ptr.kind.as_ref() else {
+    let FnPtrKind::Trait(trait_ref, method_id) = fn_ptr.kind.as_ref() else {
         return Ok(()); // Not a trait method call
     };
     let TraitRefKind::Dyn = &trait_ref.kind else {
@@ -125,6 +125,7 @@ fn transform_dyn_trait_call(
         let real_sig_ty = TyKind::FnPtr(RegionBinder::empty(FunSig {
             is_unsafe: true,
             abi: Abi::rust(),
+            is_variadic: false,
             inputs: call.args.iter().map(|op| op.ty().clone()).collect(),
             output: call.dest.ty.clone(),
         }))

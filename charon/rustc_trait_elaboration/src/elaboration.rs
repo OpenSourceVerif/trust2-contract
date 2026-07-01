@@ -4,44 +4,43 @@ use crate::*;
 use itertools::{Either, Itertools};
 use std::collections::{HashMap, hash_map::Entry};
 
-use rustc_hir::def::DefKind;
 use rustc_hir::def_id::DefId;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::{self, *};
 use rustc_trait_selection::traits::ImplSource;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
-struct ItemClause<'tcx> {
-    id: ItemPredicateId,
+#[derive(Clone, Debug, Eq, PartialEq, Hash)]
+struct ItemClause<'tcx, Id = DefId> {
+    id: ItemPredicateId<Id>,
     clause: PolyTraitRef<'tcx>,
 }
 
 /// Returns the predicate to resolve as `Self`, if that makes sense in the current item.
 /// Currently this predicate is only used inside trait declarations and their asosciated types.
-fn initial_self_pred<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: rustc_span::def_id::DefId,
+fn initial_self_pred<'tcx, Id: ItemId>(
+    state: &Id::State<'tcx>,
+    def_id: &Id,
 ) -> Option<PolyTraitRef<'tcx>> {
-    use DefKind::*;
-    let trait_def_id = match tcx.def_kind(def_id) {
-        Trait | TraitAlias => def_id,
-        // Associated types can refer to the implicit `Self` clause. For methods and associated
-        // consts we pass an explicit `Self: Trait` clause to make the corresponding item
-        // reuseable.
-        AssocTy => tcx.parent(def_id),
-        _ => return None,
-    };
-    let self_pred = self_predicate(tcx, trait_def_id).upcast(tcx);
-    Some(self_pred)
+    if let Some(parent) = def_id.parent_of_assoc(state) {
+        if def_id.takes_explicit_self_clause(state) {
+            None
+        } else {
+            parent.self_pred(state)
+        }
+    } else {
+        def_id.self_pred(state)
+    }
 }
 
-#[tracing::instrument(level = "trace", skip(elab_ctx))]
-fn parents_trait_predicates<'tcx>(
-    elab_ctx: ElaborationCtx<'tcx>,
+#[tracing::instrument(level = "trace", skip(elab_ctx, state))]
+fn parents_trait_predicates<'tcx, Id: ItemId>(
+    elab_ctx: ElaborationCtx<'tcx, Id>,
+    state: &Id::State<'tcx>,
     self_trait_ref: PolyTraitRef<'tcx>,
 ) -> Vec<PolyTraitRef<'tcx>> {
     let tcx = elab_ctx.tcx;
-    ItemPredicates::implied(elab_ctx, self_trait_ref.def_id())
+    let def_id = Id::from_rust_def_id(state, self_trait_ref.def_id());
+    ItemPredicates::implied(elab_ctx, state, def_id)
         .iter()
         // Substitute with the `self` args so that the clause makes sense in the
         // outside context.
@@ -51,71 +50,95 @@ fn parents_trait_predicates<'tcx>(
         .collect()
 }
 
-/// A candidate projects `self` along a path reaching some predicate. A candidate is
-/// selected when its predicate is the one expected, aka `target`.
+/// A trait proof we have in our context.
 #[derive(Debug, Clone)]
-struct Candidate<'tcx> {
-    path: Path<'tcx>,
+struct Candidate<'tcx, Id: ItemId = DefId> {
+    /// This is the same predicate as `origin.pred`, but normalized and erased for comparison.
     pred: PolyTraitRef<'tcx>,
-    origin: ItemClause<'tcx>,
+    proof: TraitProof<'tcx, Id>,
 }
 
-impl<'tcx> Candidate<'tcx> {
-    fn into_impl_expr(self, tcx: TyCtxt<'tcx>, implicit_self_clause: bool) -> ImplExprAtom<'tcx> {
-        let path = self.path;
-        let r#trait = self.origin.clause;
-        match self.origin.id {
-            ItemPredicateId::TraitSelf if implicit_self_clause => {
-                ImplExprAtom::SelfImpl { r#trait, path }
-            }
-            _ => ImplExprAtom::LocalBound {
-                predicate: self.origin.clause.upcast(tcx),
-                id: self.origin.id,
-                r#trait,
-                path,
+impl<'tcx, Id: ItemId> TraitProof<'tcx, Id> {
+    fn push(
+        self,
+        elab_ctx: ElaborationCtx<'tcx, Id>,
+        new_pred: PolyTraitRef<'tcx>,
+        path_chunk: ImpliedPredicate<'tcx, Id>,
+    ) -> Self {
+        elab_ctx.intern_trait_proof(TraitProofContents {
+            pred: new_pred,
+            kind: TraitProofKind::Derived {
+                base: self,
+                path: path_chunk,
             },
+        })
+    }
+}
+
+impl<'tcx, Id: ItemId> Candidate<'tcx, Id> {
+    fn from_trait_proof(origin: TraitProof<'tcx, Id>) -> Self {
+        Candidate {
+            pred: origin.pred,
+            proof: origin,
+        }
+    }
+
+    fn push(
+        &self,
+        elab_ctx: ElaborationCtx<'tcx, Id>,
+        new_pred: PolyTraitRef<'tcx>,
+        path_chunk: ImpliedPredicate<'tcx, Id>,
+    ) -> Self {
+        Candidate {
+            pred: new_pred,
+            proof: self.proof.push(elab_ctx, new_pred, path_chunk),
         }
     }
 }
 
 /// Stores a set of predicates along with where they came from.
 #[derive(Clone)]
-pub struct PredicateSearcher<'tcx> {
-    pub(crate) elab_ctx: ElaborationCtx<'tcx>,
+pub struct PredicateSearcher<'tcx, Id: ItemId = DefId> {
+    pub(crate) elab_ctx: ElaborationCtx<'tcx, Id>,
     pub(crate) typing_env: rustc_middle::ty::TypingEnv<'tcx>,
     /// Local clauses available in the current context.
-    candidates: HashMap<PolyTraitRef<'tcx>, Candidate<'tcx>>,
+    candidates: HashMap<PolyTraitRef<'tcx>, Candidate<'tcx, Id>>,
     /// Whether we're in a trait declaration context where an implicit `Self: Trait` clause is
     /// accessible.
     implicit_self_clause: bool,
     /// Cache the `ItemRef` translations. This is fast because `GenericArgsRef` is interned.
-    pub(crate) item_refs_cache: HashMap<(DefId, ty::GenericArgsRef<'tcx>, bool), ItemRef<'tcx>>,
-    /// Cache of trait refs to resolved impl expressions.
-    impl_exprs_cache: HashMap<ty::PolyTraitRef<'tcx>, ImplExpr<'tcx>>,
+    pub(crate) item_refs_cache:
+        HashMap<(Id, ty::GenericArgsRef<'tcx>, AssocItemResolution), ItemRef<'tcx, Id>>,
+    /// Cache of trait refs to resolved trait proofs.
+    trait_proofs_cache: HashMap<ty::PolyTraitRef<'tcx>, TraitProof<'tcx, Id>>,
 }
 
-impl<'tcx> PredicateSearcher<'tcx> {
+impl<'tcx, Id: ItemId> PredicateSearcher<'tcx, Id> {
     /// Initialize the elaborator with the predicates accessible within this item.
-    pub(crate) fn new_for_owner(elab_ctx: ElaborationCtx<'tcx>, owner_id: DefId) -> Self {
-        let tcx = elab_ctx.tcx;
-        let initial_self_pred = initial_self_pred(tcx, owner_id);
+    pub fn new_for_owner(
+        elab_ctx: ElaborationCtx<'tcx, Id>,
+        state: &Id::State<'tcx>,
+        owner_id: Id,
+    ) -> Self {
+        let initial_self_pred = initial_self_pred(state, &owner_id);
         let mut out = Self {
             elab_ctx,
-            typing_env: TypingEnv {
-                param_env: tcx.param_env(owner_id),
-                typing_mode: TypingMode::PostAnalysis,
-            },
+            typing_env: TypingEnv::new(owner_id.param_env(state), TypingMode::PostAnalysis),
             candidates: Default::default(),
             implicit_self_clause: initial_self_pred.is_some(),
             item_refs_cache: Default::default(),
-            impl_exprs_cache: Default::default(),
+            trait_proofs_cache: Default::default(),
         };
-        out.insert_predicates(initial_self_pred.map(|clause| ItemClause {
-            id: ItemPredicateId::TraitSelf,
-            clause,
-        }));
+        out.insert_predicates(
+            state,
+            initial_self_pred.map(|clause| ItemClause {
+                id: ItemPredicateId::TraitSelf,
+                clause,
+            }),
+        );
         out.insert_bound_predicates(
-            ItemPredicates::required_recursively(elab_ctx, owner_id).predicates,
+            state,
+            ItemPredicates::required_recursively(elab_ctx, state, owner_id).predicates,
         );
         out
     }
@@ -125,14 +148,18 @@ impl<'tcx> PredicateSearcher<'tcx> {
     /// insertion order.
     pub fn insert_bound_predicates(
         &mut self,
-        preds: impl IntoIterator<Item = ItemPredicate<'tcx>>,
+        state: &Id::State<'tcx>,
+        preds: impl IntoIterator<Item = ItemPredicate<'tcx, Id>>,
     ) {
-        self.insert_predicates(preds.into_iter().filter_map(|pred| {
-            pred.clause.as_trait_clause().map(|clause| ItemClause {
-                id: pred.id,
-                clause: clause.to_poly_trait_ref(),
-            })
-        }));
+        self.insert_predicates(
+            state,
+            preds.into_iter().filter_map(|pred| {
+                pred.clause.as_trait_clause().map(|clause| ItemClause {
+                    id: pred.id,
+                    clause: clause.to_poly_trait_ref(),
+                })
+            }),
+        );
     }
 
     /// Override the param env; we use this when resolving `dyn` predicates to add more clauses to
@@ -143,17 +170,37 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
     /// Insert annotated predicates in the search context. Prefer inserting them all at once as
     /// this will give priority to shorter resolution paths.
-    fn insert_predicates(&mut self, preds: impl IntoIterator<Item = ItemClause<'tcx>>) {
-        self.insert_candidates(preds.into_iter().map(|clause| Candidate {
-            path: vec![],
-            pred: clause.clause,
-            origin: clause,
-        }))
+    fn insert_predicates(
+        &mut self,
+        state: &Id::State<'tcx>,
+        preds: impl IntoIterator<Item = ItemClause<'tcx, Id>>,
+    ) {
+        let elab_ctx = self.elab_ctx;
+        let implicit_self_clause = self.implicit_self_clause;
+        self.insert_candidates(
+            state,
+            preds.into_iter().map(|clause| {
+                let origin = elab_ctx.intern_trait_proof(TraitProofContents {
+                    pred: clause.clause,
+                    kind: match clause.id {
+                        ItemPredicateId::TraitSelf if implicit_self_clause => {
+                            TraitProofKind::SelfProof
+                        }
+                        id => TraitProofKind::LocalBound(id),
+                    },
+                });
+                Candidate::from_trait_proof(origin)
+            }),
+        )
     }
 
     /// Insert new candidates and all their parent predicates. This deduplicates predicates
     /// to avoid divergence.
-    fn insert_candidates(&mut self, candidates: impl IntoIterator<Item = Candidate<'tcx>>) {
+    fn insert_candidates(
+        &mut self,
+        state: &Id::State<'tcx>,
+        candidates: impl IntoIterator<Item = Candidate<'tcx, Id>>,
+    ) {
         let tcx = self.elab_ctx.tcx;
         // Filter out duplicated candidates.
         let mut new_candidates = Vec::new();
@@ -167,80 +214,100 @@ impl<'tcx> PredicateSearcher<'tcx> {
         }
         if !new_candidates.is_empty() {
             // Insert the parents all at once.
-            self.insert_candidate_parents(new_candidates);
+            self.insert_candidate_parents(state, new_candidates);
         }
     }
 
     /// Add the parents of these candidates. This is a separate function to avoid
     /// polymorphic recursion due to the closures capturing the type parameters of this
     /// function.
-    fn insert_candidate_parents(&mut self, new_candidates: Vec<Candidate<'tcx>>) {
+    fn insert_candidate_parents(
+        &mut self,
+        state: &Id::State<'tcx>,
+        new_candidates: Vec<Candidate<'tcx, Id>>,
+    ) {
         let elab_ctx = self.elab_ctx;
         // Then recursively add their parents. This way ensures a breadth-first order,
         // which means we select the shortest path when looking up predicates.
-        self.insert_candidates(new_candidates.into_iter().flat_map(|candidate| {
-            parents_trait_predicates(elab_ctx, candidate.pred)
-                .into_iter()
-                .enumerate()
-                .map(move |(index, parent_pred)| {
-                    let mut parent_candidate = Candidate {
-                        pred: parent_pred,
-                        path: candidate.path.clone(),
-                        origin: candidate.origin,
-                    };
-                    parent_candidate.path.push(PathChunk::Parent {
-                        predicate: parent_pred,
-                        index,
-                    });
-                    parent_candidate
-                })
-        }));
+        self.insert_candidates(
+            state,
+            new_candidates.into_iter().flat_map(|candidate| {
+                parents_trait_predicates(elab_ctx, state, candidate.pred)
+                    .into_iter()
+                    .enumerate()
+                    .map(move |(index, parent_pred)| {
+                        candidate.push(elab_ctx, parent_pred, ImpliedPredicate::Parent { index })
+                    })
+            }),
+        );
     }
 
     /// If the type is a trait associated type, we add any relevant bounds to our context.
-    fn add_associated_type_refs(&mut self, ty: Binder<'tcx, Ty<'tcx>>) {
+    fn add_associated_type_refs(&mut self, state: &Id::State<'tcx>, ty: Binder<'tcx, Ty<'tcx>>) {
+        let elab_ctx = self.elab_ctx;
         let tcx = self.elab_ctx.tcx;
         // Note: We skip a binder but rebind it just after.
-        let TyKind::Alias(AliasTyKind::Projection, alias_ty) = ty.skip_binder().kind() else {
+        let TyKind::Alias(
+            alias @ ty::AliasTy {
+                kind: AliasTyKind::Projection { def_id, .. },
+                args,
+                ..
+            },
+        ) = ty.skip_binder().kind()
+        else {
             return;
         };
-        let trait_ref = ty.rebind(alias_ty.trait_ref(tcx)).upcast(tcx);
+        let trait_ref = ty.rebind(alias.trait_ref(tcx)).upcast(tcx);
 
-        // The predicate we're looking for is is `<T as Trait>::Type: OtherTrait`. We look up `T as
-        // Trait` in the current context and add all the bounds on `Trait::Type` to our context.
-        let Some(trait_candidate) = self.resolve_local(trait_ref) else {
+        // The predicate we're looking for is is `<T as Trait>::Type: OtherTrait`. We try to solve
+        // `T as Trait` and add all the bounds on `Trait::Type` to our context.
+        let proof = self.resolve(state, &trait_ref);
+        if matches!(proof.kind, TraitProofKind::Error(_)) {
             return;
-        };
-
-        let item_ref = self.resolve_item_reference(alias_ty.def_id, alias_ty.args, true);
+        }
+        let item_ref = self.resolve_item_reference(
+            state,
+            Id::from_rust_def_id(state, *def_id),
+            args,
+            AssocItemResolution::ImplItem,
+        );
 
         // The bounds that hold on the associated type.
-        let item_bounds = ItemPredicates::implied(self.elab_ctx, alias_ty.def_id);
+        let item_bounds =
+            ItemPredicates::implied(self.elab_ctx, state, Id::from_rust_def_id(state, *def_id));
         let item_bounds = item_bounds
             .iter_trait_clauses()
             // Substitute the item generics
-            .map(|(_, tref)| EarlyBinder::bind(tref).instantiate(tcx, alias_ty.args))
+            .map(|(_, tref)| {
+                EarlyBinder::bind(tref)
+                    .instantiate(tcx, args)
+                    .skip_normalization()
+            })
             .enumerate();
 
         // Add all the bounds on the corresponding associated item.
-        self.insert_candidates(item_bounds.map(|(index, pred)| {
-            let mut candidate = Candidate {
-                path: trait_candidate.path.clone(),
-                pred,
-                origin: trait_candidate.origin,
-            };
-            candidate.path.push(PathChunk::AssocItem {
-                item: item_ref.clone(),
-                predicate: pred,
-                index,
-            });
-            candidate
-        }));
+        self.insert_candidates(
+            state,
+            item_bounds.map(|(index, pred)| {
+                Candidate::from_trait_proof(proof.push(
+                    elab_ctx,
+                    pred,
+                    ImpliedPredicate::AssocItem {
+                        item: item_ref.clone(),
+                        index,
+                    },
+                ))
+            }),
+        );
     }
 
     /// Resolve a local clause by looking it up in this set. If the predicate applies to an
     /// associated type, we add the relevant implied associated type bounds to the set as well.
-    fn resolve_local(&mut self, target: PolyTraitRef<'tcx>) -> Option<Candidate<'tcx>> {
+    fn resolve_local(
+        &mut self,
+        state: &Id::State<'tcx>,
+        target: PolyTraitRef<'tcx>,
+    ) -> Option<Candidate<'tcx, Id>> {
         tracing::trace!("Looking for {target:?}");
 
         // Look up the predicate
@@ -250,7 +317,7 @@ impl<'tcx> PredicateSearcher<'tcx> {
         }
 
         // Add clauses related to associated type in the `Self` type of the predicate.
-        self.add_associated_type_refs(target.self_ty());
+        self.add_associated_type_refs(state, target.self_ty());
 
         let ret = self.candidates.get(&target).cloned();
         if ret.is_none() {
@@ -266,10 +333,14 @@ impl<'tcx> PredicateSearcher<'tcx> {
     }
 
     /// Resolve the given trait reference in the local context.
-    #[tracing::instrument(level = "trace", skip(self))]
-    pub fn resolve(&mut self, tref: &PolyTraitRef<'tcx>) -> ImplExpr<'tcx> {
-        if let Some(impl_expr) = self.impl_exprs_cache.get(tref).copied() {
-            return impl_expr;
+    #[tracing::instrument(level = "trace", skip(self, state))]
+    pub fn resolve(
+        &mut self,
+        state: &Id::State<'tcx>,
+        tref: &PolyTraitRef<'tcx>,
+    ) -> TraitProof<'tcx, Id> {
+        if let Some(trait_proof) = self.trait_proofs_cache.get(tref).copied() {
+            return trait_proof;
         }
         use rustc_trait_selection::traits::{
             BuiltinImplSource, ImplSource, ImplSourceUserDefinedData,
@@ -282,9 +353,9 @@ impl<'tcx> PredicateSearcher<'tcx> {
 
         let elab_ctx = self.elab_ctx;
         let error = |msg: String| {
-            elab_ctx.intern_impl_expr(ImplExprContents {
-                r#trait: *tref,
-                r#impl: ImplExprAtom::Error(msg),
+            elab_ctx.intern_trait_proof(TraitProofContents {
+                pred: *tref,
+                kind: TraitProofKind::Error(msg),
             })
         };
 
@@ -303,23 +374,31 @@ impl<'tcx> PredicateSearcher<'tcx> {
                 impl_def_id,
                 args: generics,
                 ..
-            }) => ImplExprAtom::Concrete(self.resolve_item_reference(impl_def_id, generics, true)),
-            ImplSource::Param(_) => match self.resolve_local(erased_tref.upcast(tcx)) {
-                Some(candidate) => candidate.into_impl_expr(tcx, self.implicit_self_clause),
+            }) => TraitProofKind::Concrete(self.resolve_item_reference(
+                state,
+                Id::from_rust_def_id(state, impl_def_id),
+                generics,
+                AssocItemResolution::ImplItem,
+            )),
+            ImplSource::Param(_) => match self.resolve_local(state, erased_tref.upcast(tcx)) {
+                Some(candidate) => candidate.proof.kind.clone(),
                 None => {
                     let msg =
                         format!("Could not find a clause for `{tref:?}` in the item parameters");
                     return error(msg);
                 }
             },
-            ImplSource::Builtin(BuiltinImplSource::Object { .. }, _) => ImplExprAtom::Dyn,
+            ImplSource::Builtin(BuiltinImplSource::Object { .. }, _) => TraitProofKind::Dyn,
             ImplSource::Builtin(_, _) => {
                 // Resolve the predicates implied by the trait.
                 // If we wanted to not skip this binder, we'd have to instantiate the bound
                 // regions, solve, then wrap the result in a binder. And track higher-kinded
                 // clauses better all over.
-                let impl_exprs = self
-                    .resolve_item_implied_predicates(trait_def_id, erased_tref.skip_binder().args);
+                let trait_proofs = self.resolve_item_implied_predicates(
+                    state,
+                    Id::from_rust_def_id(state, trait_def_id),
+                    erased_tref.skip_binder().args,
+                );
                 let types = tcx
                     .associated_items(trait_def_id)
                     .in_definition_order()
@@ -327,9 +406,9 @@ impl<'tcx> PredicateSearcher<'tcx> {
                     .filter_map(|assoc| {
                         let ty =
                             Ty::new_projection(tcx, assoc.def_id, erased_tref.skip_binder().args);
-                        let ty = crate::erase_and_norm(tcx, self.typing_env, ty);
-                        if let TyKind::Alias(_, alias_ty) = ty.kind()
-                            && alias_ty.def_id == assoc.def_id
+                        let ty = crate::erase_and_norm(tcx, self.typing_env, Unnormalized::new(ty));
+                        if let TyKind::Alias(alias_ty) = ty.kind()
+                            && alias_ty.kind.def_id() == assoc.def_id
                         {
                             // Couldn't normalize the type to anything different than itself;
                             // this must be a built-in associated type such as
@@ -341,15 +420,16 @@ impl<'tcx> PredicateSearcher<'tcx> {
                             // itself.
                             return None;
                         }
-                        let impl_exprs = self.resolve_item_implied_predicates(
-                            assoc.def_id,
+                        let trait_proofs = self.resolve_item_implied_predicates(
+                            state,
+                            Id::from_rust_def_id(state, assoc.def_id),
                             erased_tref.skip_binder().args,
                         );
-                        Some((assoc.def_id, ty, impl_exprs))
+                        Some((assoc.def_id, ty, trait_proofs))
                     })
                     .collect();
 
-                let trait_data = if erased_tref.skip_binder().def_id == destruct_trait {
+                let trait_data = if trait_def_id == destruct_trait {
                     let ty = erased_tref.skip_binder().args[0].as_type().unwrap();
                     // Source of truth are `ty::needs_drop_components` and `tcx.needs_drop_raw`.
                     let destruct_data = match ty.kind() {
@@ -379,15 +459,13 @@ impl<'tcx> PredicateSearcher<'tcx> {
                         | ty::CoroutineWitness(..) => Either::Left(DestructData::Glue { ty }),
                         // Every `dyn` has a `drop_in_place` in its vtable, ergo we pretend that every
                         // `dyn` has `Destruct` in its list of traits.
-                        ty::Dynamic(..) => Either::Right(ImplExprAtom::Dyn),
+                        ty::Dynamic(..) => Either::Right(TraitProofKind::Dyn),
                         ty::Param(..) | ty::Alias(..) | ty::Bound(..) => {
                             if self.elab_ctx.bounds_options().add_destruct_bounds {
                                 // We've added `Destruct` impls on everything, we should be able to resolve
                                 // it.
-                                match self.resolve_local(erased_tref.upcast(tcx)) {
-                                    Some(candidate) => Either::Right(
-                                        candidate.into_impl_expr(tcx, self.implicit_self_clause),
-                                    ),
+                                match self.resolve_local(state, erased_tref.upcast(tcx)) {
+                                    Some(candidate) => Either::Right(candidate.proof.kind.clone()),
                                     None => {
                                         let msg = format!(
                                             "Cannot find virtual `Destruct` clause: `{tref:?}`"
@@ -410,12 +488,16 @@ impl<'tcx> PredicateSearcher<'tcx> {
                     };
                     destruct_data.map_left(BuiltinTraitData::Destruct)
                 } else {
-                    Either::Left(BuiltinTraitData::Other)
+                    Either::Left(if tcx.trait_is_auto(trait_def_id) {
+                        BuiltinTraitData::Auto
+                    } else {
+                        BuiltinTraitData::Other
+                    })
                 };
                 match trait_data {
-                    Either::Left(trait_data) => ImplExprAtom::Builtin {
+                    Either::Left(trait_data) => TraitProofKind::Builtin {
                         trait_data,
-                        impl_exprs,
+                        proofs: trait_proofs,
                         types,
                     },
                     Either::Right(atom) => atom,
@@ -423,22 +505,24 @@ impl<'tcx> PredicateSearcher<'tcx> {
             }
         };
 
-        let impl_expr = self.elab_ctx.intern_impl_expr(ImplExprContents {
-            r#impl: atom,
-            r#trait: *tref,
+        let trait_proof = self.elab_ctx.intern_trait_proof(TraitProofContents {
+            kind: atom,
+            pred: *tref,
         });
-        self.impl_exprs_cache.insert(*tref, impl_expr);
-        impl_expr
+        self.trait_proofs_cache.insert(*tref, trait_proof);
+        trait_proof
     }
 
     /// Resolve the predicates required by the given item.
     pub fn resolve_item_required_predicates(
         &mut self,
-        def_id: DefId,
+        state: &Id::State<'tcx>,
+        def_id: Id,
         generics: GenericArgsRef<'tcx>,
-    ) -> Vec<ImplExpr<'tcx>> {
+    ) -> Vec<TraitProof<'tcx, Id>> {
         self.resolve_predicates(
-            ItemPredicates::required_recursively(self.elab_ctx, def_id),
+            state,
+            ItemPredicates::required_recursively(self.elab_ctx, state, def_id),
             generics,
         )
     }
@@ -446,26 +530,36 @@ impl<'tcx> PredicateSearcher<'tcx> {
     /// Resolve the predicates implied by the given item.
     pub fn resolve_item_implied_predicates(
         &mut self,
-        def_id: DefId,
+        state: &Id::State<'tcx>,
+        def_id: Id,
         generics: GenericArgsRef<'tcx>,
-    ) -> Vec<ImplExpr<'tcx>> {
-        self.resolve_predicates(ItemPredicates::implied(self.elab_ctx, def_id), generics)
+    ) -> Vec<TraitProof<'tcx, Id>> {
+        self.resolve_predicates(
+            state,
+            ItemPredicates::implied(self.elab_ctx, state, def_id),
+            generics,
+        )
     }
 
     /// Apply the given generics to the provided clauses and resolve the trait references in the
     /// current context.
-    pub fn resolve_predicates(
+    pub fn resolve_predicates<PredicateId: Clone>(
         &mut self,
-        predicates: ItemPredicates<'tcx>,
+        state: &Id::State<'tcx>,
+        predicates: ItemPredicates<'tcx, PredicateId>,
         generics: GenericArgsRef<'tcx>,
-    ) -> Vec<ImplExpr<'tcx>> {
+    ) -> Vec<TraitProof<'tcx, Id>> {
         let tcx = self.elab_ctx.tcx;
         predicates
             .iter_trait_clauses()
             // Substitute the item generics
-            .map(|(_, trait_ref)| EarlyBinder::bind(trait_ref).instantiate(tcx, generics))
+            .map(|(_, trait_ref)| {
+                EarlyBinder::bind(trait_ref)
+                    .instantiate(tcx, generics)
+                    .skip_normalization()
+            })
             // Resolve
-            .map(|trait_ref| self.resolve(&trait_ref))
+            .map(|trait_ref| self.resolve(state, &trait_ref))
             .collect()
     }
 }

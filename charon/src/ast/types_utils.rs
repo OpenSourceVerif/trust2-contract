@@ -95,7 +95,7 @@ impl GenericParams {
 
     /// Construct a set of generic arguments in the scope of `self` that matches `self` and feeds
     /// each required parameter with itself. E.g. given parameters for `<T, U> where U:
-    /// PartialEq<T>`, the arguments would be `<T, U>[@TraitClause0]`.
+    /// PartialEq<T>`, the arguments would be `<T, U>[TraitClause0]`.
     pub fn identity_args(&self) -> GenericArgs {
         self.identity_args_at_depth(DeBruijnId::zero())
     }
@@ -211,7 +211,7 @@ impl<T> Binder<T> {
         Binder {
             params: self.params,
             skip_binder: f(self.skip_binder),
-            kind: self.kind.clone(),
+            kind: self.kind,
         }
     }
 
@@ -1257,6 +1257,11 @@ pub trait TyVisitable: Sized + AstVisitable {
     fn substitute_with_tref(self, tref: &TraitRef) -> Self {
         let pred = tref.trait_decl_ref.clone().erase();
         self.substitute_with_self(&pred.generics, &tref.kind)
+    }
+    /// Substitute the generic variables as well as the `TraitRefKind::SelfId` trait ref.
+    fn try_substitute_with_tref(self, tref: &TraitRef) -> Result<Self, GenericsMismatch> {
+        let pred = tref.trait_decl_ref.clone().erase();
+        self.try_substitute_with_self(&pred.generics, &tref.kind)
     }
 
     fn try_substitute(self, generics: &GenericArgs) -> Result<Self, GenericsMismatch> {
