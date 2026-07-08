@@ -234,7 +234,7 @@ impl TransformCtx {
         for id in self.translated.all_ids() {
             if let Some(mut decl) = self.translated.remove_item_temporarily(id) {
                 f(self, decl.as_mut());
-                self.translated.set_item_slot(id, decl);
+                self.translated.put_item_back(id, decl);
             }
         }
     }
@@ -279,7 +279,7 @@ pub trait BodyTransformCtx: Sized {
     /// Assign an rvalue to a place, unless the rvalue is a move in which case we just use the
     /// moved place.
     fn rval_to_place(&mut self, rvalue: Rvalue, ty: Ty) -> Place {
-        if let Rvalue::Use(Operand::Move(place)) = rvalue {
+        if let Rvalue::Use(Operand::Move(place), WithRetag::No) = rvalue {
             place
         } else {
             let var = self.fresh_var(None, ty);

@@ -8,7 +8,7 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
@@ -16,35 +16,32 @@ pub trait Sized<Self>
 #[lang_item("destruct")]
 pub trait Destruct<Self>
 {
-    fn drop_in_place = core::marker::Destruct::drop_in_place<Self>
+    fn drop_glue<'_0_1>;
     non-dyn-compatible
 }
-
-unsafe fn core::marker::Destruct::drop_in_place<Self>(_1: *mut Self)
-= <opaque>
 
 // Full name: core::option::Option
 #[lang_item("Option")]
 pub enum Option<T>
 where
-    [@TraitClause0]: Sized<T>,
+    TraitClause0: (T: Sized),
 {
   None,
   Some(T),
 }
 
 // Full name: core::option::Option::Some
-fn Some<T>(_1: T) -> Option<T>[@TraitClause0]
+fn Some<T>(_1: T) -> Option<T>[TraitClause0]
 where
-    [@TraitClause0]: Sized<T>,
+    TraitClause0: (T: Sized),
 = <opaque>
 
 // Full name: alloc::string::String
 #[lang_item("String")]
 pub opaque type String
 
-// Full name: alloc::string::String::{impl Destruct for String}::drop_in_place
-unsafe fn {impl Destruct for String}::drop_in_place(_1: *mut String)
+// Full name: alloc::string::String::{impl Destruct for String}::drop_glue
+unsafe fn impl_Destruct_for_String::drop_glue<'_0>(_1: &'_0 mut String)
 = <opaque>
 
 // Full name: alloc::string::{String}::new
@@ -70,23 +67,20 @@ struct Foo {
   String,
 }
 
-// Full name: test_crate::Foo::{impl Destruct for Foo}::drop_in_place
-unsafe fn {impl Destruct for Foo}::drop_in_place(_1: *mut Foo)
+// Full name: test_crate::Foo::{impl Destruct for Foo}::drop_glue
+unsafe fn impl_Destruct_for_Foo::drop_glue<'_0>(_1: &'_0 mut Foo)
 {
     let _0: (); // return
-    let _1: *mut Foo; // arg #1
-    let _2: &'1 mut Foo; // anonymous local
+    let _1: &'1 mut Foo; // arg #1
 
-    storage_live(_2)
     _0 = ()
-    _2 = &mut (*_1)
-    drop[{impl Destruct for String}::drop_in_place] ((*_2)).1
+    drop[impl_Destruct_for_String::drop_glue<'2>] ((*_1)).1
     return
 }
 
 // Full name: test_crate::Foo::{impl Destruct for Foo}
-impl Destruct for Foo {
-    fn drop_in_place = {impl Destruct for Foo}::drop_in_place
+impl "impl_Destruct_for_Foo" Destruct for Foo {
+    fn drop_glue<'_0_1> = impl_Destruct_for_Foo::drop_glue<'_0_1>
     non-dyn-compatible
 }
 
@@ -104,19 +98,19 @@ fn Foo(_1: u32, _2: String) -> Foo
 // Full name: test_crate::Bar
 enum Bar<'a, T>
 where
-    [@TraitClause0]: Sized<T>,
-    T : 'a,
+    TraitClause0: (T: Sized),
+    TypeOutlives0: T: 'a,
 {
   Variant(&'a T),
 }
 
 // Full name: test_crate::Bar::Variant
-fn Variant<'a, T>(_1: &'a T) -> Bar<'a, T>[@TraitClause0]
+fn Variant<'a, T>(_1: &'a T) -> Bar<'a, T>[TraitClause0]
 where
-    [@TraitClause0]: Sized<T>,
-    T : 'a,
+    TraitClause0: (T: Sized),
+    TypeOutlives0: T: 'a,
 {
-    let _0: Bar<'a, T>[@TraitClause0]; // return
+    let _0: Bar<'a, T>[TraitClause0]; // return
     let _1: &'a T; // arg #1
 
     _0 = Bar::Variant { 0: move _1 }
@@ -144,8 +138,8 @@ fn main()
     let _15: &'6 i32; // anonymous local
     let _16: &'7 i32; // anonymous local
     let _17: &'8 i32; // anonymous local
-    let _18: &'11 i32; // anonymous local
-    let _19: &'13 i32; // anonymous local
+    let _18: &'13 i32; // anonymous local
+    let _19: &'15 i32; // anonymous local
     let _20: i32; // anonymous local
 
     storage_live(_17)
@@ -155,7 +149,7 @@ fn main()
     storage_live(_2)
     storage_live(_3)
     _3 = copy f_1
-    _2 = Some<u8>[{built_in impl Sized for u8}](const 42 : u8)
+    _2 = Some<u8>[{built_in impl Sized for u8}](const 42u8)
     storage_dead(_3)
     storage_dead(_2)
     storage_live(f_4)
@@ -166,7 +160,7 @@ fn main()
     storage_live(_6)
     storage_live(_7)
     _7 = copy f_4
-    _6 = (move _7)(const 42 : u8)
+    _6 = (move _7)(const 42u8)
     storage_dead(_7)
     storage_dead(_6)
     storage_live(f_8)
@@ -176,19 +170,19 @@ fn main()
     _10 = copy f_8
     storage_live(_11)
     _11 = new()
-    _9 = Foo(const 42 : u32, move _11)
+    _9 = Foo(const 42u32, move _11)
     storage_dead(_11)
     storage_dead(_10)
-    conditional_drop[{impl Destruct for Foo}::drop_in_place] _9
+    conditional_drop[impl_Destruct_for_Foo::drop_glue<'10>] _9
     storage_live(_18)
     storage_live(_19)
     storage_live(_20)
-    _20 = const 42 : i32
+    _20 = const 42i32
     _19 = &_20
     _18 = move _19
     storage_dead(_9)
     storage_live(f_12)
-    f_12 = const Variant<'10, i32>[{built_in impl Sized for i32}]
+    f_12 = const Variant<'12, i32>[{built_in impl Sized for i32}]
     storage_live(_13)
     storage_live(_14)
     _14 = copy f_12
@@ -197,7 +191,7 @@ fn main()
     _17 = move _18
     _16 = &(*_17)
     _15 = &(*_16)
-    _13 = Variant<'12, i32>[{built_in impl Sized for i32}](move _15)
+    _13 = Variant<'14, i32>[{built_in impl Sized for i32}](move _15)
     storage_dead(_15)
     storage_dead(_14)
     storage_dead(_16)

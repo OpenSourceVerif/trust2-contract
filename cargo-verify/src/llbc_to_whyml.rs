@@ -8,14 +8,15 @@ use name_map::{
 use bumpalo::Bump;
 use charon_lib::{
     ast::{
-        self, AbortKind, AggregateKind, Assert, BinOp, BindingStack, Body, BorrowKind, BoxedArgs,
+        self, AbortKind, AggregateKind, Assert, BinOp, BindingStack, Body, BorrowKind,
         BuiltinFunId, BuiltinTy, Call, ConstantExpr, ConstantExprKind, ContractAssertKind,
         CopyNonOverlapping, DeclarationGroup, FieldId, FieldProjKind, FloatValue, FnOperand, FnPtr,
         FnPtrKind, FunDeclId, FunId, FunSig, FunSpecs, GDeclarationGroup, GenericArgs,
         GlobalDeclId, GlobalDeclRef, IntTy, ItemId, ItemSource, Literal, LiteralTy, LocalId,
         NullOp, Operand, OverflowMode, Place, PlaceKind, ProjectionElem, QuantKind, RefKind,
-        Rvalue, ScalarValue, SpecClosure, SpecClosureId, TranslatedCrate, Ty, TyKind, TypeDbVar,
-        TypeDeclId, TypeDeclKind, TypeDeclRef, TypeId, TypeVarId, UIntTy, UnOp, VariantId,
+        Rvalue, ScalarValue, SpecClosure, SpecClosureId, TraitRef, TraitRefKind, TranslatedCrate,
+        Ty, TyKind, TypeDbVar, TypeDeclId, TypeDeclKind, TypeDeclRef, TypeId, TypeVarId, UIntTy,
+        UnOp, VariantId,
     },
     ids::IndexVec,
     llbc_ast::{Block, ExprBody, Statement, StatementKind, Switch},
@@ -70,6 +71,7 @@ pub enum Error {
     CopyNonOverlappingInSpec,
     LoopInSpec,
     NestedSpec,
+    VariadicFunc,
 }
 
 impl error::Error for Error {}
@@ -95,6 +97,7 @@ impl Display for Error {
             }
             Error::LoopInSpec => write!(f, "loop in specification"),
             Error::NestedSpec => write!(f, "nested specification"),
+            Error::VariadicFunc => write!(f, "variadic function"),
         }
     }
 }
@@ -576,7 +579,7 @@ impl<'a> Ctx<'a> {
                                 .fields
                                 .iter_enumerated()
                                 .map(|(variant_field_id, variant_field)| translate_tuple_like_variant_field(variant_field_id, variant_field))
-                                .collect::<Result<_>>()?;
+                                .try_collect()?;
                             (None, constructor_params.into(), accessor_decls)
                         }
                         Some((record_ident, record_field_idents)) => translate_struct_like_variant(record_ident, record_field_idents)?,
@@ -602,7 +605,7 @@ impl<'a> Ctx<'a> {
                         accessor_decls.extend(accessor_decls_);
                         Ok(constructor)
                     })
-                    .collect::<Result<_>>()?;
+                    .try_collect()?;
                 type_decls.push(ptree::TypeDecl {
                     loc: Position::default(),
                     ident: item_ident,
@@ -686,7 +689,7 @@ impl<'a> Ctx<'a> {
             }
             Ok((block_id, term, in_locals.clone()))
         }))
-        .collect::<Result<_>>()?;
+        .try_collect()?;
         let mut terms = terms_rev.into_iter().rev();
 
         let (_, first_term, _) = terms.next().unwrap();
@@ -761,7 +764,7 @@ impl<'a> Ctx<'a> {
             }
             Ok((block_id, term, in_locals.clone()))
         }))
-        .collect::<Result<_>>()?;
+        .try_collect()?;
         let mut terms = terms_rev.into_iter().rev();
 
         let (_, first_term, _) = terms.next().unwrap();
@@ -884,7 +887,7 @@ impl<'a> Ctx<'a> {
             let args: Vec<_> = args
                 .iter()
                 .map(|arg| self_.translate_operand_to_expr(arg))
-                .collect::<Result<_>>()?;
+                .try_collect()?;
             let expr = self_.translate_apply_expr(func, args);
             Ok(translate_assign(self_, trailing_expr, dst, expr))
         }
@@ -1231,7 +1234,7 @@ impl<'a> Ctx<'a> {
                     locals_set.extend(self_.get_operand_locals(arg));
                     self_.translate_operand_to_term(arg)
                 })
-                .collect::<Result<_>>()?;
+                .try_collect()?;
             let term = self_.translate_apply_term(func, args);
             Ok(translate_assign(
                 self_,
@@ -1410,7 +1413,7 @@ impl<'a> Ctx<'a> {
                                 Some(self_.translate_type(&locals[local_id].ty)?),
                             ))
                         })
-                        .collect::<Result<_>>()?,
+                        .try_collect()?,
                     Box::new([]),
                     Box::new(self_.translate_spec_closure(spec_closure, local_names)?),
                 ),
@@ -1621,6 +1624,13 @@ impl<'a> Ctx<'a> {
     }
 
     fn translate_const_expr<T: Builder>(&self, const_expr: &ConstantExpr) -> Result<T::T> {
+        let translate_call = |func_ref, args: &Vec<_>| {
+            let args: Vec<_> = args
+                .iter()
+                .map(|arg| self.translate_const_expr::<T>(arg))
+                .try_collect()?;
+            Ok(self.translate_apply::<T>(self.translate_func_ref::<T>(func_ref), args))
+        };
         match &const_expr.kind {
             ConstantExprKind::Literal(literal) => Ok(self.translate_literal::<T>(literal)),
             ConstantExprKind::Adt(..) => Ok(T::unit_value()),
@@ -1630,12 +1640,18 @@ impl<'a> Ctx<'a> {
             ConstantExprKind::VTableRef(..) => todo!(),
             ConstantExprKind::Ref(..) | ConstantExprKind::Ptr(..) => unreachable!(),
             ConstantExprKind::Var(..) => unreachable!(),
+            ConstantExprKind::Call(func_ref, args) => translate_call(func_ref, args),
             ConstantExprKind::FnDef(func_ref) => Ok(self.translate_func_ref::<T>(func_ref)),
             ConstantExprKind::FnPtr(..) => unreachable!(),
+            ConstantExprKind::TypeId(..) => todo!(),
             ConstantExprKind::PtrNoProvenance(..) => unreachable!(),
             ConstantExprKind::RawMemory(..) => Err(Error::RawBytesConst),
             ConstantExprKind::Opaque(..) => unreachable!(),
         }
+    }
+
+    fn translate_const_expr_to_expr(&self, const_expr: &ConstantExpr) -> Result<Expr> {
+        self.translate_const_expr::<ExprBuilder>(const_expr)
     }
 
     fn translate_literal<T: Builder>(&self, literal: &Literal) -> T::T {
@@ -1749,6 +1765,25 @@ impl<'a> Ctx<'a> {
                 ])),
             )
         };
+        let translate_trait_method_ref =
+            |trait_ref: &TraitRef, trait_method_id, generic_args| match &trait_ref.kind {
+                TraitRefKind::TraitImpl(trait_impl_ref) => {
+                    let generic_args = trait_impl_ref.generics.clone().concat(generic_args);
+                    self.translate_func_decl_ref::<T>(
+                        self.crate_.trait_impls[trait_impl_ref.id].methods[trait_method_id]
+                            .skip_binder
+                            .id,
+                        &generic_args,
+                    )
+                }
+                TraitRefKind::Clause(..)
+                | TraitRefKind::ParentClause(..)
+                | TraitRefKind::ItemClause(..)
+                | TraitRefKind::SelfId
+                | TraitRefKind::BuiltinOrAuto { .. }
+                | TraitRefKind::Dyn => todo!(),
+                TraitRefKind::Unknown(..) => unreachable!(),
+            };
         match &*func_ref.kind {
             FnPtrKind::Fun(FunId::Regular(func_decl_id)) => {
                 self.translate_func_decl_ref::<T>(*func_decl_id, &func_ref.generics)
@@ -1756,8 +1791,8 @@ impl<'a> Ctx<'a> {
             FnPtrKind::Fun(FunId::Builtin(builtin_func_id)) => {
                 translate_builtin_func_ref(*builtin_func_id)
             }
-            FnPtrKind::Trait(_, _, func_decl_id) => {
-                self.translate_func_decl_ref::<T>(*func_decl_id, &func_ref.generics)
+            FnPtrKind::Trait(trait_ref, trait_method_id) => {
+                translate_trait_method_ref(trait_ref, *trait_method_id, &func_ref.generics)
             }
         }
     }
@@ -1773,7 +1808,7 @@ impl<'a> Ctx<'a> {
     fn translate_func_decl_ref<T: Builder>(
         &self,
         func_decl_id: FunDeclId,
-        generic_args: &BoxedArgs,
+        generic_args: &GenericArgs,
     ) -> T::T {
         assert!(generic_args.types.is_empty());
         assert!(generic_args.const_generics.is_empty());
@@ -1937,7 +1972,7 @@ impl<'a> Ctx<'a> {
                                             self_.translate_operand::<T>(operand)?,
                                         ))
                                     })
-                                    .collect::<Result<_>>()?,
+                                    .try_collect()?,
                             ))
                         };
                     let translate_enum_aggregate =
@@ -1957,7 +1992,7 @@ impl<'a> Ctx<'a> {
                                     let operands: Vec<_> = operands
                                         .iter()
                                         .map(|operand| self_.translate_operand::<T>(operand))
-                                        .collect::<Result<_>>()?;
+                                        .try_collect()?;
                                     self_.translate_apply::<T>(constructor_expr, operands)
                                 }
                                 Some((_record_ident, record_field_idents)) => T::apply(
@@ -1984,7 +2019,7 @@ impl<'a> Ctx<'a> {
                     operands
                         .iter()
                         .map(|operand| self_.translate_operand::<T>(operand))
-                        .collect::<Result<_>>()?,
+                        .try_collect()?,
                 ))
             };
             match kind {
@@ -2022,7 +2057,7 @@ impl<'a> Ctx<'a> {
         };
 
         match rvalue {
-            Rvalue::Use(operand) => self.translate_operand::<T>(operand),
+            Rvalue::Use(operand, _) => self.translate_operand::<T>(operand),
             Rvalue::Ref {
                 place,
                 kind,
@@ -2053,7 +2088,7 @@ impl<'a> Ctx<'a> {
 
     fn get_rvalue_locals(&self, rvalue: &Rvalue) -> Result<HashSet<LocalId>> {
         match rvalue {
-            Rvalue::Use(operand) => Ok(self.get_operand_locals(operand)),
+            Rvalue::Use(operand, _) => Ok(self.get_operand_locals(operand)),
             Rvalue::Ref {
                 place,
                 kind: _,
@@ -2139,6 +2174,9 @@ impl<'a> Ctx<'a> {
         if func_decl.signature.is_unsafe {
             return Ok(None);
         }
+        if func_decl.signature.is_variadic {
+            return Err(Error::VariadicFunc);
+        }
 
         let names = &self.name_map.func_decl_names[func_decl_id];
 
@@ -2170,10 +2208,9 @@ impl<'a> Ctx<'a> {
                         let LocalNames::Concrete(local_names_) = local_names else {
                             unreachable!();
                         };
-                        let [arg_id] = postcondition
+                        let arg_id = postcondition
                             .non_captured_argument_ids()
-                            .collect::<Vec<_>>()
-                            .try_into()
+                            .exactly_one()
                             .unwrap();
                         Ok(Post(
                             Position::default(),
@@ -2202,14 +2239,14 @@ impl<'a> Ctx<'a> {
                             .map(|(precondition, local_names)| {
                                 translate_precondition(self_, precondition, local_names)
                             })
-                            .collect::<Result<_>>()?,
+                            .try_collect()?,
                         post: postconditions
                             .iter()
                             .zip(postcondition_local_names)
                             .map(|(postcondition, local_names)| {
                                 translate_postcondition(self_, postcondition, local_names)
                             })
-                            .collect::<Result<_>>()?,
+                            .try_collect()?,
                         xpost: Box::new([]),
                         reads: Box::new([]),
                         writes: Box::new([]),
@@ -2237,7 +2274,7 @@ impl<'a> Ctx<'a> {
                                         Some(self_.translate_type(param_type)?),
                                     ))
                                 })
-                                .collect::<Result<_>>()?
+                                .try_collect()?
                         }
                     };
                     let body_expr = local_idents
@@ -2298,7 +2335,7 @@ impl<'a> Ctx<'a> {
                                     Some(self_.translate_type(param_type)?),
                                 ))
                             })
-                            .collect::<Result<_>>()?
+                            .try_collect()?
                     }
                 };
                 Ok((params, ptree_helpers::empty_spec(), None))
@@ -2307,7 +2344,6 @@ impl<'a> Ctx<'a> {
                 Body::Unstructured(..) => unreachable!(),
                 Body::Structured(body) => translate_structured_body(self_, body)?,
                 Body::TargetDispatch(..) => todo!(),
-                Body::TraitMethodWithoutDefault => unreachable!(),
                 Body::Extern(..) | Body::Intrinsic { .. } | Body::Opaque | Body::Missing => {
                     translate_abstract_body()?
                 }
@@ -2327,32 +2363,21 @@ impl<'a> Ctx<'a> {
         })
     }
 
-    fn translate_global(&mut self, global_id: GlobalDeclId) -> Decl {
+    fn translate_global(&mut self, global_id: GlobalDeclId) -> Result<Decl> {
         let global = &self.crate_.global_decls[global_id];
         let names = &self.name_map.global_names[global_id];
-        let init_func_decl_names = &self.name_map.func_decl_names[global.init];
 
         assert!(global.generics.types.is_empty());
         assert!(global.generics.const_generics.is_empty());
         assert!(global.generics.trait_clauses.is_empty());
         assert!(global.generics.trait_type_constraints.is_empty());
-        self.with_generic_params(&names.type_param_names, |_| {
-            Decl::Let(
+        self.with_generic_params(&names.type_param_names, |self_| {
+            Ok(Decl::Let(
                 translate_ident(names.item_ident.as_str().into()),
                 false,
                 RsKind::None,
-                Box::new(ptree_helpers::eapply(
-                    Position::default(),
-                    ptree_helpers::evar(
-                        Position::default(),
-                        ptree_helpers::qualid(Box::new([init_func_decl_names
-                            .item_ident
-                            .as_str()
-                            .into()])),
-                    ),
-                    UNIT_EXPR.clone(),
-                )),
-            )
+                Box::new(self_.translate_const_expr_to_expr(&global.value)?),
+            ))
         })
     }
 
@@ -2454,8 +2479,9 @@ impl<'a> Ctx<'a> {
                 unreachable!();
             };
 
-            let decl = self_.translate_global(*global_id);
+            let decl = self_.translate_global(*global_id)?;
             self_.push_decl(decl);
+            Ok(())
         };
         match decl_group {
             DeclarationGroup::Type(type_decl_group) => {
@@ -2465,8 +2491,7 @@ impl<'a> Ctx<'a> {
                 translate_func_decl_group(self, func_decl_group)
             }
             DeclarationGroup::Global(global_group) => {
-                translate_global_group(self, global_group.get_ids());
-                Ok(())
+                translate_global_group(self, global_group.get_ids())
             }
             DeclarationGroup::TraitDecl(..) => Ok(()),
             DeclarationGroup::TraitImpl(..) => Ok(()),

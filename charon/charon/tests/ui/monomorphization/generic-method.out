@@ -8,7 +8,7 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
@@ -22,45 +22,39 @@ pub trait MetaSized<Self>
 // Full name: test_crate::Foo
 trait Foo<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
 // Full name: test_crate::Foo
 trait Foo<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn bar<T, [@TraitClause0_1]: Sized<T>> = test_crate::Foo::bar<Self, T>[Self, @TraitClause0_1]
+    proof ImpliedClause0: (Self: MetaSized)
+    fn bar<T, TraitClause0_1: (T: Sized)>;
     non-dyn-compatible
 }
 
-fn test_crate::Foo::bar<Self, T>() -> Self
-where
-    [@TraitClause0]: Foo<Self>,
-    [@TraitClause1]: Sized<T>,
-= <method_without_default_body>
-
 // Full name: test_crate::{impl Foo for u64}
 impl Foo for u64 {
-    parent_clause0 = {built_in impl MetaSized for u64}
+    proof ImpliedClause0: (u64: MetaSized) = {built_in impl MetaSized for u64}
     non-dyn-compatible
 }
 
 // Full name: test_crate::{impl Foo for u64}::bar
 fn {impl Foo for u64}::bar<T>() -> u64
 where
-    [@TraitClause0]: Sized<T>,
+    TraitClause0: (T: Sized),
 {
     let _0: u64; // return
 
-    _0 = const 0 : u64
+    _0 = const 0u64
     return
 }
 
 // Full name: test_crate::{impl Foo for u64}
 impl Foo for u64 {
-    parent_clause0 = {built_in impl MetaSized for u64}
-    fn bar<T, [@TraitClause0_1]: Sized<T>> = {impl Foo for u64}::bar<T>[@TraitClause0_1]
+    proof ImpliedClause0: (u64: MetaSized) = {built_in impl MetaSized for u64}
+    fn bar<T, TraitClause0_1: (T: Sized)> = {impl Foo for u64}::bar<T>[TraitClause0_1]
     non-dyn-compatible
 }
 
@@ -69,7 +63,7 @@ fn {impl Foo for u64}::bar::<bool>() -> u64
 {
     let _0: u64; // return
 
-    _0 = const 0 : u64
+    _0 = const 0u64
     return
 }
 

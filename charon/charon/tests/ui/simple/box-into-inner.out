@@ -12,17 +12,17 @@ pub trait MetaSized<Self>
 #[lang_item("sized")]
 pub trait Sized<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
+    proof ImpliedClause0: (Self: MetaSized)
     non-dyn-compatible
 }
 
-// Full name: core::ptr::alignment::Alignment
+// Full name: core::mem::alignment::Alignment
 pub opaque type Alignment
 
 // Full name: core::mem::SizedTypeProperties
 pub trait SizedTypeProperties<Self>
 {
-    parent_clause0 : [@TraitClause0]: Sized<Self>
+    proof ImpliedClause0: (Self: Sized)
     const SIZE : usize
     const ALIGN : usize
     const ALIGNMENT : Alignment
@@ -36,90 +36,90 @@ pub trait SizedTypeProperties<Self>
 #[lang_item("mem_size_const")]
 pub fn SIZE<Self>() -> usize
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
 = <opaque>
 
 // Full name: core::mem::SizedTypeProperties::SIZE
 #[lang_item("mem_size_const")]
 pub const SIZE<Self>: usize
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
  = SIZE()
 
 // Full name: core::mem::SizedTypeProperties::ALIGN
 #[lang_item("mem_align_const")]
 pub fn ALIGN<Self>() -> usize
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
 = <opaque>
 
 // Full name: core::mem::SizedTypeProperties::ALIGN
 #[lang_item("mem_align_const")]
 pub const ALIGN<Self>: usize
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
  = ALIGN()
 
 // Full name: core::mem::SizedTypeProperties::ALIGNMENT
 pub fn ALIGNMENT<Self>() -> Alignment
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
 = <opaque>
 
 // Full name: core::mem::SizedTypeProperties::ALIGNMENT
 pub const ALIGNMENT<Self>: Alignment
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
  = ALIGNMENT()
 
 // Full name: core::mem::SizedTypeProperties::IS_ZST
 pub fn IS_ZST<Self>() -> bool
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
 = <opaque>
 
 // Full name: core::mem::SizedTypeProperties::IS_ZST
 pub const IS_ZST<Self>: bool
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
  = IS_ZST()
 
 // Full name: core::mem::SizedTypeProperties::LAYOUT
 pub fn LAYOUT<Self>() -> Layout
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
 = <opaque>
 
 // Full name: core::mem::SizedTypeProperties::LAYOUT
 pub const LAYOUT<Self>: Layout
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
  = LAYOUT()
 
 // Full name: core::mem::SizedTypeProperties::MAX_SLICE_LEN
 pub fn MAX_SLICE_LEN<Self>() -> usize
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
 = <opaque>
 
 // Full name: core::mem::SizedTypeProperties::MAX_SLICE_LEN
 pub const MAX_SLICE_LEN<Self>: usize
 where
-    [@TraitClause0]: SizedTypeProperties<Self>,
+    TraitClause0: (Self: SizedTypeProperties),
  = MAX_SLICE_LEN()
 
 // Full name: core::mem::{impl SizedTypeProperties for T}
-impl<T> SizedTypeProperties for T
+impl<T> "impl_SizedTypeProperties_for_T" SizedTypeProperties for T
 where
-    [@TraitClause0]: Sized<T>,
+    TraitClause0: (T: Sized),
 {
-    parent_clause0 = @TraitClause0
-    const SIZE = SIZE<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
-    const ALIGN = ALIGN<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
-    const ALIGNMENT = ALIGNMENT<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
-    const IS_ZST = IS_ZST<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
-    const LAYOUT = LAYOUT<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
-    const MAX_SLICE_LEN = MAX_SLICE_LEN<T>[{impl SizedTypeProperties for T}<T>[@TraitClause0]]
+    proof ImpliedClause0: (T: Sized) = TraitClause0
+    const SIZE = SIZE<T>[impl_SizedTypeProperties_for_T<T>[TraitClause0]]
+    const ALIGN = ALIGN<T>[impl_SizedTypeProperties_for_T<T>[TraitClause0]]
+    const ALIGNMENT = ALIGNMENT<T>[impl_SizedTypeProperties_for_T<T>[TraitClause0]]
+    const IS_ZST = IS_ZST<T>[impl_SizedTypeProperties_for_T<T>[TraitClause0]]
+    const LAYOUT = LAYOUT<T>[impl_SizedTypeProperties_for_T<T>[TraitClause0]]
+    const MAX_SLICE_LEN = MAX_SLICE_LEN<T>[impl_SizedTypeProperties_for_T<T>[TraitClause0]]
     non-dyn-compatible
 }
 
@@ -134,11 +134,11 @@ pub opaque type Unique<T>
 #[lang_item("global_alloc_ty")]
 pub struct Global {}
 
-// Full name: alloc::boxed::{impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop
-pub fn {impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop<'_0, T, A>(_1: &'_0 mut alloc::boxed::Box<T>[@TraitClause0, @TraitClause1])
+// Full name: alloc::boxed::{impl Drop for alloc::boxed::Box<T>[TraitClause0, TraitClause1]}::drop
+pub fn impl_Drop_for_Box::drop<'_0, T, A>(_1: &'_0 mut alloc::boxed::Box<T>[TraitClause0, TraitClause1])
 where
-    [@TraitClause0]: MetaSized<T>,
-    [@TraitClause1]: Sized<A>,
+    TraitClause0: (T: MetaSized),
+    TraitClause1: (A: Sized),
 = <opaque>
 
 // Full name: alloc::string::String
@@ -146,7 +146,7 @@ where
 pub opaque type String
 
 // Full name: alloc::string::String::{impl Destruct for String}::drop_in_place
-unsafe fn {impl Destruct for String}::drop_in_place(_1: *mut String)
+unsafe fn impl_Destruct_for_String::drop_in_place(_1: *mut String)
 = <opaque>
 
 // Full name: test_crate::into_inner
@@ -158,13 +158,12 @@ fn into_inner(b_1: alloc::boxed::Box<String>[{built_in impl MetaSized for String
     let _3: &'1 mut alloc::boxed::Box<String>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}]; // anonymous local
     let _4: (); // anonymous local
     let _5: *const String; // anonymous local
-    let _6: *const String; // anonymous local
-    let _7: *const (); // anonymous local
-    let _8: usize; // anonymous local
+    let _6: *const (); // anonymous local
+    let _7: usize; // anonymous local
+    let _8: bool; // anonymous local
     let _9: bool; // anonymous local
     let _10: bool; // anonymous local
     let _11: bool; // anonymous local
-    let _12: bool; // anonymous local
 
     storage_live(_3)
     storage_live(_4)
@@ -175,24 +174,22 @@ fn into_inner(b_1: alloc::boxed::Box<String>[{built_in impl MetaSized for String
     storage_live(_9)
     storage_live(_10)
     storage_live(_11)
-    storage_live(_12)
     _0 = ()
     storage_live(_x_2)
-    _6 = transmute<NonNull<String>, *const String>(copy ((*b_1)).0)
-    _7 = cast<*const String, *const ()>(copy _6)
-    _8 = transmute<*const (), usize>(copy _7)
-    _9 = const {impl SizedTypeProperties for T}<String>[{built_in impl Sized for String}]::SIZE != const 0 : usize
-    _10 = copy _8 == const 0 : usize
-    _11 = copy _10 & copy _9
-    _12 = ~(copy _11)
-    assert(copy _12 == true) (null_pointer_dereference) else undefined_behavior
-    _x_2 = move (*_6)
-    _0 = ()
-    drop[{impl Destruct for String}::drop_in_place] _x_2
-    storage_dead(_x_2)
     _5 = transmute<NonNull<String>, *const String>(copy ((*b_1)).0)
+    _6 = cast<*const String, *const ()>(copy _5)
+    _7 = transmute<*const (), usize>(copy _6)
+    _8 = copy SIZE<String>[impl_SizedTypeProperties_for_T<String>[{built_in impl Sized for String}]] != const 0usize
+    _9 = copy _7 == const 0usize
+    _10 = copy _9 & copy _8
+    _11 = ~(copy _10)
+    assert(copy _11 == true) (null_pointer_dereference) else undefined_behavior
+    _x_2 = move (*_5)
+    _0 = ()
+    drop[impl_Destruct_for_String::drop_in_place] _x_2
+    storage_dead(_x_2)
     _3 = &mut b_1
-    _4 = {impl Drop for alloc::boxed::Box<T>[@TraitClause0, @TraitClause1]}::drop<'5, String, Global>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}](move _3)
+    _4 = impl_Drop_for_Box::drop<'5, String, Global>[{built_in impl MetaSized for String}, {built_in impl Sized for Global}](move _3)
     return
 }
 

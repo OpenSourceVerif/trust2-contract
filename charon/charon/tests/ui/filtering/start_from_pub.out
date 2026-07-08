@@ -1,13 +1,5 @@
 # Final LLBC before serialization:
 
-// Full name: core::fmt::Arguments
-#[lang_item("format_arguments")]
-pub opaque type Arguments<'a>
-
-// Full name: core::fmt::{Arguments<'a>}::from_str
-pub fn from_str<'a>(_1: &'static str) -> Arguments<'a>
-= <opaque>
-
 // Full name: core::marker::MetaSized
 #[lang_item("meta_sized")]
 pub trait MetaSized<Self>
@@ -40,18 +32,13 @@ pub struct Type1 {}
 // Full name: test_crate::module2::Trait1
 pub trait Trait1<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn method = test_crate::module2::Trait1::method<Self>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    fn method;
     non-dyn-compatible
 }
 
-pub fn test_crate::module2::Trait1::method<Self>()
-where
-    [@TraitClause0]: Trait1<Self>,
-= <method_without_default_body>
-
 // Full name: test_crate::module2::{impl Trait1 for Type1}::method
-pub fn {impl Trait1 for Type1}::method()
+pub fn impl_Trait1_for_Type1::method()
 {
     let _0: (); // return
 
@@ -61,7 +48,7 @@ pub fn {impl Trait1 for Type1}::method()
 }
 
 // Full name: test_crate::module2::{impl Trait1 for Type2}::method
-pub fn {impl Trait1 for Type2}::method()
+pub fn impl_Trait1_for_Type2::method()
 {
     let _0: (); // return
     let _1: (); // anonymous local

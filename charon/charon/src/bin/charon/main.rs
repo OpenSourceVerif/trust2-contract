@@ -40,7 +40,7 @@ use clap::Parser;
 use cli::{Charon, Cli};
 use itertools::Itertools;
 use std::{env, ffi::OsString, process::ExitStatus};
-use toolchain::toolchain_path;
+use toolchain::{toolchain_path, toolchain_version};
 
 #[macro_use]
 extern crate charon_lib;
@@ -48,6 +48,7 @@ extern crate charon_lib;
 mod cli;
 mod toml_config;
 mod toolchain;
+mod ui_test;
 
 pub fn main() -> Result<()> {
     main_(env::args_os())
@@ -97,9 +98,14 @@ where
                 })?
             }
         }
+        Charon::UiTest(args) => ui_test::run(args)?,
         Charon::ToolchainPath(_) => {
             let path = toolchain_path()?;
             println!("{}", path.display());
+            ExitStatus::default()
+        }
+        Charon::ToolchainVersion => {
+            println!("{}", toolchain_version());
             ExitStatus::default()
         }
         Charon::Version => {
@@ -153,6 +159,9 @@ fn translate_multi_target(
                     // Keep variables bound so that we can manipulate them when merging. We'll
                     // apply the pass at the end if needed.
                     opts.unbind_item_vars = false;
+                    // Make sure that traits have the same methods translated in each target. We
+                    // filter unused methods after merge.
+                    opts.translate_all_methods = true;
 
                     let status = translate_one(opts, target)?;
                     if !status.success() {
@@ -200,6 +209,8 @@ fn translate_with_cargo(
     options.validate()?;
     let mut cmd = toolchain::in_toolchain("cargo")?;
     cmd.env("RUSTC_WRAPPER", toolchain::driver_path());
+    // We pass a random value to prevent cargo from considering a charon run cacheable.
+    cmd.env("RUSTC_WORKSPACE_WRAPPER", fresh_fingerprint());
     cmd.env("CHARON_USING_CARGO", "1");
     cmd.env_remove("CARGO_PRIMARY_PACKAGE");
     cmd.env(CHARON_ARGS, serde_json::to_string(&options).unwrap());
@@ -248,6 +259,14 @@ fn get_rustc_version() -> anyhow::Result<rustc_version::VersionMeta> {
         panic!("failed to determine underlying rustc version of Charon:\\n{err:?}",)
     });
     Ok(rustc_version)
+}
+
+/// A sufficiently unique string used to force cargo to re-run charon each time we call it.
+fn fresh_fingerprint() -> String {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |duration| duration.as_nanos());
+    format!("charon-dont-cache-this-{}-{nanos}", std::process::id())
 }
 
 fn ensure_rustup() {

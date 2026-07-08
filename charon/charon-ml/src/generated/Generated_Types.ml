@@ -283,22 +283,32 @@ and builtin_fun_id =
 (** Describes a built-in impl. Mostly lists the implemented trait, sometimes
     with more details about the contents of the implementation. *)
 and builtin_impl_data =
+  | BuiltinAuto
+      (** Auto traits (defined with [auto trait ...], also [Unpin]). *)
   | BuiltinSized
   | BuiltinMetaSized
+  | BuiltinPointeeSized
+  | BuiltinCopy
+  | BuiltinClone
   | BuiltinTuple
+  | BuiltinTransmute
+  | BuiltinUnsize
   | BuiltinPointee
   | BuiltinDiscriminantKind
-  | BuiltinAuto
+  | BuiltinFn
+  | BuiltinFnMut
+  | BuiltinFnOnce
+  | BuiltinFnPtr
+  | BuiltinAsyncFn
+  | BuiltinAsyncFnMut
+  | BuiltinAsyncFnOnce
+  | BuiltinCoroutine
+  | BuiltinFuture
   | BuiltinNoopDestruct
       (** An impl of [Destruct] for a type with no drop glue. *)
   | BuiltinUntrackedDestruct
       (** An impl of [Destruct] for a type parameter, which we could not resolve
           because [--add-drop-bounds] was not set. *)
-  | BuiltinFn
-  | BuiltinFnMut
-  | BuiltinFnOnce
-  | BuiltinCopy
-  | BuiltinClone
   | BuiltinRemovedAdtClause
       (** Placeholder used by the [--remove-adt-clauses] pass when it strips a
           trait clause from a type declaration. References to the removed clause
@@ -433,12 +443,15 @@ and constant_expr_kind =
 
           We eliminate this case in a micro-pass. *)
   | CVar of const_generic_var_id de_bruijn_var  (** A const generic var *)
+  | CCall of fn_ptr * constant_expr list
+      (** A call to a [const fn] or a constant's initializer. *)
   | CFnDef of fn_ptr  (** Function definition -- this is a ZST constant *)
   | CFnPtr of fn_ptr
       (** A function pointer to a function item; this is an actual pointer to
           that function item.
 
           We eliminate this case in a micro-pass. *)
+  | CTypeId of ty  (** The [TypeId] value for a type. *)
   | CPtrNoProvenance of big_int
       (** A pointer with no provenance (e.g. 0 for the null pointer)
 
@@ -468,10 +481,9 @@ and fn_ptr = { kind : fn_ptr_kind; generics : generic_args }
 
 and fn_ptr_kind =
   | FunId of fun_id
-  | TraitMethod of trait_ref * trait_method_id * fun_decl_id
+  | TraitMethod of trait_ref * trait_method_id
       (** If a trait: the reference to the trait and the id of the trait method.
-          The fun decl id is not really necessary - we put it here for
-          convenience purposes. *)
+      *)
 
 (** Reference to a function declaration. *)
 and fun_decl_ref = {
@@ -492,6 +504,9 @@ and fun_id =
 and fun_sig = {
   is_unsafe : bool;  (** Is the function unsafe or not *)
   abi : abi;  (** The calling convention of this function. *)
+  is_variadic : bool;
+      (** Whether this is a C-variadic function (its last parameter is [...]).
+      *)
   inputs : ty list;
   output : ty;
 }
@@ -589,7 +604,12 @@ and region_param = {
 }
 
 (** The value of a trait associated type. *)
-and trait_assoc_ty_impl = { value : ty }
+and trait_assoc_ty_impl = {
+  value : ty;
+  implied_trait_refs : trait_ref list;
+      (** This matches the corresponding vector in [TraitAssocTy]. In the same
+          way, this is empty after the [lift_associated_item_clauses] pass. *)
+}
 
 (** A predicate of the form [Type: Trait<Args>].
 
@@ -771,7 +791,7 @@ and ty_kind =
           eventually disappears from the AST. *)
   | TRef of region * ty * ref_kind  (** A borrow *)
   | TRawPtr of ty * ref_kind  (** A raw pointer. *)
-  | TTraitType of trait_ref * assoc_type_id
+  | TTraitType of trait_ref * assoc_type_id * generic_args
       (** A trait associated type
 
           Ex.:
@@ -1036,22 +1056,24 @@ and item_source =
 
           Fields:
           - [info] *)
-  | TraitDeclItem of trait_decl_ref * assoc_item_id * bool
-      (** This is an associated item in a trait declaration. It has a body if
-          and only if the trait provided a default implementation.
+  | TraitDeclItem of trait_decl_ref * assoc_item_id
+      (** This is the default value of an associated const or method in a trait
+          declaration.
 
           Fields:
           - [trait_ref]: The trait declaration this item belongs to.
-          - [item_id]: The associated item this corresponds to.
-          - [has_default]: Whether the trait declaration provides a default
-            implementation. *)
+          - [item_id]: The associated item this corresponds to. Note that a
+            function could have [AssocItemId::Const] if it's the initializer of
+            a trait const. *)
   | TraitImplItem of trait_impl_ref * trait_decl_ref * assoc_item_id * bool
-      (** This is an associated item in a trait implementation.
+      (** This is an associated const or method in a trait implementation.
 
           Fields:
           - [impl_ref]: The trait implementation the method belongs to.
           - [trait_ref]: The trait declaration that the impl block implements.
-          - [item_id]: The associated item this corresponds to.
+          - [item_id]: The associated item this corresponds to. Note that a
+            function could have [AssocItemId::Const] if it's the initializer of
+            a trait const.
           - [reuses_default]: True if the trait decl had a default
             implementation for this function/const and this item is a copy of
             the default item. *)
@@ -1135,9 +1157,9 @@ and layout = {
 
     On our side, we want to stay high-level and simple: we use string
     identifiers as much as possible, insert disambiguators only when necessary
-    (whenever we find an "impl" block, typically) and check that the
-    disambiguator is useless in the other situations (i.e., the disambiguator is
-    always equal to 0).
+    (for instance when we find an "impl" block or when two loaded crates have
+    the same name) and check that the disambiguator is useless in the other
+    situations (i.e., the disambiguator is always equal to 0).
 
     Moreover, the items are uniquely disambiguated by their (integer) ids
     ([TypeDeclId], etc.), and when extracting the code we have to deal with name

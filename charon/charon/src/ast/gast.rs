@@ -97,9 +97,6 @@ pub enum Body {
         #[serde(with = "SeqHashMapToArray::<TargetTriple, FunDeclRef>")]
         SeqHashMap<TargetTriple, FunDeclRef>,
     ),
-    /// The body of the function item we add for each trait method declaration, if the trait
-    /// doesn't provide a default for that method.
-    TraitMethodWithoutDefault,
     /// Function declared in an `extern { ... }` block. The string is the foreign symbol name.
     Extern(#[drive(skip)] String),
     /// Rust intrinsic function.
@@ -154,25 +151,23 @@ pub enum ItemSource {
     Closure {
         info: ClosureInfo,
     },
-    /// This is an associated item in a trait declaration. It has a body if and only if the trait
-    /// provided a default implementation.
+    /// This is the default value of an associated const or method in a trait declaration.
     TraitDecl {
         /// The trait declaration this item belongs to.
         trait_ref: TraitDeclRef,
-        /// The associated item this corresponds to.
+        /// The associated item this corresponds to. Note that a function could have
+        /// `AssocItemId::Const` if it's the initializer of a trait const.
         // TODO: also include method generics so we can recover a full `FnPtr::TraitMethod`
         item_id: AssocItemId,
-        /// Whether the trait declaration provides a default implementation.
-        #[drive(skip)]
-        has_default: bool,
     },
-    /// This is an associated item in a trait implementation.
+    /// This is an associated const or method in a trait implementation.
     TraitImpl {
         /// The trait implementation the method belongs to.
         impl_ref: TraitImplRef,
         /// The trait declaration that the impl block implements.
         trait_ref: TraitDeclRef,
-        /// The associated item this corresponds to.
+        /// The associated item this corresponds to. Note that a function could have
+        /// `AssocItemId::Const` if it's the initializer of a trait const.
         // TODO: also include method generics so we can recover a full `FnPtr::TraitMethod`
         item_id: AssocItemId,
         /// True if the trait decl had a default implementation for this function/const and this
@@ -285,9 +280,10 @@ pub struct GlobalDecl {
     /// The kind of global (static or const).
     #[drive(skip)]
     pub global_kind: GlobalKind,
-    /// The initializer function used to compute the initial value for this constant/static. It
-    /// uses the same generic parameters as the global.
-    pub init: FunDeclId,
+    /// The value of this constant/static. By default this is a [`ConstantExprKind::Call`] to the
+    /// initializer function that computes the value (the function uses the same generic parameters
+    /// as the global).
+    pub value: ConstantExpr,
 }
 
 /// Reference to a global declaration.
@@ -418,14 +414,10 @@ pub struct TraitAssocTy {
 #[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
 pub struct TraitMethod {
     pub name: TraitItemName,
-    #[drive(skip)]
-    #[serde_state(stateless)]
-    pub attr_info: AttrInfo,
+    pub item_meta: ItemMeta,
     pub signature: FunSig,
-    /// Each method declaration is represented by a function item. That function contains the
-    /// signature of the method as well as information like attributes. It has a body iff the
-    /// method declaration has a default implementation; otherwise it has an `Opaque` body.
-    pub item: FunDeclRef,
+    /// The default method implementation, if there is one.
+    pub default: Option<FunDeclRef>,
 }
 
 /// A trait **implementation**.
@@ -466,7 +458,6 @@ pub struct TraitAssocTyImpl {
     pub value: Ty,
     /// This matches the corresponding vector in `TraitAssocTy`. In the same way, this is empty
     /// after the `lift_associated_item_clauses` pass.
-    #[cfg_attr(feature = "charon_on_charon", charon::opaque)]
     pub implied_trait_refs: IndexVec<TraitClauseId, TraitRef>,
 }
 
@@ -535,13 +526,13 @@ pub enum AbortKind {
 /// may happen depending on whether the borrow-checker determines a drop is needed.
 #[derive(Debug, PartialEq, Eq, Clone, Copy, SerializeState, DeserializeState, Drive, DriveMut)]
 pub enum DropKind {
-    /// A real drop. This calls `<T as Destruct>::drop_in_place(&raw mut place)` and marks the
+    /// A real drop. This calls `<T as Destruct>::drop_glue(&mut place)` and marks the
     /// place as moved-out-of. Use `--desugar-drops` to transform all such drops to an actual
     /// function call.
     ///
-    /// The `drop_in_place` method is added by Charon to the `Destruct` trait to make it possible
+    /// The `drop_glue` method is added by Charon to the `Destruct` trait to make it possible
     /// to track drop code in polymorphic code. It contains the same code as the
-    /// `core::ptr::drop_in_place<T>` builtin would.
+    /// `core::ptr::drop_glue<T>` builtin would.
     ///
     /// Drop are precise in MIR `elaborated` and `optimized`.
     Precise,

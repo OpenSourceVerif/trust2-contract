@@ -626,8 +626,8 @@ and match_expr_with_ty (ctx : ctx) (c : match_config) (m : maps) (pty : expr)
       && match_expr_with_ty ctx c m pty ty
       && match_ref_kind prk rk
   | EVar v, _ -> opt_update_tmap c m v ty
-  | EComp pid, TTraitType (trait_ref, type_id) ->
-      match_trait_type ctx c m pid trait_ref type_id
+  | EComp pid, TTraitType (trait_ref, type_id, generics) ->
+      match_trait_type ctx c m pid trait_ref type_id generics
   | EArrow (pinputs, pout), TFnPtr binder -> begin
       (* Push a region group in the map, if necessary - TODO: make this more precise *)
       let m =
@@ -692,9 +692,10 @@ and match_trait_decl_ref_item (ctx : ctx) (c : match_config) (m : maps)
   else raise (Failure "Unimplemented")
 
 and match_trait_type (ctx : ctx) (c : match_config) (m : maps) (pid : pattern)
-    (tr : T.trait_ref) (type_id : T.assoc_type_id) : bool =
+    (tr : T.trait_ref) (type_id : T.assoc_type_id) (generics : T.generic_args) :
+    bool =
   match_trait_decl_ref_item ctx c m pid tr.trait_decl_ref (AssocIdType type_id)
-    TypesUtils.empty_generic_args
+    generics
 
 and match_generic_args (ctx : ctx) (c : match_config) (m : maps)
     (pgenerics : generic_args) (generics : T.generic_args) : bool =
@@ -830,7 +831,7 @@ let match_fn_ptr (ctx : ctx) (c : match_config) (p : pattern) (func : T.fn_ptr)
         | _ -> false
       in
       match_function_name || match_trait_ref
-  | TraitMethod (tr, method_id, _) ->
+  | TraitMethod (tr, method_id) ->
       match_trait_decl_ref_item ctx c (mk_empty_maps ()) p tr.trait_decl_ref
         (AssocIdMethod method_id) func.generics
 
@@ -1064,14 +1065,14 @@ and ty_to_pattern_aux (ctx : ctx) (c : to_pat_config) (m : constraints)
         ( region_to_pattern m r,
           ty_to_pattern_aux ctx c m ty,
           ref_kind_to_pattern rk )
-  | TTraitType (trait_ref, type_id) ->
+  | TTraitType (trait_ref, type_id, generics) ->
       let type_name =
         GAstUtils.get_assoc_type_name ctx.crate
           trait_ref.trait_decl_ref.binder_value.id type_id
       in
       let name =
         trait_ref_item_with_generics_to_pattern ctx c m trait_ref type_name
-          TypesUtils.empty_generic_args
+          generics
       in
       EComp name
   | TFnPtr binder ->
@@ -1086,7 +1087,6 @@ and ty_to_pattern_aux (ctx : ctx) (c : to_pat_config) (m : constraints)
         else Some (ty_to_pattern_aux ctx c m output)
       in
       EArrow (inputs, output)
-  | TError _ -> EVar None
   | TRawPtr (ty, RMut) -> ERawPtr (Mut, ty_to_pattern_aux ctx c m ty)
   | TRawPtr (ty, RShared) -> ERawPtr (Not, ty_to_pattern_aux ctx c m ty)
   | TArray (ty, len) ->
@@ -1106,11 +1106,7 @@ and ty_to_pattern_aux (ctx : ctx) (c : to_pat_config) (m : constraints)
           { types = [ ty ]; const_generics = []; regions = []; trait_refs = [] }
       in
       EPrimAdt (TSlice, generics)
-  | _ ->
-      let fmt_env = ctx_to_fmt_env ctx in
-      raise
-        (Failure
-           ("Can't convert type to pattern: " ^ Print.ty_to_string fmt_env ty))
+  | _ -> EVar None
 
 and trait_ref_item_with_generics_to_pattern (ctx : ctx) (c : to_pat_config)
     (m : constraints) (trait_ref : T.trait_ref) (item_name : string)
@@ -1241,7 +1237,7 @@ let fn_ptr_to_pattern (ctx : ctx) (c : to_pat_config)
     | FunId (FRegular fid) ->
         let d = Types.FunDeclId.Map.find fid ctx.crate.fun_decls in
         name_with_generic_args_to_pattern_aux ctx c d.item_meta.name (Some args)
-    | TraitMethod (tr, method_id, _) ->
+    | TraitMethod (tr, method_id) ->
         let method_name =
           GAstUtils.get_method_name ctx.crate tr.trait_decl_ref.binder_value.id
             method_id

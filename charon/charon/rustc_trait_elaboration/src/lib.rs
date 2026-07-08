@@ -57,44 +57,34 @@ pub enum BuiltinTraitData<'tcx> {
     /// the information about `drop_in_place` to that trait. This data tells us what kind of
     /// `drop_in_place` the target type has.
     Destruct(DestructData<'tcx>),
+    /// An auto-trait.
+    Auto,
     /// Some other builtin trait.
+    // FIXME: carry the SolverTraitLangItem here directly
     Other,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum PathChunk<'tcx> {
+pub enum ImpliedPredicate<'tcx, Id: ItemId = DefId> {
     AssocItem {
-        item: ItemRef<'tcx>,
-        /// The implemented predicate.
-        predicate: ty::PolyTraitRef<'tcx>,
-        /// The index of this predicate in the list returned by `ItemPredicates::Implied`.
+        item: ItemRef<'tcx, Id>,
+        /// The index of this predicate among the trait predicates returned by `ItemPredicates::Implied`.
         index: usize,
     },
     Parent {
-        /// The implemented predicate.
-        predicate: ty::PolyTraitRef<'tcx>,
-        /// The index of this predicate in the list returned by `ItemPredicates::Implied`.
+        /// The index of this predicate among the trait predicates returned by `ItemPredicates::Implied`.
         index: usize,
     },
 }
-pub type Path<'tcx> = Vec<PathChunk<'tcx>>;
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
-pub enum ImplExprAtom<'tcx> {
+pub enum TraitProofKind<'tcx, Id: ItemId = DefId> {
     /// A concrete `impl Trait for Type {}` item.
-    Concrete(ItemRef<'tcx>),
+    Concrete(ItemRef<'tcx, Id>),
     /// A context-bound clause like `where T: Trait`.
-    LocalBound {
-        predicate: ty::Predicate<'tcx>,
-        id: ItemPredicateId,
-        r#trait: ty::PolyTraitRef<'tcx>,
-        path: Path<'tcx>,
-    },
+    LocalBound(ItemPredicateId<Id>),
     /// The automatic clause `Self: Trait` present inside a `impl Trait for Type {}` item.
-    SelfImpl {
-        r#trait: ty::PolyTraitRef<'tcx>,
-        path: Path<'tcx>,
-    },
+    SelfProof,
     /// `dyn Trait` is a wrapped value with a virtual table for trait
     /// `Trait`.  In other words, a value `dyn Trait` is a dependent
     /// triple that gathers a type τ, a value of type τ and an
@@ -108,38 +98,51 @@ pub enum ImplExprAtom<'tcx> {
     Builtin {
         /// Extra data for the given trait.
         trait_data: BuiltinTraitData<'tcx>,
-        /// The `ImplExpr`s required to satisfy the implied predicates on the trait declaration.
-        /// E.g. since `FnMut: FnOnce`, a built-in `T: FnMut` impl would have an `ImplExpr` for `T:
-        /// FnOnce`.
-        impl_exprs: Vec<ImplExpr<'tcx>>,
+        /// The trait proofs required to satisfy the implied predicates on the trait declaration.
+        /// E.g. since `FnMut: FnOnce`, a built-in `T: FnMut` impl would have a proof for
+        /// `T: FnOnce`.
+        proofs: Vec<TraitProof<'tcx, Id>>,
         /// The values of the associated types for this trait.
-        types: Vec<(DefId, ty::Ty<'tcx>, Vec<ImplExpr<'tcx>>)>,
+        types: Vec<(DefId, ty::Ty<'tcx>, Vec<TraitProof<'tcx, Id>>)>,
+    },
+    /// A predicate implied by `base` by following `path`.
+    Derived {
+        base: TraitProof<'tcx, Id>,
+        path: ImpliedPredicate<'tcx, Id>,
     },
     /// An error happened while elaborating traits.
     Error(String),
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
-pub struct ImplExprContents<'tcx> {
-    /// The trait this is an impl for.
-    pub r#trait: ty::PolyTraitRef<'tcx>,
-    /// The kind of implemention of the root of the tree.
-    pub r#impl: ImplExprAtom<'tcx>,
+pub struct TraitProofContents<'tcx, Id: ItemId = DefId> {
+    /// The trait predicate this is a proof for.
+    pub pred: ty::PolyTraitRef<'tcx>,
+    /// The proof.
+    pub kind: TraitProofKind<'tcx, Id>,
 }
 
-#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq)]
-pub struct ImplExpr<'tcx> {
-    contents: Interned<'tcx, ImplExprContents<'tcx>>,
+#[derive(Debug, Hash, PartialEq, Eq)]
+pub struct TraitProof<'tcx, Id: ItemId = DefId> {
+    contents: Interned<'tcx, TraitProofContents<'tcx, Id>>,
 }
 
-impl<'tcx> ImplExpr<'tcx> {
-    pub fn contents(&self) -> &ImplExprContents<'tcx> {
+impl<'tcx, Id: ItemId> TraitProof<'tcx, Id> {
+    pub fn contents(&self) -> &TraitProofContents<'tcx, Id> {
         &self.contents
     }
 }
 
-impl<'tcx> Deref for ImplExpr<'tcx> {
-    type Target = ImplExprContents<'tcx>;
+impl<'tcx, Id: ItemId> Copy for TraitProof<'tcx, Id> {}
+
+impl<'tcx, Id: ItemId> Clone for TraitProof<'tcx, Id> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<'tcx, Id: ItemId> Deref for TraitProof<'tcx, Id> {
+    type Target = TraitProofContents<'tcx, Id>;
     fn deref(&self) -> &Self::Target {
         &self.contents
     }

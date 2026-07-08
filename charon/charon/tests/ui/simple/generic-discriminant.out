@@ -1,0 +1,140 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::clone::Clone
+#[lang_item("clone")]
+pub trait Clone<Self>
+{
+    proof ImpliedClause0: (Self: Sized)
+    fn clone<'_0_1>;
+    non-dyn-compatible
+}
+
+// Full name: core::cmp::PartialEq
+#[lang_item("eq")]
+pub trait PartialEq<Self, Rhs>
+{
+    fn eq<'_0_1, '_1_1>;
+    vtable: core::cmp::PartialEq::{vtable}<Rhs>
+}
+
+// Full name: core::cmp::Eq
+#[lang_item("Eq")]
+pub trait Eq<Self>
+{
+    proof ImpliedClause0: (Self: PartialEq<Self>)
+    non-dyn-compatible
+}
+
+// Full name: core::hash::Hasher
+pub trait Hasher<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    fn finish<'_0_1>;
+    fn write<'_0_1, '_1_1>;
+    vtable: core::hash::Hasher::{vtable}
+}
+
+// Full name: core::hash::Hash
+#[lang_item("Hash")]
+pub trait Hash<Self>
+{
+    fn hash<'_0_1, '_1_1, H, TraitClause0_1: (H: Sized), TraitClause1_1: (H: Hasher)>;
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Send
+#[lang_item("Send")]
+pub trait Send<Self>
+
+// Full name: core::marker::Copy
+#[lang_item("copy")]
+pub trait Copy<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self: Clone)
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Sync
+#[lang_item("sync")]
+pub trait Sync<Self>
+
+// Full name: core::marker::Unpin
+#[lang_item("unpin")]
+pub trait Unpin<Self>
+
+// Full name: core::marker::DiscriminantKind
+#[lang_item("discriminant_kind")]
+pub trait DiscriminantKind<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    proof ImpliedClause1: (Self::Discriminant: Sized)
+    proof ImpliedClause2: (Self::Discriminant: Clone)
+    proof ImpliedClause3: (Self::Discriminant: Copy)
+    proof ImpliedClause4: (Self::Discriminant: Debug)
+    proof ImpliedClause5: (Self::Discriminant: Eq)
+    proof ImpliedClause6: (Self::Discriminant: PartialEq<Self::Discriminant>)
+    proof ImpliedClause7: (Self::Discriminant: Hash)
+    proof ImpliedClause8: (Self::Discriminant: Send)
+    proof ImpliedClause9: (Self::Discriminant: Sync)
+    proof ImpliedClause10: (Self::Discriminant: Unpin)
+    type Discriminant
+    non-dyn-compatible
+}
+
+// Full name: core::mem::Discriminant
+pub opaque type Discriminant<T>
+where
+    TraitClause0: (T: Sized),
+
+// Full name: core::mem::discriminant
+#[lang_item("mem_discriminant")]
+pub fn discriminant<'_0, T>(v: &'_0 T) -> Discriminant<T>[TraitClause0]
+where
+    TraitClause0: (T: Sized),
+{
+    let _0: Discriminant<T>[TraitClause0]; // return
+    let v: &'1 T; // arg #1
+    let _2: {built_in impl DiscriminantKind for T}::Discriminant; // anonymous local
+    let _3: &'2 T; // anonymous local
+
+    storage_live(_2)
+    storage_live(_3)
+    _3 = &(*v)
+    _2 = @discriminant((*_3))
+    storage_dead(_3)
+    _0 = Discriminant { 0: move _2 }
+    storage_dead(_2)
+    return
+}
+
+// Full name: test_crate::f
+pub fn f<'_0, T>(x: &'_0 T) -> Discriminant<T>[TraitClause0]
+where
+    TraitClause0: (T: Sized),
+{
+    let _0: Discriminant<T>[TraitClause0]; // return
+    let x: &'1 T; // arg #1
+    let _2: &'2 T; // anonymous local
+
+    storage_live(_2)
+    _2 = &(*x)
+    _0 = discriminant<'4, T>[TraitClause0](move _2)
+    storage_dead(_2)
+    return
+}
+
+
+

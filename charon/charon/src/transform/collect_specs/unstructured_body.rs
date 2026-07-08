@@ -10,6 +10,8 @@ use crate::{
     ullbc_ast::{BlockId, ExprBody, Statement, StatementKind, TerminatorKind},
 };
 
+use itertools::Itertools;
+
 use std::{collections::HashSet, mem, sync::Mutex};
 
 pub struct Transform {
@@ -92,7 +94,7 @@ impl UllbcPass for Transform {
                             }
                         })
                         .collect();
-                    let trait_method_decls: Vec<_> = trait_impl_ids
+                    trait_impl_ids
                         .into_iter()
                         .flat_map(|trait_impl_id| {
                             let trait_impl = crate_.trait_impls.remove(trait_impl_id).unwrap();
@@ -112,10 +114,8 @@ impl UllbcPass for Transform {
                                 Vec::new()
                             }
                         })
-                        .collect();
-
-                    let [trait_method_decl] = trait_method_decls.try_into().unwrap();
-                    trait_method_decl
+                        .exactly_one()
+                        .unwrap()
                 };
                 self.transform_function(ctx, &mut fn_method_decl);
                 assert!(fn_method_decl.signature.inputs.len() == 2);

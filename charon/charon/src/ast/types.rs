@@ -45,7 +45,17 @@ pub enum Region {
 /// to a *trait instance*, which is why the [`TraitRefKind::Clause`] variant may seem redundant
 /// with some of the other variants.
 #[derive(
-    Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, EnumIsA, Drive, DriveMut,
+    Debug,
+    Clone,
+    SerializeState,
+    DeserializeState,
+    PartialEq,
+    Eq,
+    Hash,
+    EnumIsA,
+    EnumAsGetters,
+    Drive,
+    DriveMut,
 )]
 pub enum TraitRefKind {
     /// A specific top-level implementation item.
@@ -142,26 +152,39 @@ pub enum TraitRefKind {
 #[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Builtin"))]
 pub enum BuiltinImplData {
-    // Marker traits (without methods).
-    Sized,
-    MetaSized,
-    Tuple,
-    Pointee,
-    DiscriminantKind,
-    // Auto traits (defined with `auto trait ...`).
+    /// Auto traits (defined with `auto trait ...`, also `Unpin`).
     Auto,
 
-    // Traits with methods.
+    Sized,
+    MetaSized,
+    PointeeSized,
+
+    Copy,
+    Clone,
+
+    Tuple,
+    Transmute,
+    Unsize,
+
+    Pointee,
+    DiscriminantKind,
+
+    Fn,
+    FnMut,
+    FnOnce,
+    FnPtr,
+    AsyncFn,
+    AsyncFnMut,
+    AsyncFnOnce,
+    Coroutine,
+    Future,
+
     /// An impl of `Destruct` for a type with no drop glue.
     NoopDestruct,
     /// An impl of `Destruct` for a type parameter, which we could not resolve because
     /// `--add-drop-bounds` was not set.
     UntrackedDestruct,
-    Fn,
-    FnMut,
-    FnOnce,
-    Copy,
-    Clone,
+
     /// Placeholder used by the `--remove-adt-clauses` pass when it strips a trait clause from a
     /// type declaration. References to the removed clause are rewritten as
     /// `BuiltinOrAuto { builtin_data: RemovedAdtClause, .. }`.
@@ -280,7 +303,6 @@ pub struct Binder<T> {
     pub skip_binder: T,
     /// The kind of binder this is.
     #[cfg_attr(feature = "charon_on_charon", charon::opaque)]
-    #[drive(skip)]
     pub kind: BinderKind,
 }
 
@@ -878,7 +900,7 @@ pub enum TyKind {
     ///   type Bar; // type associated to the trait Foo
     /// }
     /// ```
-    TraitType(TraitRef, AssocTypeId),
+    TraitType(TraitRef, AssocTypeId, GenericArgs),
     /// `dyn Trait`
     DynTrait(DynPredicate),
     /// Function pointer type. This is a literal pointer to a region of memory that
@@ -1000,6 +1022,9 @@ pub struct FunSig {
     /// The calling convention of this function.
     #[drive(skip)]
     pub abi: Abi,
+    /// Whether this is a C-variadic function (its last parameter is `...`).
+    #[drive(skip)]
+    pub is_variadic: bool,
     pub inputs: Vec<Ty>,
     pub output: Ty,
 }

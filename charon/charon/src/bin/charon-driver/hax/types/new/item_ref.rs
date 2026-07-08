@@ -21,17 +21,17 @@ use rustc_span::def_id::DefId as RDefId;
 /// ItemRef {
 ///     def_id = MyTrait::meth,
 ///     generic_args = [String],
-///     impl_exprs = [<proof of `String: Sized`>],
+///     trait_proofs = [<proof of `String: Sized`>],
 ///     in_trait = Some(<proof of `SelfType: MyTrait<TraitType, 12>`>,
 /// }
 /// ```
-/// The `in_trait` `ImplExpr` will have in its `trait` field a representation of the `SelfType:
+/// The `in_trait` `TraitProof` will have in its `trait` field a representation of the `SelfType:
 /// MyTrait<TraitType, 12>` predicate, which looks like:
 /// ```text
 /// ItemRef {
 ///     def_id = MyTrait,
 ///     generic_args = [SelfType, TraitType, 12],
-///     impl_exprs = [],
+///     trait_proofs = [],
 ///     in_trait = None,
 /// }
 /// ```
@@ -42,11 +42,11 @@ pub struct ItemRef {
 
 /// Contents of `ItemRef`.
 #[derive(AdtInto)]
-#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_trait_elaboration::ItemRef<'tcx>, state: S as s)]
+#[args(<'tcx, S: UnderOwnerState<'tcx>>, from: rustc_trait_elaboration::ItemRef<'tcx, DefId>, state: S as s)]
 #[derive(Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ItemRefContents {
     /// The item being refered to.
-    #[value(self.def_id.sinto(s))]
+    #[value(self.def_id.clone())]
     pub def_id: DefId,
     /// The generics passed to the item. If `in_trait` is `Some`, these are only the generics of
     /// the method/type/const itself; generics for the traits are available in
@@ -56,12 +56,12 @@ pub struct ItemRefContents {
     /// Witnesses of the trait clauses required by the item, e.g. `T: Sized` for `Option<T>` or `B:
     /// ToOwned` for `Cow<'a, B>`. Same as above, for associated items this only includes clauses
     /// for the item itself.
-    #[value(self.assoc_impl_exprs().sinto(s))]
-    pub impl_exprs: Vec<ImplExpr>,
+    #[value(self.assoc_trait_proofs().sinto(s))]
+    pub trait_proofs: Vec<TraitProof>,
     /// If we're referring to a trait associated item, this gives the trait clause/impl we're
     /// referring to.
     #[value(self.in_trait.as_ref().map(|(x, _)| x).sinto(s))]
-    pub in_trait: Option<ImplExpr>,
+    pub in_trait: Option<TraitProof>,
     /// Whether this contains any reference to a type/lifetime/const parameter.
     #[value(self.has_param)]
     pub has_param: bool,
@@ -70,7 +70,9 @@ pub struct ItemRefContents {
     pub has_non_lt_param: bool,
 }
 
-impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ItemRef> for rustc_trait_elaboration::ItemRef<'tcx> {
+impl<'tcx, S: UnderOwnerState<'tcx>> SInto<S, ItemRef>
+    for rustc_trait_elaboration::ItemRef<'tcx, DefId>
+{
     fn sinto(&self, s: &S) -> ItemRef {
         let content: ItemRefContents = self.sinto(s);
         let item = content.intern(s);
@@ -115,39 +117,56 @@ impl ItemRef {
         hax_def_id: DefId,
         generics: ty::GenericArgsRef<'tcx>,
     ) -> ItemRef {
-        Self::translate_from_hax_def_id_maybe_resolve(s, hax_def_id, generics, true)
+        Self::translate_from_hax_def_id_maybe_resolve(
+            s,
+            hax_def_id,
+            generics,
+            AssocItemResolution::ImplItem,
+        )
     }
+
+    pub fn translate_projection<'tcx, S: UnderOwnerState<'tcx>>(
+        s: &S,
+        def_id: RDefId,
+        generics: ty::GenericArgsRef<'tcx>,
+    ) -> ItemRef {
+        let hax_def_id = def_id.sinto(s);
+        Self::translate_from_hax_def_id_maybe_resolve(
+            s,
+            hax_def_id,
+            generics,
+            AssocItemResolution::TraitProof,
+        )
+    }
+
     pub fn translate_from_hax_def_id_maybe_resolve<'tcx, S: UnderOwnerState<'tcx>>(
         s: &S,
         hax_def_id: DefId,
         generics: ty::GenericArgsRef<'tcx>,
-        resolve_assoc_item_trait_ref: bool,
+        assoc_item_resolution: AssocItemResolution,
     ) -> ItemRef {
-        let key = (hax_def_id.clone(), generics, resolve_assoc_item_trait_ref);
+        let key = (hax_def_id.clone(), generics, assoc_item_resolution);
         if let Some(item) = s.with_cache(|cache| cache.item_refs.get(&key).cloned()) {
             return item;
         }
 
         // Don't resolve if the DefId isn't real.
-        let is_real_def_id = hax_def_id.as_rust_def_id().is_some();
-        let resolve_assoc_item_trait_ref = is_real_def_id && resolve_assoc_item_trait_ref;
-        let def_id = hax_def_id.as_def_id_even_synthetic();
-        let item_ref = s.with_predicate_searcher(|pred_searcher| {
-            pred_searcher.resolve_item_reference(def_id, generics, resolve_assoc_item_trait_ref)
+        let is_real_def_id = hax_def_id.as_real_def_id().is_some();
+        let assoc_item_resolution = if is_real_def_id {
+            assoc_item_resolution
+        } else {
+            AssocItemResolution::None
+        };
+        let item_ref = s.with_predicate_searcher(|pred_searcher, state| {
+            pred_searcher.resolve_item_reference(
+                state,
+                hax_def_id.clone(),
+                generics,
+                assoc_item_resolution,
+            )
         });
 
-        // If the original `DefId` was not real, make sure we keep that around.
-        let def_id = if is_real_def_id {
-            item_ref.def_id.sinto(s)
-        } else {
-            assert_eq!(item_ref.def_id, def_id);
-            hax_def_id
-        };
-        let content = ItemRefContents {
-            def_id,
-            ..item_ref.sinto(s)
-        };
-
+        let content: ItemRefContents = item_ref.sinto(s);
         let item = content.intern(s);
         s.with_cache(|cache| {
             cache.item_refs.insert(key, item.clone());
@@ -165,7 +184,7 @@ impl ItemRef {
         let content = ItemRefContents {
             def_id,
             generic_args: Default::default(),
-            impl_exprs: Default::default(),
+            trait_proofs: Default::default(),
             in_trait: Default::default(),
             has_param: false,
             has_non_lt_param: false,
@@ -192,8 +211,8 @@ impl ItemRef {
         let tref = ty::TraitRef::new(tcx, def_id, generics);
         rustc_utils::assoc_tys_for_trait(tcx, typing_env, tref)
             .into_iter()
-            .map(|alias_ty| ty::Ty::new_alias(tcx, ty::Projection, alias_ty))
-            .map(|ty| normalize(tcx, typing_env, ty))
+            .map(|alias_ty| ty::Ty::new_alias(tcx, alias_ty))
+            .map(|ty| normalize(tcx, typing_env, ty::Unnormalized::new(ty)))
             .map(|ty| ty.sinto(s))
             .collect()
     }
@@ -201,7 +220,11 @@ impl ItemRef {
     /// Erase lifetimes from the generic arguments of this item.
     pub fn erase<'tcx, S: UnderOwnerState<'tcx>>(&self, s: &S) -> Self {
         let args = self.rustc_args(s);
-        let args = erase_and_norm(s.base().tcx, s.typing_env(), args);
+        let args = erase_and_norm(
+            s.base().tcx,
+            s.typing_env(),
+            ty::Unnormalized::new_wip(args),
+        );
         Self::translate_from_hax_def_id(s, self.def_id.clone(), args)
     }
 

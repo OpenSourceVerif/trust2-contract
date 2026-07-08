@@ -481,7 +481,7 @@ impl<'a> LocalMapper<'a> {
                 LocalNames::Concrete(local_names)
             }
             Body::TargetDispatch(..) => todo!(),
-            Body::TraitMethodWithoutDefault | Body::Extern(..) | Body::Opaque | Body::Missing => {
+            Body::Extern(..) | Body::Opaque | Body::Missing => {
                 LocalNames::Abstract(vec![None; signature_opt.unwrap().inputs.len()])
             }
             Body::Intrinsic { arg_names, .. } => LocalNames::Abstract(

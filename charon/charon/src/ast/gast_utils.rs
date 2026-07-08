@@ -2,11 +2,24 @@
 
 use crate::ast::*;
 
-use std::mem;
+use std::{fmt::Debug, mem};
 
 impl FnPtrKind {
     pub fn mk_builtin(aid: BuiltinFunId) -> Self {
         Self::Fun(FunId::Builtin(aid))
+    }
+}
+
+impl GlobalDecl {
+    /// If this global's value is a call to its initializer function, returns the initializer's id.
+    pub fn init_fun_id(&self) -> Option<FunDeclId> {
+        match &self.value.kind {
+            ConstantExprKind::Call(fn_ptr, _) => match &*fn_ptr.kind {
+                FnPtrKind::Fun(FunId::Regular(id)) => Some(*id),
+                _ => None,
+            },
+            _ => None,
+        }
     }
 }
 
@@ -16,8 +29,7 @@ impl Body {
     pub fn has_contents(&self) -> bool {
         match self {
             Body::Unstructured(..) | Body::Structured(..) => true,
-            Body::TraitMethodWithoutDefault
-            | Body::Extern(..)
+            Body::Extern(..)
             | Body::Intrinsic { .. }
             | Body::Opaque
             | Body::Missing
@@ -111,9 +123,10 @@ impl std::ops::IndexMut<LocalId> for Locals {
 }
 
 impl SpecClosure {
-    pub fn non_captured_argument_ids(&self) -> impl Iterator<Item = usize> {
+    pub fn non_captured_argument_ids(&self) -> impl Iterator<Item = LocalId> + Debug {
         (1..=self.body.locals().arg_count)
-            .filter(|&local_id| self.captures.get(local_id.into()).is_none())
+            .map(|local_id| local_id.into())
+            .filter(|&local_id: &LocalId| self.captures.get(local_id).is_none())
     }
 }
 

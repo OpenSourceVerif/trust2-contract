@@ -9,7 +9,7 @@ pub trait MetaSized<Self>
 struct test_crate::Trait::{vtable} {
   size: usize,
   align: usize,
-  drop: unsafe fn(*mut (dyn Trait)),
+  drop: unsafe fn<'_0_1>(&'_0_1 mut (dyn Trait)),
   method_foo: fn<'_0_1>(&'_0_1 (dyn Trait)),
   super_trait_0: &'static core::marker::MetaSized::{vtable},
 }
@@ -17,21 +17,16 @@ struct test_crate::Trait::{vtable} {
 // Full name: test_crate::Trait
 trait Trait<Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn foo<'a, '_1_1, Self : 'a> = test_crate::Trait::foo<'a, '_1_1, Self>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    fn foo<'a, '_1_1, TypeOutlives0: Self: 'a>;
     vtable: test_crate::Trait::{vtable}
 }
 
-fn test_crate::Trait::foo<'a, '_1, Self>(_1: &'_1 Self)
-where
-    [@TraitClause0]: Trait<Self>,
-    Self : 'a,
-= <method_without_default_body>
-
-fn test_crate::foo<'_0>(x_1: &'_0 (dyn Trait + '_0))
+// Full name: test_crate::foo
+fn foo<'_0>(x: &'_0 (dyn Trait + '_0))
 {
     let _0: (); // return
-    let x_1: &'3 (dyn Trait + '4); // arg #1
+    let x: &'3 (dyn Trait + '4); // arg #1
 
     _0 = ()
     _0 = ()

@@ -7,24 +7,19 @@ pub trait MetaSized<Self>
 // Full name: test_crate::Trait
 trait Trait<'a, Self>
 {
-    parent_clause0 : [@TraitClause0]: MetaSized<Self>
-    fn method<'b> = test_crate::Trait::method<'a, 'b, Self>[Self]
+    proof ImpliedClause0: (Self: MetaSized)
+    fn method<'b>;
     vtable: test_crate::Trait::{vtable}<'a>
 }
 
-fn test_crate::Trait::method<'a, 'b, Self>(_1: &'b Self) -> &'b ()
-where
-    [@TraitClause0]: Trait<'a, Self>,
-= <method_without_default_body>
-
 // Full name: test_crate::{impl Trait<'a> for &'a ()}::method
-fn {impl Trait<'a> for &'a ()}::method<'a, 'b>(_1: &'b &'a ()) -> &'b ()
+fn method<'a, 'b>(_1: &'b &'a ()) -> &'b ()
 = <opaque>
 
 // Full name: test_crate::{impl Trait<'a> for &'a ()}
 impl<'a> Trait<'a> for &'a () {
-    parent_clause0 = {built_in impl MetaSized for &'_ ()}
-    fn method<'b> = {impl Trait<'a> for &'a ()}::method<'a, 'b>
+    proof ImpliedClause0: (&'a (): MetaSized) = {built_in impl MetaSized for &'a ()}
+    fn method<'b> = method<'a, 'b>
     vtable: {impl Trait<'a> for &'a ()}::{vtable}<'a>
 }
 

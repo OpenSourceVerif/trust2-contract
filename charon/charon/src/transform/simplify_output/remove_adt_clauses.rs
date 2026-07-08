@@ -6,7 +6,7 @@
 //! Every reference to a clause removed in this way is replaced with a `TraitRefKind::BuiltinOrAuto
 //! { builtin_data: RemovedAdtClause, .. }`.
 
-use std::collections::HashSet;
+use std::{collections::HashSet, mem};
 
 use derive_generic_visitor::*;
 
@@ -62,7 +62,7 @@ fn untouchable_adts(translated: &TranslatedCrate) -> HashSet<TypeDeclId> {
 
 #[derive(Visitor)]
 struct RemoveAdtClausesVisitor<'a> {
-    translated: &'a TranslatedCrate,
+    translated: &'a mut TranslatedCrate,
     untouchable_adts: &'a HashSet<TypeDeclId>,
     binder_stack: BindingStack<GenericParams>,
 }
@@ -112,6 +112,22 @@ impl VisitAstMut for RemoveAdtClausesVisitor<'_> {
         }
         let new_kind = build_removed_clause_placeholder(self.translated, &tref.trait_decl_ref);
         tref.with_contents_mut(|contents| contents.kind = new_kind);
+    }
+
+    fn visit_spec_closure_id(
+        &mut self,
+        spec_closure_id: &mut SpecClosureId,
+    ) -> ControlFlow<Self::Break> {
+        let mut spec_closure = mem::replace(
+            &mut self.translated.spec_closures[*spec_closure_id],
+            SpecClosure {
+                captures: Default::default(),
+                body: Body::Opaque,
+            },
+        );
+        let result = self.visit(&mut spec_closure);
+        self.translated.spec_closures[*spec_closure_id] = spec_closure;
+        result
     }
 }
 
@@ -165,7 +181,7 @@ impl TransformPass for Transform {
         let untouchable = untouchable_adts(&ctx.translated);
         ctx.for_each_item_mut(|ctx, mut item| {
             let _ = item.drive_mut(&mut RemoveAdtClausesVisitor {
-                translated: &ctx.translated,
+                translated: &mut ctx.translated,
                 untouchable_adts: &untouchable,
                 binder_stack: BindingStack::empty(),
             });

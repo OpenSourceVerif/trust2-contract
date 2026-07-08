@@ -309,19 +309,28 @@ and builtin_impl_data_of_json (ctx : of_json_ctx) (js : json) :
     (builtin_impl_data, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
+    | `String "Auto" -> Ok BuiltinAuto
     | `String "Sized" -> Ok BuiltinSized
     | `String "MetaSized" -> Ok BuiltinMetaSized
+    | `String "PointeeSized" -> Ok BuiltinPointeeSized
+    | `String "Copy" -> Ok BuiltinCopy
+    | `String "Clone" -> Ok BuiltinClone
     | `String "Tuple" -> Ok BuiltinTuple
+    | `String "Transmute" -> Ok BuiltinTransmute
+    | `String "Unsize" -> Ok BuiltinUnsize
     | `String "Pointee" -> Ok BuiltinPointee
     | `String "DiscriminantKind" -> Ok BuiltinDiscriminantKind
-    | `String "Auto" -> Ok BuiltinAuto
-    | `String "NoopDestruct" -> Ok BuiltinNoopDestruct
-    | `String "UntrackedDestruct" -> Ok BuiltinUntrackedDestruct
     | `String "Fn" -> Ok BuiltinFn
     | `String "FnMut" -> Ok BuiltinFnMut
     | `String "FnOnce" -> Ok BuiltinFnOnce
-    | `String "Copy" -> Ok BuiltinCopy
-    | `String "Clone" -> Ok BuiltinClone
+    | `String "FnPtr" -> Ok BuiltinFnPtr
+    | `String "AsyncFn" -> Ok BuiltinAsyncFn
+    | `String "AsyncFnMut" -> Ok BuiltinAsyncFnMut
+    | `String "AsyncFnOnce" -> Ok BuiltinAsyncFnOnce
+    | `String "Coroutine" -> Ok BuiltinCoroutine
+    | `String "Future" -> Ok BuiltinFuture
+    | `String "NoopDestruct" -> Ok BuiltinNoopDestruct
+    | `String "UntrackedDestruct" -> Ok BuiltinUntrackedDestruct
     | `String "RemovedAdtClause" -> Ok BuiltinRemovedAdtClause
     | _ -> Error "")
 
@@ -467,12 +476,19 @@ and constant_expr_kind_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc [ ("Var", var) ] ->
         let* var = de_bruijn_var_of_json const_generic_var_id_of_json ctx var in
         Ok (CVar var)
+    | `Assoc [ ("Call", `List [ x_0; x_1 ]) ] ->
+        let* x_0 = fn_ptr_of_json ctx x_0 in
+        let* x_1 = list_of_json constant_expr_of_json ctx x_1 in
+        Ok (CCall (x_0, x_1))
     | `Assoc [ ("FnDef", fn_def) ] ->
         let* fn_def = fn_ptr_of_json ctx fn_def in
         Ok (CFnDef fn_def)
     | `Assoc [ ("FnPtr", fn_ptr) ] ->
         let* fn_ptr = fn_ptr_of_json ctx fn_ptr in
         Ok (CFnPtr fn_ptr)
+    | `Assoc [ ("TypeId", type_id) ] ->
+        let* type_id = ty_of_json ctx type_id in
+        Ok (CTypeId type_id)
     | `Assoc [ ("PtrNoProvenance", ptr_no_provenance) ] ->
         let* ptr_no_provenance = big_int_of_json ctx ptr_no_provenance in
         Ok (CPtrNoProvenance ptr_no_provenance)
@@ -629,11 +645,10 @@ and fn_ptr_kind_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc [ ("Fun", fun_) ] ->
         let* fun_ = fun_id_of_json ctx fun_ in
         Ok (FunId fun_)
-    | `Assoc [ ("Trait", `List [ x_0; x_1; x_2 ]) ] ->
+    | `Assoc [ ("Trait", `List [ x_0; x_1 ]) ] ->
         let* x_0 = trait_ref_of_json ctx x_0 in
         let* x_1 = trait_method_id_of_json ctx x_1 in
-        let* x_2 = fun_decl_id_of_json ctx x_2 in
-        Ok (TraitMethod (x_0, x_1, x_2))
+        Ok (TraitMethod (x_0, x_1))
     | _ -> Error "")
 
 and fun_decl_id_of_json (ctx : of_json_ctx) (js : json) :
@@ -671,14 +686,16 @@ and fun_sig_of_json (ctx : of_json_ctx) (js : json) : (fun_sig, string) result =
         [
           ("is_unsafe", is_unsafe);
           ("abi", abi);
+          ("is_variadic", is_variadic);
           ("inputs", inputs);
           ("output", output);
         ] ->
         let* is_unsafe = bool_of_json ctx is_unsafe in
         let* abi = abi_of_json ctx abi in
+        let* is_variadic = bool_of_json ctx is_variadic in
         let* inputs = list_of_json ty_of_json ctx inputs in
         let* output = ty_of_json ctx output in
-        Ok ({ is_unsafe; abi; inputs; output } : fun_sig)
+        Ok ({ is_unsafe; abi; is_variadic; inputs; output } : fun_sig)
     | _ -> Error "")
 
 and generic_args_of_json (ctx : of_json_ctx) (js : json) :
@@ -1124,9 +1141,10 @@ and region_param_of_json (ctx : of_json_ctx) (js : json) :
 and rvalue_of_json (ctx : of_json_ctx) (js : json) : (rvalue, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | `Assoc [ ("Use", use) ] ->
-        let* use = operand_of_json ctx use in
-        Ok (Use use)
+    | `Assoc [ ("Use", `List [ x_0; x_1 ]) ] ->
+        let* x_0 = operand_of_json ctx x_0 in
+        let* x_1 = with_retag_of_json ctx x_1 in
+        Ok (Use (x_0, x_1))
     | `Assoc
         [
           ( "Ref",
@@ -1230,9 +1248,13 @@ and trait_assoc_ty_impl_of_json (ctx : of_json_ctx) (js : json) :
     (trait_assoc_ty_impl, string) result =
   combine_error_msgs js __FUNCTION__
     (match js with
-    | `Assoc [ ("value", value); ("implied_trait_refs", _) ] ->
+    | `Assoc [ ("value", value); ("implied_trait_refs", implied_trait_refs) ] ->
         let* value = ty_of_json ctx value in
-        Ok ({ value } : trait_assoc_ty_impl)
+        let* implied_trait_refs =
+          index_vec_of_json trait_clause_id_of_json trait_ref_of_json ctx
+            implied_trait_refs
+        in
+        Ok ({ value; implied_trait_refs } : trait_assoc_ty_impl)
     | _ -> Error "")
 
 and trait_clause_id_of_json (ctx : of_json_ctx) (js : json) :
@@ -1422,10 +1444,11 @@ and ty_kind_of_json (ctx : of_json_ctx) (js : json) : (ty_kind, string) result =
         let* x_0 = ty_of_json ctx x_0 in
         let* x_1 = ref_kind_of_json ctx x_1 in
         Ok (TRawPtr (x_0, x_1))
-    | `Assoc [ ("TraitType", `List [ x_0; x_1 ]) ] ->
+    | `Assoc [ ("TraitType", `List [ x_0; x_1; x_2 ]) ] ->
         let* x_0 = trait_ref_of_json ctx x_0 in
         let* x_1 = assoc_type_id_of_json ctx x_1 in
-        Ok (TTraitType (x_0, x_1))
+        let* x_2 = generic_args_of_json ctx x_2 in
+        Ok (TTraitType (x_0, x_1, x_2))
     | `Assoc [ ("DynTrait", dyn_trait) ] ->
         let* dyn_trait = dyn_predicate_of_json ctx dyn_trait in
         Ok (TDynTrait dyn_trait)
@@ -1562,6 +1585,14 @@ and variant_id_of_json (ctx : of_json_ctx) (js : json) :
   combine_error_msgs js __FUNCTION__
     (match js with
     | x -> VariantId.id_of_json ctx x
+    | _ -> Error "")
+
+and with_retag_of_json (ctx : of_json_ctx) (js : json) :
+    (with_retag, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `String "No" -> Ok NoRetag
+    | `String "Yes" -> Ok YesRetag
     | _ -> Error "")
 
 module Ullbc = struct
@@ -2024,6 +2055,7 @@ and attribute_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc [ ("VariantsSuffix", variants_suffix) ] ->
         let* variants_suffix = string_of_json ctx variants_suffix in
         Ok (AttrVariantsSuffix variants_suffix)
+    | `String "Transparent" -> Ok AttrTransparent
     | `Assoc [ ("DocComment", doc_comment) ] ->
         let* doc_comment = string_of_json ctx doc_comment in
         Ok (AttrDocComment doc_comment)
@@ -2053,7 +2085,6 @@ and body_of_json (ctx : of_json_ctx) (js : json) : (body, string) result =
             target_dispatch
         in
         Ok (TargetDispatchBody target_dispatch)
-    | `String "TraitMethodWithoutDefault" -> Ok TraitMethodWithoutDefaultBody
     | `Assoc [ ("Extern", extern) ] ->
         let* extern = string_of_json ctx extern in
         Ok (ExternBody extern)
@@ -2084,6 +2115,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("mir", mir);
           ("rustc_args", rustc_args);
           ("targets", targets);
+          ("sysroot", sysroot);
           ("monomorphize", monomorphize);
           ("monomorphize_mut", monomorphize_mut);
           ("start_from", start_from);
@@ -2095,11 +2127,13 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("exclude", exclude);
           ("extract_opaque_bodies", extract_opaque_bodies);
           ("translate_all_methods", translate_all_methods);
+          ("duplicate_defaulted_methods", duplicate_defaulted_methods);
           ("lift_associated_types", lift_associated_types);
           ("hide_marker_traits", hide_marker_traits);
-          ("remove_adt_clauses", remove_adt_clauses);
           ("hide_allocator", hide_allocator);
+          ("remove_unused_clauses", remove_unused_clauses);
           ("remove_unused_self_clauses", remove_unused_self_clauses);
+          ("remove_adt_clauses", remove_adt_clauses);
           ("desugar_drops", desugar_drops);
           ("ops_to_function_calls", ops_to_function_calls);
           ("index_to_function_calls", index_to_function_calls);
@@ -2130,6 +2164,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         let* mir = option_of_json mir_level_of_json ctx mir in
         let* rustc_args = list_of_json string_of_json ctx rustc_args in
         let* targets = list_of_json string_of_json ctx targets in
+        let* sysroot = option_of_json string_of_json ctx sysroot in
         let* monomorphize = bool_of_json ctx monomorphize in
         let* monomorphize_mut =
           option_of_json monomorphize_mut_of_json ctx monomorphize_mut
@@ -2139,7 +2174,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           list_of_json string_of_json ctx start_from_if_exists
         in
         let* start_from_attribute =
-          option_of_json string_of_json ctx start_from_attribute
+          list_of_json string_of_json ctx start_from_attribute
         in
         let* start_from_pub = bool_of_json ctx start_from_pub in
         let* included = list_of_json string_of_json ctx include_ in
@@ -2147,15 +2182,19 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         let* exclude = list_of_json string_of_json ctx exclude in
         let* extract_opaque_bodies = bool_of_json ctx extract_opaque_bodies in
         let* translate_all_methods = bool_of_json ctx translate_all_methods in
+        let* duplicate_defaulted_methods =
+          bool_of_json ctx duplicate_defaulted_methods
+        in
         let* lift_associated_types =
           list_of_json string_of_json ctx lift_associated_types
         in
         let* hide_marker_traits = bool_of_json ctx hide_marker_traits in
-        let* remove_adt_clauses = bool_of_json ctx remove_adt_clauses in
         let* hide_allocator = bool_of_json ctx hide_allocator in
+        let* remove_unused_clauses = bool_of_json ctx remove_unused_clauses in
         let* remove_unused_self_clauses =
           bool_of_json ctx remove_unused_self_clauses
         in
+        let* remove_adt_clauses = bool_of_json ctx remove_adt_clauses in
         let* desugar_drops = bool_of_json ctx desugar_drops in
         let* ops_to_function_calls = bool_of_json ctx ops_to_function_calls in
         let* index_to_function_calls =
@@ -2195,6 +2234,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
              mir;
              rustc_args;
              targets;
+             sysroot;
              monomorphize;
              monomorphize_mut;
              start_from;
@@ -2206,11 +2246,13 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
              exclude;
              extract_opaque_bodies;
              translate_all_methods;
+             duplicate_defaulted_methods;
              lift_associated_types;
              hide_marker_traits;
-             remove_adt_clauses;
              hide_allocator;
+             remove_unused_clauses;
              remove_unused_self_clauses;
+             remove_adt_clauses;
              desugar_drops;
              ops_to_function_calls;
              index_to_function_calls;
@@ -2510,7 +2552,7 @@ and global_decl_of_json (ctx : of_json_ctx) (js : json) :
           ("ty", ty);
           ("src", src);
           ("global_kind", global_kind);
-          ("init", init);
+          ("value", value);
         ] ->
         let* def_id = global_decl_id_of_json ctx def_id in
         let* item_meta = item_meta_of_json ctx item_meta in
@@ -2518,9 +2560,9 @@ and global_decl_of_json (ctx : of_json_ctx) (js : json) :
         let* ty = ty_of_json ctx ty in
         let* src = item_source_of_json ctx src in
         let* global_kind = global_kind_of_json ctx global_kind in
-        let* init = fun_decl_id_of_json ctx init in
+        let* value = constant_expr_of_json ctx value in
         Ok
-          ({ def_id; item_meta; generics; ty; src; global_kind; init }
+          ({ def_id; item_meta; generics; ty; src; global_kind; value }
             : global_decl)
     | _ -> Error "")
 
@@ -2637,17 +2679,11 @@ and item_source_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc
         [
           ( "TraitDecl",
-            `Assoc
-              [
-                ("trait_ref", trait_ref);
-                ("item_id", item_id);
-                ("has_default", has_default);
-              ] );
+            `Assoc [ ("trait_ref", trait_ref); ("item_id", item_id) ] );
         ] ->
         let* trait_ref = trait_decl_ref_of_json ctx trait_ref in
         let* item_id = assoc_item_id_of_json ctx item_id in
-        let* has_default = bool_of_json ctx has_default in
-        Ok (TraitDeclItem (trait_ref, item_id, has_default))
+        Ok (TraitDeclItem (trait_ref, item_id))
     | `Assoc
         [
           ( "TraitImpl",
@@ -3050,15 +3086,15 @@ and trait_method_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc
         [
           ("name", name);
-          ("attr_info", attr_info);
+          ("item_meta", item_meta);
           ("signature", signature);
-          ("item", item);
+          ("default", default);
         ] ->
         let* name = trait_item_name_of_json ctx name in
-        let* attr_info = attr_info_of_json ctx attr_info in
+        let* item_meta = item_meta_of_json ctx item_meta in
         let* signature = fun_sig_of_json ctx signature in
-        let* item = fun_decl_ref_of_json ctx item in
-        Ok ({ name; attr_info; signature; item } : trait_method)
+        let* default = option_of_json fun_decl_ref_of_json ctx default in
+        Ok ({ name; item_meta; signature; default } : trait_method)
     | _ -> Error "")
 
 and translated_crate_of_json (ctx : of_json_ctx) (js : json) :

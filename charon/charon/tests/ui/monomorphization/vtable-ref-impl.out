@@ -1,0 +1,170 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+opaque type core::marker::MetaSized::{vtable}
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+struct test_crate::Trait::{vtable} {
+  size: usize,
+  align: usize,
+  drop: *const (),
+  method_method: *const (),
+  super_trait_0: &'static core::marker::MetaSized::{vtable},
+}
+
+// Full name: test_crate::Trait
+pub trait Trait<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    vtable: test_crate::Trait::{vtable}
+}
+
+// Full name: test_crate::Trait
+pub trait Trait<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    fn method<'_0_1>;
+    vtable: test_crate::Trait::{vtable}
+}
+
+// Full name: test_crate::{impl Trait for &'_ u32}::method::<'_, u32>
+pub fn {impl Trait for &'_ u32}::method::<'_, u32><'_0>(self: &'_0 &'_ u32)
+{
+    let _0: (); // return
+    let self: &'2 &'3 u32; // arg #1
+
+    _0 = ()
+    _0 = ()
+    return
+}
+
+// Full name: test_crate::{impl Trait for &'_ u32}::method::{vtable_method}::<'_, u32>
+fn {vtable_method}::<'_, u32><'_0>(_1: &'_0 (dyn Trait))
+{
+    let _0: (); // return
+    let _1: &'_0 (dyn Trait + '0); // arg #1
+    let _2: &'_0 &'1 u32; // anonymous local
+
+    _0 = ()
+    storage_live(_2)
+    _2 = concretize<&'_0 (dyn Trait + '3), &'_0 &'4 u32>(move _1)
+    _0 = {impl Trait for &'_ u32}::method::<'_, u32><'_0>(move _2)
+    return
+}
+
+// Full name: test_crate::{impl Trait for &'_ u32}::{vtable_drop_shim}::<'_, u32>
+unsafe fn {vtable_drop_shim}::<'_, u32><'_0>(dyn_self: &'_0 mut (dyn Trait))
+{
+    let ret: (); // return
+    let dyn_self: &'_0 mut (dyn Trait + '0); // arg #1
+    let target_self: &'_0 mut &'1 u32; // local
+
+    ret = ()
+    storage_live(target_self)
+    target_self = concretize<&'_0 mut (dyn Trait + '3), &'_0 mut &'4 u32>(move dyn_self)
+    return
+}
+
+// Full name: test_crate::{impl Trait for &'_ u32}::{vtable}::<'_, u32>
+fn {impl Trait for &'_ u32}::{vtable}::<'_, u32>() -> test_crate::Trait::{vtable}
+{
+    let ret: test_crate::Trait::{vtable}; // return
+    let size: usize; // local
+    let align: usize; // local
+    let drop: unsafe fn(*mut (dyn Trait + '0)); // local
+    let erased_drop: *const (); // local
+    let method: fn<'_0_1>(&'_0_1 (dyn Trait + '1)); // local
+    let erased_method: *const (); // local
+    let _7: unsafe fn(*mut (dyn Trait + '6)); // anonymous local
+    let _8: fn<'_0_1>(&'_0_1 (dyn Trait + '11)); // anonymous local
+
+    storage_live(size)
+    size = size_of<&'2 u32>
+    storage_live(align)
+    align = align_of<&'3 u32>
+    storage_live(drop)
+    storage_live(erased_drop)
+    storage_live(_7)
+    _7 = cast<{vtable_drop_shim}::<'_, u32><'5>, unsafe fn(*mut (dyn Trait + '6))>(const {vtable_drop_shim}::<'_, u32><'5>)
+    drop = move _7
+    erased_drop = cast<unsafe fn(*mut (dyn Trait + '7)), *const ()>(move drop)
+    storage_live(method)
+    storage_live(erased_method)
+    storage_live(_8)
+    _8 = cast<for<'_0_1> {vtable_method}::<'_, u32><'10>, fn<'_0_1>(&'_0_1 (dyn Trait + '11))>(const {vtable_method}::<'_, u32><'10>)
+    method = move _8
+    erased_method = cast<fn<'_0_1>(&'_0_1 (dyn Trait + '12)), *const ()>(move method)
+    ret = test_crate::Trait::{vtable} { size: move size, align: move align, drop: move erased_drop, method_method: move erased_method, super_trait_0: const &vtable_of({built_in impl MetaSized for &'14 u32}) }
+    return
+}
+
+// Full name: test_crate::{impl Trait for &'_ u32}::{vtable}::<'_, u32>
+static {impl Trait for &'_ u32}::{vtable}::<'_, u32>: test_crate::Trait::{vtable} = {impl Trait for &'_ u32}::{vtable}::<'_, u32>()
+
+// Full name: test_crate::{impl Trait for &'_ u32}
+impl Trait for &'_ u32 {
+    proof ImpliedClause0: (&'_ u32: MetaSized) = {built_in impl MetaSized for &'_ u32}
+    vtable: {impl Trait for &'_ u32}::{vtable}::<'_, u32>
+}
+
+// Full name: test_crate::{impl Trait for &'_0 T}::method
+pub fn {impl Trait for &'_0 T}::method<'_0, '_1, T>(self: &'_1 &'_0 T)
+where
+    TraitClause0: (T: Sized),
+{
+    let _0: (); // return
+    let self: &'3 &'4 T; // arg #1
+
+    _0 = ()
+    _0 = ()
+    return
+}
+
+// Full name: test_crate::{impl Trait for &'_0 T}
+impl<'_0, T> Trait for &'_0 T
+where
+    TraitClause0: (T: Sized),
+{
+    proof ImpliedClause0: (&'_0 T: MetaSized) = {built_in impl MetaSized for &'_0 T}
+    fn method<'_0_1> = {impl Trait for &'_0 T}::method<'_0, '_0_1, T>[TraitClause0]
+    vtable: {impl Trait for &'_0 T}::{vtable}<'_0, T>[TraitClause0]
+}
+
+// Full name: test_crate::f
+pub fn f<'a>(x: &'a &'a u32) -> &'a (dyn Trait + 'a)
+{
+    let _0: &'3 (dyn Trait + '4); // return
+    let x: &'8 &'9 u32; // arg #1
+    let _2: &'10 (dyn Trait + '11); // anonymous local
+    let _3: &'12 (dyn Trait + '13); // anonymous local
+    let _4: &'14 &'15 u32; // anonymous local
+
+    storage_live(_2)
+    storage_live(_3)
+    storage_live(_4)
+    _4 = &(*x)
+    _3 = unsize_cast<&'14 &'15 u32, &'17 (dyn Trait + '18), &{impl Trait for &'_ u32}::{vtable}::<'_, u32>>(move _4)
+    storage_dead(_4)
+    _2 = &(*_3) with_metadata(copy _3.metadata)
+    _0 = unsize_cast<&'10 (dyn Trait + '11), &'22 (dyn Trait + '23),  at []>(move _2)
+    storage_dead(_3)
+    storage_dead(_2)
+    return
+}
+
+
+

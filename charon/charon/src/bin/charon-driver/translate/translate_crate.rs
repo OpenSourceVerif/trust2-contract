@@ -65,19 +65,14 @@ pub enum TransItemSourceKind {
     InherentImpl,
     /// We don't translate these as proper items, but we use them to explore the crate.
     Module,
-    /// A trait impl method that uses the default method body from the trait declaration. The
-    /// `DefId` is that of the trait impl.
-    DefaultedMethod(TraitImplSource, TraitDeclId, TraitMethodId),
     /// The `call_*` method of the appropriate `TraitImplSource::Closure` impl.
     ClosureMethod(ClosureKind),
     /// A cast of a state-less closure as a function pointer.
     ClosureAsFnCast,
-    /// The `drop_in_place` method of a `Destruct` impl or decl. It contains the drop glue that
-    /// calls `Drop::drop` for the type and then drops its fields. If the `TraitImplSource` is
-    /// `None` this is the method declaration (and the DefId is that of the `Destruct` trait),
-    /// otherwise this is a method implementation (and the DefId is that of the ADT or closure for
-    /// which to generate the drop glue).
-    DropInPlaceMethod(Option<TraitImplSource>),
+    /// The `drop_glue` method of a `Destruct` impl. It contains the drop glue that calls
+    /// `Drop::drop` for the type and then drops its fields. This is a method implementation (and
+    /// the DefId is that of the ADT or closure for which to generate the drop glue).
+    DropGlueMethod(TraitImplSource),
     /// The virtual table struct definition for a trait. The `DefId` is that of the trait.
     VTable,
     /// The static vtable value for a specific impl.
@@ -109,7 +104,7 @@ pub enum TraitImplSource {
 impl TransItemSource {
     pub fn new(item: RustcItem, kind: TransItemSourceKind) -> Self {
         if let RustcItem::Mono(item) = &item {
-            if item.has_param {
+            if item.has_non_lt_param {
                 panic!("Item is not monomorphic: {item:?}")
             }
         } else if let RustcItem::MonoTrait(_) = &item
@@ -167,13 +162,11 @@ impl TransItemSource {
             TransItemSourceKind::ClosureMethod(kind) => {
                 TransItemSourceKind::TraitImpl(TraitImplSource::Closure(kind))
             }
-            TransItemSourceKind::DefaultedMethod(impl_kind, ..)
-            | TransItemSourceKind::DropInPlaceMethod(Some(impl_kind))
+            TransItemSourceKind::DropGlueMethod(impl_kind)
             | TransItemSourceKind::VTableInstance(impl_kind)
             | TransItemSourceKind::VTableInstanceInitializer(impl_kind) => {
                 TransItemSourceKind::TraitImpl(impl_kind)
             }
-            TransItemSourceKind::DropInPlaceMethod(None) => TransItemSourceKind::TraitDecl,
             _ => return None,
         };
         Some(self.with_kind(parent_kind))
@@ -207,6 +200,23 @@ impl RustcItem {
 }
 
 impl<'tcx> TranslateCtx<'tcx> {
+    /// If this is a method declaration without a default, return the `DefId` of its parent trait.
+    fn is_method_decl_without_default(&mut self, def_id: &hax::DefId) -> Option<hax::DefId> {
+        if matches!(def_id.kind, hax::DefKind::AssocFn)
+            && let def = self.poly_hax_def(def_id).ok()?
+            && let hax::FullDefKind::AssocFn {
+                associated_item, ..
+            } = def.kind()
+            && !associated_item.has_value
+            && let hax::AssocItemContainer::TraitContainer { trait_ref } =
+                &associated_item.container
+        {
+            Some(trait_ref.def_id.clone())
+        } else {
+            None
+        }
+    }
+
     /// Resolve a path to a list of matching `DefId`s.
     pub fn resolve_path(
         &self,
@@ -226,7 +236,7 @@ impl<'tcx> TranslateCtx<'tcx> {
         Some(match &def_id.kind {
             Enum | Struct | Union | TyAlias | ForeignTy => TransItemSourceKind::Type,
             Fn | AssocFn => TransItemSourceKind::Fun,
-            Const | Static { .. } | AssocConst => TransItemSourceKind::Global,
+            Const { .. } | Static { .. } | AssocConst { .. } => TransItemSourceKind::Global,
             Trait | TraitAlias => TransItemSourceKind::TraitDecl,
             Impl { of_trait: true } => TransItemSourceKind::TraitImpl(TraitImplSource::Normal),
             Impl { of_trait: false } => TransItemSourceKind::InherentImpl,
@@ -266,6 +276,12 @@ impl<'tcx> TranslateCtx<'tcx> {
     /// exploring the whole crate.
     #[tracing::instrument(skip(self))]
     pub fn enqueue_module_item(&mut self, def_id: &hax::DefId) {
+        if let Some(trait_def_id) = self.is_method_decl_without_default(def_id) {
+            // Don't translate the method itself as it doesn't correspond to an item, translate the
+            // trait instead.
+            self.enqueue_module_item(&trait_def_id);
+            return;
+        }
         let Some(kind) = self.base_kind_for_item(def_id) else {
             return;
         };
@@ -302,10 +318,9 @@ impl<'tcx> TranslateCtx<'tcx> {
                         ItemId::Global(self.translated.global_decls.reserve_slot())
                     }
                     Fun
-                    | DefaultedMethod(..)
                     | ClosureMethod(..)
                     | ClosureAsFnCast
-                    | DropInPlaceMethod(..)
+                    | DropGlueMethod(..)
                     | VTableInstanceInitializer(..)
                     | VTableMethod
                     | VTableDropShim => ItemId::Fun(self.translated.fun_decls.reserve_slot()),
@@ -380,7 +395,7 @@ impl<'tcx> TranslateCtx<'tcx> {
         }
         // Add a virtual method to the `Destruct` trait.
         if trait_def.lang_item == Some(sym::destruct) {
-            let method_name = TraitItemName("drop_in_place".into());
+            let method_name = TraitItemName("drop_glue".into());
             names.methods.push(method_name);
         }
         self.method_status.get_or_extend_and_insert(trait_id, || {
@@ -577,9 +592,9 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
     pub(crate) fn translate_item_maybe_enqueue<T: TryFrom<DeclRef<ItemId>>>(
         &mut self,
         span: Span,
-        enqueue: bool,
         hax_item: &hax::ItemRef,
         kind: TransItemSourceKind,
+        enqueue: bool,
     ) -> Result<T, Error> {
         let id: ItemId = self.register_item_maybe_enqueue(span, enqueue, hax_item, kind);
         // In mono mode, we keep trait decls generic.
@@ -587,7 +602,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         {
             GenericArgs::empty()
         } else {
-            self.translate_generic_args(span, &hax_item.generic_args, &hax_item.impl_exprs)?
+            self.translate_generic_args(span, &hax_item.generic_args, &hax_item.trait_proofs)?
         };
 
         // Add regions to make sure the item args match the params we set up in
@@ -657,11 +672,17 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
                 _ => {}
             }
         }
+        if matches!(
+            kind,
+            TransItemSourceKind::DropGlueMethod(..) | TransItemSourceKind::VTableDropShim
+        ) {
+            generics = generics.concat(&self.drop_glue_generic_args());
+        }
 
         let trait_ref = hax_item
             .in_trait
             .as_ref()
-            .map(|impl_expr| self.translate_trait_impl_expr(span, impl_expr))
+            .map(|trait_proof| self.translate_trait_proof(span, trait_proof))
             .transpose()?;
         let item = DeclRef {
             id,
@@ -682,18 +703,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         item: &hax::ItemRef,
         kind: TransItemSourceKind,
     ) -> Result<T, Error> {
-        self.translate_item_maybe_enqueue(span, true, item, kind)
-    }
-
-    /// Register this item and don't enqueue it for translation.
-    #[expect(dead_code)]
-    pub(crate) fn translate_item_no_enqueue<T: TryFrom<DeclRef<ItemId>>>(
-        &mut self,
-        span: Span,
-        item: &hax::ItemRef,
-        kind: TransItemSourceKind,
-    ) -> Result<T, Error> {
-        self.translate_item_maybe_enqueue(span, false, item, kind)
+        self.translate_item_maybe_enqueue(span, item, kind, true)
     }
 
     /// Translate a type def id
@@ -705,7 +715,7 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         match self.recognize_builtin_type(item)? {
             Some(id) => {
                 let generics =
-                    self.translate_generic_args(span, &item.generic_args, &item.impl_exprs)?;
+                    self.translate_generic_args(span, &item.generic_args, &item.trait_proofs)?;
                 Ok(TypeDeclRef {
                     id: TypeId::Builtin(id),
                     generics: Box::new(generics),
@@ -715,29 +725,122 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         }
     }
 
-    /// Translate a function def id
-    pub(crate) fn translate_fun_item(
+    pub(crate) fn translate_fun_item_maybe_enqueue(
         &mut self,
         span: Span,
         item: &hax::ItemRef,
         kind: TransItemSourceKind,
+        enqueue: bool,
     ) -> Result<MaybeBuiltinFunDeclRef, Error> {
         match self.recognize_builtin_fun(item)? {
             Some(id) => {
                 let generics =
-                    self.translate_generic_args(span, &item.generic_args, &item.impl_exprs)?;
+                    self.translate_generic_args(span, &item.generic_args, &item.trait_proofs)?;
                 Ok(MaybeBuiltinFunDeclRef {
                     id: FunId::Builtin(id),
                     generics: Box::new(generics),
                     trait_ref: None,
                 })
             }
-            None => self.translate_item(span, item, kind),
+            None => self.translate_item_maybe_enqueue(span, item, kind, enqueue),
         }
+    }
+
+    /// Translate a reference to a trait method declaration without registering the declaration as
+    /// a `FunDecl`. `TraitDecl.methods` contains the declaration signature and metadata; only
+    /// default implementations give rise to a real function item.
+    fn translate_method_decl_fn_ptr(
+        &mut self,
+        span: Span,
+        item: &hax::ItemRef,
+    ) -> Result<Option<RegionBinder<FnPtr>>, Error> {
+        let Some(in_trait) = &item.in_trait else {
+            return Ok(None);
+        };
+        let def = self.hax_def(item)?;
+        let hax::FullDefKind::AssocFn {
+            associated_item,
+            sig,
+            ..
+        } = def.kind()
+        else {
+            return Ok(None);
+        };
+        if !matches!(
+            &associated_item.container,
+            hax::AssocItemContainer::TraitContainer { .. }
+        ) {
+            return Ok(None);
+        }
+
+        let trait_ref = self.translate_trait_proof(span, in_trait)?;
+        let generics = self.translate_generic_args(span, &item.generic_args, &item.trait_proofs)?;
+        self.translate_region_binder(span, &sig.as_ref().rebind(()), |ctx, _| {
+            let method_id = ctx.translate_trait_method_id(trait_ref.trait_id(), &item.def_id)?;
+            let fn_kind = FnPtrKind::Trait(trait_ref.move_under_binder(), method_id);
+            let generics = generics.move_under_binder();
+            let generics = generics.concat(&ctx.innermost_binder().params.identity_args());
+            Ok(FnPtr::new(fn_kind, generics))
+        })
+        .map(Some)
     }
 
     /// Auxiliary function to translate function calls and references to functions.
     /// Translate a function id applied with some substitutions.
+    #[tracing::instrument(skip(self, span))]
+    pub(crate) fn translate_unbound_fn_ptr_maybe_enqueue(
+        &mut self,
+        span: Span,
+        item: &hax::ItemRef,
+        kind: TransItemSourceKind,
+        enqueue: bool,
+    ) -> Result<FnPtr, Error> {
+        let fun_item = self.translate_fun_item_maybe_enqueue(span, item, kind, enqueue)?;
+        let fun_id = match fun_item.trait_ref {
+            // Direct function call
+            None => FnPtrKind::Fun(fun_item.id),
+            // Trait method
+            Some(trait_ref) => {
+                let trait_decl_id = trait_ref.trait_id();
+                let method_id = self.translate_trait_method_id(trait_decl_id, &item.def_id)?;
+                FnPtrKind::Trait(trait_ref, method_id)
+            }
+        };
+        let mut generics = fun_item.generics;
+        // The last n regions are the late-bound ones and were provided as erased regions by
+        // `translate_item`.
+        for (a, b) in generics.regions.iter_mut().rev().zip(
+            self.innermost_binder()
+                .params
+                .identity_args()
+                .regions
+                .into_iter()
+                .rev(),
+        ) {
+            *a = b;
+        }
+        Ok(FnPtr::new(fun_id, generics))
+    }
+
+    #[tracing::instrument(skip(self, span))]
+    pub(crate) fn translate_bound_fn_ptr_maybe_enqueue(
+        &mut self,
+        span: Span,
+        item: &hax::ItemRef,
+        kind: TransItemSourceKind,
+        enqueue: bool,
+    ) -> Result<RegionBinder<FnPtr>, Error> {
+        if let Some(fn_ptr) = self.translate_method_decl_fn_ptr(span, item)? {
+            return Ok(fn_ptr);
+        }
+
+        let late_bound = self.hax_def(item)?.late_bound();
+        self.translate_region_binder(span, &late_bound, |ctx, _| {
+            ctx.translate_unbound_fn_ptr_maybe_enqueue(span, item, kind, enqueue)
+        })
+    }
+
+    /// Translate a reference to a function or trait method.
     #[tracing::instrument(skip(self, span))]
     pub(crate) fn translate_bound_fn_ptr(
         &mut self,
@@ -745,48 +848,20 @@ impl<'tcx, 'ctx> ItemTransCtx<'tcx, 'ctx> {
         item: &hax::ItemRef,
         kind: TransItemSourceKind,
     ) -> Result<RegionBinder<FnPtr>, Error> {
-        let fun_item = self.translate_fun_item(span, item, kind)?;
-        let fun_id = match fun_item.trait_ref {
-            // Direct function call
-            None => FnPtrKind::Fun(fun_item.id),
-            // Trait method
-            Some(trait_ref) => {
-                let method_decl_id = *fun_item
-                    .id
-                    .as_regular()
-                    .expect("methods are not builtin functions");
-                let trait_decl_id = trait_ref.trait_id();
-                let method_id = self.translate_trait_method_id(trait_decl_id, &item.def_id)?;
-                FnPtrKind::Trait(trait_ref.move_under_binder(), method_id, method_decl_id)
-            }
-        };
-        let late_bound = match self.hax_def(item)?.kind() {
-            hax::FullDefKind::Fn { sig, .. } | hax::FullDefKind::AssocFn { sig, .. } => {
-                sig.as_ref().rebind(())
-            }
-            _ => hax::Binder {
-                value: (),
-                bound_vars: vec![],
-            },
-        };
-        self.translate_region_binder(span, &late_bound, |ctx, _| {
-            let mut generics = fun_item.generics.move_under_binder();
-            // The last n regions are the late-bound ones and were provided as erased regions by
-            // `translate_item`.
-            for (a, b) in generics.regions.iter_mut().rev().zip(
-                ctx.innermost_binder()
-                    .params
-                    .identity_args()
-                    .regions
-                    .into_iter()
-                    .rev(),
-            ) {
-                *a = b;
-            }
-            Ok(FnPtr::new(fun_id, generics))
-        })
+        self.translate_bound_fn_ptr_maybe_enqueue(span, item, kind, true)
     }
 
+    pub(crate) fn translate_bound_fn_ptr_no_enqueue(
+        &mut self,
+        span: Span,
+        item: &hax::ItemRef,
+        kind: TransItemSourceKind,
+    ) -> Result<RegionBinder<FnPtr>, Error> {
+        self.translate_bound_fn_ptr_maybe_enqueue(span, item, kind, false)
+    }
+
+    /// Translate a reference to a function or trait method, erasing or inferring its late-bound
+    /// lifetimes.
     pub(crate) fn translate_fn_ptr(
         &mut self,
         span: Span,

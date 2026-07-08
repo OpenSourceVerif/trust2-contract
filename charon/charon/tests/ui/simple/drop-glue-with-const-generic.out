@@ -1,29 +1,85 @@
-error: internal compiler error: /rustc-dev/5fb2ff8611e5a4af4dc85977cfdecfbf3ffa6ade/compiler/rustc_middle/src/ty/sty.rs:352:13: cannot find `K/#0` in param-env: ParamEnv {
-                                    caller_bounds: [
-                                        Binder { value: HostEffectPredicate { trait_ref: <T as std::marker::Destruct>, constness: Maybe }, bound_vars: [] },
-                                        Binder { value: TraitPredicate(<T as std::marker::Destruct>, polarity:Positive), bound_vars: [] },
-                                    ],
-                                }
+# Final LLBC before serialization:
+
+// Full name: core::marker::MetaSized
+#[lang_item("meta_sized")]
+pub trait MetaSized<Self>
+
+// Full name: core::marker::Sized
+#[lang_item("sized")]
+pub trait Sized<Self>
+{
+    proof ImpliedClause0: (Self: MetaSized)
+    non-dyn-compatible
+}
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_glue<'_0_1>;
+    non-dyn-compatible
+}
+
+// Full name: alloc::alloc::Global
+#[lang_item("global_alloc_ty")]
+pub struct Global {}
+
+// Full name: alloc::alloc::Global::{impl Destruct for Global}::drop_glue
+unsafe fn impl_Destruct_for_Global::drop_glue<'_0>(_1: &'_0 mut Global)
+= <opaque>
+
+// Full name: alloc::alloc::Global::{impl Destruct for Global}
+impl "impl_Destruct_for_Global" Destruct for Global {
+    fn drop_glue<'_0_1> = impl_Destruct_for_Global::drop_glue<'_0_1>
+    non-dyn-compatible
+}
+
+// Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3]}::drop_glue
+unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut alloc::boxed::Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3])
+where
+    TraitClause0: (T: MetaSized),
+    TraitClause1: (A: Sized),
+    TraitClause2: (T: Destruct),
+    TraitClause3: (A: Destruct),
+= <opaque>
+
+// Full name: test_crate::KeccakState
+struct KeccakState {}
+
+// Full name: test_crate::PortableHash
+struct PortableHash<const K : usize> {
+  shake128_state: [KeccakState; K],
+  make_non_trivial: alloc::boxed::Box<u32>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global],
+}
+
+// Full name: test_crate::PortableHash::{impl Destruct for PortableHash<K>}::drop_glue
+unsafe fn impl_Destruct_for_PortableHash::drop_glue<'_0, const K : usize>(_1: &'_0 mut PortableHash<K>)
+{
+    let _0: (); // return
+    let _1: &'1 mut PortableHash<K>; // arg #1
+
+    _0 = ()
+    drop[impl_Destruct_for_Box::drop_glue<'2, u32, Global>[{built_in impl MetaSized for u32}, {built_in impl Sized for Global}, {built_in impl Destruct for u32}, impl_Destruct_for_Global]] ((*_1)).make_non_trivial
+    return
+}
+
+// Full name: test_crate::PortableHash::{impl Destruct for PortableHash<K>}
+impl<const K : usize> "impl_Destruct_for_PortableHash" Destruct for PortableHash<K> {
+    fn drop_glue<'_0_1> = impl_Destruct_for_PortableHash::drop_glue<'_0_1, K>
+    non-dyn-compatible
+}
+
+// Full name: test_crate::foo
+fn foo(_1: PortableHash<42usize>)
+{
+    let _0: (); // return
+    let _1: PortableHash<42usize>; // arg #1
+
+    _0 = ()
+    _0 = ()
+    drop[impl_Destruct_for_PortableHash::drop_glue<'0, 42usize>] _1
+    return
+}
 
 
-thread 'rustc' panicked at /rustc-dev/5fb2ff8611e5a4af4dc85977cfdecfbf3ffa6ade/compiler/rustc_middle/src/ty/sty.rs:352:13:
-Box<dyn Any>
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
-error: rustc panicked while retrieving drop glue. This is known to happen with `--precise-drops`; to silence this warning, pass `--opaque '{impl core::marker::Destruct for test_crate::PortableHash}'` to charon
- --> tests/ui/simple/drop-glue-with-const-generic.rs:5:1
-  |
-5 | / struct PortableHash<const K: usize> {
-6 | |     shake128_state: [KeccakState; K],
-7 | |     make_non_trivial: Box<u32>,
-8 | | }
-  | |_^
 
-error: Item `test_crate::PortableHash` caused errors; ignoring.
- --> tests/ui/simple/drop-glue-with-const-generic.rs:5:1
-  |
-5 | struct PortableHash<const K: usize> {
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 1 previous error
-
-ERROR Code failed to compile

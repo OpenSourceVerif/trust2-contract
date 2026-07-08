@@ -66,7 +66,6 @@
 //!
 //! Limitations:
 //! - we don't track bound lifetimes in quantified clauses properly (<https://github.com/AeneasVerif/charon/issues/534>).
-//! - type aliases don't have the correct clauses in scope (<https://github.com/AeneasVerif/charon/issues/531>).
 //! - we don't take into account unicity of trait implementations. This means we won't detect type
 //!   equalities due to the same trait predicate appearing twice, or a trait predicate coinciding
 //!   with an existing trait impl. See the `dictionary_passing_style_woes.rs` test file.
@@ -190,7 +189,7 @@ mod trait_ref_path {
                 let tdecl = krate.get_item(tref.trait_id())?;
                 let tdecl = tdecl.as_trait_decl()?;
                 let clause = &tdecl.implied_clauses[parent_id];
-                let pred = clause.trait_.clone().substitute_with_tref(&tref);
+                let pred = clause.trait_.clone().try_substitute_with_tref(&tref).ok()?;
                 tref = TraitRef::new(TraitRefKind::ParentClause(Box::new(tref), parent_id), pred);
             }
             Some(tref)
@@ -260,7 +259,7 @@ mod trait_ref_path {
     }
 
     /// The path to an associated type that depends on a local clause.
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct AssocTypePath {
         /// The trait clause that has the associated type.
         pub tref: TraitRefPath,
@@ -326,7 +325,7 @@ mod trait_ref_path {
         /// that.
         pub fn on_real_tref(&self, krate: &TranslatedCrate, tref: TraitRef) -> Option<Ty> {
             let tref = self.tref.on_real_tref(krate, tref)?;
-            let ty = TyKind::TraitType(tref, self.type_id).into_ty();
+            let ty = TyKind::TraitType(tref, self.type_id, GenericArgs::empty()).into_ty();
             Some(ty)
         }
 
@@ -575,6 +574,9 @@ struct ItemModifications {
     /// Associated item paths for which we don't know a type they correspond to, so we will have to
     /// add a new type parameter to the signature of the item.
     required_extra_paths: Vec<AssocTypePath>,
+    /// For self-referential traits, the first id available for the new associated types added to
+    /// replace `required_extra_paths`.
+    next_assoc_type_id: Option<AssocTypeId>,
     /// These constraints refer to now-removed associated types. We have taken them into account,
     /// they should be removed.
     remove_constraints: HashSet<TraitTypeConstraintId>,
@@ -590,6 +592,7 @@ impl ItemModifications {
         Self {
             type_constraints,
             required_extra_paths: Default::default(),
+            next_assoc_type_id: None,
             remove_constraints: Default::default(),
             add_type_params,
         }
@@ -637,6 +640,45 @@ impl ItemModifications {
         }
         .into_iter()
         .flatten()
+    }
+
+    /// Iterate over the paths that require adding new associated types, paired with the ids of
+    /// those new associated types.
+    fn required_extra_assoc_types_with_ids(
+        &self,
+    ) -> impl Iterator<Item = (&AssocTypePath, AssocTypeId)> {
+        if self.add_type_params {
+            None
+        } else {
+            let next_assoc_type_id = self.next_assoc_type_id.unwrap();
+            Some(
+                self.required_extra_paths
+                    .iter()
+                    .enumerate()
+                    .map(move |(offset, path)| (path, next_assoc_type_id + offset)),
+            )
+        }
+        .into_iter()
+        .flatten()
+    }
+
+    /// Iterate over the constraints that a `Self: Trait` clause makes available.
+    fn iter_self_constraints_for_tref<'a>(
+        &'a self,
+        tref: &'a TraitRef,
+    ) -> impl Iterator<Item = (AssocTypePath, Ty)> + use<'a> {
+        let base_path = tref.to_path().unwrap();
+        let assoc_type_constraints =
+            self.required_extra_assoc_types_with_ids()
+                .map(move |(path, type_id)| {
+                    let path = path.on_tref(&base_path);
+                    let ty =
+                        TyKind::TraitType(tref.clone(), type_id, GenericArgs::empty()).into_ty();
+                    (path, ty)
+                });
+        self.type_constraints
+            .iter_self_paths_subst(tref)
+            .chain(assoc_type_constraints)
     }
 
     /// Compute the type replacements needed to update the body of this item. We use the provided
@@ -714,7 +756,7 @@ impl<'a> ComputeItemModifications<'a> {
                 .compute_trait_modifications(tref.trait_id())
                 .as_processed()
             {
-                for (path, ty) in trait_mods.type_constraints.iter_self_paths_subst(&tref) {
+                for (path, ty) in trait_mods.iter_self_constraints_for_tref(&tref) {
                     type_constraints.insert_path(&path, ty);
                 }
             }
@@ -788,6 +830,7 @@ impl<'a> ComputeItemModifications<'a> {
             let type_constraints = self.compute_constraint_set(&tr.generics);
             let mut modifications =
                 ItemModifications::from_constraint_set(type_constraints, remove_assoc_types);
+            modifications.next_assoc_type_id = Some(tr.types.next_id());
             if modifications.add_type_params {
                 // Remove all associated types and turn them into new parameters. We add these
                 // before the paths in `replace` because this gives a better output.
@@ -897,7 +940,7 @@ impl<'a> ComputeItemModifications<'a> {
 struct UpdateItemBody<'a> {
     /// Warning: we keep the ctx around but we can't meaningfully use it for inspecting items as we
     /// remporarily remove them for in-place modification.
-    ctx: &'a TransformCtx,
+    ctx: &'a mut TransformCtx,
     span: Span,
     // Whether the current item is a type alias, which affects error messages.
     is_type_alias: bool,
@@ -926,7 +969,7 @@ impl UpdateItemBody<'_> {
         };
         let ty = self.type_replacements[dbid].find(&path)?;
         let mut ty = ty.clone().move_under_binders(dbid);
-        if let TyKind::TraitType(tref, type_id) = ty.kind() {
+        if let TyKind::TraitType(tref, type_id, _args) = ty.kind() {
             let path = TraitRefPath::self_ref(tref.trait_id()).with_assoc_type(*type_id);
             // Unnormalizable types may very well show up, e.g. when trait loopiness forces us to
             // create new assoc types.
@@ -1048,9 +1091,8 @@ impl UpdateItemBody<'_> {
                         register_error!(
                             self.ctx,
                             self.span,
-                            "Could not compute the value of {path_fmt} on a GAT: \
-                        lifting associated types can fail in the presence of GATs. \
-                        To fix this, `--exclude` this trait."
+                            "GATs cannot work with the `--lift-associated-types` option (implied by `--preset=aeneas`). \
+                            Either stop using this option or `--exclude` this trait."
                         );
                     } else {
                         let item_name = target.item_name(&self.ctx.translated, fmt_ctx);
@@ -1115,7 +1157,7 @@ impl UpdateItemBody<'_> {
                 .item_modifications
                 .get(&GenericsSource::item(tref.trait_id()))
             {
-                for (path, ty) in tmods.type_constraints.iter_self_paths_subst(&tref) {
+                for (path, ty) in tmods.iter_self_constraints_for_tref(&tref) {
                     type_constraints.insert_path(&path, ty);
                 }
             }
@@ -1283,7 +1325,7 @@ impl VisitAstMut for UpdateItemBody<'_> {
         match x.kind.as_ref() {
             FnPtrKind::Fun(FunId::Regular(id)) => self.update_item_generics(*id, &mut x.generics),
             FnPtrKind::Fun(FunId::Builtin(_)) => {}
-            FnPtrKind::Trait(trait_ref, method_name, _) => {
+            FnPtrKind::Trait(trait_ref, method_name) => {
                 let trait_id = trait_ref.trait_decl_ref.skip_binder.id;
                 self.update_generics(
                     &mut x.generics,
@@ -1302,7 +1344,7 @@ impl VisitAstMut for UpdateItemBody<'_> {
 
     // Normalize associated types.
     fn visit_ty_kind(&mut self, kind: &mut TyKind) -> ControlFlow<Self::Break> {
-        if let TyKind::TraitType(tref, type_id) = kind {
+        if let TyKind::TraitType(tref, type_id, _args) = kind {
             let path = TraitRefPath::self_ref(tref.trait_id()).with_assoc_type(*type_id);
             if let Some(new_ty) = self.lookup_path_on_trait_ref(&path, tref) {
                 *kind = new_ty.kind().clone();
@@ -1332,6 +1374,22 @@ impl VisitAstMut for UpdateItemBody<'_> {
         self.visit_inner(st)?;
         self.span = old_span;
         Continue(())
+    }
+
+    fn visit_spec_closure_id(
+        &mut self,
+        spec_closure_id: &mut SpecClosureId,
+    ) -> ControlFlow<Self::Break> {
+        let mut spec_closure = std::mem::replace(
+            &mut self.ctx.translated.spec_closures[*spec_closure_id],
+            SpecClosure {
+                captures: Default::default(),
+                body: Body::Opaque,
+            },
+        );
+        let result = self.visit(&mut spec_closure);
+        self.ctx.translated.spec_closures[*spec_closure_id] = spec_closure;
+        result
     }
 }
 
@@ -1401,7 +1459,7 @@ impl TransformPass for Transform {
                             implied_clauses: Default::default(),
                         },
                     ));
-                    TyKind::TraitType(self_tref.clone(), new_type_id).into_ty()
+                    TyKind::TraitType(self_tref.clone(), new_type_id, GenericArgs::empty()).into_ty()
                 })
             } else {
                 modifications.compute_replacements(|path| {

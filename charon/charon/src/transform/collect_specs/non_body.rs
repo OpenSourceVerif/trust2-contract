@@ -26,7 +26,9 @@ impl TransformPass for Transform {
             for trait_id in trait_ids {
                 let trait_ = crate_.trait_decls.remove(trait_id).unwrap();
                 for method in trait_.methods {
-                    crate_.fun_decls.remove(method.skip_binder.item.id);
+                    if let Some(func_decl_ref) = method.skip_binder.default {
+                        crate_.fun_decls.remove(func_decl_ref.id);
+                    }
                 }
 
                 let trait_impl_ids: Vec<_> = crate_

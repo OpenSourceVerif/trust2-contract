@@ -10,8 +10,6 @@
 #![allow(clippy::manual_map)]
 #![allow(clippy::mem_replace_with_default)]
 #![allow(clippy::useless_format)]
-#![expect(incomplete_features)]
-#![feature(box_patterns)]
 #![feature(deref_patterns)]
 #![feature(iter_array_chunks)]
 #![feature(iterator_try_collect)]
@@ -38,6 +36,7 @@ extern crate rustc_interface;
 extern crate rustc_lexer;
 extern crate rustc_middle;
 extern crate rustc_mir_build;
+extern crate rustc_mir_transform;
 extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
