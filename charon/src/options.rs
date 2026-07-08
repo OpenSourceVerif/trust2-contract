@@ -46,7 +46,7 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub skip_borrowck: bool,
-    /// The MIR stage to extract. This is only relevant for the current crate; for dpendencies only
+    /// The MIR stage to extract. This is only relevant for the current crate; for dependencies only
     /// MIR optimized is available.
     #[arg(long)]
     pub mir: Option<MirLevel>,
@@ -225,6 +225,13 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub raw_consts: bool,
+    /// How to handle constants and statics: whether they should be represented as a call to their
+    /// initializer function, or whether we should attempt to evaluate them into a value. When
+    /// evaluation isn't possible (e.g. the constant is generic, or for recursive statics), we fall
+    /// back to the initializer call.
+    #[clap(long)]
+    #[serde(default)]
+    pub consts: Option<ConstHandling>,
     /// Replace string literal constants with a constant u8 array that gets unsized,
     /// expliciting the fact a string constant has a hidden reference.
     #[clap(long)]
@@ -294,6 +301,10 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub no_normalize: bool,
+    /// Don't compute a stable order for declarations.
+    #[clap(long)]
+    #[serde(default)]
+    pub no_reorder_decls: bool,
     /// Panic on the first error. This is useful for debugging.
     #[clap(long)]
     #[serde(default)]
@@ -342,6 +353,20 @@ pub enum Preset {
     Eurydice,
     Soteria,
     Tests,
+}
+
+/// How to handle constants and statics.
+#[derive(
+    Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Serialize, Deserialize,
+)]
+pub enum ConstHandling {
+    /// Keep consts as calls to their initializer with `ConstantExprKind::Call`, without attempting
+    /// to do any const-evaluation. This is the default.
+    #[default]
+    Initializers,
+    /// Try evaluating consts and statics to their final value. If evaluation fails, we fall back to the
+    /// initializer call.
+    Values,
 }
 
 #[derive(
@@ -425,6 +450,7 @@ impl CliOpts {
                     self.ullbc = true;
                     self.no_typecheck = true;
                     self.no_normalize = true;
+                    self.no_reorder_decls = true;
                     self.hide_marker_traits = true;
                     self.raw_consts = true;
                 }
@@ -461,8 +487,9 @@ impl CliOpts {
                     self.mir = Some(MirLevel::Elaborated);
                     self.monomorphize = true;
                     self.no_normalize = true;
+                    self.no_reorder_decls = true;
                     self.precise_drops = true;
-                    self.raw_consts = true;
+                    self.consts = Some(ConstHandling::Values);
                     self.ullbc = true;
                 }
                 Preset::Tests => {
@@ -622,6 +649,9 @@ pub struct TranslateOptions {
     pub treat_box_as_builtin: bool,
     /// Don't inline or evaluate constants.
     pub raw_consts: bool,
+    /// Whether to evaluate the value of named constants and statics, or to keep a call
+    /// to their initializer function.
+    pub consts: ConstHandling,
     /// Replace string literal constants with a constant u8 array that gets unsized,
     /// expliciting the fact a string constant has a hidden reference.
     pub unsized_strings: bool,
@@ -641,6 +671,8 @@ pub struct TranslateOptions {
     pub no_typecheck: bool,
     /// Don't normalize associated types.
     pub no_normalize: bool,
+    /// Don't reorder declarations and compute recursive declaration groups.
+    pub no_reorder_decls: bool,
     /// Transform Drop to Call drop_glue
     pub desugar_drops: bool,
     /// Add `Destruct` bounds to all generic params.
@@ -780,6 +812,7 @@ impl TranslateOptions {
             item_opacities,
             treat_box_as_builtin: options.treat_box_as_builtin,
             raw_consts: options.raw_consts,
+            consts: options.consts.unwrap_or_default(),
             unsized_strings: options.unsized_strings,
             reconstruct_fallible_operations: options.reconstruct_fallible_operations,
             reconstruct_asserts: options.reconstruct_asserts,
@@ -789,6 +822,7 @@ impl TranslateOptions {
             duplicate_defaulted_methods: options.duplicate_defaulted_methods,
             no_typecheck: options.no_typecheck,
             no_normalize: options.no_normalize,
+            no_reorder_decls: options.no_reorder_decls,
             desugar_drops: options.desugar_drops,
             add_destruct_bounds: options.precise_drops,
         }
