@@ -1,6 +1,6 @@
 [package]
 name = "charon-bin-interface"
-version = "0.1.218"
+version = "0.1.220"
 authors = [
     "Son Ho <hosonmarc@gmail.com>",
     "Guillaume Boisseau <nadrieril+git@gmail.com>",

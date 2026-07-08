@@ -2489,31 +2489,6 @@ pub fn core::ptr::non_null::{NonNull::<[u8]>}::as_ptr::<[u8]>(self: NonNull::<[u
     return
 }
 
-pub fn core::ptr::non_null::{NonNull::<[u8]>}::cast::<[u8], u8>(self: NonNull::<[u8]>) -> NonNull::<u8>
-{
-    let _0: NonNull::<u8>; // return
-    let self: NonNull::<[u8]>; // arg #1
-    let _2: *mut u8; // anonymous local
-    let _3: *mut u8; // anonymous local
-    let _4: *mut [u8]; // anonymous local
-    let _5: NonNull::<[u8]>; // anonymous local
-
-    storage_live(_2)
-    storage_live(_3)
-    storage_live(_4)
-    storage_live(_5)
-    _5 = copy self
-    _4 = core::ptr::non_null::{NonNull::<[u8]>}::as_ptr::<[u8]>(move _5)
-    storage_dead(_5)
-    _3 = cast<*mut [u8], *mut u8>(move _4)
-    _2 = copy _3
-    storage_dead(_4)
-    _0 = transmute<*mut u8, NonNull::<u8>>(move _2)
-    storage_dead(_3)
-    storage_dead(_2)
-    return
-}
-
 pub fn core::ptr::non_null::{NonNull::<u8>}::cast::<u8, u8>(self: NonNull::<u8>) -> NonNull::<u8>
 {
     let _0: NonNull::<u8>; // return
@@ -2531,6 +2506,31 @@ pub fn core::ptr::non_null::{NonNull::<u8>}::cast::<u8, u8>(self: NonNull::<u8>)
     _4 = core::ptr::non_null::{NonNull::<u8>}::as_ptr::<u8>(move _5)
     storage_dead(_5)
     _3 = cast<*mut u8, *mut u8>(move _4)
+    _2 = copy _3
+    storage_dead(_4)
+    _0 = transmute<*mut u8, NonNull::<u8>>(move _2)
+    storage_dead(_3)
+    storage_dead(_2)
+    return
+}
+
+pub fn core::ptr::non_null::{NonNull::<[u8]>}::cast::<[u8], u8>(self: NonNull::<[u8]>) -> NonNull::<u8>
+{
+    let _0: NonNull::<u8>; // return
+    let self: NonNull::<[u8]>; // arg #1
+    let _2: *mut u8; // anonymous local
+    let _3: *mut u8; // anonymous local
+    let _4: *mut [u8]; // anonymous local
+    let _5: NonNull::<[u8]>; // anonymous local
+
+    storage_live(_2)
+    storage_live(_3)
+    storage_live(_4)
+    storage_live(_5)
+    _5 = copy self
+    _4 = core::ptr::non_null::{NonNull::<[u8]>}::as_ptr::<[u8]>(move _5)
+    storage_dead(_5)
+    _3 = cast<*mut [u8], *mut u8>(move _4)
     _2 = copy _3
     storage_dead(_4)
     _0 = transmute<*mut u8, NonNull::<u8>>(move _2)

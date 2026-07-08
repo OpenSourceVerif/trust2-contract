@@ -2139,6 +2139,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("index_to_function_calls", index_to_function_calls);
           ("treat_box_as_builtin", treat_box_as_builtin);
           ("raw_consts", raw_consts);
+          ("consts", consts);
           ("unsized_strings", unsized_strings);
           ("reconstruct_fallible_operations", reconstruct_fallible_operations);
           ("reconstruct_asserts", reconstruct_asserts);
@@ -2154,6 +2155,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("no_serialize", no_serialize);
           ("no_typecheck", no_typecheck);
           ("no_normalize", no_normalize);
+          ("no_reorder_decls", no_reorder_decls);
           ("abort_on_error", abort_on_error);
           ("error_on_warnings", error_on_warnings);
           ("preset", preset);
@@ -2202,6 +2204,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         in
         let* treat_box_as_builtin = bool_of_json ctx treat_box_as_builtin in
         let* raw_consts = bool_of_json ctx raw_consts in
+        let* consts = option_of_json const_handling_of_json ctx consts in
         let* unsized_strings = bool_of_json ctx unsized_strings in
         let* reconstruct_fallible_operations =
           bool_of_json ctx reconstruct_fallible_operations
@@ -2223,6 +2226,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         let* no_serialize = bool_of_json ctx no_serialize in
         let* no_typecheck = bool_of_json ctx no_typecheck in
         let* no_normalize = bool_of_json ctx no_normalize in
+        let* no_reorder_decls = bool_of_json ctx no_reorder_decls in
         let* abort_on_error = bool_of_json ctx abort_on_error in
         let* error_on_warnings = bool_of_json ctx error_on_warnings in
         let* preset = option_of_json preset_of_json ctx preset in
@@ -2258,6 +2262,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
              index_to_function_calls;
              treat_box_as_builtin;
              raw_consts;
+             consts;
              unsized_strings;
              reconstruct_fallible_operations;
              reconstruct_asserts;
@@ -2273,6 +2278,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
              no_serialize;
              no_typecheck;
              no_normalize;
+             no_reorder_decls;
              abort_on_error;
              error_on_warnings;
              preset;
@@ -2319,6 +2325,14 @@ and closure_kind_of_json (ctx : of_json_ctx) (js : json) :
     | `String "Fn" -> Ok Fn
     | `String "FnMut" -> Ok FnMut
     | `String "FnOnce" -> Ok FnOnce
+    | _ -> Error "")
+
+and const_handling_of_json (ctx : of_json_ctx) (js : json) :
+    (const_handling, string) result =
+  combine_error_msgs js __FUNCTION__
+    (match js with
+    | `String "Initializers" -> Ok Initializers
+    | `String "Values" -> Ok Values
     | _ -> Error "")
 
 and declaration_group_of_json (ctx : of_json_ctx) (js : json) :

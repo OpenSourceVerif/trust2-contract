@@ -104,10 +104,6 @@ impl Destruct for Global {
     non-dyn-compatible
 }
 
-// Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, {impl Destruct for Global}]}::drop_glue::<i32, Global>
-unsafe fn impl_Destruct_for_Box_i32_Global::drop_glue::<i32, Global><'_0>(_1: &'_0 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, {impl Destruct for Global}])
-= <opaque>
-
 // Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3]}::drop_glue
 unsafe fn impl_Destruct_for_Box::drop_glue<'_0, T, A>(_1: &'_0 mut alloc::boxed::Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3])
 where
@@ -115,6 +111,10 @@ where
     TraitClause1: (A: Sized),
     TraitClause2: (T: Destruct),
     TraitClause3: (A: Destruct),
+= <opaque>
+
+// Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, {impl Destruct for Global}]}::drop_glue::<i32, Global>
+unsafe fn impl_Destruct_for_Box_i32_Global::drop_glue::<i32, Global><'_0>(_1: &'_0 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, {impl Destruct for Global}])
 = <opaque>
 
 // Full name: alloc::string::String

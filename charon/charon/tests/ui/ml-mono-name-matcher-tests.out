@@ -147,6 +147,14 @@ fn funs_with_disambiguator(b: bool) -> u32
     return
 }
 
+// Full name: test_crate::MonoContainer
+struct MonoContainer<T>
+where
+    TraitClause0: (T: Sized),
+{
+  item: T,
+}
+
 // Full name: test_crate::MonoContainer::<i32>
 struct MonoContainer::<i32> {
   item: i32,
@@ -155,14 +163,6 @@ struct MonoContainer::<i32> {
 // Full name: test_crate::MonoContainer::<&'_ str>
 struct MonoContainer::<&'_ str> {
   item: &'_ str,
-}
-
-// Full name: test_crate::MonoContainer
-struct MonoContainer<T>
-where
-    TraitClause0: (T: Sized),
-{
-  item: T,
 }
 
 fn test_crate::{MonoContainer::<i32>}::create::<i32>(item: i32) -> MonoContainer::<i32>

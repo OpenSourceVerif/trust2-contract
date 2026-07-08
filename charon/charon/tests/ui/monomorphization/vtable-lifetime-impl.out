@@ -41,14 +41,14 @@ pub trait Trait<Self>
     vtable: test_crate::Trait::{vtable}
 }
 
-// Full name: test_crate::Pattern::<'_>
-pub struct Pattern::<'_> {
-  &'_ str,
-}
-
 // Full name: test_crate::Pattern
 pub struct Pattern<'a> {
   &'a str,
+}
+
+// Full name: test_crate::Pattern::<'_>
+pub struct Pattern::<'_> {
+  &'_ str,
 }
 
 // Full name: test_crate::Pattern::{impl Destruct for Pattern::<'_>}::drop_glue::<'_>

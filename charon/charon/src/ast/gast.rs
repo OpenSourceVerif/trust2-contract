@@ -245,7 +245,19 @@ pub struct FunDecl {
 }
 
 /// Reference to a function declaration.
-#[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+)]
 pub struct FunDeclRef {
     pub id: FunDeclId,
     /// Generic arguments passed to the function.
@@ -287,7 +299,19 @@ pub struct GlobalDecl {
 }
 
 /// Reference to a global declaration.
-#[derive(Debug, Clone, SerializeState, DeserializeState, PartialEq, Eq, Hash, Drive, DriveMut)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+)]
 pub struct GlobalDeclRef {
     pub id: GlobalDeclId,
     pub generics: BoxedArgs,
@@ -453,7 +477,19 @@ pub struct TraitImpl {
 }
 
 /// The value of a trait associated type.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+)]
 pub struct TraitAssocTyImpl {
     pub value: Ty,
     /// This matches the corresponding vector in `TraitAssocTy`. In the same way, this is empty
