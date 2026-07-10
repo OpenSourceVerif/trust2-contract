@@ -16,7 +16,7 @@ edition = "2024"
 
 [workspace.dependencies]
 assert_tokens_eq = "0.1.0"
-itertools = "0.13"
+itertools = "0.15"
 proc-macro2 = "1.0"
 quote = "1.0"
 rustc-hash = "2"
