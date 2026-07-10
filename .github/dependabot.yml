@@ -6,7 +6,12 @@
 version: 2
 updates:
   - package-ecosystem: "cargo" # See documentation for possible values
-    directory: "/" # Location of package manifests # security
+    directories: # Location of package manifests # security
+      - "/"
+      - "/cargo-verify"
+      - "/trust2-contract"
+      - "/trust2-contract-macros"
+      - "/utils"
     allow: # security
       - dependency-type: "all"
     schedule:
