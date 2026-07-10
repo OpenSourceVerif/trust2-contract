@@ -572,14 +572,43 @@ impl<'a> ItemDeduplicator<'a> {
         // Remove non-canonical copies.
         for &id in group.ids.values() {
             if id != canonical {
-                if let ItemId::Type(type_decl_id) = id
-                    && let Some(type_decl) = self.krate.type_decls.get(type_decl_id)
-                {
-                    for spec_body_id in &type_decl.specs.invariants {
-                        self.krate.spec_bodies.remove(*spec_body_id);
-                    }
+                let Some(item) = self.krate.remove_item(id) else {
+                    continue;
+                };
+                let spec_closures = &mut self.krate.spec_closures;
+
+                fn remove_recursively(
+                    body: Body,
+                    spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+                ) {
+                    body.dyn_visit_in_body(|&spec_closure_id: &SpecClosureId| {
+                        let spec_closure = spec_closures.remove(spec_closure_id).unwrap();
+                        remove_recursively(spec_closure.body, spec_closures);
+                    });
                 }
-                self.krate.remove_item(id);
+
+                match item {
+                    ItemByVal::Type(type_decl) => {
+                        for spec_body_id in type_decl.specs.invariants {
+                            remove_recursively(
+                                self.krate.spec_bodies.remove(spec_body_id).unwrap(),
+                                spec_closures,
+                            );
+                        }
+                    }
+                    ItemByVal::Fun(func_decl) => {
+                        remove_recursively(func_decl.body, spec_closures);
+                        for spec_closure in func_decl
+                            .specs
+                            .preconditions
+                            .into_iter()
+                            .chain(func_decl.specs.postconditions)
+                        {
+                            remove_recursively(spec_closure.body, spec_closures);
+                        }
+                    }
+                    _ => (),
+                }
             }
         }
     }
