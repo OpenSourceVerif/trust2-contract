@@ -70,7 +70,7 @@ serde_state = { git = "https://github.com/Nadrieril/serde_state", branch = "main
 # serde_state = { path = "../../../forks/serde_state/serde_state" }
 
 annotate-snippets = { version = "0.12" }
-anstream = "0.6.18"
+anstream = "1.0.0"
 anyhow = "1.0.81"
 assert_cmd = "2.0"
 clap = { version = "4.0", features = ["derive", "env"] }
