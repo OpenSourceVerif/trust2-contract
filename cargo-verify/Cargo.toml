@@ -16,7 +16,7 @@ clap = { version = "4.5.50", features = ["derive"] }
 clap-cargo = "0.18.3"
 include_dir = "0.7.4"
 itertools = "0.15.0"
-malachite = { version = "0.9.1", default-features = false, features = ["naturals_and_integers", "std"] }
+malachite = { version = "0.10.0", default-features = false, features = ["naturals_and_integers", "std"] }
 ocaml-format = "0.1.1"
 rustc_apfloat = "0.2.3"
 tempfile = "3.24.0"
