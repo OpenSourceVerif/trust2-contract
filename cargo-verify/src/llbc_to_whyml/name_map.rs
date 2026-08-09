@@ -20,7 +20,7 @@ use std::{
 
 const SEPARATOR: &str = "''_";
 
-pub const LIB_DIR: &str = "whyml_lib";
+pub const LIB_DIR: &str = "trust2_contract";
 
 pub fn lib_alias(lib_name: &str) -> String {
     format!("{lib_name}'")

@@ -126,8 +126,9 @@ pub fn translate_crates(
         tuple_field_accesses.extend(tuple_field_accesses_);
     }
 
-    const WHYML_LIB: Dir<'_> = include_dir!("$CARGO_MANIFEST_DIR/src/llbc_to_whyml/whyml_lib");
-    let whyml_lib_out_dir = why3_out_dir.join("whyml_lib");
+    const WHYML_LIB: Dir<'_> =
+        include_dir!("$CARGO_MANIFEST_DIR/src/llbc_to_whyml/trust2_contract");
+    let whyml_lib_out_dir = why3_out_dir.join("trust2_contract");
     fs::create_dir_all(&whyml_lib_out_dir)?;
     WHYML_LIB.extract(&whyml_lib_out_dir)?;
 

@@ -1,12 +1,18 @@
 use cargo_verify::{llbc_to_whyml, rust_to_llbc, whyml_verify};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, bail};
 use clap::Parser;
 use clap_cargo::style::CLAP_STYLING;
 use utils::yansi::STDOUT_IS_TTY_AND_COLOR;
 use yansi::Paint;
 
-use std::{ffi::OsString, fs, path::PathBuf};
+use std::{
+    collections::HashSet,
+    ffi::OsString,
+    fs,
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 #[derive(Parser)]
 #[command(bin_name("cargo"), styles(CLAP_STYLING), help_expected(true))]
@@ -17,7 +23,12 @@ enum Cli {
 
 #[derive(Parser)]
 struct CliConfig {
-    /// Why3 WhyML output directory. If not provided, a temporary directory is used and then deleted.
+    /// Provers to use. If not provided, all available provers among Alt-Ergo, CVC4, CVC5, and Z3 are selected.
+    ///
+    /// All selected provers are run in parallel.
+    #[arg(short = 'P', long = "prover")]
+    provers: Vec<String>,
+    /// Why3 output directory. If not provided, a temporary directory is used and then deleted.
     #[arg(long)]
     why3_out_dir: Option<PathBuf>,
     /// Charon LLBC output directory. If not provided, a temporary directory is used and then deleted.
@@ -56,7 +67,29 @@ fn main() -> Result<()> {
         |why3_out_dir| {
             llbc_to_whyml::translate_crates(&mut crates, &why3_out_dir)?;
 
-            whyml_verify::verify(&why3_out_dir, &crates)
+            let provers = if config.provers.is_empty() {
+                let result = Command::new("why3")
+                    .args(["config", "list-provers"])
+                    .stderr(Stdio::inherit())
+                    .output()?;
+                if !result.status.success() {
+                    bail!(r"`why3 config list-provers` exited unsuccessfully");
+                }
+                let available_provers_str = String::from_utf8(result.stdout).unwrap();
+                let available_provers: HashSet<_> = available_provers_str
+                    .lines()
+                    .map(|line| line.split_once(' ').unwrap().0)
+                    .collect();
+
+                HashSet::from(["Alt-Ergo", "CVC4", "CVC5", "Z3"])
+                    .intersection(&available_provers)
+                    .map(|&prover| format!("{},,", prover))
+                    .collect()
+            } else {
+                config.provers
+            };
+
+            whyml_verify::verify_crates(&why3_out_dir, &crates, &provers)
         },
         config.why3_out_dir,
     )?
@@ -94,6 +127,20 @@ mod tests {
     fn cli_parse_empty_esc() {
         let Cli::Verify(config) = Cli::parse_from(["cargo", "verify", "--"]);
         assert_eq!(config.cargo_build_args, Vec::<OsString>::new());
+    }
+
+    #[test]
+    fn cli_parse_prover_short() {
+        let Cli::Verify(config) = Cli::parse_from(["cargo", "verify", "-P", "Z3"]);
+        assert_eq!(config.provers, vec!["Z3"]);
+    }
+
+    #[test]
+    fn cli_parse_prover_long() {
+        let Cli::Verify(config) = Cli::parse_from([
+            "cargo", "verify", "--prover", "Alt-Ergo", "--prover", "CVC5",
+        ]);
+        assert_eq!(config.provers, vec!["Alt-Ergo", "CVC5"]);
     }
 
     #[test]
