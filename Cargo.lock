@@ -1266,8 +1266,9 @@ dependencies = [
 
 [[package]]
 name = "ocaml-format"
-version = "0.1.0"
-source = "git+https://github.com/temp66/ocaml-format-rust.git#71f200f05508d2cb01e64be0ed59327510c1fbae"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b6eabcac8421223468aeb8cf46169fe1cabcf736f2985d8174c2b9466b0f47b"
 dependencies = [
  "unicode-width",
 ]
@@ -2079,7 +2080,8 @@ dependencies = [
 [[package]]
 name = "why3-ptree"
 version = "0.1.0"
-source = "git+https://github.com/temp66/why3-ptree-rust.git#4a43f8bb2a00f02ea818a845347d92ba90c1fb0d"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "464847768979477de18e104cd282c09ed0c4a98f224e5199458e1c9f7952f6ab"
 dependencies = [
  "bumpalo",
  "internment",
