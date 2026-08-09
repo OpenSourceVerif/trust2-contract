@@ -1,75 +1,90 @@
 # trust2-contract
 Contract-based design for Rust
 
+## Example
 
-## Quick Start
+Source code:
 
-1. After cloning this repository, first create a new package.
+```rs
+use trust2_contract::prelude::*;
 
-```bash
-cargo new package
-cd package
-cargo add --path <repo-root>/trust2-contract
-```
-Copy the test example into src/main.rs or src/lib.rs.
-```Rust
-//for example
-use trust2_contract::{invariant, postcondition, precondition};
+#[postcondition(|c| c >= a)]
+#[postcondition(|c| c >= b)]
+fn max(a: i32, b: i32) -> i32 {
+    if a > b { a } else { b }
+}
 
-#[expect(dead_code)]
+#[precondition(a >= b)]
+#[postcondition(|c| c + b == a)]
+fn strict_sub(a: u32, b: u32) -> u32 {
+    a - b
+}
+
 #[precondition(x < 16)]
 #[postcondition(|x2| x2 >= x)]
 fn square(x: u8) -> u8 {
     x * x
 }
-
-#[expect(dead_code)]
-#[invariant(self.start <= self.end)]
-struct RefRange<'a, T: PartialOrd> {
-    start: &'a T,
-    end: &'a T,
-}
-
 ```
 
-2. Set up the toolchain.
+Verification result:
 
-Copy the rust-toolchain file from this repository to package/, then run:
+```
+File /tmp/.tmpZXfLN1/trust2_contract_example.mlw:
+Goal max''_trust2_contract_example'vc.
+Prover result is: Valid (0.04s, 190 steps).
 
-```bash
-rustup toolchain install
+File /tmp/.tmpZXfLN1/trust2_contract_example.mlw:
+Goal strict_sub''_trust2_contract_example'vc.
+Prover result is: Valid (0.06s, 450 steps).
+
+File /tmp/.tmpZXfLN1/trust2_contract_example.mlw:
+Goal square''_trust2_contract_example'vc.
+Prover result is: Valid (0.04s, 302 steps).
+
+    Verified trust2_contract_example
 ```
 
-3. Install cargo-verify.
+## Requirements
 
-```bash
-cargo install --path <repo-root>/cargo-verify
-```
+1. [Why3](https://why3.org/)
 
-4. Generate llbc with contracts.
-```bash
-cargo verify --charon-out-dir Charon-LLBC --charon-pretty-print > output.llbc.pretty
-```
+   This project is tested with Why3 1.8.2.
+
+   Ensure that the `why3` command is added to PATH so that our program can call it.
+
+2. Install and register external automatic provers for Why3.
+
+   This project supports
+
+   - [Alt-Ergo](https://alt-ergo.ocamlpro.com/),
+   - [CVC4](https://cvc4.github.io/downloads.html),
+   - [cvc5](https://cvc5.github.io/downloads.html), and
+   - [Z3](https://github.com/Z3Prover/z3).
+
+   Other provers may not work.
+
+   To register provers in Why3, see https://why3.org/doc/manpages.html#the-config-command. The latest version of a prover may not be supported by Why3. You can check `provers-detection-data.conf` described in the link for supported versions.
+
+## Installation
+
+`cargo install --path ./cargo-verify`
 
 ## Usage
 
-- Copy `./rust-toolchain.toml` to your package/workspace root.
+1. Copy `./rust-toolchain.toml` to your Cargo package/workspace root.
 
-- To specify contracts in source code, use `trust2-contract` package.
+2. To specify contracts in source code, use the `trust2-contract` package.
 
-  Run `cargo doc --package trust2-contract --no-deps --open` for documentation.
+   Add `./trust2-contract` as a path dependency.
 
-  Add `./trust2-contract` as a path dependency to use.
+   Run `cargo doc --package trust2-contract --no-deps --open` for documentation.
 
-- To verify contracts specified, use `cargo verify` subcommand.
+3. To verify contracts specified, use the `cargo verify` subcommand.
 
-  Install through `cargo install --path ./cargo-verify`.
+   Run `cargo verify --help` for help.
 
-  Run `cargo verify --help` for help.
-
-## Development setup
-
-If Charon depends on the openssl crate, additional steps may be required to build. See [openssl - Rust](https://docs.rs/openssl/latest/openssl/#automatic).
+## Development
 
 ```sh
 opam switch create . 5.3.0
@@ -86,6 +101,8 @@ git remote add proc-macro-crate https://github.com/bkchr/proc-macro-crate.git
 git remote set-url proc-macro-crate --push no-push
 ```
 
-## About Charon modification
+### Charon
 
-Charon version is not bumped.
+If Charon depends on the openssl crate, additional steps may be required to build. See [openssl - Rust](https://docs.rs/openssl/latest/openssl/#automatic).
+
+This project patches Charon, but does not bump its version.
