@@ -47,6 +47,7 @@ where
 {
     let _0: u64; // return
 
+    storage_live(_0)
     _0 = const 0u64
     return
 }
@@ -63,6 +64,7 @@ fn {impl Foo for u64}::bar::<bool>() -> u64
 {
     let _0: u64; // return
 
+    storage_live(_0)
     _0 = const 0u64
     return
 }
@@ -73,9 +75,11 @@ fn main()
     let _0: (); // return
     let _1: u64; // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(_1)
     _1 = {impl Foo for u64}::bar::<bool>()
+    ↳⚡ unwind_continue
     storage_dead(_1)
     _0 = ()
     return

@@ -257,7 +257,7 @@ checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
 name = "charon"
-version = "0.1.220"
+version = "0.1.227"
 dependencies = [
  "annotate-snippets",
  "anstream 0.6.21",
@@ -308,7 +308,7 @@ dependencies = [
 
 [[package]]
 name = "charon-bin-interface"
-version = "0.1.220"
+version = "0.1.227"
 dependencies = [
  "annotate-snippets",
  "anstream 0.6.21",
@@ -360,7 +360,7 @@ dependencies = [
 
 [[package]]
 name = "charon-driver-bin-interface"
-version = "0.1.220"
+version = "0.1.227"
 dependencies = [
  "annotate-snippets",
  "anstream 0.6.21",
@@ -587,18 +587,19 @@ checksum = "7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c"
 
 [[package]]
 name = "derive_generic_visitor"
-version = "0.2.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21588db07753dafe6460b13faad18bd7e46548ce91ee38f0bc0f7529b3864b82"
+checksum = "113505c87000bf21b0bce35e7b9a381c220aba032d4a99a37e4ff90bb47e0e40"
 dependencies = [
  "derive_generic_visitor_macros",
+ "itertools 0.14.0",
 ]
 
 [[package]]
 name = "derive_generic_visitor_macros"
-version = "0.2.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f3aed1890235ebcf844a24263ecc395c4e57a970f13bcc9948989f22aa051aa7"
+checksum = "31474cd9f8a0a127e855afe40e8d9c6bd99c5e6538b3f8715214ee06036954ee"
 dependencies = [
  "convert_case",
  "darling",

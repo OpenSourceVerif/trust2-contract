@@ -24,6 +24,7 @@ pub use vars::*;
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("R"))]
 pub enum Region {
@@ -58,6 +59,7 @@ pub enum Region {
     EnumAsGetters,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub enum TraitRefKind {
     /// A specific top-level implementation item.
@@ -163,6 +165,7 @@ pub enum TraitRefKind {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Builtin"))]
 pub enum BuiltinImplData {
@@ -220,6 +223,7 @@ pub enum BuiltinImplData {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[serde_state(state_implements = HashConsSerializerState)] // Avoid corecursive impls due to perfect derive
 pub struct TraitRef(pub HashConsed<TraitRefContents>);
@@ -236,6 +240,7 @@ pub struct TraitRef(pub HashConsed<TraitRefContents>);
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct TraitRefContents {
     pub kind: TraitRefKind,
@@ -263,6 +268,7 @@ pub struct TraitRefContents {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct TraitDeclRef {
     pub id: TraitDeclId,
@@ -285,6 +291,7 @@ pub type PolyTraitDeclRef = RegionBinder<TraitDeclRef>;
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct TraitImplRef {
     pub id: TraitImplId,
@@ -304,6 +311,7 @@ pub struct TraitImplRef {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct OutlivesPred<T, U>(pub T, pub U);
 
@@ -329,6 +337,7 @@ pub type TypeOutlives = OutlivesPred<Ty, Region>;
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct TraitTypeConstraint {
     pub trait_ref: TraitRef,
@@ -338,7 +347,17 @@ pub struct TraitTypeConstraint {
 
 /// A set of generic arguments.
 #[derive(
-    Clone, PartialEq, Eq, PartialOrd, Ord, Hash, SerializeState, DeserializeState, Drive, DriveMut,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+    DriveTwo,
 )]
 pub struct GenericArgs {
     pub regions: IndexVec<RegionId, Region>,
@@ -363,6 +382,7 @@ pub type BoxedArgs = Box<GenericArgs>;
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct RegionBinder<T> {
     #[cfg_attr(feature = "charon_on_charon", charon::rename("binder_regions"))]
@@ -386,6 +406,7 @@ pub struct RegionBinder<T> {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("BK"))]
 pub enum BinderKind {
@@ -417,6 +438,7 @@ pub enum BinderKind {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct Binder<T> {
     #[cfg_attr(feature = "charon_on_charon", charon::rename("binder_params"))]
@@ -443,6 +465,7 @@ pub struct Binder<T> {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct GenericParams {
     #[serde_state(stateless)]
@@ -473,6 +496,7 @@ pub struct GenericParams {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub enum PredicateOrigin {
     // Note: we use this for globals too, but that's only available with an unstable feature.
@@ -525,7 +549,9 @@ pub type ByteCount = u64;
 /// Simplified layout of a single variant.
 ///
 /// Maps fields to their offset within the layout.
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Drive, DriveMut)]
+#[derive(
+    Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize, Drive, DriveMut, DriveTwo,
+)]
 pub struct VariantLayout {
     /// The offset of each field.
     #[drive(skip)]
@@ -568,18 +594,8 @@ pub enum Discriminator {
 /// If the type does not have a fully known layout (e.g. it is ?Sized)
 /// some of the layout parts are not available.
 #[derive(
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    SerializeState,
-    DeserializeState,
-    Drive,
-    DriveMut,
+    Debug, Clone, PartialEq, Eq, SerializeState, DeserializeState, Drive, DriveMut, DriveTwo,
 )]
-#[serde_state(stateless)]
 pub struct Layout {
     /// The size of the type in bytes.
     #[drive(skip)]
@@ -589,6 +605,7 @@ pub struct Layout {
     pub align: Option<ByteCount>,
     /// Decision tree that determines the active variant by reading memory. Only `Some` for enums.
     #[drive(skip)]
+    #[serde_state(stateless)]
     pub discriminator: Option<Discriminator>,
     /// Whether the type is uninhabited, i.e. has any valid value at all.
     /// Note that uninhabited types can have arbitrary layouts: `(u32, !)` has space for the `u32`
@@ -598,6 +615,7 @@ pub struct Layout {
     /// Map from `VariantId` to the corresponding field layouts. Some variants don't have a
     /// meaningful layout due to being uninhabited (though an uninhabited variant may have a
     /// layout). Structs and unions are modeled as having exactly one variant.
+    #[serde_state(stateless)]
     pub variant_layouts: IndexVec<VariantId, Option<VariantLayout>>,
     /// The representation options of this type declaration as annotated by the user.
     #[drive(skip)]
@@ -620,6 +638,7 @@ pub struct Layout {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[serde_state(default_state = ())]
 pub enum PtrMetadata {
@@ -686,7 +705,9 @@ pub struct ReprOptions {
 ///
 /// A type can only be an ADT (structure or enumeration), as type aliases are
 /// inlined in MIR.
-#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut, DriveTwo,
+)]
 #[serde_state(state_implements = HashConsSerializerState)]
 pub struct TypeDecl {
     pub def_id: TypeDeclId,
@@ -721,6 +742,7 @@ generate_index_type!(FieldId, "Field");
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub enum TypeDeclKind {
     Struct(IndexVec<FieldId, Field>),
@@ -740,7 +762,9 @@ pub enum TypeDeclKind {
     Error(String),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut, DriveTwo,
+)]
 #[serde_state(stateless)]
 pub struct Variant {
     pub id: VariantId,
@@ -758,7 +782,9 @@ pub struct Variant {
     pub discriminant: Literal,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut, DriveTwo,
+)]
 #[serde_state(stateless)]
 pub struct Field {
     pub span: Span,
@@ -784,6 +810,7 @@ pub struct Field {
     Deserialize,
     Drive,
     DriveMut,
+    DriveTwo,
     Hash,
     Ord,
     PartialOrd,
@@ -809,6 +836,7 @@ pub enum IntTy {
     Deserialize,
     Drive,
     DriveMut,
+    DriveTwo,
     Hash,
     Ord,
     PartialOrd,
@@ -834,6 +862,7 @@ pub enum UIntTy {
     Deserialize,
     Drive,
     DriveMut,
+    DriveTwo,
     Hash,
     Ord,
     PartialOrd,
@@ -856,6 +885,7 @@ pub enum IntegerTy {
     Deserialize,
     Drive,
     DriveMut,
+    DriveTwo,
     Hash,
     Ord,
     PartialOrd,
@@ -883,6 +913,7 @@ pub enum FloatTy {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
     Ord,
     PartialOrd,
 )]
@@ -924,6 +955,7 @@ pub enum LifetimeMutability {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
     Hash,
     Ord,
     PartialOrd,
@@ -962,6 +994,7 @@ pub enum TypeId {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct TypeDeclRef {
     pub id: TypeId,
@@ -985,6 +1018,7 @@ pub struct TypeDeclRef {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
     Hash,
     Ord,
     PartialOrd,
@@ -1016,6 +1050,7 @@ pub enum LiteralTy {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[serde_state(state_implements = HashConsSerializerState)] // Avoid corecursive impls due to perfect derive
 pub struct Ty(pub HashConsed<TyKind>);
@@ -1037,6 +1072,7 @@ pub struct Ty(pub HashConsed<TyKind>);
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("T"))]
 pub enum TyKind {
@@ -1139,6 +1175,7 @@ pub enum TyKind {
     Deserialize,
     Drive,
     DriveMut,
+    DriveTwo,
     Hash,
     Ord,
     PartialOrd,
@@ -1164,6 +1201,7 @@ pub enum BuiltinTy {
     Deserialize,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub enum ClosureKind {
     Fn,
@@ -1184,7 +1222,17 @@ impl ClosureKind {
 
 /// Additional information for closures.
 #[derive(
-    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, SerializeState, DeserializeState, Drive, DriveMut,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    SerializeState,
+    DeserializeState,
+    Drive,
+    DriveMut,
+    DriveTwo,
 )]
 pub struct ClosureInfo {
     #[serde_state(stateless)]
@@ -1212,6 +1260,7 @@ pub struct ClosureInfo {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct FunSig {
     /// Is the function unsafe or not
@@ -1241,6 +1290,7 @@ pub struct FunSig {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[serde_state(stateless)]
 #[cfg_attr(feature = "charon_on_charon", charon::variants_prefix("Abi"))]
@@ -1278,6 +1328,7 @@ impl Abi {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 pub struct DynPredicate {
     /// This binder binds a single type `T`, which is considered existentially quantified. The
@@ -1304,6 +1355,7 @@ pub struct DynPredicate {
     DeserializeState,
     Drive,
     DriveMut,
+    DriveTwo,
 )]
 #[serde_state(state_implements = HashConsSerializerState)] // Avoid corecursive impls due to perfect derive
 pub enum TypePattern {
@@ -1312,7 +1364,9 @@ pub enum TypePattern {
     NotNull,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut)]
+#[derive(
+    Debug, PartialEq, Eq, Clone, SerializeState, DeserializeState, Drive, DriveMut, DriveTwo,
+)]
 pub struct TypeSpecs {
     // Indirection to avoid creating a cycle in OCaml.
     pub invariants: Vec<SpecBodyId>,

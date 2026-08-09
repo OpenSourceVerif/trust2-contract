@@ -7,11 +7,12 @@ pub mod finish_translation {
     pub mod filter_invisible_trait_impls;
     pub mod insert_assign_return_unit;
     pub mod insert_ptr_metadata;
-    pub mod insert_storage_lives;
+    pub mod insert_storage_statements;
 }
 
 /// Passes that compute extra info to be stored in the crate.
 pub mod add_missing_info {
+    pub mod add_implied_outlives;
     pub mod add_missing_alias_clauses;
     pub mod compute_short_names;
     pub mod recover_body_comments;
@@ -109,6 +110,8 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
         // Type aliases may use associated types without declaring the corresponding trait
         // such missing trait clauses.
         global(&add_missing_info::add_missing_alias_clauses::Transform),
+        // Make explicit the outlives predicates implied by item signatures.
+        global(&add_missing_info::add_implied_outlives::Transform),
     ]);
 
     // Body cleanup passes on the ullbc.
@@ -121,8 +124,8 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
         // contains ⊥ upon returning. For this reason, when the function has return type unit, we
         // insert an extra assignment just before returning.
         CowBox::Borrowed(&finish_translation::insert_assign_return_unit::Transform),
-        // Insert `StorageLive` for locals that don't have one (that's allowed in MIR).
-        CowBox::Borrowed(&finish_translation::insert_storage_lives::Transform),
+        // Insert storage markers for locals that don't have them (that's allowed in MIR).
+        CowBox::Borrowed(&finish_translation::insert_storage_statements::Transform),
         // Transform Drops into Calls to drop_glue.
         CowBox::Borrowed(&normalize::desugar_drops::Transform),
         // Whenever we reference a trait method on a known type, refer to the method `FunDecl`
@@ -223,6 +226,8 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
     }
     // Cleanup passes useful for both llbc and ullbc.
     ctx.run_passes([
+        // Body passes may introduce fresh locals; make their storage markers explicit.
+        mixed_body(&finish_translation::insert_storage_statements::Transform),
         // Change trait associated types to be type parameters instead. See the module for details.
         // This also normalizes any use of an associated type that we can resolve.
         global(&normalize::expand_associated_types::Transform),

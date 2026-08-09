@@ -137,7 +137,7 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
         let mut params = GenericParams::empty();
         params
             .regions
-            .push_with(|index| RegionParam::new(index, None));
+            .push_with(|index| RegionParam::new(index, None, Variance::Covariant));
         params
     }
 

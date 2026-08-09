@@ -83,12 +83,18 @@ pub trait PartialOrd<Self, Rhs>
 pub fn core::cmp::PartialOrd::le<'_0, '_1, Self, Rhs>(_1: &'_0 Self, _2: &'_1 Rhs) -> bool
 where
     TraitClause0: (Self: PartialOrd<Rhs>),
+    TypeOutlives0: Self: '_0,
+    TypeOutlives1: Rhs: '_1,
 = <opaque>
 
 // Full name: core::cmp::impls::{impl PartialOrd<&'_0 B> for &'_1 A}::le
 pub fn {impl PartialOrd<&'_0 B> for &'_1 A}::le<'_0, '_1, '_2, '_3, A, B>(_1: &'_2 &'_1 A, _2: &'_3 &'_0 B) -> bool
 where
     TraitClause0: (A: PartialOrd<B>),
+    TypeOutlives0: A: '_1,
+    TypeOutlives1: B: '_0,
+    RegionOutlives0: '_1: '_2,
+    RegionOutlives1: '_0: '_3,
 = <opaque>
 
 // Full name: core::marker::Destruct
@@ -134,12 +140,14 @@ pub trait SliceIndex<Self, T>
 pub fn index_mut<'_0, T>(_1: usize, _2: &'_0 mut [T]) -> &'_0 mut T
 where
     TraitClause0: (T: Sized),
+    TypeOutlives0: T: '_0,
 = <opaque>
 
 // Full name: core::slice::index::{impl SliceIndex<[T]> for usize}::index
 pub fn impl_SliceIndex_slice_for_usize::index<'_0, T>(_1: usize, _2: &'_0 [T]) -> &'_0 T
 where
     TraitClause0: (T: Sized),
+    TypeOutlives0: T: '_0,
 = <opaque>
 
 // Full name: core::slice::index::{impl SliceIndex<[T]> for usize}::get_unchecked_mut
@@ -158,12 +166,14 @@ where
 pub fn get_mut<'_0, T>(_1: usize, _2: &'_0 mut [T]) -> Option<&'_0 mut T>[{built_in impl Sized for &'_0 mut T}]
 where
     TraitClause0: (T: Sized),
+    TypeOutlives0: T: '_0,
 = <opaque>
 
 // Full name: core::slice::index::{impl SliceIndex<[T]> for usize}::get
 pub fn get<'_0, T>(_1: usize, _2: &'_0 [T]) -> Option<&'_0 T>[{built_in impl Sized for &'_0 T}]
 where
     TraitClause0: (T: Sized),
+    TypeOutlives0: T: '_0,
 = <opaque>
 
 // Full name: core::slice::index::{impl SliceIndex<[T]> for usize}
@@ -190,6 +200,7 @@ where
 pub fn len<'_0, T>(_1: &'_0 [T]) -> usize
 where
     TraitClause0: (T: Sized),
+    TypeOutlives0: T: '_0,
 = <opaque>
 
 // Full name: alloc::alloc::Global
@@ -226,6 +237,8 @@ where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
     TraitClause2: (A: Allocator),
+    TypeOutlives0: T: '_0,
+    TypeOutlives1: A: '_0,
 = <opaque>
 
 // Full name: alloc::vec::Vec::{impl Destruct for Vec<T, A>[TraitClause0, TraitClause1, TraitClause2]}
@@ -254,6 +267,10 @@ where
     TraitClause2: (A: Sized),
     TraitClause3: (I: SliceIndex<[T]>),
     TraitClause4: (A: Allocator),
+    TypeOutlives0: T: '_0,
+    TypeOutlives1: A: '_0,
+    TypeOutlives2: TraitClause3::Output: '_0,
+    TypeOutlives3: I: '_0,
 = <opaque>
 
 // Full name: trust2_contract_sample::max
@@ -263,6 +280,7 @@ pub fn max(a: u64, b: u64) -> u64
     {
         let _0: bool; // return
 
+        storage_live(_0)
         _0 = const true
         return
     }
@@ -277,6 +295,8 @@ pub fn max(a: u64, b: u64) -> u64
         let _4: u64; // anonymous local
         let _5: u64; // anonymous local
 
+        storage_live(_0)
+        storage_live(c)
         c = move _2
         storage_live(_4)
         _4 = copy c
@@ -285,6 +305,9 @@ pub fn max(a: u64, b: u64) -> u64
         _0 = move _4 >= move _5
         storage_dead(_5)
         storage_dead(_4)
+        storage_dead(c)
+        storage_dead(_2)
+        storage_dead(_1)
         return
     }
     postcondition[
@@ -298,6 +321,8 @@ pub fn max(a: u64, b: u64) -> u64
         let _4: u64; // anonymous local
         let _5: u64; // anonymous local
 
+        storage_live(_0)
+        storage_live(c)
         c = move _2
         storage_live(_4)
         _4 = copy c
@@ -306,6 +331,9 @@ pub fn max(a: u64, b: u64) -> u64
         _0 = move _4 >= move _5
         storage_dead(_5)
         storage_dead(_4)
+        storage_dead(c)
+        storage_dead(_2)
+        storage_dead(_1)
         return
     }
 {
@@ -316,6 +344,7 @@ pub fn max(a: u64, b: u64) -> u64
     let _4: u64; // anonymous local
     let _5: u64; // anonymous local
 
+    storage_live(_0)
     storage_live(_3)
     storage_live(_4)
     _4 = copy a
@@ -323,15 +352,21 @@ pub fn max(a: u64, b: u64) -> u64
     _5 = copy b
     _3 = move _4 > move _5
     if move _3 {
-        storage_dead(_5)
-        storage_dead(_4)
-        _0 = copy a
     } else {
         storage_dead(_5)
         storage_dead(_4)
         _0 = copy b
+        storage_dead(_3)
+        storage_dead(b)
+        storage_dead(a)
+        return
     }
+    storage_dead(_5)
+    storage_dead(_4)
+    _0 = copy a
     storage_dead(_3)
+    storage_dead(b)
+    storage_dead(a)
     return
 }
 
@@ -353,6 +388,8 @@ pub fn min(a: u64, b: u64) -> u64
         let _8: u64; // anonymous local
         let _9: u64; // anonymous local
 
+        storage_live(_0)
+        storage_live(c)
         c = move _3
         storage_live(_5)
         storage_live(_6)
@@ -376,6 +413,10 @@ pub fn min(a: u64, b: u64) -> u64
             _0 = const false
         }
         storage_dead(_5)
+        storage_dead(c)
+        storage_dead(_3)
+        storage_dead(_2)
+        storage_dead(_1)
         return
     }
 {
@@ -386,6 +427,7 @@ pub fn min(a: u64, b: u64) -> u64
     let _4: u64; // anonymous local
     let _5: u64; // anonymous local
 
+    storage_live(_0)
     storage_live(_3)
     storage_live(_4)
     _4 = copy a
@@ -393,15 +435,21 @@ pub fn min(a: u64, b: u64) -> u64
     _5 = copy b
     _3 = move _4 < move _5
     if move _3 {
-        storage_dead(_5)
-        storage_dead(_4)
-        _0 = copy a
     } else {
         storage_dead(_5)
         storage_dead(_4)
         _0 = copy b
+        storage_dead(_3)
+        storage_dead(b)
+        storage_dead(a)
+        return
     }
+    storage_dead(_5)
+    storage_dead(_4)
+    _0 = copy a
     storage_dead(_3)
+    storage_dead(b)
+    storage_dead(a)
     return
 }
 
@@ -423,6 +471,7 @@ where
         let _3: &'10 &'11 T; // anonymous local
         let _4: &'12 T; // anonymous local
 
+        storage_live(_0)
         storage_live(_2)
         _2 = &((*self)).start
         storage_live(_3)
@@ -430,9 +479,12 @@ where
         _4 = &(*((*self)).end)
         _3 = &_4
         _0 = {impl PartialOrd<&'_0 B> for &'_1 A}::le<'17, '18, '21, '22, T, T>[TraitClause1](move _2, move _3)
+        ↳⚡ storage_dead(self)
+            unwind_continue
         storage_dead(_4)
         storage_dead(_3)
         storage_dead(_2)
+        storage_dead(self)
         return
     }
 
@@ -447,6 +499,8 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
         let _2: Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // arg #2
         let b: Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // local
 
+        storage_live(_0)
+        storage_live(b)
         b = move _2
         _0 = forall[
             _1: &'0 [i32] = &(*_1),
@@ -476,6 +530,10 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             let _20: usize; // anonymous local
             let _21: (usize, bool); // anonymous local
 
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_8)
+            storage_live(_21)
             i = move _3
             storage_live(_5)
             storage_live(_6)
@@ -483,12 +541,14 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             _7 = copy i
             _8 = copy _7 checked.+ const 1usize
             assert(move _8.1 == false) (overflow) else panic
+            ↳⚡ unwind_continue
             _6 = move _8.0
             storage_dead(_7)
             storage_live(_9)
             storage_live(_10)
             _10 = &(*_1)
             _9 = len<'9, i32>[{built_in impl Sized for i32}](move _10)
+            ↳⚡ unwind_continue
             storage_dead(_10)
             _5 = move _6 < move _9
             storage_dead(_9)
@@ -501,6 +561,7 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             storage_live(_15)
             _15 = copy i
             _13 = impl_Index_for_Vec::index<'13, i32, usize, Global>[{built_in impl Sized for i32}, {built_in impl Sized for usize}, {built_in impl Sized for Global}, impl_SliceIndex_slice_for_usize<i32>[{built_in impl Sized for i32}], impl_Allocator_for_Global](move _14, move _15)
+            ↳⚡ unwind_continue
             _12 = copy (*_13)
             storage_dead(_15)
             storage_dead(_14)
@@ -513,9 +574,11 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             _20 = copy i
             _21 = copy _20 checked.+ const 1usize
             assert(move _21.1 == false) (overflow) else panic
+            ↳⚡ unwind_continue
             _19 = move _21.0
             storage_dead(_20)
             _17 = impl_Index_for_Vec::index<'19, i32, usize, Global>[{built_in impl Sized for i32}, {built_in impl Sized for usize}, {built_in impl Sized for Global}, impl_SliceIndex_slice_for_usize<i32>[{built_in impl Sized for i32}], impl_Allocator_for_Global](move _18, move _19)
+            ↳⚡ unwind_continue
             _16 = copy (*_17)
             storage_dead(_19)
             storage_dead(_18)
@@ -523,20 +586,35 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             storage_dead(_16)
             storage_dead(_12)
             _0 = @SpecImplies(move _5, move _11)
+            ↳⚡ unwind_continue
             storage_dead(_17)
             storage_dead(_13)
             storage_dead(_11)
             storage_dead(_5)
+            storage_dead(_21)
+            storage_dead(_8)
+            storage_dead(i)
+            storage_dead(_3)
+            storage_dead(_2)
+            storage_dead(_1)
             return
         }
         conditional_drop[impl_Destruct_for_Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]::drop_glue<'6>] b
+        ↳⚡ unwind_continue
+        storage_dead(b)
+        storage_dead(_2)
+        storage_dead(_1)
         return
     }
 {
     let _0: Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // return
     let a: &'1 [i32]; // arg #1
 
+    storage_live(_0)
     _0 = new<i32>[{built_in impl Sized for i32}]()
+    ↳⚡ storage_dead(a)
+        unwind_continue
+    storage_dead(a)
     return
 }
 
@@ -550,10 +628,12 @@ fn decuple(x: u8) -> u8
         let _1: &'0 u8; // arg #1
         let _2: u8; // anonymous local
 
+        storage_live(_0)
         storage_live(_2)
         _2 = copy (*_1)
         _0 = move _2 <= const 25u8
         storage_dead(_2)
+        storage_dead(_1)
         return
     }
 {
@@ -569,6 +649,7 @@ fn decuple(x: u8) -> u8
     let _9: bool; // anonymous local
     let _10: (u8, bool); // anonymous local
 
+    storage_live(_0)
     storage_live(_4)
     storage_live(_5)
     storage_live(_8)
@@ -580,6 +661,13 @@ fn decuple(x: u8) -> u8
     _4 = cast<i32, u32>(const 3i32)
     _5 = move _4 < const 8u32
     assert(move _5 == true) (overflow) else panic
+    ↳⚡ storage_dead(_10)
+        storage_dead(_9)
+        storage_dead(_8)
+        storage_dead(_5)
+        storage_dead(_4)
+        storage_dead(x)
+        unwind_continue
     _2 = move _3 wrap.<< const 3i32
     storage_dead(_3)
     storage_live(_6)
@@ -588,13 +676,33 @@ fn decuple(x: u8) -> u8
     _8 = cast<i32, u32>(const 1i32)
     _9 = move _8 < const 8u32
     assert(move _9 == true) (overflow) else panic
+    ↳⚡ storage_dead(_10)
+        storage_dead(_9)
+        storage_dead(_8)
+        storage_dead(_5)
+        storage_dead(_4)
+        storage_dead(x)
+        unwind_continue
     _6 = move _7 wrap.<< const 1i32
     storage_dead(_7)
     _10 = copy _2 checked.+ copy _6
     assert(move _10.1 == false) (overflow) else panic
+    ↳⚡ storage_dead(_10)
+        storage_dead(_9)
+        storage_dead(_8)
+        storage_dead(_5)
+        storage_dead(_4)
+        storage_dead(x)
+        unwind_continue
     _0 = move _10.0
     storage_dead(_6)
     storage_dead(_2)
+    storage_dead(_10)
+    storage_dead(_9)
+    storage_dead(_8)
+    storage_dead(_5)
+    storage_dead(_4)
+    storage_dead(x)
     return
 }
 
@@ -603,6 +711,7 @@ fn use_assert()
 {
     let _0: (); // return
 
+    storage_live(_0)
     _0 = ()
     contract_assert[
     ]()
@@ -610,8 +719,10 @@ fn use_assert()
         let _0: bool; // return
         let _1: u8; // anonymous local
 
+        storage_live(_0)
         storage_live(_1)
         _1 = decuple(const 9u8)
+        ↳⚡ unwind_continue
         _0 = move _1 == const 90u8
         storage_dead(_1)
         return

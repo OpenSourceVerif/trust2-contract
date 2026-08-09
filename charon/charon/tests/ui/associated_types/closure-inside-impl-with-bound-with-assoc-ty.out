@@ -96,6 +96,7 @@ where
     let _0: (); // return
     let _closure: closure<F, Clause1_Repr>[TraitClause0, TraitClause1]; // local
 
+    storage_live(_0)
     _0 = ()
     storage_live(_closure)
     _closure = closure {  }
@@ -109,11 +110,14 @@ unsafe fn drop_glue<'_0, F, Clause1_Repr>(_1: &'_0 mut closure<F, Clause1_Repr>[
 where
     TraitClause0: (F: Sized),
     TraitClause1: (F: PrimeField<Clause1_Repr>),
+    TypeOutlives0: F: '_0,
 {
     let _0: (); // return
     let _1: &'1 mut closure<F, Clause1_Repr>[TraitClause0, TraitClause1]; // arg #1
 
+    storage_live(_0)
     _0 = ()
+    storage_dead(_1)
     return
 }
 
@@ -122,16 +126,21 @@ fn call<'_0, F, Clause1_Repr>(_1: &'_0 closure<F, Clause1_Repr>[TraitClause0, Tr
 where
     TraitClause0: (F: Sized),
     TraitClause1: (F: PrimeField<Clause1_Repr>),
+    TypeOutlives0: F: '_0,
 {
     let _0: (); // return
     let _1: &'1 closure<F, Clause1_Repr>[TraitClause0, TraitClause1]; // arg #1
     let tupled_args: ((),); // arg #2
     let _x: (); // local
 
+    storage_live(_0)
     storage_live(_x)
     _0 = ()
     _x = move tupled_args.0
     _0 = ()
+    storage_dead(_x)
+    storage_dead(tupled_args)
+    storage_dead(_1)
     return
 }
 
@@ -140,16 +149,25 @@ fn call_mut<'_0, F, Clause1_Repr>(state: &'_0 mut closure<F, Clause1_Repr>[Trait
 where
     TraitClause0: (F: Sized),
     TraitClause1: (F: PrimeField<Clause1_Repr>),
+    TypeOutlives0: F: '_0,
 {
     let _0: (); // return
     let state: &'_0 mut closure<F, Clause1_Repr>[TraitClause0, TraitClause1]; // arg #1
     let args: ((),); // arg #2
     let _3: &'0 closure<F, Clause1_Repr>[TraitClause0, TraitClause1]; // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(_3)
     _3 = &(*state)
     _0 = call<'2, F, Clause1_Repr>[TraitClause0, TraitClause1](move _3, move args)
+    ↳⚡ storage_dead(_3)
+        storage_dead(args)
+        storage_dead(state)
+        unwind_continue
+    storage_dead(_3)
+    storage_dead(args)
+    storage_dead(state)
     return
 }
 
@@ -164,11 +182,28 @@ where
     let _2: ((),); // arg #2
     let _3: &'1 mut closure<F, Clause1_Repr>[TraitClause0, TraitClause1]; // anonymous local
 
+    storage_live(_0)
     storage_live(_3)
     _0 = ()
     _3 = &mut _1
     _0 = call_mut<'2, F, Clause1_Repr>[TraitClause0, TraitClause1](move _3, move _2)
+    ↳⚡ drop[drop_glue<'3, F, Clause1_Repr>[TraitClause0, TraitClause1]] _1
+        ↳⚡ storage_dead(_3)
+            storage_dead(_2)
+            storage_dead(_1)
+            unwind_terminate
+        storage_dead(_3)
+        storage_dead(_2)
+        storage_dead(_1)
+        unwind_continue
     drop[drop_glue<'4, F, Clause1_Repr>[TraitClause0, TraitClause1]] _1
+    ↳⚡ storage_dead(_3)
+        storage_dead(_2)
+        storage_dead(_1)
+        unwind_continue
+    storage_dead(_3)
+    storage_dead(_2)
+    storage_dead(_1)
     return
 }
 

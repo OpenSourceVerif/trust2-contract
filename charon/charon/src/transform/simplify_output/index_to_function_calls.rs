@@ -107,7 +107,10 @@ impl<'a, 'b> IndexVisitor<'a, 'b> {
                 args,
                 dest: output_var.clone(),
             };
-            let kind = StatementKind::Call(index_call);
+            let kind = StatementKind::Call {
+                call: index_call,
+                on_unwind: Block::new_unreachable(self.ctx.span),
+            };
             self.ctx
                 .statements
                 .push(Statement::new(self.ctx.span, kind));
@@ -272,8 +275,8 @@ impl LlbcPass for Transform {
                 Assign(..)
                 | SetDiscriminant(..)
                 | CopyNonOverlapping(_)
-                | Drop(..)
-                | Call(..)
+                | Drop { .. }
+                | Call { .. }
                 | Quant { .. } => {
                     let _ = visitor.visit_inner_with_mutability(st, true);
                 }
@@ -281,6 +284,7 @@ impl LlbcPass for Transform {
                     let _ = visitor.visit_inner_with_mutability(st, false);
                 }
                 Nop
+                | UnwindResume
                 | Error(..)
                 | InlineAsm { .. }
                 | Assert { .. }

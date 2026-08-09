@@ -32,11 +32,14 @@ pub fn insert<'_0, T>(self: &'_0 mut AVLTree<T>[TraitClause0])
 where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Ord),
+    TypeOutlives0: T: '_0,
 {
     let _0: (); // return
     let self: &'1 mut AVLTree<T>[TraitClause0]; // arg #1
 
+    storage_live(_0)
     _0 = ()
+    storage_dead(self)
     panic(core::panicking::panic)
 }
 
@@ -54,14 +57,18 @@ pub fn test(tree: AVLTree<u32>[{built_in impl Sized for u32}])
     let _2: (); // anonymous local
     let _3: &'1 mut AVLTree<u32>[{built_in impl Sized for u32}]; // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(_2)
     storage_live(_3)
     _3 = &two-phase-mut tree
     _2 = insert<'3, u32>[{built_in impl Sized for u32}, impl_Ord_for_u32](move _3)
+    ↳⚡ storage_dead(tree)
+        unwind_continue
     storage_dead(_3)
     storage_dead(_2)
     _0 = ()
+    storage_dead(tree)
     return
 }
 

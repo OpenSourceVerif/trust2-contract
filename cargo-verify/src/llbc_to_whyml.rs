@@ -1101,14 +1101,17 @@ impl<'a> Ctx<'a> {
             StatementKind::PlaceMention(place) => {
                 Ok(translate_place_mention(self, trailing_expr, place))
             }
-            StatementKind::Drop(..) => Ok(trailing_expr), // Hack
-            StatementKind::Assert { assert, on_failure } => {
-                translate_assert(self, trailing_expr, assert, on_failure)
-            }
+            StatementKind::Drop { .. } => Ok(trailing_expr), // Hack
+            StatementKind::Assert {
+                assert,
+                on_failure,
+                on_unwind: _,
+            } => translate_assert(self, trailing_expr, assert, on_failure),
             StatementKind::InlineAsm { .. } => Err(Error::InlineAsm),
-            StatementKind::Call(call) => translate_call(self, trailing_expr, call),
+            StatementKind::Call { call, on_unwind: _ } => translate_call(self, trailing_expr, call),
             StatementKind::Abort(abort_kind) => Ok(translate_abort(abort_kind)),
             StatementKind::Return => Ok(translate_return()),
+            StatementKind::UnwindResume => unreachable!(),
             StatementKind::Break(level) => Ok(translate_break(*level)),
             StatementKind::Continue(level) => Ok(translate_continue(*level)),
             StatementKind::Nop => unreachable!(),
@@ -1439,14 +1442,19 @@ impl<'a> Ctx<'a> {
             StatementKind::CopyNonOverlapping(..) => Err(Error::CopyNonOverlappingInSpec),
             StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => Ok(trailing_term),
             StatementKind::PlaceMention(_place) => Ok(trailing_term),
-            StatementKind::Drop(..) => Ok(trailing_term),
-            StatementKind::Assert { assert, on_failure } => {
-                translate_assert(self, trailing_term, assert, on_failure, in_locals)
-            }
+            StatementKind::Drop { .. } => Ok(trailing_term),
+            StatementKind::Assert {
+                assert,
+                on_failure,
+                on_unwind: _,
+            } => translate_assert(self, trailing_term, assert, on_failure, in_locals),
             StatementKind::InlineAsm { .. } => Err(Error::InlineAsm),
-            StatementKind::Call(call) => translate_call(self, trailing_term, call, in_locals),
+            StatementKind::Call { call, on_unwind: _ } => {
+                translate_call(self, trailing_term, call, in_locals)
+            }
             StatementKind::Abort(abort_kind) => Ok(translate_abort(abort_kind)),
             StatementKind::Return => Ok(self.translate_return_to_term(in_locals)),
+            StatementKind::UnwindResume => unreachable!(),
             StatementKind::Break(..) | StatementKind::Continue(..) | StatementKind::Loop(..) => {
                 Err(Error::LoopInSpec)
             }
