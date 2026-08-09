@@ -46,13 +46,16 @@ where
     TraitClause1: (P: Sized),
     TraitClause2: (P: HasAssoc<TraitClause0::Item>),
     TraitClause3: (Self: Exact),
+    TypeOutlives0: Self: '_0,
     TypeConstraint0: TraitClause2::Assoc = bool,
 {
     let _0: (); // return
     let self: &'1 Self; // arg #1
 
+    storage_live(_0)
     _0 = ()
     _0 = ()
+    storage_dead(self)
     return
 }
 
@@ -71,13 +74,16 @@ where
     TraitClause1: (P: Sized),
     TraitClause2: (P: HasAssoc<T>),
     TraitClause3: (Empty<T>[TraitClause0]: Exact),
+    TypeOutlives0: T: '_0,
     TypeConstraint0: TraitClause2::Assoc = bool,
 {
     let _0: (); // return
     let self: &'1 Empty<T>[TraitClause0]; // arg #1
 
+    storage_live(_0)
     _0 = ()
     _0 = ()
+    storage_dead(self)
     return
 }
 

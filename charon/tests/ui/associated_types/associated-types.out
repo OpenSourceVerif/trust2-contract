@@ -34,10 +34,16 @@ pub trait Clone<Self>
 // Full name: core::clone::impls::{impl Clone for &'_0 T}::clone
 #[lang_item("noop_method_clone")]
 pub fn {impl Clone for &'_0 T}::clone<'_0, '_1, T>(_1: &'_1 &'_0 T) -> &'_0 T
+where
+    TypeOutlives0: T: '_0,
+    RegionOutlives0: '_0: '_1,
 = <opaque>
 
 // Full name: core::clone::impls::{impl Clone for &'_0 T}
-impl<'_0, T> Clone for &'_0 T {
+impl<'_0, T> Clone for &'_0 T
+where
+    TypeOutlives0: T: '_0,
+{
     proof ImpliedClause0: (&'_0 T: Sized) = {built_in impl Sized for &'_0 T}
     fn clone<'_0_1> = {impl Clone for &'_0 T}::clone<'_0, '_0_1, T>
     non-dyn-compatible
@@ -53,7 +59,10 @@ pub trait Copy<Self>
 }
 
 // Full name: core::marker::{impl Copy for &'_0 T}
-impl<'_0, T> Copy for &'_0 T {
+impl<'_0, T> Copy for &'_0 T
+where
+    TypeOutlives0: T: '_0,
+{
     proof ImpliedClause0: (&'_0 T: MetaSized) = {built_in impl MetaSized for &'_0 T}
     proof ImpliedClause1: (&'_0 T: Clone) = {impl Clone for &'_0 T}<'_, T>
     non-dyn-compatible
@@ -83,6 +92,7 @@ where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Clone),
     TraitClause2: (T: Destruct),
+    TypeOutlives0: T: '_0,
 = <opaque>
 
 // Full name: core::option::{impl Clone for Option<T>[TraitClause0]}
@@ -140,7 +150,9 @@ where
     let _0: Clause0_Item; // return
     let x: Clause0_Item; // arg #1
 
+    storage_live(_0)
     _0 = copy x
+    storage_dead(x)
     return
 }
 
@@ -148,11 +160,14 @@ where
 fn {impl test_crate::Foo<'a, Option<&'a T>[{built_in impl Sized for &'a T}]> for &'a T}::use_item_required<'a, T>(x: Option<&'a T>[{built_in impl Sized for &'a T}]) -> Option<&'a T>[{built_in impl Sized for &'a T}]
 where
     TraitClause0: (T: Sized),
+    TypeOutlives0: T: 'a,
 {
     let _0: Option<&'6 T>[{built_in impl Sized for &'6 T}]; // return
     let x: Option<&'9 T>[{built_in impl Sized for &'9 T}]; // arg #1
 
+    storage_live(_0)
     _0 = copy x
+    storage_dead(x)
     return
 }
 
@@ -161,11 +176,14 @@ fn {impl test_crate::Foo<'a, Option<&'a T>[{built_in impl Sized for &'a T}]> for
 where
     TraitClause0: (T: Sized),
     TraitClause1: (Option<&'a T>[{built_in impl Sized for &'a T}]: test_crate::Foo<'a, Clause1_Item>),
+    TypeOutlives0: T: 'a,
 {
     let _0: Option<&'a T>[{built_in impl Sized for &'a T}]; // return
     let x: Option<&'a T>[{built_in impl Sized for &'a T}]; // arg #1
 
+    storage_live(_0)
     _0 = copy x
+    storage_dead(x)
     return
 }
 
@@ -173,6 +191,7 @@ where
 impl<'a, T> test_crate::Foo<'a, Option<&'a T>[{built_in impl Sized for &'a T}]> for &'a T
 where
     TraitClause0: (T: Sized),
+    TypeOutlives0: T: 'a,
 {
     proof ImpliedClause0: (&'a T: MetaSized) = {built_in impl MetaSized for &'a T}
     proof ImpliedClause1: (&'a T: Copy) = {impl Copy for &'_0 T}<'_, T>
@@ -193,7 +212,9 @@ where
     let _0: T; // return
     let x: T; // arg #1
 
+    storage_live(_0)
     _0 = copy x
+    storage_dead(x)
     return
 }
 
@@ -208,7 +229,9 @@ where
     let _0: T; // return
     let x: T; // arg #1
 
+    storage_live(_0)
     _0 = copy x
+    storage_dead(x)
     return
 }
 
@@ -241,16 +264,22 @@ where
     let _3: Clause1_Item; // anonymous local
     let _4: Clause1_Item; // anonymous local
 
+    storage_live(_0)
     storage_live(_2)
     storage_live(_3)
     storage_live(_4)
     _4 = copy x
     _3 = TraitClause1::use_item_provided<Clause2_Item>[TraitClause2](move _4)
+    ↳⚡ storage_dead(x)
+        unwind_continue
     _2 = &_3
     storage_dead(_4)
     _0 = TraitClause2::ImpliedClause1::ImpliedClause1::clone<'17>(move _2)
+    ↳⚡ storage_dead(x)
+        unwind_continue
     storage_dead(_2)
     storage_dead(_3)
+    storage_dead(x)
     return
 }
 
@@ -261,11 +290,13 @@ fn call_fn()
     let _1: Option<&'6 bool>[{built_in impl Sized for &'6 bool}]; // anonymous local
     let _2: Option<&'9 bool>[{built_in impl Sized for &'9 bool}]; // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(_1)
     storage_live(_2)
     _2 = Option::None {  }
     _1 = external_use_item<'19, &'19 bool, Option<&'19 bool>[{built_in impl Sized for &'19 bool}], &'19 bool>[{built_in impl Sized for &'19 bool}, {impl test_crate::Foo<'a, Option<&'a T>[{built_in impl Sized for &'a T}]> for &'a T}<'19, bool>[{built_in impl Sized for bool}], impl_Foo_for_Option<'19, &'19 bool>[{built_in impl Sized for &'19 bool}, {impl Copy for &'_0 T}<'19, bool>]](move _2)
+    ↳⚡ unwind_continue
     storage_dead(_2)
     storage_dead(_1)
     _0 = ()
@@ -283,8 +314,12 @@ where
     let _0: Clause2_Item; // return
     let x: Clause2_Item; // arg #1
 
+    storage_live(_0)
     _0 = move x
     conditional_drop[{built_in impl Destruct for Clause2_Item}::drop_glue<'5>] x
+    ↳⚡ storage_dead(x)
+        unwind_continue
+    storage_dead(x)
     return
 }
 

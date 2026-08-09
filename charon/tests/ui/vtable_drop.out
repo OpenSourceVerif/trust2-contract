@@ -65,6 +65,8 @@ where
     TraitClause1: (A: Sized),
     TraitClause2: (T: Destruct),
     TraitClause3: (A: Destruct),
+    TypeOutlives0: T: '_0,
+    TypeOutlives1: A: '_0,
 = <opaque>
 
 // Full name: alloc::boxed::Box::{impl Destruct for alloc::boxed::Box<T>[TraitClause0, TraitClause1, TraitClause2, TraitClause3]}
@@ -104,6 +106,7 @@ where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Clone),
     TraitClause2: (T: Destruct),
+    TypeOutlives0: T: '_1,
 {
     let _0: T; // return
     let self: &'1 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]; // arg #1
@@ -114,6 +117,7 @@ where
     let _6: alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]; // anonymous local
     let _7: alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]; // anonymous local
 
+    storage_live(_0)
     storage_live(_3)
     storage_live(_5)
     storage_live(_6)
@@ -122,12 +126,26 @@ where
     _3 = copy (*_5) checked.+ const 1i32
     _6 = copy (*self)
     assert(move _3.1 == false) (overflow) else panic
+    ↳⚡ unwind_continue
     _7 = copy (*self)
     (*_7) = move _3.0
     storage_live(_4)
     _4 = &(*arg)
     _0 = TraitClause1::clone<'5>(move _4)
+    ↳⚡ storage_dead(_7)
+        storage_dead(_6)
+        storage_dead(_5)
+        storage_dead(_3)
+        storage_dead(arg)
+        storage_dead(self)
+        unwind_continue
     storage_dead(_4)
+    storage_dead(_7)
+    storage_dead(_6)
+    storage_dead(_5)
+    storage_dead(_3)
+    storage_dead(arg)
+    storage_dead(self)
     return
 }
 
@@ -137,15 +155,25 @@ where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Clone),
     TraitClause2: (T: Destruct),
+    TypeOutlives0: T: '_0,
+    TypeOutlives1: T: '_1,
 {
     let _0: T; // return
     let _1: &'_0 mut (dyn Modifiable<T> + '0); // arg #1
     let _2: &'_1 T; // arg #2
     let _3: &'_0 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]; // anonymous local
 
+    storage_live(_0)
     storage_live(_3)
     _3 = concretize<&'_0 mut (dyn Modifiable<T> + '1), &'_0 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]>(move _1)
     _0 = modify<'_0, '_1, T>[TraitClause0, TraitClause1, TraitClause2](move _3, move _2)
+    ↳⚡ storage_dead(_3)
+        storage_dead(_2)
+        storage_dead(_1)
+        unwind_continue
+    storage_dead(_3)
+    storage_dead(_2)
+    storage_dead(_1)
     return
 }
 
@@ -155,15 +183,22 @@ where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Clone),
     TraitClause2: (T: Destruct),
+    TypeOutlives0: T: '_0,
 {
     let ret: (); // return
     let dyn_self: &'_0 mut (dyn Modifiable<T> + '0); // arg #1
     let target_self: &'_0 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]; // local
 
+    storage_live(ret)
     ret = ()
     storage_live(target_self)
     target_self = concretize<&'_0 mut (dyn Modifiable<T> + '1), &'_0 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]>(move dyn_self)
     drop[impl_Destruct_for_Box::drop_glue<'3, i32, Global>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]] (*target_self)
+    ↳⚡ storage_dead(target_self)
+        storage_dead(dyn_self)
+        unwind_continue
+    storage_dead(target_self)
+    storage_dead(dyn_self)
     return
 }
 
@@ -180,6 +215,7 @@ where
     let _3: unsafe fn<'_0_1>(&'_0_1 mut (dyn Modifiable<T> + '1)); // anonymous local
     let _4: fn<'_0_1, '_1_1>(&'_0_1 mut (dyn Modifiable<T> + '4), &'_1_1 T) -> T; // anonymous local
 
+    storage_live(ret)
     storage_live(size)
     size = size_of<alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]>
     storage_live(align)
@@ -221,6 +257,7 @@ where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Clone),
     TraitClause2: (T: Destruct),
+    TypeOutlives0: T: '_0,
 {
     let _0: T; // return
     let arg: &'1 T; // arg #1
@@ -231,11 +268,14 @@ where
     let _6: &'10 mut (dyn Modifiable<T> + '11); // anonymous local
     let _7: &'12 T; // anonymous local
 
+    storage_live(_0)
     storage_live(x)
     storage_live(_3)
     storage_live(_4)
     storage_live(_5)
     _5 = @BoxNew<i32>[{built_in impl Sized for i32}, {built_in impl Destruct for i32}](const 199i32)
+    ↳⚡ storage_dead(arg)
+        unwind_continue
     _4 = &mut _5
     _3 = &mut (*_4)
     x = unsize_cast<&'8 mut alloc::boxed::Box<i32>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global], &'13 mut (dyn Modifiable<T> + '14), &impl_Modifiable_for_Box_i32_Global::{vtable}<T>[TraitClause0, TraitClause1, TraitClause2]>(move _3)
@@ -246,11 +286,19 @@ where
     storage_live(_7)
     _7 = &(*arg)
     _0 = (copy ((*_6.metadata)).method_modify)(move _6, move _7)
+    ↳⚡ drop[impl_Destruct_for_Box::drop_glue<'20, i32, Global>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]] _5
+        ↳⚡ storage_dead(arg)
+            unwind_terminate
+        storage_dead(arg)
+        unwind_continue
     storage_dead(_7)
     storage_dead(_6)
     drop[impl_Destruct_for_Box::drop_glue<'21, i32, Global>[{built_in impl MetaSized for i32}, {built_in impl Sized for Global}, {built_in impl Destruct for i32}, impl_Destruct_for_Global]] _5
+    ↳⚡ storage_dead(arg)
+        unwind_continue
     storage_dead(_5)
     storage_dead(x)
+    storage_dead(arg)
     return
 }
 
@@ -272,6 +320,7 @@ fn main()
     _7 = const 42i32
     _6 = &_7
     _5 = move _6
+    storage_live(_0)
     storage_live(_4)
     _0 = ()
     storage_live(_1)
@@ -281,10 +330,16 @@ fn main()
     _3 = &(*_4)
     _2 = &(*_3)
     _1 = modify_trait_object<'6, i32>[{built_in impl Sized for i32}, impl_Clone_for_i32, {built_in impl Destruct for i32}](move _2)
+    ↳⚡ storage_dead(_4)
+        unwind_continue
     storage_dead(_2)
     storage_dead(_3)
     storage_dead(_1)
     _0 = ()
+    storage_dead(_4)
+    storage_dead(_7)
+    storage_dead(_6)
+    storage_dead(_5)
     return
 }
 

@@ -66,6 +66,7 @@ pub fn try_from<'_0, T, const N : usize>(_1: &'_0 [T]) -> Result<[T; N], TryFrom
 where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Copy),
+    TypeOutlives0: T: '_0,
 = <opaque>
 
 // Full name: core::array::{impl TryFrom<&'_0 [T]> for [T; N]}
@@ -73,6 +74,7 @@ impl<'_0, T, const N : usize> "impl_TryFrom_for_array" TryFrom<&'_0 [T]> for [T;
 where
     TraitClause0: (T: Sized),
     TraitClause1: (T: Copy),
+    TypeOutlives0: T: '_0,
 {
     proof ImpliedClause0: ([T; N]: Sized) = {built_in impl Sized for [T; N]}
     proof ImpliedClause1: (&'_0 [T]: Sized) = {built_in impl Sized for &'_0 [T]}
@@ -125,17 +127,23 @@ pub fn trait_error<'_0>(s: &'_0 [u8])
     let _3: Result<[u8; 4usize], TryFromSliceError>[{built_in impl Sized for [u8; 4usize]}, {built_in impl Sized for TryFromSliceError}]; // anonymous local
     let _4: &'2 [u8]; // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(_array)
     storage_live(_3)
     storage_live(_4)
     _4 = &(*s) with_metadata(copy s.metadata)
     _3 = try_into<&'4 [u8], [u8; 4usize]>[{built_in impl Sized for &'4 [u8]}, {built_in impl Sized for [u8; 4usize]}, impl_TryFrom_for_array<'4, u8, 4usize>[{built_in impl Sized for u8}, impl_Copy_for_u8]](move _4)
+    ↳⚡ storage_dead(s)
+        unwind_continue
     storage_dead(_4)
     _array = unwrap<[u8; 4usize], TryFromSliceError>[{built_in impl Sized for [u8; 4usize]}, {built_in impl Sized for TryFromSliceError}, impl_Debug_for_TryFromSliceError](move _3)
+    ↳⚡ storage_dead(s)
+        unwind_continue
     storage_dead(_3)
     _0 = ()
     storage_dead(_array)
+    storage_dead(s)
     return
 }
 

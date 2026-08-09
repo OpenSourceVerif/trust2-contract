@@ -71,20 +71,25 @@ pub fn call<'_0, F>(self: &'_0 F)
 where
     TraitClause0: (F: Fn<(), ()>),
     TraitClause1: (F: Sized),
+    TypeOutlives0: F: '_0,
 {
     let _0: (); // return
     let self: &'1 F; // arg #1
     let _2: &'2 F; // anonymous local
     let _3: (); // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(_2)
     _2 = &(*self)
     storage_live(_3)
     _3 = ()
     _0 = TraitClause0::call<'3>(move _2, move _3)
+    ↳⚡ storage_dead(self)
+        unwind_continue
     storage_dead(_3)
     storage_dead(_2)
+    storage_dead(self)
     return
 }
 
@@ -106,6 +111,7 @@ pub fn use_foo()
 {
     let _0: (); // return
 
+    storage_live(_0)
     _0 = ()
     _0 = ()
     return

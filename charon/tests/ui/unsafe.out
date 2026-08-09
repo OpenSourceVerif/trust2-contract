@@ -135,6 +135,7 @@ pub fn hash<'_0, '_1, H>(_1: &'_0 (), _2: &'_1 mut H)
 where
     TraitClause0: (H: Sized),
     TraitClause1: (H: Hasher),
+    TypeOutlives0: H: '_1,
 = <opaque>
 
 // Full name: core::hash::impls::{impl Hash for ()}
@@ -209,13 +210,16 @@ fn call_unsafe_fn()
     let _2: u32; // anonymous local
     let _3: *const u32; // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(x)
     x = null<u32>[{impl#1}<u32>[{built_in impl Pointee for u32 where Metadata  = ()}]]()
+    ↳⚡ unwind_continue
     storage_live(_2)
     storage_live(_3)
     _3 = copy x
     _2 = read<u32>[{built_in impl Sized for u32}](move _3)
+    ↳⚡ unwind_continue
     storage_dead(_3)
     storage_dead(_2)
     _0 = ()
@@ -230,9 +234,11 @@ fn deref_raw_ptr()
     let x: *const u32; // local
     let _2: u32; // anonymous local
 
+    storage_live(_0)
     _0 = ()
     storage_live(x)
     x = null<u32>[{impl#1}<u32>[{built_in impl Pointee for u32 where Metadata  = ()}]]()
+    ↳⚡ unwind_continue
     storage_live(_2)
     _2 = copy (*x)
     storage_dead(_2)
@@ -259,6 +265,7 @@ fn COUNTER() -> usize
 {
     let _0: usize; // return
 
+    storage_live(_0)
     _0 = const 0usize
     return
 }
@@ -274,6 +281,7 @@ fn access_mutable_static()
     let _2: usize; // anonymous local
     let _3: *mut usize; // anonymous local
 
+    storage_live(_0)
     storage_live(_2)
     _0 = ()
     storage_live(_1)
@@ -284,6 +292,8 @@ fn access_mutable_static()
     (*_1) = move _2
     storage_dead(_1)
     _0 = ()
+    storage_dead(_2)
+    storage_dead(_3)
     return
 }
 
@@ -300,6 +310,7 @@ fn access_union_field()
     let one: Foo; // local
     let _two: [u32; 2usize]; // local
 
+    storage_live(_0)
     _0 = ()
     storage_live(one)
     one = Foo { one: const 42u64 }
@@ -315,8 +326,10 @@ fn test_crate::assume()
 {
     let _0: (); // return
 
+    storage_live(_0)
     _0 = ()
     _0 = core::intrinsics::assume(const true)
+    ↳⚡ unwind_continue
     return
 }
 
