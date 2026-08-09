@@ -9,7 +9,7 @@ use std::{
     path::Path,
     process::{Command, Stdio},
     thread,
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 pub fn verify_crates(
@@ -30,6 +30,8 @@ fn verify_crate(
     provers: &[String],
     why3_extra_config_path: &Path,
 ) -> Result<()> {
+    let now = Instant::now();
+
     let whyml_path = why3_out_dir.join(format!("{crate_name}.mlw"));
     let mut child_processes: Vec<_> = provers
         .iter()
@@ -63,6 +65,7 @@ fn verify_crate(
         child_process.wait().unwrap();
     }
     let child_process = &mut child_processes[index];
+
     io::copy(
         child_process.stdout.as_mut().unwrap(),
         &mut io::stderr().lock(),
@@ -70,8 +73,9 @@ fn verify_crate(
     .unwrap();
     if child_process.wait().unwrap().success() {
         eprintln!(
-            "{:>12} {crate_name}",
+            "{:>12} {crate_name} in {}",
             "Verified".green().bold().whenever(STDERR_IS_TTY_AND_COLOR),
+            utils::elapsed(now.elapsed()),
         );
         Ok(())
     } else {

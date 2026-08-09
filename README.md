@@ -30,19 +30,19 @@ fn square(x: u8) -> u8 {
 Verification result:
 
 ```
-File /tmp/.tmpZXfLN1/trust2_contract_example.mlw:
+File /tmp/.tmpMpQwkO/trust2_contract_example.mlw:
 Goal max''_trust2_contract_example'vc.
-Prover result is: Valid (0.04s, 190 steps).
+Prover result is: Valid (0.02s, 190 steps).
 
-File /tmp/.tmpZXfLN1/trust2_contract_example.mlw:
+File /tmp/.tmpMpQwkO/trust2_contract_example.mlw:
 Goal strict_sub''_trust2_contract_example'vc.
-Prover result is: Valid (0.06s, 450 steps).
+Prover result is: Valid (0.04s, 450 steps).
 
-File /tmp/.tmpZXfLN1/trust2_contract_example.mlw:
+File /tmp/.tmpMpQwkO/trust2_contract_example.mlw:
 Goal square''_trust2_contract_example'vc.
 Prover result is: Valid (0.04s, 302 steps).
 
-    Verified trust2_contract_example
+    Verified trust2_contract_example in 0.76s
 ```
 
 ## Requirements
