@@ -1,22 +1,19 @@
 use trust2_contract::prelude::*;
 
-#[expect(dead_code)]
 #[precondition(x < 16)]
 #[postcondition(|x2| x2 >= x)]
-fn square(x: u8) -> u8 {
+pub fn square(x: u8) -> u8 {
     x * x
 }
 
-#[expect(dead_code)]
 #[invariant(self.start <= self.end)]
-struct RefRange<'a, T: PartialOrd> {
-    start: &'a T,
-    end: &'a T,
+pub struct RefRange<'a, T: PartialOrd> {
+    pub start: &'a T,
+    pub end: &'a T,
 }
 
-#[expect(dead_code)]
 #[postcondition(|b| forall!(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1])))]
-fn to_sorted<T: Ord + Clone>(a: &[T]) -> Vec<T> {
+pub fn to_sorted<T: Ord + Clone>(a: &[T]) -> Vec<T> {
     if a.len() <= 1 {
         return a.into();
     }

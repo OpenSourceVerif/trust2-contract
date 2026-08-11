@@ -164,8 +164,8 @@ static CRATE_NAME: LazyLock<String> = {
 
     LazyLock::new(|| match proc_macro_crate::crate_name("trust2-contract") {
         Ok(FoundCrate::Name(name)) => name,
-        Ok(_) => unreachable!(),
-        Err(_) => panic!(),
+        Ok(_) => "trust2_contract".into(),
+        Err(_) => unreachable!(),
     })
 };
 

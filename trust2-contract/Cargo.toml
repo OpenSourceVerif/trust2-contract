@@ -3,6 +3,10 @@ name = "trust2-contract"
 version = "0.1.0"
 edition = "2024"
 
+[[example]]
+name = "simple"
+crate-type = ["lib"]
+
 [features]
 verify = ["trust2-contract-macros/verify"]
 
