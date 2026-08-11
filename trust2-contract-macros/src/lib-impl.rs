@@ -1,5 +1,7 @@
 use proc_macro::TokenStream;
 
+mod r#impl;
+
 #[proc_macro_attribute]
 pub fn precondition(attr: TokenStream, item: TokenStream) -> TokenStream {
     r#impl::precondition(attr.into(), item.into()).into()
@@ -23,4 +25,14 @@ pub fn contract_assert(expr: TokenStream) -> TokenStream {
 #[proc_macro]
 pub fn contract_assume(expr: TokenStream) -> TokenStream {
     r#impl::contract_assume(expr.into()).into()
+}
+
+#[proc_macro]
+pub fn forall(expr: TokenStream) -> TokenStream {
+    r#impl::forall(expr.into()).into()
+}
+
+#[proc_macro]
+pub fn exists(expr: TokenStream) -> TokenStream {
+    r#impl::exists(expr.into()).into()
 }

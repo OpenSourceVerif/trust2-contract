@@ -24,3 +24,13 @@ pub fn contract_assert(_expr: TokenStream) -> TokenStream {
 pub fn contract_assume(_expr: TokenStream) -> TokenStream {
     TokenStream::new()
 }
+
+#[proc_macro]
+pub fn forall(_expr: TokenStream) -> TokenStream {
+    TokenStream::new()
+}
+
+#[proc_macro]
+pub fn exists(_expr: TokenStream) -> TokenStream {
+    TokenStream::new()
+}
