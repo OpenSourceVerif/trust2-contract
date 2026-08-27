@@ -1,6 +1,12 @@
 [workspace]
 resolver = "3"
-members = ["cargo-verify", "trust2-contract", "trust2-contract-macros", "utils"]
+members = [
+    "cargo-verify",
+    "examples/readme",
+    "trust2-contract",
+    "trust2-contract-macros",
+    "utils",
+]
 exclude = [
     "charon/charon",
     "charon-bin-interface",

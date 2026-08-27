@@ -119,7 +119,38 @@ Do not continue until `list-provers` shows at least one of `Alt-Ergo`, `CVC4`,
 the [Why3 prover configuration documentation](https://why3.org/doc/manpages.html#the-config-command)
 and `why3 config list-supported-provers` if detection fails.
 
+## Build and verify with Make
+
+The repository includes a `Makefile` that automates the project-specific setup
+described above. Install `rustup` and `opam`, and create or select an opam switch,
+before running it.
+
+Install the Rust components pinned by `rust-toolchain.toml`, Why3 1.8.2,
+Alt-Ergo 2.6.2, and the local `cargo-verify` binaries:
+
+```sh
+make build
+```
+
+Verify the independent `examples/readme` package. It consumes `trust2-contract`
+through a path dependency, just like the target-project setup below:
+
+```sh
+make verify
+```
+
+Run `make help` to list the available commands. The package and prover versions
+can be overridden when needed, for example:
+
+```sh
+make build WHY3_VERSION=1.8.2 ALT_ERGO_VERSION=2.6.2
+make verify PROVER=Alt-Ergo,2.6.2
+```
+
 ## Install `cargo verify`
+
+The following is the equivalent manual installation method if you do not want to
+use the `Makefile`.
 
 From the root of this repository:
 

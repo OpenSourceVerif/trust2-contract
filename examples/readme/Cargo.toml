@@ -1,0 +1,8 @@
+[package]
+name = "trust2-contract-example"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+trust2-contract = { path = "../../trust2-contract" }
