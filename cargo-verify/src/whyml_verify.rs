@@ -17,19 +17,13 @@ pub fn verify_crates(
     crates: &HashMap<String, TranslatedCrate>,
     provers: &[String],
 ) -> Result<()> {
-    let why3_extra_config_path = why3_out_dir.join("trust2_contract/ext.conf");
     for crate_name in crates.keys() {
-        verify_crate(why3_out_dir, crate_name, provers, &why3_extra_config_path)?;
+        verify_crate(why3_out_dir, crate_name, provers)?;
     }
     Ok(())
 }
 
-fn verify_crate(
-    why3_out_dir: &Path,
-    crate_name: &String,
-    provers: &[String],
-    why3_extra_config_path: &Path,
-) -> Result<()> {
+fn verify_crate(why3_out_dir: &Path, crate_name: &String, provers: &[String]) -> Result<()> {
     let now = Instant::now();
 
     let whyml_path = why3_out_dir.join(format!("{crate_name}.mlw"));
@@ -44,8 +38,6 @@ fn verify_crate(
                     why3_out_dir.as_os_str(),
                     "--prover".as_ref(),
                     prover.as_ref(),
-                    "--extra-config".as_ref(),
-                    why3_extra_config_path.as_os_str(),
                     whyml_path.as_os_str(),
                 ])
                 .stdout(Stdio::piped())
