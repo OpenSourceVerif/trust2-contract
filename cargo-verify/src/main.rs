@@ -20,6 +20,20 @@ struct CliConfig {
     /// Provers to use. If not provided, Alt-Ergo, CVC5, and Z3 are used.
     #[arg(short = 'P', long = "prover", value_delimiter = ',')]
     provers: Vec<String>,
+    /// Extra arguments for `why3find config`
+    #[arg(
+        long = "why3find-config-arg",
+        value_name("WHY3FIND_CONFIG_ARG"),
+        allow_hyphen_values = true
+    )]
+    why3find_config_args: Vec<OsString>,
+    /// Extra arguments for `why3find prove`
+    #[arg(
+        long = "why3find-prove-arg",
+        value_name("WHY3FIND_PROVE_ARG"),
+        allow_hyphen_values = true
+    )]
+    why3find_prove_args: Vec<OsString>,
     /// Why3 output directory. If not provided, a temporary directory is used and then deleted.
     #[arg(long)]
     why3_out_dir: Option<PathBuf>,
@@ -29,7 +43,7 @@ struct CliConfig {
     /// Pretty-print Charon LLBC.
     #[arg(long)]
     charon_pretty_print: bool,
-    /// `cargo build` arguments
+    /// Extra arguments for `cargo build`
     #[arg(last(true), value_name("ARGS"))]
     cargo_build_args: Vec<OsString>,
 }
@@ -65,7 +79,13 @@ fn main() -> Result<()> {
                 config.provers.iter().map(String::as_str).collect()
             };
 
-            whyml_verify::verify_crates(&why3_out_dir, &crates, &provers)
+            whyml_verify::verify_crates(
+                &why3_out_dir,
+                &crates,
+                &provers,
+                &config.why3find_config_args,
+                &config.why3find_prove_args,
+            )
         },
         config.why3_out_dir,
     )?
@@ -117,6 +137,19 @@ mod tests {
             "cargo", "verify", "--prover", "Alt-Ergo", "--prover", "CVC5",
         ]);
         assert_eq!(config.provers, vec!["Alt-Ergo", "CVC5"]);
+    }
+
+    #[test]
+    fn cli_parse_why3find_args_hyphen() {
+        let Cli::Verify(config) = Cli::parse_from([
+            "cargo",
+            "verify",
+            "--why3find-prove-arg",
+            "-j",
+            "--why3find-prove-arg",
+            "8",
+        ]);
+        assert_eq!(config.why3find_prove_args, ["-j", "8"]);
     }
 
     #[test]

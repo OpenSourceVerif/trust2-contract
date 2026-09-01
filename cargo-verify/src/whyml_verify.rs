@@ -5,6 +5,7 @@ use yansi::Paint;
 
 use std::{
     collections::HashMap,
+    ffi::OsString,
     io::{self, Write},
     path::Path,
     process::Command,
@@ -15,6 +16,8 @@ pub fn verify_crates(
     why3_out_dir: &Path,
     crates: &HashMap<String, TranslatedCrate>,
     provers: &[&str],
+    why3find_config_args: &[OsString],
+    why3find_prove_args: &[OsString],
 ) -> Result<()> {
     let why3find_config_output = Command::new("why3find")
         .args([
@@ -24,6 +27,7 @@ pub fn verify_crates(
             "--prover".as_ref(),
             provers.join(",").as_ref(),
         ])
+        .args(why3find_config_args)
         .output()?;
     if !why3find_config_output.status.success() {
         io::stdout().write_all(&why3find_config_output.stdout)?;
@@ -31,12 +35,16 @@ pub fn verify_crates(
         bail!("`why3find config` failed");
     }
     for crate_name in crates.keys() {
-        verify_crate(why3_out_dir, crate_name)?;
+        verify_crate(why3_out_dir, crate_name, why3find_prove_args)?;
     }
     Ok(())
 }
 
-fn verify_crate(why3_out_dir: &Path, crate_name: &String) -> Result<()> {
+fn verify_crate(
+    why3_out_dir: &Path,
+    crate_name: &String,
+    why3find_prove_args: &[OsString],
+) -> Result<()> {
     let now = Instant::now();
     let why3find_prove_exit_status = Command::new("why3find")
         .args([
@@ -45,6 +53,7 @@ fn verify_crate(why3_out_dir: &Path, crate_name: &String) -> Result<()> {
             why3_out_dir.as_os_str(),
             format!("{crate_name}.mlw").as_ref(),
         ])
+        .args(why3find_prove_args)
         .stdout(io::stderr())
         .status()?;
     if why3find_prove_exit_status.success() {
