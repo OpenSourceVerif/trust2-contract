@@ -1,9 +1,11 @@
 # trust2-contract
-Contract-based design for Rust
+Contract-based design and static verification for Rust
+
+trust2-contract lets you attach preconditions, postconditions, type invariants, assertions, and assumptions to Rust code.
+
+Contracts are verified statically. In an ordinary build, contract annotations are simply removed.
 
 ## Example
-
-Source code:
 
 ```rs
 use trust2_contract::prelude::*;
@@ -30,49 +32,67 @@ pub fn square(x: u8) -> u8 {
 Verification result:
 
 ```
-File /tmp/.tmpMpQwkO/trust2_contract_example.mlw:
-Goal max''_trust2_contract_example'vc.
-Prover result is: Valid (0.02s, 190 steps).
-
-File /tmp/.tmpMpQwkO/trust2_contract_example.mlw:
-Goal strict_sub''_trust2_contract_example'vc.
-Prover result is: Valid (0.04s, 450 steps).
-
-File /tmp/.tmpMpQwkO/trust2_contract_example.mlw:
-Goal square''_trust2_contract_example'vc.
-Prover result is: Valid (0.04s, 302 steps).
-
-    Verified trust2_contract_example in 0.76s
+Entering directory '/tmp/.tmpj8g1QI'
+Theory trust2_contract_example.Top: ✔ (3)
+Proved (trust2_contract_example.mlw) ✔
+Leaving directory '/tmp/.tmpj8g1QI'
+    Verified trust2_contract_example in 2.19s
 ```
+
+## Platform Support
+
+- Linux AMD64
+- Linux ARM64
+- macOS AMD64
+- macOS ARM64
 
 ## Requirements
 
-1. [Why3](https://why3.org/)
+1. [opam](https://opam.ocaml.org/)
 
-   This project is tested with Why3 1.8.2.
+2. [Why3find](https://git.frama-c.com/pub/why3find) at d194f55801a3bf6c76eb835b4cf18897c565470c
 
-   Ensure that the `why3` command is added to PATH so that our program can call it.
+    1. Clone the Why3find repository at the specified commit.
 
-2. Install and register external automatic provers for Why3.
+        - For Git 2.49.0 or later:
 
-   This project supports
+            ```sh
+            git clone https://git.frama-c.com/pub/why3find.git --revision d194f55801a3bf6c76eb835b4cf18897c565470c
+            ```
 
-   - [Alt-Ergo](https://alt-ergo.ocamlpro.com/),
-   - [CVC4](https://cvc4.github.io/downloads.html),
-   - [cvc5](https://cvc5.github.io/downloads.html), and
-   - [Z3](https://github.com/Z3Prover/z3).
+        - For Git prior to 2.49.0:
 
-   Other provers may not work.
+            ```sh
+            git init why3find
+            cd why3find
+            git remote add origin https://git.frama-c.com/pub/why3find.git
+            git fetch origin d194f55801a3bf6c76eb835b4cf18897c565470c --depth 1
+            git switch --detach FETCH_HEAD
+            ```
 
-   To register provers in Why3, see https://why3.org/doc/manpages.html#the-config-command. The latest version of a prover may not be supported by Why3. You can check `provers-detection-data.conf` described in the link for supported versions.
+    2. From the root of the Why3find repository, install Why3find with:
+
+        ```sh
+        opam install .
+        ```
+
+    3. Ensure that the `why3find` executable can be accessed where our program is run.
+
+        See [Install OCaml](https://ocaml.org/install#linux_mac_bsd:~:text=Activate%20the%20opam,exec%20%2D%2D%20%5BCMD%5D) for information on how to access executables installed inside an opam switch.
+
+    4. Optionally, remove the Why3find repository after installation.
 
 ## Installation
 
-`cargo install --path ./cargo-verify`
+```sh
+cargo install --path ./cargo-verify
+```
+
+Note that this will automatically install the Rust toolchain pinned by `./rust-toolchain.toml`.
 
 ## Usage
 
-1. Copy `./rust-toolchain.toml` to your Cargo package/workspace root.
+1. (Recommended) Copy `./rust-toolchain.toml` to your Cargo package/workspace root.
 
 2. To specify contracts in source code, use the `trust2-contract` package.
 
