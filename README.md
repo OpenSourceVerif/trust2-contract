@@ -1,20 +1,9 @@
 # trust2-contract
-
-Contract-based deductive verification for Rust.
-
-`trust2-contract` lets you attach preconditions, postconditions, type invariants,
-assertions, and assumptions to Rust code. `cargo verify` translates the annotated
-Rust crate to Charon LLBC, converts LLBC to WhyML, and asks Why3 and an external
-automatic prover to discharge the generated verification conditions.
-
-```text
-Rust + contracts -> Charon LLBC -> WhyML -> Why3 -> automatic prover
-```
-
-Contracts are verification annotations, not runtime checks. In an ordinary Cargo
-build, the contract attributes are erased. Run `cargo verify` to check them.
+Contract-based design for Rust
 
 ## Example
+
+Source code:
 
 ```rs
 use trust2_contract::prelude::*;
@@ -36,14 +25,11 @@ fn strict_sub(a: u32, b: u32) -> u32 {
 fn square(x: u8) -> u8 {
     x * x
 }
-
-fn main(){
-}
 ```
 
-Example verification result:
+Verification result:
 
-```text
+```
 File /tmp/.tmpMpQwkO/trust2_contract_example.mlw:
 Goal max''_trust2_contract_example'vc.
 Prover result is: Valid (0.02s, 190 steps).
@@ -59,171 +45,51 @@ Prover result is: Valid (0.04s, 302 steps).
     Verified trust2_contract_example in 0.76s
 ```
 
-## Prerequisites
+## Requirements
 
-### 1. Rust and rustup
+1. [Why3](https://why3.org/)
 
-Install [rustup](https://rustup.rs/). This repository pins the required nightly
-toolchain and components in `rust-toolchain.toml`. Cargo/rustup will install them
-when needed.
+   This project is tested with Why3 1.8.2.
 
-The same file must also be present at the root of every Cargo package or workspace
-you want to verify; see [Set up a target project](#set-up-a-target-project).
+   Ensure that the `why3` command is added to PATH so that our program can call it.
 
-### 2. Why3
+2. Install and register external automatic provers for Why3.
 
-The verifier starts the `why3` executable directly, so it must be installed and
-available on `PATH`. This project is tested with **Why3 1.8.2**.
+   This project supports
 
-One way to install the tested version with [opam](https://opam.ocaml.org/) is:
+   - [Alt-Ergo](https://alt-ergo.ocamlpro.com/),
+   - [CVC4](https://cvc4.github.io/downloads.html),
+   - [cvc5](https://cvc5.github.io/downloads.html), and
+   - [Z3](https://github.com/Z3Prover/z3).
 
-```sh
-opam update
-opam install "why3=1.8.2"
-eval "$(opam env)"
-why3 --version
-```
+   Other provers may not work.
 
-The Rust dependency `why3-ptree` and the `.mlw` files embedded in this repository
-do not replace the Why3 executable. No Why3 IDE package is required.
+   To register provers in Why3, see https://why3.org/doc/manpages.html#the-config-command. The latest version of a prover may not be supported by Why3. You can check `provers-detection-data.conf` described in the link for supported versions.
 
-### 3. At least one automatic prover
+## Installation
 
-Why3 delegates proof obligations to an external prover. Install at least one of:
+`cargo install --path ./cargo-verify`
 
-- [Alt-Ergo](https://alt-ergo.ocamlpro.com/)
-- [CVC4](https://cvc4.github.io/downloads.html)
-- [cvc5](https://cvc5.github.io/)
-- [Z3](https://github.com/Z3Prover/z3)
+## Usage
 
-You do not need to install all four. For example, Alt-Ergo can be installed in the
-same opam switch as Why3:
+1. Copy `./rust-toolchain.toml` to your Cargo package/workspace root.
 
-```sh
-opam install "alt-ergo=2.6.2"
-eval "$(opam env)"
-```
+2. To specify contracts in source code, use the `trust2-contract` package.
 
-Alternatively, install Z3 or cvc5 using your operating system's package manager or
-the solver's official installation instructions.
+   Add `./trust2-contract` as a path dependency.
 
-After installing or upgrading a prover, register it with Why3:
+   Run `cargo doc --package trust2-contract --no-deps --open` for documentation.
 
-```sh
-why3 config detect
-why3 config list-provers
-```
+3. To verify contracts specified, use the `cargo verify` subcommand.
 
-Do not continue until `list-provers` shows at least one of `Alt-Ergo`, `CVC4`,
-`CVC5`, or `Z3`. Why3 may reject a solver version that it does not recognize. See
-the [Why3 prover configuration documentation](https://why3.org/doc/manpages.html#the-config-command)
-and `why3 config list-supported-provers` if detection fails.
-
-## Build and verify with Make
-
-The repository includes a `Makefile` that automates the project-specific setup
-described above. Install `rustup` and `opam`, and create or select an opam switch,
-before running it.
-
-Install the Rust components pinned by `rust-toolchain.toml`, Why3 1.8.2,
-Alt-Ergo 2.6.2, and the local `cargo-verify` binaries:
-
-```sh
-make build
-```
-
-Verify the independent `examples/readme` package. It consumes `trust2-contract`
-through a path dependency, just like the target-project setup below:
-
-```sh
-make verify
-```
-
-Run `make help` to list the available commands. The package and prover versions
-can be overridden when needed, for example:
-
-```sh
-make build WHY3_VERSION=1.8.2 ALT_ERGO_VERSION=2.6.2
-make verify PROVER=Alt-Ergo,2.6.2
-```
-
-## Install `cargo verify`
-
-The following is the equivalent manual installation method if you do not want to
-use the `Makefile`.
-
-From the root of this repository:
-
-```sh
-cargo install --path ./cargo-verify --locked
-cargo verify --help
-```
-
-This installs `cargo-verify` and its Charon driver in Cargo's binary directory,
-which normally is already on `PATH` when Rust was installed with rustup.
-
-## Set up a target project
-
-Assume this repository was cloned to `/path/to/trust2-contract` and the project to
-verify is `/path/to/my-project`.
-
-### 1. Use the pinned Rust toolchain
-
-Copy the toolchain file to the root of the target Cargo package or workspace:
-
-```sh
-cd /path/to/my-project
-cp /path/to/trust2-contract/rust-toolchain.toml ./rust-toolchain.toml
-```
-
-### 2. Add the contract package
-
-Add `trust2-contract` as a path dependency:
-
-```sh
-cargo add trust2-contract \
-  --path /path/to/trust2-contract/trust2-contract
-```
-
-eg:
-```bash
-cargo new package
-cd package
-cp ../rust-toolchain.toml ./rust-toolchain.toml
-cargo add --path <repo-root>/trust2-contract
-```
-
-### 3. Add contracts
-
-Import the prelude and annotate the code as shown in the example above.
-
-API documentation can be generated with:
-
-```sh
-cargo doc --package trust2-contract --no-deps --open
-```
-
-### 4. Verify
-
-Select a prover reported by `why3 config list-provers`. For example:
-
-```sh
-cargo verify --prover Alt-Ergo,2.6.2
-```
-
-Run `cargo verify --help` for all options.
+   Run `cargo verify --help` for help.
 
 ## Development
-
-The following opam packages are for developing this repository. They are not
-required merely to install or run `cargo verify`:
 
 ```sh
 opam switch create . 5.3.0
 opam install ocaml-lsp-server odoc ocamlformat.0.27.0 utop
 ```
-
-Set up repository maintenance remotes and hooks with:
 
 ```sh
 git config set core.hooksPath .git-hooks
@@ -237,7 +103,6 @@ git remote set-url proc-macro-crate --push no-push
 
 ### Charon
 
-If Charon depends on the `openssl` crate, additional system packages may be
-required. See the [`openssl` crate documentation](https://docs.rs/openssl/latest/openssl/#automatic).
+If Charon depends on the openssl crate, additional steps may be required to build. See [openssl - Rust](https://docs.rs/openssl/latest/openssl/#automatic).
 
-This project patches Charon without bumping its upstream version.
+This project patches Charon, but does not bump its version.
