@@ -2,6 +2,7 @@ use std::time::Duration;
 
 pub mod cargo;
 pub mod case;
+pub mod why3find_proof;
 pub mod yansi;
 
 // Excerpt from cargo.

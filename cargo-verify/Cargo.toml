@@ -3,6 +3,10 @@ name = "cargo-verify"
 version = "0.1.0"
 edition = "2024"
 
+[[test]]
+name = "end-to-end"
+harness = false
+
 [dependencies]
 charon = { path = "../charon/charon" }
 charon-bin-interface = { path = "../charon-bin-interface" }
@@ -19,6 +23,11 @@ itertools = "0.15.0"
 malachite = { version = "0.10.0", default-features = false, features = ["naturals_and_integers", "std"] }
 ocaml-format = "0.1.1"
 rustc_apfloat = "0.2.3"
-tempfile = "3.24.0"
+tempfile = "3.27.0"
 why3-ptree = "0.1.0"
 yansi = { version = "1.0.1", features = ["detect-tty", "detect-env"] }
+
+[dev-dependencies]
+libtest-mimic = "0.8.2"
+serde_json = "1.0.151"
+which = "8.0.6"

@@ -1,0 +1,7 @@
+exit status: ExitStatus(unix_wait_status(0))
+
+[simple]
+max''_simple: ✅
+square''_simple: ✅
+strict_sub''_simple: ✅
+

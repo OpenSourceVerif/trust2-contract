@@ -1,12 +1,12 @@
 use cargo_verify::{llbc_to_whyml, rust_to_llbc, whyml_verify};
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use clap::Parser;
 use clap_cargo::style::CLAP_STYLING;
 use utils::yansi::STDOUT_IS_TTY_AND_COLOR;
 use yansi::Paint;
 
-use std::{ffi::OsString, fs, path::PathBuf};
+use std::{ffi::OsString, path::PathBuf};
 
 #[derive(Parser)]
 #[command(bin_name("cargo"), styles(CLAP_STYLING), help_expected(true))]
@@ -51,9 +51,9 @@ struct CliConfig {
 fn main() -> Result<()> {
     let Cli::Verify(config) = Cli::parse();
 
-    let mut crates = run_with_dir(
-        |charon_out_dir| rust_to_llbc::translate_crates(&charon_out_dir, config.cargo_build_args),
-        config.charon_out_dir,
+    let mut crates = cargo_verify::run_with_dir(
+        |charon_out_dir| rust_to_llbc::translate_crates(charon_out_dir, config.cargo_build_args),
+        config.charon_out_dir.as_ref().map(PathBuf::as_ref),
     )??;
 
     if config.charon_pretty_print {
@@ -69,9 +69,9 @@ fn main() -> Result<()> {
         }
     }
 
-    run_with_dir(
+    cargo_verify::run_with_dir(
         |why3_out_dir| {
-            llbc_to_whyml::translate_crates(&mut crates, &why3_out_dir)?;
+            llbc_to_whyml::translate_crates(&mut crates, why3_out_dir)?;
 
             let provers = if config.provers.is_empty() {
                 vec!["alt-ergo", "cvc5", "z3"]
@@ -80,31 +80,15 @@ fn main() -> Result<()> {
             };
 
             whyml_verify::verify_crates(
-                &why3_out_dir,
+                why3_out_dir,
                 &crates,
                 &provers,
                 &config.why3find_config_args,
                 &config.why3find_prove_args,
             )
         },
-        config.why3_out_dir,
+        config.why3_out_dir.as_ref().map(PathBuf::as_ref),
     )?
-}
-
-fn run_with_dir<T>(f: impl FnOnce(PathBuf) -> T, dir: Option<PathBuf>) -> Result<T> {
-    Ok(if let Some(dir) = dir {
-        fs::create_dir_all(&dir)?;
-        f(dir)
-    } else {
-        let temp_dir = tempfile::tempdir()?;
-        let result = f(temp_dir.path().into());
-        let err_msg = format!(
-            "failed to delete temporary directory: {}",
-            temp_dir.path().display(),
-        );
-        temp_dir.close().context(err_msg)?;
-        result
-    })
 }
 
 #[cfg(test)]
