@@ -17,6 +17,7 @@ pub fn translate_crates(
 ) -> Result<HashMap<String, TranslatedCrate>> {
     let mut crates = HashMap::new();
 
+    // TODO: support workspace
     let feature_args: Box<dyn Iterator<Item = OsString>> = {
         let cargo_manifest_dir = cargo::cargo_manifest_dir()?;
         let cargo_manifest_dir = cargo_manifest_dir.into_os_string().into_string().unwrap();
