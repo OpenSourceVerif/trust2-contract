@@ -6,21 +6,30 @@ cd $(git rev-parse --show-toplevel)
 
 # `cargo clippy` runs `cargo check`, which may produce warnings.
 cargo clippy --all-targets --all-features -- --no-deps -D warnings
-# (
-#     cd proc-macro-crate
-#     cargo clippy --all-targets --all-features -- -D warnings
-# )
-(
-    cd charon/charon
-    cargo clippy --all-targets --all-features -- -D warnings
-)
+for dir in \
+    charon/charon \
+    cargo-verify/tests/end-to-end/* \
+    examples/* \
+; do
+    if [ -d "$dir" ]; then
+        (
+            cd "$dir"
+            cargo clippy --all-targets --all-features -- -D warnings
+        )
+    fi
+done
 
-cargo fmt --check
-(
-    cd proc-macro-crate
-    cargo fmt --all --check
-)
-(
-    cd charon/charon
-    cargo fmt --all --check
-)
+for dir in \
+    . \
+    proc-macro-crate \
+    charon/charon \
+    cargo-verify/tests/end-to-end/* \
+    examples/* \
+; do
+    if [ -d "$dir" ]; then
+        (
+            cd "$dir"
+            cargo fmt --check
+        )
+    fi
+done
