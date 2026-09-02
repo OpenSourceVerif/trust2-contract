@@ -1,8 +1,9 @@
+[workspace]
+
 [package]
-name = "trust2-contract-example"
+name = "readme"
 version = "0.1.0"
 edition = "2024"
-publish = false
 
 [dependencies]
-trust2-contract = { path = "../../trust2-contract" }
+trust2-contract = { version = "0.1.0", path = "../../trust2-contract" }
