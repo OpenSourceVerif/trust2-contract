@@ -2017,13 +2017,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "trust2-contract-example"
-version = "0.1.0"
-dependencies = [
- "trust2-contract",
-]
-
-[[package]]
 name = "trust2-contract-macros"
 version = "0.1.0"
 dependencies = [

@@ -2,14 +2,15 @@
 resolver = "3"
 members = [
     "cargo-verify",
-    "examples/readme",
     "trust2-contract",
     "trust2-contract-macros",
     "utils",
 ]
 exclude = [
+    "cargo-verify/tests/end-to-end/*",
     "charon/charon",
     "charon-bin-interface",
     "charon-driver-bin-interface",
+    "examples/*",
     "proc-macro-crate",
 ]
