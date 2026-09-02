@@ -31,7 +31,8 @@ impl From<io::Error> for Error {
 
 pub fn cargo_manifest_path() -> Result<PathBuf, Error> {
     let output = Command::new(env::var_os("CARGO").unwrap_or("cargo".into()))
-        .args(["locate-project", "--message-format", "plain"])
+        .arg("locate-project")
+        .args(["--message-format", "plain"])
         .stderr(Stdio::inherit())
         .output()?;
     if output.status.success() {

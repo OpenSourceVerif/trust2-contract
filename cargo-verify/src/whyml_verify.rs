@@ -20,8 +20,8 @@ pub fn verify_crates(
     why3find_prove_args: &[OsString],
 ) -> Result<()> {
     let why3find_config_output = Command::new("why3find")
+        .arg("config")
         .args([
-            "config".as_ref(),
             "--root".as_ref(),
             why3_out_dir.as_os_str(),
             "--prover".as_ref(),
@@ -47,8 +47,8 @@ fn verify_crate(
 ) -> Result<()> {
     let now = Instant::now();
     let why3find_prove_exit_status = Command::new("why3find")
+        .arg("prove")
         .args([
-            "prove".as_ref(),
             "--root".as_ref(),
             why3_out_dir.as_os_str(),
             format!("{crate_name}.mlw").as_ref(),
