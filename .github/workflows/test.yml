@@ -1,0 +1,49 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+env: 
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        VM:
+          - ubuntu-latest
+          - ubuntu-24.04-arm
+          - macos-26-intel
+          - macos-latest
+
+    runs-on: ${{ matrix.VM }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Rust toolchain
+        id: set-up-rust-toolchain
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+        background: true
+
+      - name: Set up OCaml
+        uses: ocaml/setup-ocaml@v3
+        with:
+          ocaml-compiler: "5.4.1"
+
+      - name: Install Why3find
+        run: |
+          git clone https://git.frama-c.com/pub/why3find.git --revision d194f55801a3bf6c76eb835b4cf18897c565470c "$RUNNER_TEMP/why3find"
+          opam install "$RUNNER_TEMP/why3find" --yes
+
+      - name: Wait for "Set up Rust toolchain"
+        wait: [set-up-rust-toolchain]
+
+      - name: Run tests
+        run: cargo test --all-features --verbose
