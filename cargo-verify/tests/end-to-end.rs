@@ -3,9 +3,10 @@ use utils::why3find_proof::ProofFile;
 
 use std::{
     env,
+    ffi::OsStr,
     fs::{self, File},
-    io::{self, Write},
-    path::PathBuf,
+    io,
+    path::{Path, PathBuf},
     process::{Command, ExitCode, Stdio},
 };
 
@@ -32,10 +33,23 @@ fn main() -> Result<ExitCode, io::Error> {
 }
 
 fn run_test(root_path: PathBuf) -> Result<(), Failed> {
-    let mut result_file = File::create(root_path.join("result.txt"))?;
+    let result_path = root_path.join("result.txt");
+    if !(option_env!("CI") == Some("true")) {
+        let result_file = File::create(result_path)?;
+        generate_result(&root_path, result_file)
+    } else {
+        let expected = fs::read(result_path)?;
+        let mut actual = Vec::new();
+        generate_result(&root_path, &mut actual)?;
+        similar_asserts::assert_eq!(expected: expected, actual: actual);
+        Ok(())
+    }
+}
+
+fn generate_result(root_path: &Path, mut writer: impl io::Write) -> Result<(), Failed> {
     cargo_verify::run_with_temp_dir(|out_dir| {
         let exit_status = Command::new(env!("CARGO_BIN_EXE_cargo-verify"))
-            .current_dir(&root_path)
+            .current_dir(root_path)
             .arg("verify")
             .args([
                 "--why3-out-dir".as_ref(),
@@ -46,24 +60,21 @@ fn run_test(root_path: PathBuf) -> Result<(), Failed> {
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .status()?;
-        writeln!(result_file, "exit status: {exit_status:?}")?;
-        writeln!(result_file)?;
+        writeln!(writer, "exit status: {exit_status:?}")?;
+        writeln!(writer)?;
 
         for dir_entry in fs::read_dir(out_dir)? {
             let dir_entry = dir_entry?;
             let crate_mlw_path = dir_entry.path();
-            if crate_mlw_path
-                .extension()
-                .is_some_and(|extension| extension == "mlw")
-            {
+            if crate_mlw_path.extension() == Some(OsStr::new("mlw")) {
                 let crate_name = crate_mlw_path.file_stem().unwrap().to_str().unwrap();
-                writeln!(result_file, "[{crate_name}]")?;
+                writeln!(writer, "[{crate_name}]")?;
                 let proof_path = out_dir.join(format!("why3find.proofs/{crate_name}.json"));
                 let proof_string = fs::read_to_string(proof_path)?;
                 let proof_file: ProofFile = serde_json::from_str(&proof_string)?;
                 for (&goal, proof_cert) in &proof_file.proofs["Top"] {
                     writeln!(
-                        result_file,
+                        writer,
                         "{goal}: {}",
                         if proof_cert.is_complete() {
                             "✅"
@@ -72,7 +83,7 @@ fn run_test(root_path: PathBuf) -> Result<(), Failed> {
                         },
                     )?;
                 }
-                writeln!(result_file)?;
+                writeln!(writer)?;
             }
         }
 

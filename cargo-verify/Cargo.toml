@@ -30,4 +30,5 @@ yansi = { version = "1.0.1", features = ["detect-tty", "detect-env"] }
 [dev-dependencies]
 libtest-mimic = "0.8.2"
 serde_json = "1.0.151"
+similar-asserts = "2.0.0"
 which = "8.0.6"
