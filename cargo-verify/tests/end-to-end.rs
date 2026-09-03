@@ -51,16 +51,15 @@ fn run_test(root_path: PathBuf) -> Result<(), Failed> {
 
         for dir_entry in fs::read_dir(out_dir)? {
             let dir_entry = dir_entry?;
-            let mut crate_out_path = dir_entry.path();
-            if crate_out_path
+            let crate_mlw_path = dir_entry.path();
+            if crate_mlw_path
                 .extension()
                 .is_some_and(|extension| extension == "mlw")
             {
-                crate_out_path.set_extension("");
-                let crate_name = crate_out_path.file_name().unwrap().to_str().unwrap();
+                let crate_name = crate_mlw_path.file_stem().unwrap().to_str().unwrap();
                 writeln!(result_file, "[{crate_name}]")?;
-                crate_out_path.push("proof.json");
-                let proof_string = fs::read_to_string(crate_out_path)?;
+                let proof_path = out_dir.join(format!("why3find.proofs/{crate_name}.json"));
+                let proof_string = fs::read_to_string(proof_path)?;
                 let proof_file: ProofFile = serde_json::from_str(&proof_string)?;
                 for (&goal, proof_cert) in &proof_file.proofs["Top"] {
                     writeln!(
