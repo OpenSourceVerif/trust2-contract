@@ -12,7 +12,7 @@
         {
             "label": "rust: cargo test workspace",
             "type": "shell",
-            "command": "cargo test --all-features",
+            "command": "opam exec -- cargo test --all-features",
             "problemMatcher": [
                 "$rustc"
             ],
