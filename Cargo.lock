@@ -268,7 +268,7 @@ dependencies = [
  "assert_cmd",
  "clap",
  "colored",
- "convert_case",
+ "convert_case 0.12.0",
  "derive_generic_visitor",
  "either",
  "env_logger",
@@ -320,7 +320,7 @@ dependencies = [
  "charon",
  "clap",
  "colored",
- "convert_case",
+ "convert_case 0.6.0",
  "derive_generic_visitor",
  "either",
  "env_logger",
@@ -372,7 +372,7 @@ dependencies = [
  "charon",
  "clap",
  "colored",
- "convert_case",
+ "convert_case 0.6.0",
  "derive_generic_visitor",
  "either",
  "env_logger",
@@ -498,6 +498,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "convert_case"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1af709f1f33454bf52eadfc8c78b3b9ef9cb26fb54d16dc9cd9a7299f899fd1b"
+dependencies = [
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "critical-section"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -604,7 +613,7 @@ version = "1.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "079c2738859003286c4940c2f7bd50f2f6f7f7688ad53cf8e6acda2dd0a918f2"
 dependencies = [
- "convert_case",
+ "convert_case 0.6.0",
  "darling",
  "itertools 0.13.0",
  "proc-macro2",
