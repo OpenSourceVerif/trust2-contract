@@ -31,6 +31,7 @@ jobs:
         uses: ocaml/setup-ocaml@v3
         with:
           ocaml-compiler: "5.4.1"
+          opam-pin: false
 
       - parallel:
         - name: Set up Rust toolchain
