@@ -48,41 +48,17 @@ Leaving directory '/tmp/.tmpj8g1QI'
 
 ## Requirements
 
-1. [opam](https://opam.ocaml.org/)
-
-2. [Why3find](https://git.frama-c.com/pub/why3find) at d194f55801a3bf6c76eb835b4cf18897c565470c
-
-    1. Clone the Why3find repository at the specified commit.
-
-        - For Git 2.49.0 or later:
-
-            ```sh
-            git clone https://git.frama-c.com/pub/why3find.git --revision d194f55801a3bf6c76eb835b4cf18897c565470c
-            ```
-
-        - For Git prior to 2.49.0:
-
-            ```sh
-            git init why3find
-            cd why3find
-            git remote add origin https://git.frama-c.com/pub/why3find.git
-            git fetch origin d194f55801a3bf6c76eb835b4cf18897c565470c --depth 1
-            git switch --detach FETCH_HEAD
-            ```
-
-    2. From the root of the Why3find repository, install Why3find with:
-
-        ```sh
-        opam install .
-        ```
-
-    3. Ensure that the `why3find` executable can be accessed where our program is run.
-
-        See [Install OCaml](https://ocaml.org/install#linux_mac_bsd:~:text=Activate%20the%20opam,exec%20%2D%2D%20%5BCMD%5D) for information on how to access executables installed inside an opam switch.
-
-    4. Optionally, remove the Why3find repository after installation.
+- [opam](https://opam.ocaml.org/)
 
 ## Installation
+
+```sh
+opam install . --deps-only
+```
+
+Ensure that the installed `why3find` executable can be accessed where our verifier program is run.
+
+See [Install OCaml](https://ocaml.org/install#linux_mac_bsd:~:text=Activate%20the%20opam,exec%20%2D%2D%20%5BCMD%5D) for information on how to access executables installed inside an opam switch.
 
 ```sh
 cargo install --path ./cargo-verify
@@ -109,6 +85,7 @@ Note that this will automatically install the Rust toolchain pinned by `./rust-t
 ```sh
 opam switch create . 5.3.0
 opam install ocaml-lsp-server odoc ocamlformat.0.27.0 utop
+opam install . --deps-only
 ```
 
 ```sh

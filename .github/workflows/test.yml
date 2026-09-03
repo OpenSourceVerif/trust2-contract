@@ -39,9 +39,7 @@ jobs:
             rustflags: ""
 
         - name: Install Why3find
-          run: |
-            git clone https://git.frama-c.com/pub/why3find.git --revision d194f55801a3bf6c76eb835b4cf18897c565470c "$RUNNER_TEMP/why3find"
-            opam install "$RUNNER_TEMP/why3find" --yes
+          run: opam install . --deps-only --yes
 
       - name: Run tests
         run: opam exec -- cargo test --all-features --verbose
