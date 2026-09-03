@@ -42,4 +42,4 @@ jobs:
             opam install "$RUNNER_TEMP/why3find" --yes
 
       - name: Run tests
-        run: cargo test --all-features --verbose
+        run: opam exec -- cargo test --all-features --verbose
