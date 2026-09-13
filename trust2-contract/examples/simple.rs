@@ -12,7 +12,7 @@ pub struct RefRange<'a, T: PartialOrd> {
     pub end: &'a T,
 }
 
-#[postcondition(|b| forall!(|i: usize| implies(i + 1 < a.len(), b[i] <= b[i + 1])))]
+#[postcondition(|b| forall!(|i: usize| i + 1 < a.len() ==> b[i] <= b[i + 1]))]
 pub fn to_sorted<T: Ord + Clone>(a: &[T]) -> Vec<T> {
     if a.len() <= 1 {
         return a.into();
