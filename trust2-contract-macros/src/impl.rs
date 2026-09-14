@@ -137,8 +137,6 @@ pub fn contract_assume(expr: TokenStream) -> TokenStream {
 
 pub fn forall(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
-    let expr = parse::rewrite_implications(expr);
-    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
     quote! {
@@ -151,8 +149,6 @@ pub fn forall(expr: TokenStream) -> TokenStream {
 
 pub fn exists(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
-    let expr = parse::rewrite_implications(expr);
-    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
     quote! {
