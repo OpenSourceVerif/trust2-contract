@@ -16,21 +16,17 @@ pub fn rewrite_implications(old_tokens: TokenStream) -> TokenStream {
         });
     }
 
-    if let Some((closure_prefix, closure_body)) = split_closure(new_tokens.clone()) {
-        let mut new_tokens = TokenStream::new();
-        new_tokens.extend(closure_prefix);
-        new_tokens.extend(rewrite_implications(closure_body.into_iter().collect()));
-        return new_tokens;
+    if let Some(closure_end) = split_closure(&new_tokens) {
+        let mut closure = new_tokens.drain(..=closure_end).collect::<TokenStream>();
+        closure.extend(rewrite_implications(new_tokens.into_iter().collect()));
+        return closure;
     }
 
     if let Some((operator, operator_index, operator_len)) = find_implication_operator(&new_tokens) {
-        let lhs = rewrite_implications(new_tokens[..operator_index].iter().cloned().collect());
-        let rhs = rewrite_implications(
-            new_tokens[operator_index + operator_len..]
-                .iter()
-                .cloned()
-                .collect(),
-        );
+        let rhs_tokens = new_tokens.split_off(operator_index + operator_len);
+        new_tokens.truncate(operator_index);
+        let lhs = rewrite_implications(new_tokens.into_iter().collect());
+        let rhs = rewrite_implications(rhs_tokens.into_iter().collect());
         return match operator {
             ImplicationOperator::LeftToRight => quote! {
                 implies(#lhs, #rhs)
@@ -78,7 +74,7 @@ pub fn replace_keywords(
     new_tokens
 }
 
-fn split_closure(tokens: Vec<TokenTree>) -> Option<(Vec<TokenTree>, Vec<TokenTree>)> {
+fn split_closure(tokens: &[TokenTree]) -> Option<usize> {
     let start = match tokens.first() {
         Some(TokenTree::Punct(punct)) if punct.as_char() == '|' => 0,
         Some(TokenTree::Ident(ident)) if ident == "move" => match tokens.get(1) {
@@ -88,16 +84,14 @@ fn split_closure(tokens: Vec<TokenTree>) -> Option<(Vec<TokenTree>, Vec<TokenTre
         _ => return None,
     };
 
-    let end = tokens
+    tokens
         .iter()
         .enumerate()
         .skip(start + 1)
         .find_map(|(index, token)| match token {
             TokenTree::Punct(punct) if punct.as_char() == '|' => Some(index),
             _ => None,
-        })?;
-
-    Some((tokens[..=end].to_vec(), tokens[end + 1..].to_vec()))
+        })
 }
 
 #[derive(Clone, Copy)]
