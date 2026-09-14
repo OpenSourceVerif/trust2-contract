@@ -1,14 +1,50 @@
-use proc_macro2::{Delimiter, Group, Ident, TokenStream, TokenTree};
+use proc_macro2::{Group, Ident, TokenStream, TokenTree};
 use quote::quote;
 
 use std::iter;
 
 pub fn rewrite_implications(old_tokens: TokenStream) -> TokenStream {
-    let tokens: Vec<_> = rewrite_groups_and_implies_calls(old_tokens)
-        .into_iter()
-        .collect();
+    let mut new_tokens = Vec::new();
 
-    rewrite_implications_in_tokens(tokens)
+    for token in old_tokens {
+        new_tokens.push(match token {
+            TokenTree::Group(group) => TokenTree::Group(Group::new(
+                group.delimiter(),
+                rewrite_implications(group.stream()),
+            )),
+            _ => token,
+        });
+    }
+
+    if let Some((closure_prefix, closure_body)) = split_closure(new_tokens.clone()) {
+        let mut new_tokens = TokenStream::new();
+        new_tokens.extend(closure_prefix);
+        new_tokens.extend(rewrite_implications(closure_body.into_iter().collect()));
+        return new_tokens;
+    }
+
+    if let Some((operator, operator_index, operator_len)) = find_implication_operator(&new_tokens) {
+        let lhs = rewrite_implications(new_tokens[..operator_index].iter().cloned().collect());
+        let rhs = rewrite_implications(
+            new_tokens[operator_index + operator_len..]
+                .iter()
+                .cloned()
+                .collect(),
+        );
+        return match operator {
+            ImplicationOperator::LeftToRight => quote! {
+                implies(#lhs, #rhs)
+            },
+            ImplicationOperator::RightToLeft => quote! {
+                implies(#rhs, #lhs)
+            },
+            ImplicationOperator::Iff => quote! {
+                (#lhs) == (#rhs)
+            },
+        };
+    }
+
+    new_tokens.into_iter().collect()
 }
 
 pub fn replace_keywords(
@@ -42,74 +78,6 @@ pub fn replace_keywords(
     new_tokens
 }
 
-fn rewrite_groups_and_implies_calls(old_tokens: TokenStream) -> TokenStream {
-    let mut new_tokens = TokenStream::new();
-    let mut tokens = old_tokens.into_iter().peekable();
-
-    while let Some(token) = tokens.next() {
-        if let TokenTree::Ident(ident) = &token
-            && ident == "implies"
-            && let Some(TokenTree::Group(group)) = tokens.peek()
-            && group.delimiter() == Delimiter::Parenthesis
-        {
-            let group = match tokens.next().unwrap() {
-                TokenTree::Group(group) => group,
-                _ => unreachable!(),
-            };
-            let Some((lhs, rhs)) = split_top_level_comma(group.stream()) else {
-                new_tokens.extend(iter::once(token));
-                new_tokens.extend(iter::once(TokenTree::Group(group)));
-                continue;
-            };
-            let lhs = rewrite_implications(lhs);
-            let rhs = rewrite_implications(rhs);
-            new_tokens.extend(quote! {
-                if #lhs { #rhs } else { true }
-            });
-            continue;
-        }
-
-        match token {
-            TokenTree::Group(group) => {
-                new_tokens.extend(iter::once(TokenTree::Group(Group::new(
-                    group.delimiter(),
-                    rewrite_implications(group.stream()),
-                ))));
-            }
-            _ => new_tokens.extend(iter::once(token)),
-        }
-    }
-
-    new_tokens
-}
-
-fn rewrite_implications_in_tokens(tokens: Vec<TokenTree>) -> TokenStream {
-    if let Some((closure_prefix, closure_body)) = split_closure(tokens.clone()) {
-        let mut new_tokens = TokenStream::new();
-        new_tokens.extend(closure_prefix);
-        new_tokens.extend(rewrite_implications_in_tokens(closure_body));
-        return new_tokens;
-    }
-
-    if let Some((operator, operator_index, operator_len)) = find_implication_operator(&tokens) {
-        let lhs = rewrite_implications_in_tokens(tokens[..operator_index].to_vec());
-        let rhs = rewrite_implications_in_tokens(tokens[operator_index + operator_len..].to_vec());
-        return match operator {
-            ImplicationOperator::LeftToRight => quote! {
-                if #lhs { #rhs } else { true }
-            },
-            ImplicationOperator::RightToLeft => quote! {
-                if #rhs { #lhs } else { true }
-            },
-            ImplicationOperator::Iff => quote! {
-                (#lhs) == (#rhs)
-            },
-        };
-    }
-
-    tokens.into_iter().collect()
-}
-
 fn split_closure(tokens: Vec<TokenTree>) -> Option<(Vec<TokenTree>, Vec<TokenTree>)> {
     let start = match tokens.first() {
         Some(TokenTree::Punct(punct)) if punct.as_char() == '|' => 0,
@@ -130,18 +98,6 @@ fn split_closure(tokens: Vec<TokenTree>) -> Option<(Vec<TokenTree>, Vec<TokenTre
         })?;
 
     Some((tokens[..=end].to_vec(), tokens[end + 1..].to_vec()))
-}
-
-fn split_top_level_comma(tokens: TokenStream) -> Option<(TokenStream, TokenStream)> {
-    let tokens: Vec<_> = tokens.into_iter().collect();
-    let comma_index = tokens
-        .iter()
-        .position(|token| matches!(token, TokenTree::Punct(punct) if punct.as_char() == ','))?;
-
-    Some((
-        tokens[..comma_index].iter().cloned().collect(),
-        tokens[comma_index + 1..].iter().cloned().collect(),
-    ))
 }
 
 #[derive(Clone, Copy)]
@@ -205,7 +161,7 @@ mod tests {
             a ==> b
         };
         let expect = quote! {
-            if a { b } else { true }
+            implies(a, b)
         };
         let result = rewrite_implications(expr);
         assert_eq!(
@@ -220,7 +176,7 @@ mod tests {
             a <== b
         };
         let expect = quote! {
-            if b { a } else { true }
+            implies(b, a)
         };
         let result = rewrite_implications(expr);
         assert_eq!(
@@ -250,7 +206,7 @@ mod tests {
             |result| result ==> x == 0
         };
         let expect = quote! {
-            |result| if result { x == 0 } else { true }
+            |result| implies(result, x == 0)
         };
         let result = rewrite_implications(expr);
         assert_eq!(
@@ -265,7 +221,7 @@ mod tests {
             |i: usize| i < len ==> xs[i] == 0
         };
         let expect = quote! {
-            |i: usize| if i < len { xs[i] == 0 } else { true }
+            |i: usize| implies(i < len, xs[i] == 0)
         };
         let result = rewrite_implications(expr);
         assert_eq!(
@@ -274,18 +230,4 @@ mod tests {
         );
     }
 
-    #[test]
-    fn test_implies_function_call() {
-        let expr = quote! {
-            implies(i < len, xs[i] == 0)
-        };
-        let expect = quote! {
-            if i < len { xs[i] == 0 } else { true }
-        };
-        let result = rewrite_implications(expr);
-        assert_eq!(
-            parse::<Expr>(expect).unwrap(),
-            parse::<Expr>(result).unwrap(),
-        );
-    }
 }
