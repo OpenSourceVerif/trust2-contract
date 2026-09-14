@@ -22,25 +22,45 @@ pub fn rewrite_implications(old_tokens: TokenStream) -> TokenStream {
         return closure;
     }
 
-    if let Some((operator, operator_index, operator_len)) = find_implication_operator(&new_tokens) {
-        let rhs_tokens = new_tokens.split_off(operator_index + operator_len);
-        new_tokens.truncate(operator_index);
-        let lhs = rewrite_implications(new_tokens.into_iter().collect());
-        let rhs = rewrite_implications(rhs_tokens.into_iter().collect());
-        return match operator {
-            ImplicationOperator::LeftToRight => quote! {
-                implies(#lhs, #rhs)
-            },
-            ImplicationOperator::RightToLeft => quote! {
-                implies(#rhs, #lhs)
-            },
-            ImplicationOperator::Iff => quote! {
-                (#lhs) == (#rhs)
-            },
-        };
+    enum ImplicationOperator {
+        LeftToRight,
+        RightToLeft,
+        Iff,
     }
 
-    new_tokens.into_iter().collect()
+    let (operator_index, operator_len, operator) = 'find: {
+        let mut index = 0;
+        while index < new_tokens.len() {
+            if punct_seq_matches(&new_tokens[index..], &['<', '=', '=', '>']) {
+                break 'find (index, 4, ImplicationOperator::Iff);
+            }
+            if punct_seq_matches(&new_tokens[index..], &['=', '=', '>']) {
+                break 'find (index, 3, ImplicationOperator::LeftToRight);
+            }
+            if punct_seq_matches(&new_tokens[index..], &['<', '=', '=']) {
+                break 'find (index, 3, ImplicationOperator::RightToLeft);
+            }
+            index += 1;
+        }
+        return new_tokens.into_iter().collect();
+    };
+
+    let rhs_tokens = new_tokens.split_off(operator_index + operator_len);
+    new_tokens.truncate(operator_index);
+    let lhs = rewrite_implications(new_tokens.into_iter().collect());
+    let rhs = rewrite_implications(rhs_tokens.into_iter().collect());
+
+    match operator {
+        ImplicationOperator::LeftToRight => quote! {
+            implies(#lhs, #rhs)
+        },
+        ImplicationOperator::RightToLeft => quote! {
+            implies(#rhs, #lhs)
+        },
+        ImplicationOperator::Iff => quote! {
+            (#lhs) == (#rhs)
+        },
+    }
 }
 
 pub fn replace_keywords(
@@ -92,30 +112,6 @@ fn split_closure(tokens: &[TokenTree]) -> Option<usize> {
             TokenTree::Punct(punct) if punct.as_char() == '|' => Some(index),
             _ => None,
         })
-}
-
-#[derive(Clone, Copy)]
-enum ImplicationOperator {
-    LeftToRight,
-    RightToLeft,
-    Iff,
-}
-
-fn find_implication_operator(tokens: &[TokenTree]) -> Option<(ImplicationOperator, usize, usize)> {
-    let mut index = 0;
-    while index < tokens.len() {
-        if punct_seq_matches(&tokens[index..], &['<', '=', '=', '>']) {
-            return Some((ImplicationOperator::Iff, index, 4));
-        }
-        if punct_seq_matches(&tokens[index..], &['=', '=', '>']) {
-            return Some((ImplicationOperator::LeftToRight, index, 3));
-        }
-        if punct_seq_matches(&tokens[index..], &['<', '=', '=']) {
-            return Some((ImplicationOperator::RightToLeft, index, 3));
-        }
-        index += 1;
-    }
-    None
 }
 
 fn punct_seq_matches(tokens: &[TokenTree], chars: &[char]) -> bool {
