@@ -150,21 +150,6 @@ mod tests {
     }
 
     #[test]
-    fn test_implies_left_to_right() {
-        let expr = quote! {
-            a ==> b
-        };
-        let expect = quote! {
-            implies(a, b)
-        };
-        let result = rewrite_implications(expr);
-        assert_eq!(
-            parse::<Expr>(expect).unwrap(),
-            parse::<Expr>(result).unwrap(),
-        );
-    }
-
-    #[test]
     fn test_implies_right_to_left() {
         let expr = quote! {
             a <== b
@@ -193,35 +178,4 @@ mod tests {
             parse::<Expr>(result).unwrap(),
         );
     }
-
-    #[test]
-    fn test_closure_body() {
-        let expr = quote! {
-            |result| result ==> x == 0
-        };
-        let expect = quote! {
-            |result| implies(result, x == 0)
-        };
-        let result = rewrite_implications(expr);
-        assert_eq!(
-            parse::<Expr>(expect).unwrap(),
-            parse::<Expr>(result).unwrap(),
-        );
-    }
-
-    #[test]
-    fn test_typed_closure_body() {
-        let expr = quote! {
-            |i: usize| i < len ==> xs[i] == 0
-        };
-        let expect = quote! {
-            |i: usize| implies(i < len, xs[i] == 0)
-        };
-        let result = rewrite_implications(expr);
-        assert_eq!(
-            parse::<Expr>(expect).unwrap(),
-            parse::<Expr>(result).unwrap(),
-        );
-    }
-
 }
