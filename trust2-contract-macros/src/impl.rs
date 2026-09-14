@@ -19,6 +19,7 @@ macro_rules! parse_macro_input {
 
 pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
@@ -37,6 +38,7 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 
 pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse::replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
@@ -64,6 +66,7 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 
 pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let (type_ident, type_generics) = {
@@ -106,6 +109,7 @@ pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
 
 pub fn contract_assert(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
@@ -119,6 +123,7 @@ pub fn contract_assert(expr: TokenStream) -> TokenStream {
 
 pub fn contract_assume(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 

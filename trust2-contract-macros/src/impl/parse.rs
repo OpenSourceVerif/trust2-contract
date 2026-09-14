@@ -3,6 +3,66 @@ use quote::quote;
 
 use std::iter;
 
+pub fn rewrite_implications(old_tokens: TokenStream) -> TokenStream {
+    let mut new_tokens = Vec::new();
+
+    for token in old_tokens {
+        new_tokens.push(match token {
+            TokenTree::Group(group) => TokenTree::Group(Group::new(
+                group.delimiter(),
+                rewrite_implications(group.stream()),
+            )),
+            _ => token,
+        });
+    }
+
+    if let Some(closure_end) = split_closure(&new_tokens) {
+        let mut closure = new_tokens.drain(..=closure_end).collect::<TokenStream>();
+        closure.extend(rewrite_implications(new_tokens.into_iter().collect()));
+        return closure;
+    }
+
+    enum ImplicationOperator {
+        LeftToRight,
+        RightToLeft,
+        Iff,
+    }
+
+    let (operator_index, operator_len, operator) = 'find: {
+        let mut index = 0;
+        while index < new_tokens.len() {
+            if punct_seq_matches(&new_tokens[index..], &['<', '=', '=', '>']) {
+                break 'find (index, 4, ImplicationOperator::Iff);
+            }
+            if punct_seq_matches(&new_tokens[index..], &['=', '=', '>']) {
+                break 'find (index, 3, ImplicationOperator::LeftToRight);
+            }
+            if punct_seq_matches(&new_tokens[index..], &['<', '=', '=']) {
+                break 'find (index, 3, ImplicationOperator::RightToLeft);
+            }
+            index += 1;
+        }
+        return new_tokens.into_iter().collect();
+    };
+
+    let rhs_tokens = new_tokens.split_off(operator_index + operator_len);
+    new_tokens.truncate(operator_index);
+    let lhs = rewrite_implications(new_tokens.into_iter().collect());
+    let rhs = rewrite_implications(rhs_tokens.into_iter().collect());
+
+    match operator {
+        ImplicationOperator::LeftToRight => quote! {
+            implies(#lhs, #rhs)
+        },
+        ImplicationOperator::RightToLeft => quote! {
+            implies(#rhs, #lhs)
+        },
+        ImplicationOperator::Iff => quote! {
+            (#lhs) == (#rhs)
+        },
+    }
+}
+
 pub fn replace_keywords(
     old_tokens: TokenStream,
     keywords: &[&str],
@@ -34,6 +94,34 @@ pub fn replace_keywords(
     new_tokens
 }
 
+fn split_closure(tokens: &[TokenTree]) -> Option<usize> {
+    let start = match tokens.first() {
+        Some(TokenTree::Punct(punct)) if punct.as_char() == '|' => 0,
+        Some(TokenTree::Ident(ident)) if ident == "move" => match tokens.get(1) {
+            Some(TokenTree::Punct(punct)) if punct.as_char() == '|' => 1,
+            _ => return None,
+        },
+        _ => return None,
+    };
+
+    tokens
+        .iter()
+        .enumerate()
+        .skip(start + 1)
+        .find_map(|(index, token)| match token {
+            TokenTree::Punct(punct) if punct.as_char() == '|' => Some(index),
+            _ => None,
+        })
+}
+
+fn punct_seq_matches(tokens: &[TokenTree], chars: &[char]) -> bool {
+    tokens.len() >= chars.len()
+        && tokens
+            .iter()
+            .zip(chars)
+            .all(|(token, ch)| matches!(token, TokenTree::Punct(punct) if punct.as_char() == *ch))
+}
+
 #[cfg(test)]
 mod tests {
     use super::super::{POSTCONDITION_KEYWORDS, crate_name_ident};
@@ -51,6 +139,36 @@ mod tests {
             *y == *::#crate_name_ident::internal::old(x)
         };
         let result = replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name_ident);
+        assert_eq!(
+            parse::<Expr>(expect).unwrap(),
+            parse::<Expr>(result).unwrap(),
+        );
+    }
+
+    #[test]
+    fn test_implies_right_to_left() {
+        let expr = quote! {
+            a <== b
+        };
+        let expect = quote! {
+            implies(b, a)
+        };
+        let result = rewrite_implications(expr);
+        assert_eq!(
+            parse::<Expr>(expect).unwrap(),
+            parse::<Expr>(result).unwrap(),
+        );
+    }
+
+    #[test]
+    fn test_iff() {
+        let expr = quote! {
+            a <==> b
+        };
+        let expect = quote! {
+            (a) == (b)
+        };
+        let result = rewrite_implications(expr);
         assert_eq!(
             parse::<Expr>(expect).unwrap(),
             parse::<Expr>(result).unwrap(),
