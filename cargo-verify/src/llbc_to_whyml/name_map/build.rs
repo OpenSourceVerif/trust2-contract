@@ -1,153 +1,36 @@
+//! 名字映射的构造：遍历 crate，为所有条目生成互不冲突的 WhyML 名字。
+//!
+//! 做法是先把所有条目的「路径」（由名字的各段组成）收集到一张反向表中，
+//! 路径冲突时加后缀区分（见 [`super::locals::resolve_collision`]），
+//! 最后再按条目把名字写回 [`super::NameMap`]。
+
 use charon_lib::{
     ast::{
-        Body, FieldId, FunDeclId, FunSig, FunSpecs, GenericParams, GlobalDeclId, ItemId, LocalId,
-        Name, PathElem, SpecBodyId, SpecClosure, SpecClosureId, TranslatedCrate, TypeDeclId,
-        TypeDeclKind, TypeVarId, VariantId,
+        FieldId, FunSpecs, GenericParams, ItemId, Name, PathElem, TranslatedCrate, TypeDeclKind,
+        VariantId,
     },
     formatter::FmtCtx,
-    ids::{IndexMap, IndexVec},
-    llbc_ast::{Block, StatementKind, Switch},
+    ids::IndexVec,
     pretty::FmtWithCtx,
 };
-use utils::case;
 
-use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet},
-    iter, mem,
-    sync::LazyLock,
+use std::{collections::HashMap, iter, mem};
+
+use super::{
+    ConstructorIdents, FuncDeclNames, FuncSpecNames, GlobalNames, NameMap, TypeDeclNames,
+    TypeDeclSubIdents, TypeParamNames,
+    keywords::{
+        CONSTRUCTOR_PREFIX, TAKEN_WORDS_SET, TYPE_PARAM_PREFIX, camel_to_l, camel_to_q, ensure_l,
+        ensure_u, to_whyml, upper_to_l,
+    },
+    locals::{LocalMapper, resolve_collision},
+    names::SEPARATOR,
 };
 
-const SEPARATOR: &str = "''_";
-
-pub const LIB_DIR: &str = "trust2_contract";
-
-pub fn lib_alias(lib_name: &str) -> String {
-    format!("{lib_name}'")
-}
-
-pub static LIB_BOOL: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["bool", "Bool"], lib_alias("Bool")));
-
-pub static LIB_BUILTIN: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["builtin", "Builtin"], lib_alias("Builtin")));
-
-pub static LIB_CHAR: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["char", "Char"], lib_alias("Char")));
-
-pub static LIB_I8: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["i8", "I8"], lib_alias("I8")));
-
-pub static LIB_I16: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["i16", "I16"], lib_alias("I16")));
-
-pub static LIB_I32: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["i32", "I32"], lib_alias("I32")));
-
-pub static LIB_I64: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["i64", "I64"], lib_alias("I64")));
-
-pub static LIB_I128: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["i128", "I128"], lib_alias("I128")));
-
-pub static LIB_TUPLE: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["tuple", "Tuple"], lib_alias("Tuple")));
-
-pub static LIB_U8: LazyLock<(&[&str], String)> = LazyLock::new(|| (&["u8", "U8"], lib_alias("U8")));
-
-pub static LIB_U16: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["u16", "U16"], lib_alias("U16")));
-
-pub static LIB_U32: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["u32", "U32"], lib_alias("U32")));
-
-pub static LIB_U64: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["u64", "U64"], lib_alias("U64")));
-
-pub static LIB_U128: LazyLock<(&[&str], String)> =
-    LazyLock::new(|| (&["u128", "U128"], lib_alias("U128")));
-
-pub const EMPTY_TYPE_NAME: &str = "a'";
-
-pub fn local_temp_name(i: usize) -> String {
-    format!("x{i}'")
-}
-
-pub fn local_block_name(i: usize) -> String {
-    format!("b{i}'")
-}
-
-pub fn tuple_field_accessor_ident(arity: usize, field_id: FieldId) -> String {
-    format!("get_tuple{arity}{SEPARATOR}{field_id}")
-}
-
-pub fn variant_constructor_accessor_ident(constructor_ident: &str) -> String {
-    format!("get_{constructor_ident}''")
-}
-
-pub fn variant_constructor_field_accessor_ident(
-    constructor_ident: &str,
-    field_id: FieldId,
-) -> String {
-    format!("get_{constructor_ident}{SEPARATOR}{field_id}'")
-}
-
-pub fn break_exn_name(loop_depth: usize) -> String {
-    format!("Break'{loop_depth}'")
-}
-
-pub fn continue_exn_name(loop_depth: usize) -> String {
-    format!("Continue'{loop_depth}'")
-}
-
-pub struct NameMap {
-    pub type_decl_names: IndexMap<TypeDeclId, TypeDeclNames>,
-    pub func_decl_names: IndexMap<FunDeclId, FuncDeclNames>,
-    pub global_names: IndexMap<GlobalDeclId, GlobalNames>,
-    pub spec_body_names: IndexMap<SpecBodyId, LocalNames>,
-    pub spec_closure_names: IndexMap<SpecClosureId, LocalNames>,
-}
-
-pub struct TypeDeclNames {
-    pub item_ident: String,
-    pub type_param_names: TypeParamNames,
-    pub sub_idents: TypeDeclSubIdents,
-}
-
-pub enum TypeDeclSubIdents {
-    Record(IndexVec<FieldId, String>),
-    Variant(IndexVec<VariantId, ConstructorIdents>),
-    Abstract,
-}
-
-pub struct ConstructorIdents {
-    pub constructor_ident: String,
-    pub record_idents_opt: Option<(String, IndexVec<FieldId, String>)>,
-}
-
-pub struct FuncDeclNames {
-    pub item_ident: String,
-    pub type_param_names: TypeParamNames,
-    pub local_names: LocalNames,
-    pub spec_names: FuncSpecNames,
-}
-
-pub struct FuncSpecNames {
-    pub precondition_local_names: Vec<LocalNames>,
-    pub postcondition_local_names: Vec<LocalNames>,
-}
-
-pub struct GlobalNames {
-    pub item_ident: String,
-    pub type_param_names: TypeParamNames,
-}
-
-pub enum LocalNames {
-    Concrete(IndexVec<LocalId, String>),
-    Abstract(Vec<Option<String>>),
-}
-
-pub type TypeParamNames = IndexVec<TypeVarId, String>;
-
+/// 为一个 crate 建立名字映射。
+///
+/// 先收集所有条目（类型及其成员、函数、全局量）的名字路径，
+/// 再消解同名冲突，最后为每个条目生成最终名字。
 pub fn build(crate_: &TranslatedCrate) -> NameMap {
     type Id = (ItemId, Option<(usize, Option<Option<usize>>)>);
 
@@ -285,7 +168,13 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
                         TypeDeclSubIdentsOpt::Variant(variant_idents_opt) => {
                             let constructor_idents_opt = &mut variant_idents_opt[sub_id];
                             match record_id_opt {
-                                None => constructor_idents_opt.ident = Some(ident),
+                                // 构造子名是「类型名 + 构造子 + 命名空间」用 `''_` 拼起来的，
+                                // 第一段是类型名（小写），因此拼接后还要再保证首字母大写，
+                                // 否则 WhyML 会拒绝这样的构造子名（WhyML 要求构造子首字母大写）。
+                                None => {
+                                    constructor_idents_opt.ident =
+                                        Some(ensure_u(ident.into(), CONSTRUCTOR_PREFIX))
+                                }
                                 Some(record_id) => {
                                     let record_idents_opt =
                                         constructor_idents_opt.record_idents_opt.as_mut().unwrap();
@@ -411,6 +300,8 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
     }
 }
 
+/// 把 LLBC 的名字路径转换成 WhyML 名字路径：
+/// 最后一段用 `conv` 转换，其余各段仅做转义，并且把命名空间各段放到后面。
 fn process_path(path: &Name, conv: impl Fn(String) -> String) -> Vec<String> {
     let path = &path.name;
 
@@ -435,6 +326,7 @@ fn process_path(path: &Name, conv: impl Fn(String) -> String) -> Vec<String> {
         .collect()
 }
 
+/// 为泛型参数生成类型变量名。
 fn map_generic_params(generic_params: &GenericParams, depth: usize) -> TypeParamNames {
     let type_param = &generic_params.types;
 
@@ -453,290 +345,3 @@ fn map_generic_params(generic_params: &GenericParams, depth: usize) -> TypeParam
     });
     type_param_names
 }
-
-struct LocalMapper<'a> {
-    spec_closures: &'a IndexMap<SpecClosureId, SpecClosure>,
-    spec_closure_names_opt: &'a mut IndexMap<SpecClosureId, Option<LocalNames>>,
-}
-
-impl<'a> LocalMapper<'a> {
-    fn map(&mut self, body: &Body, signature_opt: Option<&FunSig>, depth: usize) -> LocalNames {
-        match body {
-            Body::Unstructured(_body) => unreachable!(),
-            Body::Structured(body) => {
-                self.traverse_spec_closures(&body.body, depth + 1);
-
-                let locals = &body.locals.locals;
-
-                let mut inv_map: HashMap<_, Vec<_>> = HashMap::new();
-                let mut local_names = locals.map_ref_indexed(|local_id, local| {
-                    let local_name = to_whyml(&ensure_l(format!("{local}").into()));
-                    inv_map.entry(local_name).or_default().push(local_id);
-
-                    String::default()
-                });
-                resolve_collision(inv_map, depth, |local_id, local_name| {
-                    local_names[local_id] = local_name;
-                });
-                LocalNames::Concrete(local_names)
-            }
-            Body::TargetDispatch(..) => todo!(),
-            Body::Extern(..) | Body::Opaque | Body::Missing => {
-                LocalNames::Abstract(vec![None; signature_opt.unwrap().inputs.len()])
-            }
-            Body::Intrinsic { arg_names, .. } => LocalNames::Abstract(
-                arg_names
-                    .iter()
-                    .map(|param_name_opt| {
-                        param_name_opt
-                            .as_ref()
-                            .map(|param_name| to_whyml(&ensure_l(param_name.into())))
-                    })
-                    .collect(),
-            ),
-            Body::Error(..) => unreachable!(),
-        }
-    }
-
-    fn traverse_spec_closures(&mut self, block: &Block, depth: usize) {
-        for stmt in &block.statements {
-            match &stmt.kind {
-                StatementKind::InlineAsm { .. } => todo!(),
-                StatementKind::Switch(Switch::If(_, block_t, block_f)) => {
-                    self.traverse_spec_closures(block_t, depth);
-                    self.traverse_spec_closures(block_f, depth);
-                }
-                StatementKind::Switch(Switch::SwitchInt(..)) => unreachable!(),
-                StatementKind::Switch(Switch::Match(_, blocks, block_opt)) => {
-                    for (_, block) in blocks {
-                        self.traverse_spec_closures(block, depth);
-                    }
-                    block_opt
-                        .iter()
-                        .for_each(|block| self.traverse_spec_closures(block, depth));
-                }
-                StatementKind::Loop(block) => self.traverse_spec_closures(block, depth),
-                StatementKind::ContractAssert {
-                    spec_closure_id, ..
-                }
-                | StatementKind::Quant {
-                    spec_closure_id, ..
-                } => {
-                    self.spec_closure_names_opt[*spec_closure_id] =
-                        Some(self.map(&self.spec_closures[*spec_closure_id].body, None, depth));
-                }
-                _ => (),
-            }
-        }
-    }
-}
-
-fn resolve_collision<I: Copy>(
-    inv_map: HashMap<String, Vec<I>>,
-    depth: usize,
-    mut set_map: impl FnMut(I, String),
-) {
-    for (name, ids) in inv_map {
-        if !TAKEN_WORDS_SET.contains(name.as_str()) && ids.len() == 1 {
-            let id = ids[0];
-            set_map(id, format!("{name}'{depth}"));
-        } else {
-            for (disambiguator, id) in ids.into_iter().enumerate() {
-                set_map(id, format!("{name}'{disambiguator}'{depth}"));
-            }
-        }
-    }
-}
-
-const CONSTRUCTOR_PREFIX: &str = "C";
-
-const TYPE_PARAM_PREFIX: &str = "a";
-
-// fn snake_to_u(ident: &str, prefix: &str) -> String {
-//     if case::is_snake_case(ident) {
-//         let ident = case::to_camel_case(ident);
-//         if ident.as_bytes().first().is_some_and(u8::is_ascii_uppercase) {
-//             ident
-//         } else {
-//             format!("{prefix}{ident}")
-//         }
-//     } else {
-//         ensure_u(ident.into(), prefix)
-//     }
-// }
-
-fn camel_to_l(ident: &str) -> String {
-    if case::is_camel_case(ident) {
-        let ident = case::to_snake_case(ident);
-        if let Some(c) = ident.as_bytes().first() {
-            if is_l(*c) { ident } else { format!("_{ident}") }
-        } else {
-            "__".into()
-        }
-    } else {
-        ensure_l(ident.into())
-    }
-}
-
-fn upper_to_l(ident: &str) -> String {
-    if case::is_upper_case(ident) {
-        let ident = case::to_snake_case(ident);
-        if let Some(c) = ident.as_bytes().first() {
-            if is_l(*c) { ident } else { format!("_{ident}") }
-        } else {
-            "__".into()
-        }
-    } else {
-        ensure_l(ident.into())
-    }
-}
-
-fn camel_to_q(ident: &str, prefix: &str) -> String {
-    if case::is_camel_case(ident) {
-        let ident = case::to_snake_case(ident);
-        if let Some(c) = ident.as_bytes().first() {
-            if c.is_ascii_lowercase() {
-                ident
-            } else {
-                format!("{prefix}_{ident}")
-            }
-        } else {
-            prefix.into()
-        }
-    } else {
-        format!("{prefix}_{ident}")
-    }
-}
-
-fn ensure_l(ident: Cow<str>) -> String {
-    if is_l(ident.as_bytes()[0]) {
-        ident.into_owned()
-    } else {
-        format!("_{ident}")
-    }
-}
-
-fn ensure_u(ident: Cow<str>, prefix: &str) -> String {
-    if ident.as_bytes()[0].is_ascii_uppercase() {
-        ident.into_owned()
-    } else {
-        format!("{prefix}{ident}")
-    }
-}
-
-fn is_l(c: u8) -> bool {
-    c.is_ascii_lowercase() || c == b'_'
-}
-
-fn to_whyml(ident: &str) -> String {
-    let mut ident_ = String::with_capacity(ident.len());
-    for c in ident.chars() {
-        if c.is_ascii_alphanumeric() || c == '_' {
-            ident_.push(c);
-        } else if c.is_ascii() {
-            ident_.push_str("'_");
-        } else {
-            ident_.push_str(&format!("''{}", c as u32));
-        }
-    }
-    ident_
-}
-
-static TAKEN_WORDS_SET: LazyLock<HashSet<&str>> = LazyLock::new(|| {
-    const TAKEN_WORDS: &[&str] = &[
-        // Keywords
-        "abstract",
-        "absurd",
-        "alias",
-        "any",
-        "as",
-        "assert",
-        "assume",
-        "at",
-        "axiom",
-        "begin",
-        "break",
-        "by",
-        "check",
-        "clone",
-        "coinductive",
-        "constant",
-        "continue",
-        "diverges",
-        "do",
-        "done",
-        "downto",
-        "else",
-        "end",
-        "ensures",
-        "epsilon",
-        "exception",
-        "exists",
-        "export",
-        "false",
-        "for",
-        "forall",
-        "fun",
-        "function",
-        "ghost",
-        "goal",
-        "if",
-        "import",
-        "in",
-        "inductive",
-        "invariant",
-        "label",
-        "lemma",
-        "let",
-        "match",
-        "meta",
-        "module",
-        "mutable",
-        "not",
-        "old",
-        "partial",
-        "predicate",
-        "private",
-        "pure",
-        "raise",
-        "raises",
-        "reads",
-        "rec",
-        "requires",
-        "return",
-        "returns",
-        "scope",
-        "so",
-        "then",
-        "theory",
-        "to",
-        "true",
-        "try",
-        "type",
-        "use",
-        "val",
-        "variant",
-        "while",
-        "with",
-        "writes",
-        "float",
-        "range",
-        "ref",
-        // Pre-defined identifiers
-        "int",
-        "real",
-        "string",
-        "bool",
-        "True",
-        "False",
-        "tuple0",
-        "Tuple0",
-        "unit",
-    ];
-
-    let mut word_set = HashSet::new();
-    for &word in TAKEN_WORDS {
-        word_set.insert(word);
-    }
-    word_set
-});

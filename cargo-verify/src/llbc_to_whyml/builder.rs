@@ -1,3 +1,11 @@
+//! `Expr` 与 `Term` 两种输出共用的构造器抽象。
+//!
+//! 同一份翻译逻辑既要产出可执行代码（`Expr`），也要产出规格中的项（`Term`）。
+//! [`Builder`] 把这两种目标中构造语法树的操作抽象出来，翻译逻辑只需针对
+//! `T::T` 编写，通过泛型参数选择 [`ExprBuilder`] 或 [`TermBuilder`] 即可。
+
+use super::prelude::{FALSE_EXPR, FALSE_TERM, TRUE_EXPR, TRUE_TERM, UNIT_EXPR, UNIT_TERM};
+
 use why3_ptree::{
     constant::Constant,
     loc::Position,
@@ -8,26 +16,37 @@ use why3_ptree::{
 pub trait Builder {
     type T;
 
+    /// 由常量构造语法树节点。
     fn const_(loc: Position, c: Constant) -> Self::T;
 
+    /// 由限定名构造变量引用。
     fn var(loc: Position, id: Qualid) -> Self::T;
 
+    /// 函数应用 `f l1 l2 ...`。
     fn app(loc: Position, f: Qualid, l: Box<[Self::T]>) -> Self::T;
 
+    /// 单参数应用 `e1 e2`。
     fn apply(loc: Position, e1: Self::T, e2: Self::T) -> Self::T;
 
+    /// 中缀运算 `e1 <id> e2`。
     fn infix(loc: Position, e1: Self::T, id: Ident, e2: Self::T) -> Self::T;
 
+    /// 元组构造。
     fn tuple(loc: Position, es: Box<[Self::T]>) -> Self::T;
 
+    /// 记录构造。
     fn record(loc: Position, fs: Box<[(Qualid, Self::T)]>) -> Self::T;
 
+    /// 作用域限定 `id: e`（用于把整数运算限定到对应类型）。
     fn scope(loc: Position, id: Qualid, e: Self::T) -> Self::T;
 
+    /// `true`。
     fn true_() -> Self::T;
 
+    /// `false`。
     fn false_() -> Self::T;
 
+    /// 单元值 `()`。
     fn unit_value() -> Self::T;
 }
 
@@ -69,15 +88,15 @@ impl Builder for ExprBuilder {
     }
 
     fn true_() -> Self::T {
-        super::TRUE_EXPR.clone()
+        TRUE_EXPR.clone()
     }
 
     fn false_() -> Self::T {
-        super::FALSE_EXPR.clone()
+        FALSE_EXPR.clone()
     }
 
     fn unit_value() -> Self::T {
-        super::UNIT_EXPR.clone()
+        UNIT_EXPR.clone()
     }
 }
 
@@ -119,14 +138,14 @@ impl Builder for TermBuilder {
     }
 
     fn true_() -> Self::T {
-        super::TRUE_TERM.clone()
+        TRUE_TERM.clone()
     }
 
     fn false_() -> Self::T {
-        super::FALSE_TERM.clone()
+        FALSE_TERM.clone()
     }
 
     fn unit_value() -> Self::T {
-        super::UNIT_TERM.clone()
+        UNIT_TERM.clone()
     }
 }

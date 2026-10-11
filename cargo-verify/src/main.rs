@@ -51,6 +51,8 @@ struct CliConfig {
 fn main() -> Result<()> {
     let Cli::Verify(config) = Cli::parse();
 
+    println!("Hello, TRust2-Contract");
+
     let mut crates = cargo_verify::run_with_dir(
         |charon_out_dir| rust_to_llbc::translate_crates(charon_out_dir, config.cargo_build_args),
         config.charon_out_dir.as_ref().map(PathBuf::as_ref),
