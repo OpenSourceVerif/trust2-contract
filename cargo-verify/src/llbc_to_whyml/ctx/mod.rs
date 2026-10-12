@@ -5,6 +5,7 @@
 //!
 //! - [`ty`]、[`type_decl`]：类型与类型声明的翻译；
 //! - [`place`]：位置表达式（`Place`）与操作数（`Operand`）的翻译；
+//! - [`locals`]：规格表达式依赖的局部变量收集；
 //! - [`const_expr`]：常量表达式与字面量的翻译；
 //! - [`func_ref`]：函数引用（普通函数、内建函数、trait 方法）的翻译；
 //! - [`rvalue`]：右值（运算、聚合等）的翻译；
@@ -36,6 +37,7 @@ use std::collections::HashSet;
 mod const_expr;
 mod decl;
 mod func_ref;
+mod locals;
 mod place;
 mod rvalue;
 mod spec;

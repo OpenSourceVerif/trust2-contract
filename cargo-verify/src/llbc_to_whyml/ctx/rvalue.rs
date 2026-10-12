@@ -16,7 +16,7 @@ use crate::llbc_to_whyml::{
 
 use charon_lib::{
     ast::{
-        AggregateKind, BinOp, BorrowKind, LocalId, NullOp, Operand, OverflowMode, Rvalue, TyKind,
+        AggregateKind, BinOp, BorrowKind, NullOp, Operand, OverflowMode, Rvalue, TyKind,
         TypeDeclRef, TypeId, UnOp,
     },
     ids::IndexVec,
@@ -27,8 +27,6 @@ use why3_ptree::{
     ptree::{Expr, Term},
     ptree_helpers,
 };
-
-use std::collections::HashSet;
 
 impl<'a> Ctx<'a> {
     /// 翻译右值。
@@ -300,36 +298,5 @@ impl<'a> Ctx<'a> {
     /// `translate_rvalue` 的 `Term` 版本。
     pub(super) fn translate_rvalue_to_term(&mut self, rvalue: &Rvalue) -> Result<Term> {
         self.translate_rvalue::<TermBuilder>(rvalue)
-    }
-
-    /// 收集右值中引用到的局部变量。
-    pub(super) fn get_rvalue_locals(&self, rvalue: &Rvalue) -> Result<HashSet<LocalId>> {
-        match rvalue {
-            Rvalue::Use(operand, _) => Ok(self.get_operand_locals(operand)),
-            Rvalue::Ref {
-                place,
-                kind: _,
-                ptr_metadata: _,
-            } => Ok(self.get_place_locals(place)),
-            Rvalue::RawPtr {
-                place: _,
-                kind: _,
-                ptr_metadata: _,
-            } => Err(Error::RawPointer),
-            Rvalue::BinaryOp(_operator, lhs, rhs) => Ok(self
-                .get_operand_locals(lhs)
-                .union(&self.get_operand_locals(rhs))
-                .copied()
-                .collect()),
-            Rvalue::UnaryOp(_operator, operand) => Ok(self.get_operand_locals(operand)),
-            Rvalue::NullaryOp(_operator, _ty) => Ok(HashSet::new()),
-            Rvalue::Discriminant(..) => todo!(),
-            Rvalue::Aggregate(_kind, operands) => Ok(operands
-                .iter()
-                .flat_map(|operand| self.get_operand_locals(operand))
-                .collect()),
-            Rvalue::Len(..) => todo!(),
-            Rvalue::Repeat(..) => unreachable!(),
-        }
     }
 }

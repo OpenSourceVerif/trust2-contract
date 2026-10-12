@@ -4,7 +4,10 @@
 //! 此时不能用副作用和 `while`，因此控制流被表示为 `let` 绑定与嵌套的 `if`，
 //! 每个基本块被翻译成一个以「用到的局部变量」为参数的 lambda。
 
-use super::Ctx;
+use super::{
+    Ctx,
+    locals::{operand_local, operands_locals, rvalues_locals},
+};
 
 use itertools::Itertools;
 
@@ -240,7 +243,7 @@ impl<'a> Ctx<'a> {
             rvalue: &Rvalue,
             in_locals: &mut BTreeSet<LocalId>,
         ) -> Result<Term> {
-            let locals_set = self_.get_rvalue_locals(rvalue)?;
+            let locals_set = rvalues_locals([rvalue])?;
             let rvalue = self_.translate_rvalue_to_term(rvalue)?;
             Ok(translate_assign(
                 self_,
@@ -263,7 +266,7 @@ impl<'a> Ctx<'a> {
             on_failure: &AbortKind,
             in_locals: &mut BTreeSet<LocalId>,
         ) -> Result<Term> {
-            in_locals.extend(self_.get_operand_locals(&assert.cond));
+            in_locals.extend(operand_local(&assert.cond));
             let cond = self_.translate_operand_to_term(&assert.cond)?;
             let abort = translate_abort(on_failure);
             Ok(if assert.expected {
@@ -293,16 +296,14 @@ impl<'a> Ctx<'a> {
             let func = match func {
                 FnOperand::Regular(func_ref) => self_.translate_func_ref_to_term(func_ref),
                 FnOperand::Dynamic(operand) => {
-                    locals_set.extend(self_.get_operand_locals(operand));
+                    locals_set.extend(operand_local(operand));
                     self_.translate_operand_to_term(operand)?
                 }
             };
+            locals_set.extend(operands_locals(args));
             let args: Vec<_> = args
                 .iter()
-                .map(|arg| {
-                    locals_set.extend(self_.get_operand_locals(arg));
-                    self_.translate_operand_to_term(arg)
-                })
+                .map(|arg| self_.translate_operand_to_term(arg))
                 .try_collect()?;
             let term = self_.translate_apply_term(func, args);
             Ok(translate_assign(
@@ -338,7 +339,7 @@ impl<'a> Ctx<'a> {
                 let term_f =
                     self_.translate_inner_block_to_term(block_f, continuation, in_locals)?;
                 in_locals.extend(in_locals_);
-                in_locals.extend(self_.get_operand_locals(cond));
+                in_locals.extend(operand_local(cond));
                 Ok(ptree_helpers::term(
                     Position::default(),
                     TermDesc::If(
@@ -424,7 +425,7 @@ impl<'a> Ctx<'a> {
                         ),
                     );
                 }
-                in_locals.extend(self_.get_place_locals(scrutinee));
+                in_locals.extend(scrutinee.local_id());
                 Ok(ptree_helpers::term(
                     Position::default(),
                     TermDesc::Let(
@@ -461,10 +462,7 @@ impl<'a> Ctx<'a> {
                 unreachable!();
             };
 
-            let mut locals_set = HashSet::new();
-            for rvalue in &spec_closure.captures {
-                locals_set.extend(self_.get_rvalue_locals(rvalue)?);
-            }
+            let locals_set = rvalues_locals(&spec_closure.captures)?;
             let term = ptree_helpers::term(
                 Position::default(),
                 TermDesc::Quant(

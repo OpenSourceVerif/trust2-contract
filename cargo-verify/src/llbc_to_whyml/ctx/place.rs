@@ -16,17 +16,13 @@ use crate::llbc_to_whyml::{
     prelude::LIB_TUPLE_IDENT,
 };
 
-use charon_lib::ast::{
-    FieldProjKind, GlobalDeclRef, LocalId, Operand, Place, PlaceKind, ProjectionElem,
-};
+use charon_lib::ast::{FieldProjKind, GlobalDeclRef, Operand, Place, PlaceKind, ProjectionElem};
 
 use why3_ptree::{
     loc::Position,
     ptree::{Expr, Qualid, Term},
     ptree_helpers,
 };
-
-use std::collections::HashSet;
 
 impl<'a> Ctx<'a> {
     /// 翻译位置表达式：局部变量、字段/元组投影、解引用、全局量。
@@ -146,15 +142,6 @@ impl<'a> Ctx<'a> {
         self.translate_place::<TermBuilder>(place)
     }
 
-    /// 收集位置表达式中引用到的局部变量。
-    pub(super) fn get_place_locals(&self, place: &Place) -> HashSet<LocalId> {
-        match &place.kind {
-            PlaceKind::Local(local_id) => HashSet::from([*local_id]),
-            PlaceKind::Projection(base, _proj) => self.get_place_locals(base),
-            PlaceKind::Global(_global_ref) => HashSet::new(),
-        }
-    }
-
     /// 翻译对全局量的引用（要求其泛型实参为空）。
     fn translate_global_ref<T: Builder>(&self, global_ref: &GlobalDeclRef) -> T::T {
         assert!(global_ref.generics.types.is_empty());
@@ -185,13 +172,5 @@ impl<'a> Ctx<'a> {
     /// `translate_operand` 的 `Term` 版本。
     pub(super) fn translate_operand_to_term(&mut self, operand: &Operand) -> Result<Term> {
         self.translate_operand::<TermBuilder>(operand)
-    }
-
-    /// 收集操作数中引用到的局部变量。
-    pub(super) fn get_operand_locals(&self, operand: &Operand) -> HashSet<LocalId> {
-        match operand {
-            Operand::Copy(place) | Operand::Move(place) => self.get_place_locals(place),
-            Operand::Const(_const_expr) => HashSet::new(),
-        }
     }
 }
