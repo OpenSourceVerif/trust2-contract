@@ -13,7 +13,7 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
     process::Command,
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, Instant},
 };
 
 pub fn verify_crates(
@@ -66,7 +66,19 @@ fn verify_crate(
         .args(why3find_prove_args)
         .stdout(io::stderr())
         .status()?;
-    print_proofs(why3_out_dir, crate_name, proof_mtime_before)?;
+    // 是否存在新记录由验证流程决定；打印函数只处理已经读取的证明数据。
+    if let Some(proof_path) = proof_file_path(why3_out_dir, crate_name) {
+        if fs::metadata(&proof_path)?.modified().ok() == proof_mtime_before {
+            eprintln!(
+                "{:>12} no updated proof record for `{crate_name}` (why3find exited before proving)",
+                "Skipped".yellow().bold().whenever(STDERR_IS_TTY_AND_COLOR),
+            );
+        } else {
+            let proof_string = fs::read_to_string(&proof_path)?;
+            let proof_file: ProofFile = serde_json::from_str(&proof_string)?;
+            print_proofs(crate_name, &proof_file);
+        }
+    }
     if why3find_prove_exit_status.success() {
         eprintln!(
             "{:>12} {crate_name} in {}",
@@ -79,36 +91,16 @@ fn verify_crate(
     }
 }
 
-/// 读取 why3find 写出的证明记录，逐个打印证明目标、证明器与耗时。
+/// 批量打印已读取的证明目标、证明器与耗时。
 ///
 /// 即使本次验证失败（存在未能证明的目标）也会打印，便于定位是哪个目标失败。
-/// 但 `proof_mtime_before` 与文件当前的修改时间相同时说明本次运行没有更新记录，
-/// 此时直接跳过打印（否则会打印上一轮的结果）。
-fn print_proofs(
-    why3_out_dir: &Path,
-    crate_name: &str,
-    proof_mtime_before: Option<SystemTime>,
-) -> Result<()> {
-    let Some(proof_path) = proof_file_path(why3_out_dir, crate_name) else {
-        // 没有证明记录（例如 why3find 尚未真正开始证明）
-        return Ok(());
-    };
-    if fs::metadata(&proof_path)?.modified().ok() == proof_mtime_before {
-        eprintln!(
-            "{:>12} no updated proof record for `{crate_name}` (why3find exited before proving)",
-            "Skipped".yellow().bold().whenever(STDERR_IS_TTY_AND_COLOR),
-        );
-        return Ok(());
-    }
-
-    let proof_string = fs::read_to_string(&proof_path)?;
-    let proof_file: ProofFile = serde_json::from_str(&proof_string)?;
+/// 调用方负责确认记录来自本次验证。
+fn print_proofs(crate_name: &str, proof_file: &ProofFile<'_>) {
     for (theory, goals) in &proof_file.proofs {
         for (goal, certificate) in goals {
             print_certificate(&format!("{crate_name}.{theory}.{goal}"), certificate);
         }
     }
-    Ok(())
 }
 
 /// why3find 写出的证明记录文件的位置。
