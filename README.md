@@ -42,7 +42,6 @@ Leaving directory '/tmp/.tmpj8g1QI'
 ## Platform Support
 
 - Linux AMD64
-- Linux ARM64
 - macOS AMD64
 - macOS ARM64
 

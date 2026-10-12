@@ -18,7 +18,6 @@ jobs:
       matrix:
         VM:
           - ubuntu-latest
-          - ubuntu-24.04-arm
           - macos-26-intel
           - macos-latest
 
