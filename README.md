@@ -5,6 +5,12 @@ trust2-contract lets you attach preconditions, postconditions, type invariants, 
 
 Contracts are verified statically. In an ordinary build, contract annotations are simply removed.
 
+## Manual
+
+Read the user guide and specification reference: [English](docs/specification-reference/book/en/introduction.html) · [简体中文](docs/specification-reference/book/zh/introduction.html).
+
+For local browsing and rebuilding, see [the manual README](docs/specification-reference/README.md).
+
 ## Example
 
 ```rs

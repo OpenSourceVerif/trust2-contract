@@ -1,0 +1,34 @@
+[book]
+title = "trust2-contract Reference"
+description = "A guide and language reference for trust2-contract."
+language = "en"
+src = "src/en"
+
+[build]
+build-dir = "book/en"
+create-missing = false
+extra-watch-dirs = ["grammar.json", "preprocess.py", "railroad.py", "theme"]
+
+[preprocessor.contract-syntax]
+command = "python3 preprocess.py"
+before = ["links"]
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+additional-css = ["theme/reference.css", "theme/manual.css"]
+additional-js = ["theme/reference.js"]
+smart-punctuation = true
+# Prusti-style chapter tree: do not mix in the current page's headings.
+sidebar-header-nav = false
+
+[output.html.fold]
+enable = false
+
+[output.html.playground]
+runnable = false
+
+[output.html.search]
+enable = true
+use-boolean-and = true
+limit-results = 30

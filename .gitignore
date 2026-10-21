@@ -1,4 +1,7 @@
 /target
 
+# macOS metadata, including variants, at any directory depth
+*.DS_Store*
+
 _opam/
 dune.lock/

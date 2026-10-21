@@ -1,0 +1,78 @@
+{
+  "Specification": {
+    "definition": "FunctionContract | TypeInvariant | ContractStatement",
+    "chapter": "specifications.md"
+  },
+  "FunctionContract": {
+    "definition": "Precondition | Postcondition",
+    "chapter": "function-contracts.md"
+  },
+  "Precondition": {
+    "definition": "\"#\" \"[\" \"precondition\" \"(\" Condition \")\" \"]\"",
+    "chapter": "preconditions.md"
+  },
+  "Postcondition": {
+    "definition": "\"#\" \"[\" \"postcondition\" \"(\" ResultPredicate \")\" \"]\"",
+    "chapter": "postconditions.md"
+  },
+  "ResultPredicate": {
+    "definition": "\"|\" IDENTIFIER (\":\" Type)? \"|\" Condition",
+    "chapter": "postconditions.md"
+  },
+  "TypeInvariant": {
+    "definition": "\"#\" \"[\" \"invariant\" \"(\" Condition \")\" \"]\"",
+    "chapter": "invariants.md"
+  },
+  "ContractStatement": {
+    "definition": "Assertion | Assumption",
+    "chapter": "statements.md"
+  },
+  "Condition": {
+    "definition": "Expr",
+    "chapter": "expressions.md"
+  },
+  "Expr": {
+    "definition": "Literal | Path | \"self\" | \"(\" Expr \")\"\n| UnaryOp Expr | Expr BinaryOp Expr\n| Expr \".\" Field | Expr \"[\" Expr \"]\"\n| Expr \"(\" Arguments? \")\"\n| Expr \".\" IDENTIFIER \"(\" Arguments? \")\"\n| Quantifier | Implication | OldExpression",
+    "chapter": "expressions.md"
+  },
+  "Arguments": {
+    "definition": "Expr (\",\" Expr)* \",\"?",
+    "chapter": "expressions.md"
+  },
+  "Field": {
+    "definition": "IDENTIFIER | TUPLE_INDEX",
+    "chapter": "expressions.md"
+  },
+  "UnaryOp": {
+    "definition": "\"!\" | \"-\" | \"*\" | \"&\" | \"&\" \"mut\"",
+    "chapter": "expressions.md"
+  },
+  "BinaryOp": {
+    "definition": "\"+\" | \"-\" | \"*\" | \"/\" | \"%\" | \"<<\" | \">>\"\n| \"&\" | \"^\" | \"|\" | \"==\" | \"!=\" | \"<\" | \"<=\" | \">\" | \">=\"\n| \"&&\" | \"||\"",
+    "chapter": "expressions.md"
+  },
+  "Quantifier": {
+    "definition": "(\"forall\" | \"exists\") \"!\" \"(\" QuantifierPredicate \")\"",
+    "chapter": "quantifiers.md"
+  },
+  "QuantifierPredicate": {
+    "definition": "\"|\" IDENTIFIER \":\" Type \"|\" Condition",
+    "chapter": "quantifiers.md"
+  },
+  "Implication": {
+    "definition": "\"implies\" \"(\" Condition \",\" Condition \",\"? \")\"",
+    "chapter": "implication.md"
+  },
+  "OldExpression": {
+    "definition": "\"old\" \"(\" Expr \",\"? \")\"",
+    "chapter": "old.md"
+  },
+  "Assertion": {
+    "definition": "\"contract_assert\" \"!\" \"(\" Condition \")\" \";\"",
+    "chapter": "assertions.md"
+  },
+  "Assumption": {
+    "definition": "\"contract_assume\" \"!\" \"(\" Condition \")\" \";\"",
+    "chapter": "assumptions.md"
+  }
+}

@@ -1,0 +1,322 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Logic Expressions - trust2-contract Reference</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="A guide and language reference for trust2-contract.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/reference-bb0bdaf8.css">
+        <link rel="stylesheet" href="theme/manual-f23999f1.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-356b4796.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-40026986.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">trust2-contract Reference</h1>
+
+                    <div class="right-buttons"><a class="language-switch" href="../zh/expressions.html" lang="zh" hreflang="zh">简体中文</a>
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <div class="rule" id="r-contract.expression"><a class="rule-link" href="#r-contract.expression" title="contract.expression"><span>[contract<wbr>.expression]</span></a></div>
+
+<h1 id="logic-expressions"><a class="header" href="#logic-expressions">Logic Expressions</a></h1>
+<p>Logic expressions form the conditions used in contracts, statement annotations, and type invariants. They use Rust expressions together with quantifiers, implication, and an old-state marker.</p>
+<div class="rule" id="r-contract.expression.syntax"><a class="rule-link" href="#r-contract.expression.syntax" title="contract.expression.syntax"><span>[contract<wbr>.expression<wbr>.syntax]</span></a></div>
+
+<div class="grammar-container">
+<p><strong><sup>Syntax</sup></strong><br>
+<span class="grammar-text grammar-production" id="grammar-Condition" onclick="show_railroad()"><a href="#railroad-Condition">Condition</a></span> → <br>      <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span></p>
+
+<p><span class="grammar-text grammar-production" id="grammar-Expr" onclick="show_railroad()"><a href="#railroad-Expr">Expr</a></span> → <br>      <span class="grammar-text"><a href="notations.html#rust-syntax">Literal</a></span> <br>    | <span class="grammar-text"><a href="notations.html#rust-syntax">Path</a></span> <br>    | <span class="grammar-literal">self</span> <br>    | <span class="grammar-literal">(</span> <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <span class="grammar-literal">)</span> <br>    | <span class="grammar-text"><a href="expressions.html#grammar-UnaryOp">UnaryOp</a></span> <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <br>    | <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <span class="grammar-text"><a href="expressions.html#grammar-BinaryOp">BinaryOp</a></span> <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <br>    | <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <span class="grammar-literal">.</span> <span class="grammar-text"><a href="expressions.html#grammar-Field">Field</a></span> <br>    | <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <span class="grammar-literal">[</span> <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <span class="grammar-literal">]</span> <br>    | <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <span class="grammar-literal">(</span> <span class="grammar-text"><a href="expressions.html#grammar-Arguments">Arguments</a></span><sup>?</sup> <span class="grammar-literal">)</span> <br>    | <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> <span class="grammar-literal">.</span> <span class="grammar-text"><a href="notations.html#rust-syntax">IDENTIFIER</a></span> <span class="grammar-literal">(</span> <span class="grammar-text"><a href="expressions.html#grammar-Arguments">Arguments</a></span><sup>?</sup> <span class="grammar-literal">)</span> <br>    | <span class="grammar-text"><a href="quantifiers.html#grammar-Quantifier">Quantifier</a></span> <br>    | <span class="grammar-text"><a href="implication.html#grammar-Implication">Implication</a></span> <br>    | <span class="grammar-text"><a href="old.html#grammar-OldExpression">OldExpression</a></span></p>
+
+<p><span class="grammar-text grammar-production" id="grammar-Arguments" onclick="show_railroad()"><a href="#railroad-Arguments">Arguments</a></span> → <br>      <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span> (<span class="grammar-literal">,</span> <span class="grammar-text"><a href="expressions.html#grammar-Expr">Expr</a></span>)<sup>*</sup> <span class="grammar-literal">,</span><sup>?</sup></p>
+
+<p><span class="grammar-text grammar-production" id="grammar-Field" onclick="show_railroad()"><a href="#railroad-Field">Field</a></span> → <br>      <span class="grammar-text"><a href="notations.html#rust-syntax">IDENTIFIER</a></span> <br>    | <span class="grammar-text"><a href="notations.html#rust-syntax">TUPLE_INDEX</a></span></p>
+
+<p><span class="grammar-text grammar-production" id="grammar-UnaryOp" onclick="show_railroad()"><a href="#railroad-UnaryOp">UnaryOp</a></span> → <br>      <span class="grammar-literal">!</span> | <span class="grammar-literal">-</span> | <span class="grammar-literal">*</span> | <span class="grammar-literal">&amp;</span> | <span class="grammar-literal">&amp;</span> <span class="grammar-literal">mut</span></p>
+
+<p><span class="grammar-text grammar-production" id="grammar-BinaryOp" onclick="show_railroad()"><a href="#railroad-BinaryOp">BinaryOp</a></span> → <br>      <span class="grammar-literal">+</span> | <span class="grammar-literal">-</span> | <span class="grammar-literal">*</span> | <span class="grammar-literal">/</span> | <span class="grammar-literal">%</span> | <span class="grammar-literal">&lt;&lt;</span> | <span class="grammar-literal">&gt;&gt;</span> | <span class="grammar-literal">&amp;</span> | <span class="grammar-literal">^</span> | <span class="grammar-literal">|</span> | <span class="grammar-literal">==</span> | <span class="grammar-literal">!=</span> | <span class="grammar-literal">&lt;</span> | <span class="grammar-literal">&lt;=</span> | <span class="grammar-literal">&gt;</span> | <span class="grammar-literal">&gt;=</span> | <span class="grammar-literal">&amp;&amp;</span> | <span class="grammar-literal">||</span></p>
+
+<p><button class="grammar-toggle-railroad" type="button" title="Toggle railroad display" onclick="toggle_railroad()">Show Railroad</button></p>
+
+</div>
+
+<div class="grammar-railroad grammar-hidden">
+<div class="railroad-production" id="railroad-Condition"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-expressions-Condition-title" viewbox="0 0 120 88" width="120" height="88"><title id="railroad-expressions-Condition-title">Condition syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="expressions.html#grammar-Condition"><text class="comment" x="56" y="20">Condition</text></a><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="32" y="41" width="56" height="32" rx="3" /><text x="60.0" y="61" text-anchor="middle">Expr</text></g></a><path d="M88 57 H108 M108 51 V63 M112 51 V63" /></svg></div>
+
+<div class="railroad-production" id="railroad-Expr"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-expressions-Expr-title" viewbox="0 0 660 748" width="660" height="748"><title id="railroad-expressions-Expr-title">Expr syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="expressions.html#grammar-Expr"><text class="comment" x="36" y="20">Expr</text></a><path d="M32 57 H44 V57 H56" /><a href="notations.html#rust-syntax"><g class="nonterminal"><rect x="56" y="41" width="80" height="32" rx="3" /><text x="96.0" y="61" text-anchor="middle">Literal</text></g></a><path d="M136 57 H616 V57 H628" /><path d="M32 57 H44 V105 H56" /><a href="notations.html#rust-syntax"><g class="nonterminal"><rect x="56" y="89" width="56" height="32" rx="3" /><text x="84.0" y="109" text-anchor="middle">Path</text></g></a><path d="M112 105 H616 V57 H628" /><path d="M32 57 H44 V153 H56" /><g class="terminal"><rect x="56" y="137" width="56" height="32" rx="16" /><text x="84.0" y="157" text-anchor="middle">self</text></g><path d="M112 153 H616 V57 H628" /><path d="M32 57 H44 V201 H56" /><g class="terminal"><rect x="56" y="185" width="48" height="32" rx="16" /><text x="80.0" y="205" text-anchor="middle">(</text></g><path d="M104 201 H124" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="124" y="185" width="56" height="32" rx="3" /><text x="152.0" y="205" text-anchor="middle">Expr</text></g></a><path d="M180 201 H200" /><g class="terminal"><rect x="200" y="185" width="48" height="32" rx="16" /><text x="224.0" y="205" text-anchor="middle">)</text></g><path d="M248 201 H616 V57 H628" /><path d="M32 57 H44 V249 H56" /><a href="expressions.html#grammar-UnaryOp"><g class="nonterminal"><rect x="56" y="233" width="80" height="32" rx="3" /><text x="96.0" y="253" text-anchor="middle">UnaryOp</text></g></a><path d="M136 249 H156" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="156" y="233" width="56" height="32" rx="3" /><text x="184.0" y="253" text-anchor="middle">Expr</text></g></a><path d="M212 249 H616 V57 H628" /><path d="M32 57 H44 V297 H56" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="56" y="281" width="56" height="32" rx="3" /><text x="84.0" y="301" text-anchor="middle">Expr</text></g></a><path d="M112 297 H132" /><a href="expressions.html#grammar-BinaryOp"><g class="nonterminal"><rect x="132" y="281" width="88" height="32" rx="3" /><text x="176.0" y="301" text-anchor="middle">BinaryOp</text></g></a><path d="M220 297 H240" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="240" y="281" width="56" height="32" rx="3" /><text x="268.0" y="301" text-anchor="middle">Expr</text></g></a><path d="M296 297 H616 V57 H628" /><path d="M32 57 H44 V345 H56" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="56" y="329" width="56" height="32" rx="3" /><text x="84.0" y="349" text-anchor="middle">Expr</text></g></a><path d="M112 345 H132" /><g class="terminal"><rect x="132" y="329" width="48" height="32" rx="16" /><text x="156.0" y="349" text-anchor="middle">.</text></g><path d="M180 345 H200" /><a href="expressions.html#grammar-Field"><g class="nonterminal"><rect x="200" y="329" width="64" height="32" rx="3" /><text x="232.0" y="349" text-anchor="middle">Field</text></g></a><path d="M264 345 H616 V57 H628" /><path d="M32 57 H44 V393 H56" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="56" y="377" width="56" height="32" rx="3" /><text x="84.0" y="397" text-anchor="middle">Expr</text></g></a><path d="M112 393 H132" /><g class="terminal"><rect x="132" y="377" width="48" height="32" rx="16" /><text x="156.0" y="397" text-anchor="middle">[</text></g><path d="M180 393 H200" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="200" y="377" width="56" height="32" rx="3" /><text x="228.0" y="397" text-anchor="middle">Expr</text></g></a><path d="M256 393 H276" /><g class="terminal"><rect x="276" y="377" width="48" height="32" rx="16" /><text x="300.0" y="397" text-anchor="middle">]</text></g><path d="M324 393 H616 V57 H628" /><path d="M32 57 H44 V441 H56" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="56" y="425" width="56" height="32" rx="3" /><text x="84.0" y="445" text-anchor="middle">Expr</text></g></a><path d="M112 441 H132" /><g class="terminal"><rect x="132" y="425" width="48" height="32" rx="16" /><text x="156.0" y="445" text-anchor="middle">(</text></g><path d="M180 441 H200" /><path d="M200 441 H212 V441 H224" /><path d="M224 441 H256" /><path d="M256 441 H332 V441 H344" /><path d="M200 441 H212 V483 H224" /><a href="expressions.html#grammar-Arguments"><g class="nonterminal"><rect x="224" y="467" width="96" height="32" rx="3" /><text x="272.0" y="487" text-anchor="middle">Arguments</text></g></a><path d="M320 483 H332 V441 H344" /><path d="M344 441 H364" /><g class="terminal"><rect x="364" y="425" width="48" height="32" rx="16" /><text x="388.0" y="445" text-anchor="middle">)</text></g><path d="M412 441 H616 V57 H628" /><path d="M32 57 H44 V531 H56" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="56" y="515" width="56" height="32" rx="3" /><text x="84.0" y="535" text-anchor="middle">Expr</text></g></a><path d="M112 531 H132" /><g class="terminal"><rect x="132" y="515" width="48" height="32" rx="16" /><text x="156.0" y="535" text-anchor="middle">.</text></g><path d="M180 531 H200" /><a href="notations.html#rust-syntax"><g class="nonterminal"><rect x="200" y="515" width="104" height="32" rx="3" /><text x="252.0" y="535" text-anchor="middle">IDENTIFIER</text></g></a><path d="M304 531 H324" /><g class="terminal"><rect x="324" y="515" width="48" height="32" rx="16" /><text x="348.0" y="535" text-anchor="middle">(</text></g><path d="M372 531 H392" /><path d="M392 531 H404 V531 H416" /><path d="M416 531 H448" /><path d="M448 531 H524 V531 H536" /><path d="M392 531 H404 V573 H416" /><a href="expressions.html#grammar-Arguments"><g class="nonterminal"><rect x="416" y="557" width="96" height="32" rx="3" /><text x="464.0" y="577" text-anchor="middle">Arguments</text></g></a><path d="M512 573 H524 V531 H536" /><path d="M536 531 H556" /><g class="terminal"><rect x="556" y="515" width="48" height="32" rx="16" /><text x="580.0" y="535" text-anchor="middle">)</text></g><path d="M604 531 H616 V57 H628" /><path d="M32 57 H44 V621 H56" /><a href="quantifiers.html#grammar-Quantifier"><g class="nonterminal"><rect x="56" y="605" width="104" height="32" rx="3" /><text x="108.0" y="625" text-anchor="middle">Quantifier</text></g></a><path d="M160 621 H616 V57 H628" /><path d="M32 57 H44 V669 H56" /><a href="implication.html#grammar-Implication"><g class="nonterminal"><rect x="56" y="653" width="112" height="32" rx="3" /><text x="112.0" y="673" text-anchor="middle">Implication</text></g></a><path d="M168 669 H616 V57 H628" /><path d="M32 57 H44 V717 H56" /><a href="old.html#grammar-OldExpression"><g class="nonterminal"><rect x="56" y="701" width="128" height="32" rx="3" /><text x="120.0" y="721" text-anchor="middle">OldExpression</text></g></a><path d="M184 717 H616 V57 H628" /><path d="M628 57 H648 M648 51 V63 M652 51 V63" /></svg></div>
+
+<div class="railroad-production" id="railroad-Arguments"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-expressions-Arguments-title" viewbox="0 0 468 158" width="468" height="158"><title id="railroad-expressions-Arguments-title">Arguments syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="expressions.html#grammar-Arguments"><text class="comment" x="56" y="20">Arguments</text></a><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="32" y="41" width="56" height="32" rx="3" /><text x="60.0" y="61" text-anchor="middle">Expr</text></g></a><path d="M88 57 H108" /><path d="M108 57 H120 V57 H132" /><path d="M132 57 H164" /><path d="M164 57 H308 V57 H320" /><path d="M108 57 H120 V99 H132" /><path d="M132 99 H152" /><g class="terminal"><rect x="152" y="83" width="48" height="32" rx="16" /><text x="176.0" y="103" text-anchor="middle">,</text></g><path d="M200 99 H220" /><a href="expressions.html#grammar-Expr"><g class="nonterminal"><rect x="220" y="83" width="56" height="32" rx="3" /><text x="248.0" y="103" text-anchor="middle">Expr</text></g></a><path d="M276 99 H296" /><path d="M289 99 V134 H139 V99" /><path d="M219.0 130 L214.0 134 L219.0 138" /><path d="M296 99 H308 V57 H320" /><path d="M320 57 H340" /><path d="M340 57 H352 V57 H364" /><path d="M364 57 H396" /><path d="M396 57 H424 V57 H436" /><path d="M340 57 H352 V99 H364" /><g class="terminal"><rect x="364" y="83" width="48" height="32" rx="16" /><text x="388.0" y="103" text-anchor="middle">,</text></g><path d="M412 99 H424 V57 H436" /><path d="M436 57 H456 M456 51 V63 M460 51 V63" /></svg></div>
+
+<div class="railroad-production" id="railroad-Field"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-expressions-Field-title" viewbox="0 0 224 136" width="224" height="136"><title id="railroad-expressions-Field-title">Field syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="expressions.html#grammar-Field"><text class="comment" x="40" y="20">Field</text></a><path d="M32 57 H44 V57 H56" /><a href="notations.html#rust-syntax"><g class="nonterminal"><rect x="56" y="41" width="104" height="32" rx="3" /><text x="108.0" y="61" text-anchor="middle">IDENTIFIER</text></g></a><path d="M160 57 H180 V57 H192" /><path d="M32 57 H44 V105 H56" /><a href="notations.html#rust-syntax"><g class="nonterminal"><rect x="56" y="89" width="112" height="32" rx="3" /><text x="112.0" y="109" text-anchor="middle">TUPLE_INDEX</text></g></a><path d="M168 105 H180 V57 H192" /><path d="M192 57 H212 M212 51 V63 M216 51 V63" /></svg></div>
+
+<div class="railroad-production" id="railroad-UnaryOp"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-expressions-UnaryOp-title" viewbox="0 0 228 280" width="228" height="280"><title id="railroad-expressions-UnaryOp-title">UnaryOp syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="expressions.html#grammar-UnaryOp"><text class="comment" x="48" y="20">UnaryOp</text></a><path d="M32 57 H44 V57 H56" /><g class="terminal"><rect x="56" y="41" width="48" height="32" rx="16" /><text x="80.0" y="61" text-anchor="middle">!</text></g><path d="M104 57 H184 V57 H196" /><path d="M32 57 H44 V105 H56" /><g class="terminal"><rect x="56" y="89" width="48" height="32" rx="16" /><text x="80.0" y="109" text-anchor="middle">-</text></g><path d="M104 105 H184 V57 H196" /><path d="M32 57 H44 V153 H56" /><g class="terminal"><rect x="56" y="137" width="48" height="32" rx="16" /><text x="80.0" y="157" text-anchor="middle">*</text></g><path d="M104 153 H184 V57 H196" /><path d="M32 57 H44 V201 H56" /><g class="terminal"><rect x="56" y="185" width="48" height="32" rx="16" /><text x="80.0" y="205" text-anchor="middle">&amp;</text></g><path d="M104 201 H184 V57 H196" /><path d="M32 57 H44 V249 H56" /><g class="terminal"><rect x="56" y="233" width="48" height="32" rx="16" /><text x="80.0" y="253" text-anchor="middle">&amp;</text></g><path d="M104 249 H124" /><g class="terminal"><rect x="124" y="233" width="48" height="32" rx="16" /><text x="148.0" y="253" text-anchor="middle">mut</text></g><path d="M172 249 H184 V57 H196" /><path d="M196 57 H216 M216 51 V63 M220 51 V63" /></svg></div>
+
+<div class="railroad-production" id="railroad-BinaryOp"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-expressions-BinaryOp-title" viewbox="0 0 160 904" width="160" height="904"><title id="railroad-expressions-BinaryOp-title">BinaryOp syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="expressions.html#grammar-BinaryOp"><text class="comment" x="52" y="20">BinaryOp</text></a><path d="M32 57 H44 V57 H56" /><g class="terminal"><rect x="56" y="41" width="48" height="32" rx="16" /><text x="80.0" y="61" text-anchor="middle">+</text></g><path d="M104 57 H116 V57 H128" /><path d="M32 57 H44 V105 H56" /><g class="terminal"><rect x="56" y="89" width="48" height="32" rx="16" /><text x="80.0" y="109" text-anchor="middle">-</text></g><path d="M104 105 H116 V57 H128" /><path d="M32 57 H44 V153 H56" /><g class="terminal"><rect x="56" y="137" width="48" height="32" rx="16" /><text x="80.0" y="157" text-anchor="middle">*</text></g><path d="M104 153 H116 V57 H128" /><path d="M32 57 H44 V201 H56" /><g class="terminal"><rect x="56" y="185" width="48" height="32" rx="16" /><text x="80.0" y="205" text-anchor="middle">/</text></g><path d="M104 201 H116 V57 H128" /><path d="M32 57 H44 V249 H56" /><g class="terminal"><rect x="56" y="233" width="48" height="32" rx="16" /><text x="80.0" y="253" text-anchor="middle">%</text></g><path d="M104 249 H116 V57 H128" /><path d="M32 57 H44 V297 H56" /><g class="terminal"><rect x="56" y="281" width="48" height="32" rx="16" /><text x="80.0" y="301" text-anchor="middle">&lt;&lt;</text></g><path d="M104 297 H116 V57 H128" /><path d="M32 57 H44 V345 H56" /><g class="terminal"><rect x="56" y="329" width="48" height="32" rx="16" /><text x="80.0" y="349" text-anchor="middle">&gt;&gt;</text></g><path d="M104 345 H116 V57 H128" /><path d="M32 57 H44 V393 H56" /><g class="terminal"><rect x="56" y="377" width="48" height="32" rx="16" /><text x="80.0" y="397" text-anchor="middle">&amp;</text></g><path d="M104 393 H116 V57 H128" /><path d="M32 57 H44 V441 H56" /><g class="terminal"><rect x="56" y="425" width="48" height="32" rx="16" /><text x="80.0" y="445" text-anchor="middle">^</text></g><path d="M104 441 H116 V57 H128" /><path d="M32 57 H44 V489 H56" /><g class="terminal"><rect x="56" y="473" width="48" height="32" rx="16" /><text x="80.0" y="493" text-anchor="middle">|</text></g><path d="M104 489 H116 V57 H128" /><path d="M32 57 H44 V537 H56" /><g class="terminal"><rect x="56" y="521" width="48" height="32" rx="16" /><text x="80.0" y="541" text-anchor="middle">==</text></g><path d="M104 537 H116 V57 H128" /><path d="M32 57 H44 V585 H56" /><g class="terminal"><rect x="56" y="569" width="48" height="32" rx="16" /><text x="80.0" y="589" text-anchor="middle">!=</text></g><path d="M104 585 H116 V57 H128" /><path d="M32 57 H44 V633 H56" /><g class="terminal"><rect x="56" y="617" width="48" height="32" rx="16" /><text x="80.0" y="637" text-anchor="middle">&lt;</text></g><path d="M104 633 H116 V57 H128" /><path d="M32 57 H44 V681 H56" /><g class="terminal"><rect x="56" y="665" width="48" height="32" rx="16" /><text x="80.0" y="685" text-anchor="middle">&lt;=</text></g><path d="M104 681 H116 V57 H128" /><path d="M32 57 H44 V729 H56" /><g class="terminal"><rect x="56" y="713" width="48" height="32" rx="16" /><text x="80.0" y="733" text-anchor="middle">&gt;</text></g><path d="M104 729 H116 V57 H128" /><path d="M32 57 H44 V777 H56" /><g class="terminal"><rect x="56" y="761" width="48" height="32" rx="16" /><text x="80.0" y="781" text-anchor="middle">&gt;=</text></g><path d="M104 777 H116 V57 H128" /><path d="M32 57 H44 V825 H56" /><g class="terminal"><rect x="56" y="809" width="48" height="32" rx="16" /><text x="80.0" y="829" text-anchor="middle">&amp;&amp;</text></g><path d="M104 825 H116 V57 H128" /><path d="M32 57 H44 V873 H56" /><g class="terminal"><rect x="56" y="857" width="48" height="32" rx="16" /><text x="80.0" y="877" text-anchor="middle">||</text></g><path d="M104 873 H116 V57 H128" /><path d="M128 57 H148 M148 51 V63 M152 51 V63" /></svg></div>
+
+</div>
+
+<div class="rule" id="r-contract.expression.intro"><a class="rule-link" href="#r-contract.expression.intro" title="contract.expression.intro"><span>[contract<wbr>.expression<wbr>.intro]</span></a></div>
+
+<h2 id="types-and-values"><a class="header" href="#types-and-values">Types and values</a></h2>
+<p>A <code>Condition</code> must have type <code>bool</code>. Subexpressions may have other Rust types: for example, in <code>x + 1 &lt;= limit</code>, the addition produces a numeric value and the comparison produces a Boolean value. There is no separate predicate type or implicit conversion from integers to Boolean conditions.</p>
+<p>Names refer to bindings in scope. Field access, dereferencing, indexing, and function or method calls use Rust typing and borrowing rules. Parentheses group expressions without changing their value.</p>
+<p>Integer expressions use Rust integer types, including their finite ranges and arithmetic checks. The specification interface does not introduce mathematical integers or real numbers. An expression that indexes a collection must also satisfy the index bounds; appearing in a specification does not remove that requirement.</p>
+<h2 id="operator-precedence"><a class="header" href="#operator-precedence">Operator precedence <a id="operators"></a></a></h2>
+<p>The following groups are ordered from highest to lowest precedence. Unary operators associate to the right. Arithmetic and bitwise binary operators associate to the left. Comparisons cannot be chained directly: write <code>a &lt; b &amp;&amp; b &lt; c</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Group</th><th>Operators</th></tr>
+</thead>
+<tbody>
+<tr><td>Access and calls</td><td><code>e.field</code> <code>e[i]</code> <code>f(x)</code> <code>e.method(x)</code></td></tr>
+<tr><td>Unary</td><td><code>!</code> <code>-</code> <code>*</code> <code>&amp;</code> <code>&amp;mut</code></td></tr>
+<tr><td>Multiplicative</td><td><code>*</code> <code>/</code> <code>%</code></td></tr>
+<tr><td>Additive</td><td><code>+</code> <code>-</code></td></tr>
+<tr><td>Shifts</td><td><code>&lt;&lt;</code> <code>&gt;&gt;</code></td></tr>
+<tr><td>Bitwise AND</td><td><code>&amp;</code></td></tr>
+<tr><td>Bitwise XOR</td><td><code>^</code></td></tr>
+<tr><td>Bitwise OR</td><td><code>|</code></td></tr>
+<tr><td>Comparisons</td><td><code>==</code> <code>!=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code></td></tr>
+<tr><td>Logical AND</td><td><code>&amp;&amp;</code></td></tr>
+<tr><td>Logical OR</td><td><code>||</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>For Boolean operands, <code>!</code>, <code>&amp;&amp;</code>, and <code>||</code> express negation, conjunction, and disjunction. <code>&amp;&amp;</code> and <code>||</code> short-circuit: their right operand is evaluated only when needed. The single-character bitwise operators do not provide this short-circuit behavior.</p>
+<p><a href="quantifiers.html">Quantifiers</a> bind a value of a Rust type. <a href="implication.html">Implication</a> expresses a conditional proposition. <a href="old.html">Old-state Expressions</a> describe the pre-state marker available in postconditions.</p>
+<div class="rule" id="r-contract.expression.example"><a class="rule-link" href="#r-contract.expression.example" title="contract.expression.example"><span>[contract<wbr>.expression<wbr>.example]</span></a></div>
+
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<pre><code class="language-rust ignore">use trust2_contract::prelude::*;
+
+#[precondition(i &lt; values.len() &amp;&amp; values[i] &gt; 0)]
+pub fn positive_at(values: &amp;[u8], i: usize) -&gt; u8 {
+    values[i]
+}</code></pre>
+<p>The condition requires a valid index and a positive element. Short-circuit evaluation ensures the second operand is evaluated only when the index is in bounds.</p>
+<div class="rule" id="r-contract.expression.boundary"><a class="rule-link" href="#r-contract.expression.boundary" title="contract.expression.boundary"><span>[contract<wbr>.expression<wbr>.boundary]</span></a></div>
+
+<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.expression.boundary-title"></a></a></h2>
+<p>Existing frontend examples cover field comparisons, ordinary calls, slice lengths, Vec indexing, and trait comparisons, including combinations with quantifiers. An operator’s presence in the grammar does not imply coverage for every operand type or overload.</p>
+<p>Calls can be retained in specification bodies, but external functions may be opaque. There is no dedicated declaration mechanism for pure logical functions, predicates, or ghost code, and no separate logical sequence, set, or map interface or complete set of standard-library contracts.</p>
+<p>Blocks, <code>if</code>, <code>match</code>, casts, complex patterns, and other Rust forms are not expanded in this core grammar. Their acceptance depends on parsing, Rust typing, and extraction for the particular expression.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="notations.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="quantifiers.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="notations.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="quantifiers.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/reference-da60281b.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
