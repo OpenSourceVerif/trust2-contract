@@ -26,7 +26,7 @@ Syntax blocks use a compact extended BNF (EBNF). Boxed monospace text denotes li
 
 | Notation | Meaning |
 | --- | --- |
-| `A → B` | Defines A in terms of B |
+| `A := B` | Defines A in terms of B |
 | `A B` | A followed by B |
 | `A \| B` | Either A or B |
 | `A?` | Zero or one occurrence of A |

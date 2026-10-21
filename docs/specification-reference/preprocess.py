@@ -74,7 +74,7 @@ def syntax(names, chapter, prefix):
         separator = ' | ' if all(x.startswith('"') and x.endswith('"') for x in options) else ' <br>\u00a0\u00a0\u00a0\u00a0| '
         rhs = separator.join(render_tokens(x) for x in options)
         productions.append(f'<span class="grammar-text grammar-production" id="{rule_id}" '
-            f'onclick="show_railroad()"><a href="#{railroad_id}">{name}</a></span> → '
+            f'onclick="show_railroad()"><a href="#{railroad_id}">{name}</a></span> := '
             f'<br>\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0{rhs}')
         svg = render_railroad(name, rule['definition'], destination)
         if LANGUAGE == 'en':
