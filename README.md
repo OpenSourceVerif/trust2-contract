@@ -7,6 +7,9 @@ Contracts are verified statically. In an ordinary build, contract annotations ar
 
 ## Manual
 
+Research workspace: [Open the website](sites/index.html) · [Website README](sites/README.md).
+Open `sites/index.html` in a local browser. The website source and pages live in this repository under `sites/`.
+
 Read the user guide and specification reference: [English](docs/specification-reference/book/en/introduction.html) · [简体中文](docs/specification-reference/book/zh/introduction.html).
 
 For local browsing and rebuilding, see [the manual README](docs/specification-reference/README.md).

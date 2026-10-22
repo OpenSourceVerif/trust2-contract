@@ -1,0 +1,7 @@
+/* Local additions. The Rust Reference theme is kept unchanged. */
+#mdbook-menu-bar .language-switch {
+    display: inline-block;
+    font-size: 1.4rem;
+    padding: 0 12px;
+    white-space: nowrap;
+}

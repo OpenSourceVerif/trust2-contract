@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="trust2-contract 研究工作台：PCG 研究路线、任务记录与规约框架参考手册。">
+<title>trust2-contract 源码阅读 · trust2-contract</title><link rel="stylesheet" href="../style.css"><link rel="stylesheet" href="../research.css">
+<link rel="stylesheet" href="../workbench.css">
+<script src="../plan-data.js" defer></script><script src="../research.js" defer></script></head><body class="research workbench task-overview">
+<a class="skip" href="#content">跳到正文</a>
+<div class="mobile-bar"><span>trust2-contract · Research</span><button id="menu" aria-controls="sidebar" aria-expanded="false">目录</button></div>
+<aside class="sidebar" id="sidebar"><a class="brand" href="../index.html">trust2-contract<small>研究空间</small></a>
+<p class="nav-label">工作空间</p><nav aria-label="全站导航">
+<a href="../index.html" class="">研究工作台</a>
+<a href="../reference/zh/introduction.html">规约框架参考手册 ↗</a></nav>
+<p class="nav-label">PCG 研究路径</p><nav aria-label="研究阶段"><a href="../index.html#analysis" class=active>01　实现 ULLBC → LLBC 的 PCG 分析</a><a href="../index.html#specification">02　基于 LLBC 的 PCG 信息进行规约表达</a></nav>
+<div class="rail-foot"><span>阅读资料</span><a href="../paper.html">PCG 论文阅读 ↗</a></div></aside>
+<main id="content"><a class="breadcrumb" href="../index.html#analysis">← PCG 研究路线 / 01</a>
+<header class="task-header"><p class="eyebrow">01.04 / 源码阅读</p><h1>trust2-contract 源码阅读</h1><div class="task-controls"><label class="check-label"><input type="checkbox" data-task="charon-source" data-default="false" aria-label="标记完成：trust2-contract 源码阅读">标记为已完成</label><span class="task-status" data-status="charon-source">待开展</span></div></header>
+<section class="reading-section reading-requirement"><h2>阅读要求</h2><p>理解 trust2-contract 的验证链路，以及 cargo-verify 与 Charon 的职责和信息交接，为后续 PCG 分析接入与规约表达建立基础。阅读时用源码说明关键关系，尚未确认的判断保留为问题。 </p><p class="replacement-note">阅读完成后，直接用整理好的阅读内容替换本页，而不是另写阅读记录。</p></section>
+<section class="reading-section coarse-todos"><h2>阅读待办</h2><ul><li><label><input type="checkbox" data-todo="cargo-verify" data-parent="charon-source"><span>cargo-verify 工具</span></label><div class="todo-guidance"><section><ul><li>验证链路：cargo verify 如何串联 Rust → LLBC → WhyML 与验证调用，各阶段接收和输出什么。</li><li>规约与程序的翻译：LLBC 中的程序和规约信息如何进入后端，哪些语义由工具负责表达。</li></ul></section></div></li><li><label><input type="checkbox" data-todo="charon" data-parent="charon-source"><span>Charon 源码</span></label><div class="todo-guidance"><section><ul><li>中间表示与转换：MIR、ULLBC、LLBC 的关系，以及位置、类型和控制流在其中如何表示。</li><li>项目中的 Charon 扩展：trust2-contract 的规约信息如何被提取、组织，并与程序转换衔接。</li></ul></section></div></li></ul></section>
+<div class="task-bottom"><a href="../index.html#analysis">← 返回工作台</a></div><footer><span>trust2-contract · Research Workspace</span><span>阅读内容逐步完善，研究安排随进展确认。</span></footer></main>
+<div class="toast" id="save-message" role="status" aria-live="polite"></div></body></html>

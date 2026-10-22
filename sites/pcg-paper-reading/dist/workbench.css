@@ -1,0 +1,138 @@
+/* Homepage workspace layout. Reading pages keep their wider prose rhythm. */
+.workbench { --rail: 224px; background: #f7f9fb; }
+.workbench main { max-width: 1350px; padding: 30px 40px 36px; }
+.workbench .sidebar { background: #fff; padding: 30px 18px; }
+.workbench .brand { padding-left: 10px; font-size: 19px; }
+.workbench .brand small { font-size: 11px; letter-spacing: 1px; margin-top: 5px; }
+.workbench .nav-label { font-size: 11px; letter-spacing: .5px; margin: 30px 10px 9px; }
+.workbench .sidebar nav a { padding: 10px 12px; margin: 4px 0; border-radius: 4px; font-size: 13px; }
+.workbench .sidebar nav a.active { background: #eaf1f7; }
+.workbench .rail-foot { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 28px; }
+.workbench .rail-foot>span { font-size: 11px; }
+.workbench .plan-header { padding-bottom: 0; border: 0; }
+.workspace-heading { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+.workbench .eyebrow { font-size: 10px; letter-spacing: 1.6px; margin: 0 0 7px; }
+.workbench h1 { font-size: 28px; letter-spacing: -.6px; margin-bottom: 8px; }
+.workbench .plan-description { font-size: 13px; color: #667785; margin: 0; }
+.continue-task { display: grid; grid-template-columns: 1fr auto; column-gap: 18px; padding: 11px 15px; background: #fff; border: 1px solid #dfe6ec; border-radius: 6px; min-width: 190px; }
+.continue-task>span:first-child { font-size: 10px; color: #718391; }
+.continue-task strong { grid-column: 1; font-size: 13px; font-weight: 550; color: #315770; }
+.continue-task>span:last-child { grid-column: 2; grid-row: 1 / 3; align-self: center; }
+.continue-task:hover { text-decoration: none; border-color: #92aebf; }
+.continue-task[hidden] { display: none; }
+.workbench .journey-heading { display: flex; align-items: center; gap: 10px; font-size: 16px; margin: 26px 0 12px; color: #294b63; }
+.workbench .journey-heading span { font-size: 11px; font-weight: 400; color: #81929e; letter-spacing: 0; }
+.workbench .journey { margin-top: 0; grid-template-columns: minmax(0,1fr) 20px minmax(0,1fr); gap: 10px; }
+.workbench .journey-step { align-items: center; gap: 16px; padding: 15px 18px; border-top-width: 2px; border-radius: 6px; }
+.workbench .journey-number { font-size: 34px; }
+.workbench .journey-label { font-size: 10px; letter-spacing: .4px; margin-bottom: 3px; }
+.workbench .journey-copy strong { font-size: 18px; line-height: 1.55; }
+.workbench .journey-description { color: #5c7280; font-size: 11px; margin-top: 4px; }
+.journey-count { align-self: flex-end; margin-left: auto; font-size: 10px; white-space: nowrap; color: var(--step-color); }
+.workbench .journey-link { top: 11px; right: 14px; font-size: 13px; }
+.workbench .journey-arrow { font-size: 19px; }
+.workbench .plan-toolbar { margin: 22px 0 12px; color: #657786; }
+.workbench .plan-toolbar .progress-summary { display: flex; align-items: center; gap: 12px; }
+.progress-summary>strong { font-size: 14px; color: #334e61; }
+.progress-summary>span { font-size: 11px; font-variant-numeric: tabular-nums; }
+#overall-meter { width: 72px; height: 4px; appearance: none; border: 0; border-radius: 3px; overflow: hidden; background: #e0e7ec; }
+#overall-meter::-webkit-progress-bar { background: #e0e7ec; }
+#overall-meter::-webkit-progress-value { background: #3b7b6e; }
+#overall-meter::-moz-progress-bar { background: #3b7b6e; }
+.record-menu { position: relative; margin: 0; padding: 0; border: 0; font-size: 12px; z-index: 3; }
+.record-menu summary { list-style: none; padding: 6px 10px; color: #526b7d; font-size: 12px; border: 1px solid transparent; border-radius: 4px; }
+.record-menu summary::-webkit-details-marker { display: none; }
+.record-menu summary span { margin-left: 8px; }
+.record-menu[open] summary { background: white; border-color: #dfe6ec; }
+.record-popover { position: absolute; top: 38px; right: 0; width: 258px; padding: 12px 16px; background: #fff; border: 1px solid #dfe6ec; border-radius: 6px; box-shadow: 0 8px 26px #223e5614; }
+.record-popover p { font-size: 11px; color: #74828e; line-height: 1.8; margin: 5px 0 9px; }
+.record-popover .text-button { display: block; width: 100%; text-align: left; padding: 8px 0; font-size: 12px; }
+.workbench .stage { padding: 0; background: #fff; border: 1px solid #e0e7ed; border-radius: 7px; overflow: hidden; scroll-margin-top: 20px; }
+.workbench .stage+.stage { margin-top: 24px; padding-top: 0; }
+.workbench .stage-heading { background: none; border: 0; padding: 19px 22px 0; gap: 12px; border-radius: 0; }
+.workbench .stage-number { font: 600 12px/30px -apple-system,BlinkMacSystemFont,sans-serif; letter-spacing: 0; min-width: 30px; height: 30px; text-align: center; border-radius: 5px; background: var(--stage-wash); color: var(--stage-color); }
+.workbench .stage-heading .section-kicker { display: none; }
+.workbench .stage-heading h2 { font-size: 18px; color: #29475b; font-weight: 600; letter-spacing: -.2px; }
+.workbench .stage-progress { padding: 0; background: none; border: 0; color: #70828e; font-size: 11px; }
+.workbench .stage-intro { margin: 9px 22px 17px 64px; max-width: none; font-size: 12px; line-height: 1.8; color: #6b7d8a; }
+.workbench .task-list { margin: 0 22px; }
+.workbench .task-row { gap: 12px; }
+.workbench .task-row>.check-label { padding-left: 1px; }
+.workbench .task-link { padding: 12px 2px 12px 0; gap: 12px; }
+.workbench .task-number { min-width: 33px; font-size: 10px; color: #81929e; }
+.workbench .task-title { font-size: 16px; font-weight: 550; line-height: 1.6; color: #2c485e; }
+.workbench .task-description { font-size: 12px; color: #657887; margin-top: 2px; line-height: 1.65; }
+.workbench .task-kind { font-size: 10px; color: #72838e; }
+.workbench .task-status { font-size: 11px; color: #788894; }
+.workbench .task-status.done { color: #337468; }
+.workbench .outcome { padding: 13px 22px; margin: 0; font-size: 11px; gap: 14px; background: #fbfcfd; }
+.workbench .outcome>span { color: #526e81; }
+.workbench .reference-callout { background: none; border: 0; border-top: 1px solid #e0e7ed; border-radius: 0; padding: 22px 0 0; margin-top: 24px; }
+.workbench .reference-callout .section-kicker { display: none; }
+.workbench .reference-callout h2 { font-size: 15px; margin: 0 0 4px; }
+.workbench .reference-callout p { font-size: 11px; }
+.workbench footer { margin-top: 24px; padding-top: 16px; }
+@media (max-width: 1150px) {
+    .workbench main { padding: 28px; }
+    .workbench .journey-step { padding: 14px; gap: 10px; }
+    .workbench .journey-number { font-size: 29px; }
+    .journey-count { display: none; }
+    .workbench .task-kind { display: none; }
+}
+@media (max-width: 760px) {
+    .workbench main { padding: 24px 16px; }
+    .workspace-heading { align-items: flex-start; flex-wrap: wrap; gap: 14px; }
+    .workbench h1 { font-size: 26px; }
+    .continue-task { min-width: 0; width: 100%; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; padding: 9px 12px; }
+    .continue-task strong { grid-column: 2; }
+    .continue-task>span:last-child { grid-column: 3; grid-row: 1; }
+    .workbench .journey { grid-template-columns: 1fr; gap: 8px; margin-top: 16px; }
+    .workbench .journey-step { gap: 16px; }
+    .workbench .journey-arrow { font-size: 16px; }
+    .journey-count { display: block; }
+    .workbench .plan-toolbar { margin-top: 18px; flex-wrap: nowrap; align-items: center; gap: 8px; }
+    .workbench .plan-toolbar .progress-summary { gap: 8px; }
+    #overall-meter { display: none; }
+    .record-menu summary { padding-right: 0; }
+    .workbench .stage { scroll-margin-top: 70px; }
+    .workbench .stage-heading { padding: 16px 14px 0; gap: 10px; flex-wrap: wrap; }
+    .workbench .stage-heading h2 { font-size: 16px; }
+    .workbench .stage-progress { margin-left: 40px; }
+    .workbench .stage-intro { margin: 8px 14px 14px; font-size: 11px; }
+    .workbench .task-list { margin: 0 14px; }
+    .workbench .task-link { gap: 8px; }
+    .workbench .task-title { font-size: 14px; }
+    .workbench .task-description { font-size: 11px; }
+    .workbench .task-number { display: none; }
+    .workbench .task-row { gap: 10px; }
+    .workbench .outcome { padding: 12px 14px; }
+    .workbench .reference-callout { gap: 12px; }
+}
+@media print {
+    .workbench { background: white; }
+    .workbench main { padding: 0; }
+    .continue-task, .record-menu { display: none; }
+}
+
+/* Only confirmed reading outlines have detail pages. */
+.workbench .task-placeholder { cursor: default; }
+.workbench .task-placeholder:hover { background: transparent; text-decoration: none; }
+.workbench .task-list { padding-bottom: 12px; }
+.task-overview main { max-width: 1120px; }
+.task-overview .task-header { padding-bottom: 24px; }
+.task-overview .task-controls { margin-top: 18px; }
+.task-overview .reading-section { margin-top: 24px; padding-top: 0; }
+.task-overview .reading-section h2 { font-size: 18px; }
+.coarse-todos>ul { list-style: none; padding: 0; border: 1px solid #e0e7ed; border-radius: 6px; background: #fff; }
+.coarse-todos>ul>li { margin: 0; padding: 0; }
+.coarse-todos>ul>li+li { border-top: 1px solid #e7edf1; }
+.coarse-todos label { display: flex; align-items: center; gap: 12px; padding: 18px; font-size: 15px; color: #3b596e; cursor: pointer; }
+.coarse-todos input { accent-color: #337468; width: 16px; height: 16px; }
+.todo-guidance { display: grid; grid-template-columns: 1fr; padding: 0 22px 20px 46px; }
+.todo-guidance h3 { font-size: 12px; font-weight: 600; color: #647f91; margin: 0 0 9px; }
+.todo-guidance ul { padding-left: 16px; margin: 0; font-size: 13px; line-height: 1.85; color: #526e81; }
+.todo-guidance li { padding-left: 2px; margin: 7px 0; }
+@media (max-width: 900px) { .todo-guidance { grid-template-columns: 1fr; gap: 14px; padding-left: 22px; } }
+.reading-requirement p { font-size: 14px; color: #526e81; }
+.reading-requirement a { font-size: 12px; white-space: nowrap; }
+.reading-requirement .replacement-note { font-size: 13px; color: #718391; }
