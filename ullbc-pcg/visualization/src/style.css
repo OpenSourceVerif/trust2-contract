@@ -1,0 +1,31 @@
+/* Panel, table, phase and action styling adapted from MIR-PCG visualization (ISC). */
+.app { display: flex; width: 100%; height: 100vh; }
+main { display: flex; flex: 1; min-width: 0; }
+.left-panel { display: flex; flex-direction: column; flex: none; min-width: 0; overflow: auto; }
+.ullbc { flex: 1; min-height: 260px; }
+.panel-label { padding: 8px 12px; font-size: 13px; font-weight: bold; background: #f5f5f5; border-bottom: 1px solid #ddd; }
+.graph-panel { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.graph-footer { padding: 12px; border-top: 1px solid #ddd; color: #555; font-size: 12px; line-height: 1.6; }
+.graph-footer > code { color: black; font-size: 13px; }
+.divider { flex: none; width: 10px; cursor: col-resize; background: #ccc; position: relative; }
+.divider span { position: absolute; top: 50%; left: 2px; width: 6px; height: 30px; background: #999; border-radius: 3px; }
+.navigator { width: 260px; flex: none; background: white; box-shadow: -2px 0 5px #0000001a; display: flex; flex-direction: column; }
+.navigator-heading { padding: 10px; border-bottom: 1px solid #ddd; background: #f5f5f5; font-size: 14px; }
+.phase { display: block; width: 100%; text-align: left; border: 1px solid #000; padding: 8px; margin: 8px 0; background: transparent; cursor: pointer; font-weight: bold; }
+.phase[aria-pressed=true] { background: lightgreen; }
+.action { padding: 6px 12px; margin-bottom: 4px; border-radius: 4px; background: #f5f5f5; border: 1px solid #ddd; overflow-wrap: anywhere; font-size: 12px; }
+.live-label { color: #666; font-size: 12px; line-height: 1.5; }
+.navigator-footer { padding: 10px; font-size: 12px; color: #666; border-top: 1px solid #ddd; background: #f5f5f5; }
+.open-graph { padding: 10px; margin: 10px; text-align: center; background: #007acc; color: white; text-decoration: none; font: 12px Arial, sans-serif; border-radius: 4px; }
+.statement-button { background: none; border: 0; padding: 0; text-align: left; color: inherit; cursor: pointer; font: inherit; }
+.react-flow__node { font-size: 12px; }
+.settings { padding: 10px; font-size: 13px; border-bottom: 1px solid #ddd; }
+button { cursor: pointer; }
+button:disabled { cursor: default; }
+.error { margin: 20px; color: #a00; }
+@media (max-width: 800px) { .navigator { width: 200px; } .app { min-width: 760px; } }
+
+#pcg-graph { display: flex; align-items: center; justify-content: center; }
+.action-button { display: block; width: 100%; text-align: left; cursor: pointer; }
+.action-button[aria-pressed=true] { background: #007acc; border-color: #007acc; color: white; }
+.navigator-heading > div { margin-top: 5px; font-size: 12px; }

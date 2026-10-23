@@ -5,6 +5,7 @@ members = [
     "trust2-contract",
     "trust2-contract-macros",
     "utils",
+    "ullbc-pcg",
 ]
 exclude = [
     "cargo-verify/tests/end-to-end/*",
