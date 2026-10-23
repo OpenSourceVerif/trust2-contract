@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -205,9 +205,13 @@ pub fn quotient(value: u32, divisor: u32) -&gt; u32 {
     value / divisor
 }</code></pre>
 <p>The precondition excludes division by zero. A call with <code>divisor == 0</code> fails the stated requirement.</p>
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status</a></h2>
-<p>The macro parses the condition as an expression and represents it as a <code>Fn() -&gt; bool + Copy</code> closure. Rust typing, capture, and borrowing constraints apply. The frontend associates the extracted condition with the function as a precondition.</p>
-<p>Preconditions have existing integration examples and LLBC snapshots. The supported function forms and shared limitations are listed under <a href="function-contracts.html#contract.function.boundary-title">Function Contracts</a>.</p>
+<p>Basic parameter conditions support frontend extraction. Existing backend examples include constraining a square calculation with <code>x &lt; 16</code> and unsigned subtraction with <code>a &gt;= b</code>.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports basic parameter conditions, method receivers, and multiple preconditions.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports translation and verification of basic scalar conditions.</li>
+</ul>
+<p>See <a href="function-contracts.html#contract.function.boundary-title">Function Contracts</a> for bodyless declarations and <a href="expressions.html#contract.expression.boundary-title">Logic Expressions</a> for conditions involving slices and other expressions.</p>
 
                     </main>
 

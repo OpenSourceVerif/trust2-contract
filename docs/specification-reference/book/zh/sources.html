@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ada5b0dc.js";
+            window.path_to_searchindex_js = "searchindex-30489a1a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -181,7 +181,8 @@
 <h1 id="实现依据与测试覆盖"><a class="header" href="#实现依据与测试覆盖">实现依据与测试覆盖</a></h1>
 <div class="rule" id="r-contract.sources.intro"><a class="rule-link" href="#r-contract.sources.intro" title="contract.sources.intro"><span>[contract<wbr>.sources<wbr>.intro]</span></a></div>
 
-<p>以下源码和样例分别对应宏展开、前端提取和已有测试覆盖。</p>
+<p>以下源码和样例分别说明前端提取、后端翻译与已有测试覆盖。</p>
+<h2 id="前端-rust-llbc"><a class="header" href="#前端-rust-llbc">前端 rust-llbc</a></h2>
 <ul>
 <li>
 <p><a href="../../../../trust2-contract-macros/src/impl.rs">规约宏实现</a>与<a href="../../../../trust2-contract-macros/src/impl/parse.rs">标识符替换</a>：入口解析与展开。</p>
@@ -199,6 +200,18 @@
 <p><a href="../../../../charon/charon/tests/cargo/trust2-contract-sample/src/lib.rs">前端集成样例</a>与<a href="../../../../charon/charon/tests/cargo/trust2-contract-sample.out">LLBC 快照</a>：已有组合用例。</p>
 </li>
 </ul>
+<h2 id="后端-llbc-why3"><a class="header" href="#后端-llbc-why3">后端 llbc-why3</a></h2>
+<ul>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/decl.rs">函数契约翻译</a>与<a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/spec.rs">规约闭包翻译</a>：前置条件、后置条件和捕获值。</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_expr.rs">语句翻译</a>与<a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_term.rs">逻辑项翻译</a>：断言、假设和量词的翻译分支。</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/func_ref.rs">内建函数翻译</a>：<code>SpecImplies</code>、<code>SpecOld</code> 尚待实现的分支。</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/ty.rs">类型翻译</a>与<a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/type_decl.rs">类型声明翻译</a>：类型支持范围；类型不变式尚未接入自动保持检查。</li>
+<li><a href="../../../../cargo-verify/tests/end-to-end/simple/src/lib.rs">端到端样例</a>与<a href="../../../../cargo-verify/tests/end-to-end/simple/result.txt">已保存结果</a>：<code>max</code>、<code>strict_sub</code>、<code>square</code> 的基本契约验证。</li>
+</ul>
+<h2 id="测试覆盖"><a class="header" href="#测试覆盖">测试覆盖</a></h2>
+<p>前端集成样例包含前置条件、后置条件、断言、泛型结构体不变式，以及全称量词、蕴含和容器访问的组合。<code>to_sorted</code> 的函数体是返回空向量的占位实现，用于观察提取结果，不是已经验证的排序算法。</p>
+<p>仓库中的前端集成样例尚未包含 <code>contract_assume!</code> 与 <code>exists!</code>。两者已有提取实现；量词的外层捕获问题见<a href="quantifiers.html#contract.quantifier.boundary-title">量词的实现边界</a>。<code>old</code> 有名称改写测试，尚无完整旧状态规约的集成用例。</p>
+<p>后端已保存的端到端结果覆盖 <code>max</code>、<code>strict_sub</code> 和 <code>square</code> 的基本前置／后置条件。断言、假设和量词已有翻译实现，但尚未包含在这些端到端用例中。</p>
 
                     </main>
 

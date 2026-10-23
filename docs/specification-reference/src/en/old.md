@@ -24,16 +24,23 @@ This fragment combines an old-state marker with dereferencing. The argument `p` 
 
 {{#rule contract.old.boundary}}
 
-## Implementation status <a id="contract.old.boundary-title"></a>
+## Implementation boundaries <a id="contract.old.boundary-title"></a>
 
-Postcondition macros rewrite the name `old`; the frontend recognizes and retains a `SpecOld` marker. Other contract macros do not perform this rewriting.
+- **Frontend `rust-llbc`**: recognizes the `old` marker but does not yet fully represent entry values; its current interface accepts only mutable references.
+- **Backend `llbc-why3`**: old-state translation is not implemented.
 
-The internal signature is:
+### Remaining work
+
+**Entry values of mutable parameters (frontend and backend).** The following example aims to describe an increment but cannot currently be used:
 
 ```rust,ignore
-pub fn old<T>(x: &mut T) -> &mut T
+#[precondition(*p < u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+fn increment(p: &mut u32) {
+    *p += 1;
+}
 ```
 
-The postcondition must still satisfy `Fn + Copy`. Mutable captures are restricted by these requirements. For an integer `x`, `old(x + 1)` does not match the interface even though its surface structure matches `OldExpression`.
+In verification mode, this form is blocked by the closure's `Copy` requirement. The frontend needs to let postconditions refer to entry values and distinguish them from return-state values. The backend needs to use that representation to establish the relationship. The intended property is that `*p` is one greater than its entry value; the interface may change with the state representation.
 
-Name-replacement tests cover rewriting, and the frontend has marker recognition. These stages do not implement snapshots of arbitrary values or reachable heaps, or a mechanism for preserving unchanged memory regions. Complete old-state specifications are not covered by the listed integration examples.
+The scope of old-state support for fields, compound values, and aliased data remains to be defined.

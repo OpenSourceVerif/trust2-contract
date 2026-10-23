@@ -15,16 +15,21 @@
 ```rust,ignore
 use trust2_contract::prelude::*;
 
-pub fn assumed_bound(x: u8) {
-    contract_assume!(x <= 10);
-    contract_assert!(x < 11);
+pub fn assumed_bound(x: u8, flag: bool) {
+    if flag {
+        contract_assume!(x <= 10);
+        contract_assert!(x < 11);
+    } else {
+        contract_assert!(x <= 255);
+    }
 }
 ```
 
-在假定的上界下可以推出断言。该标注既不检查，也不为调用者建立这个上界。
+在 `flag` 为真的分支中，假定的上界足以推出随后的断言；另一分支的断言不使用这条假设。前端提取和 WhyML 翻译会保留这种分支关系。该标注既不检查，也不为调用者建立这个上界。
 
-## 实现状态
+## 实现边界
 
-宏和内部接口将条件表示为 `Fn() -> bool + Copy` 闭包。专门的提取分支将假设与断言区分开。现有前端集成样例尚未覆盖假设。
+- **前端 `rust-llbc`**：已支持假设提取，与断言区分，并保留所在分支。
+- **后端 `llbc-why3`**：已翻译为 WhyML `assume`；条件能否继续验证取决于其中的表达式和程序操作。
 
-假设在普通构建中会被移除，不约束运行时的值，也不拒绝输入。
+共同限制见[逻辑表达式](expressions.md#contract.expression.boundary-title)。假设不产生证明自身的义务，普通构建也不会用它过滤输入。

@@ -29,8 +29,9 @@ pub fn check(x: u8) {
 
 {{#rule contract.statement.boundary}}
 
-## 实现状态 <a id="contract.statement.boundary-title"></a>
+## 实现边界 <a id="contract.statement.boundary-title"></a>
 
-前端分别记录断言和假设的种类及位置。条件使用 `Fn() -> bool + Copy` 闭包，遵循 Rust 的捕获和借用规则。普通构建会移除这些标注。
+- **前端 `rust-llbc`**：已支持断言和假设，保留条件、种类及所在位置。
+- **后端 `llbc-why3`**：分别翻译为 WhyML `assert` 和 `assume`。
 
-标注可以出现在分支或循环中。循环体内的语句标注不是循环不变式声明。当前没有循环不变式、终止度量或附着于任意语句块的契约接口。
+具体用法与限制见[断言](assertions.md)和[假设](assumptions.md)。

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -179,17 +179,23 @@
                         <div class="rule" id="r-contract.constraints"><a class="rule-link" href="#r-contract.constraints" title="contract.constraints"><span>[contract<wbr>.constraints]</span></a></div>
 
 <h1 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h1>
-<p>These notes describe shared properties of the frontend under development. Construct-specific status is documented on the corresponding reference pages.</p>
 <div class="rule" id="r-contract.constraints.intro"><a class="rule-link" href="#r-contract.constraints.intro" title="contract.constraints.intro"><span>[contract<wbr>.constraints<wbr>.intro]</span></a></div>
 
-<h2 id="representation"><a class="header" href="#representation">Representation</a></h2>
-<p>Specifications must satisfy the surface syntax, Rust typing and borrowing, and the structure expected by extraction. Conditions return <code>bool</code>. Apart from the type-invariant method, specification closures are constrained by <code>Fn + Copy</code>.</p>
-<p>Ordinary builds remove specifications. Successful compilation in that mode is not evidence that the specification passes verification-mode checks.</p>
+<h2 id="reading-implementation-boundaries"><a class="header" href="#reading-implementation-boundaries">Reading implementation boundaries</a></h2>
+<p>Each construct page distinguishes <strong>frontend <code>rust-llbc</code></strong> from <strong>backend <code>llbc-why3</code></strong>. Here, the frontend includes macro expansion, Rust typing and borrowing checks, and extraction to LLBC. The backend translates specifications in LLBC to WhyML for verification.</p>
+<p>Successful extraction does not establish backend support. Producing a WhyML file does not establish that it passes Why3 checking or that its obligations have been proved.</p>
+<p>Examples show existing uses. “Remaining work” describes concrete scenarios, current obstacles, and the properties they are intended to express. Unsettled semantics are identified explicitly. These descriptions do not assign development stages, priorities, or an exhaustive support scope. See <a href="sources.html">Sources and Test Coverage</a> for implementation sources and repository tests.</p>
+<h2 id="shared-conventions"><a class="header" href="#shared-conventions">Shared conventions</a></h2>
+<ul>
+<li><strong>Rust typing and borrowing</strong>: conditions return <code>bool</code> and use Rust’s type system. Apart from type-invariant methods, specification closures require <code>Fn + Copy</code>; modifying captures or moving out non-<code>Copy</code> values may violate these requirements.</li>
+<li><strong>Ordinary builds</strong>: specification annotations are removed. Successful ordinary compilation does not establish that specifications pass verification-mode checks.</li>
+<li><strong>Normal returns</strong>: postconditions describe normal-return properties without also declaring termination or post-panic state.</li>
+</ul>
 <h2 id="name-rewriting"><a class="header" href="#name-rewriting">Name rewriting</a></h2>
-<p>Within tokens processed by a contract macro, <code>implies</code> and, in postconditions, <code>old</code> are rewritten recursively. Using those names for unrelated bindings, fields, or methods can therefore interfere with rewriting. General call syntax does not bypass the dedicated interfaces’ constraints.</p>
-<h2 id="open-areas"><a class="header" href="#open-areas">Open areas</a></h2>
-<p>The current specification interface does not provide loop invariants, loop or recursion termination measures, read/write footprints or modification sets, permission or borrowing contracts, contracts for exceptional exits, module contracts, or supplementary specifications for external interfaces.</p>
-<p>See <a href="sources.html">Sources and Test Coverage</a> for the implementation and examples behind these descriptions, and <a href="notations.html#rust-syntax">Lexical Rules</a> for the Rust syntax used in grammar blocks.</p>
+<p>Contract macros recursively rewrite <code>implies</code>, and postconditions also rewrite <code>old</code>. Quantifier macros do not perform these rewrites themselves; an enclosing contract macro handles them.</p>
+<p>Current replacement is name-based and also affects ordinary same-named methods such as <code>value.old()</code>. The frontend needs to distinguish specification markers from ordinary Rust names. See <a href="notations.html">Lexical Rules</a> for a concrete example.</p>
+<h2 id="rules-still-to-be-defined"><a class="header" href="#rules-still-to-be-defined">Rules still to be defined <a id="open-areas"></a></a></h2>
+<p>Admissible function calls and restrictions on side effects are discussed under <a href="expressions.html#contract.expression.boundary-title">Logic Expressions</a>. The program boundaries at which type invariants hold are discussed under <a href="invariants.html#contract.invariant.boundary-title">Type Invariants</a>. These rules affect frontend and backend behavior; the concrete scenarios are retained without fixing a complete design in advance.</p>
 
                     </main>
 

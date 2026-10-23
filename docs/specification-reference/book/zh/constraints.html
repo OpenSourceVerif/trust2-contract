@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ada5b0dc.js";
+            window.path_to_searchindex_js = "searchindex-30489a1a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -179,17 +179,23 @@
                         <div class="rule" id="r-contract.constraints"><a class="rule-link" href="#r-contract.constraints" title="contract.constraints"><span>[contract<wbr>.constraints]</span></a></div>
 
 <h1 id="实现说明"><a class="header" href="#实现说明">实现说明</a></h1>
-<p>本页记录开发中前端的共同实现特征。各构造的具体支持情况在对应参考页面中说明。</p>
 <div class="rule" id="r-contract.constraints.intro"><a class="rule-link" href="#r-contract.constraints.intro" title="contract.constraints.intro"><span>[contract<wbr>.constraints<wbr>.intro]</span></a></div>
 
-<h2 id="内部表示"><a class="header" href="#内部表示">内部表示</a></h2>
-<p>规约须满足表面语法、Rust 类型与借用规则，以及提取过程要求的结构。条件返回 <code>bool</code>；除类型不变式方法外，规约闭包均受 <code>Fn + Copy</code> 约束。</p>
-<p>普通构建会移除规约，因此该模式下编译成功不构成规约通过验证模式检查的证据。</p>
+<h2 id="如何理解实现边界"><a class="header" href="#如何理解实现边界">如何理解实现边界</a></h2>
+<p>各构造页分别说明 <strong>前端 <code>rust-llbc</code></strong> 和 <strong>后端 <code>llbc-why3</code></strong>。这里的前端包括规约宏展开、Rust 类型与借用检查，以及到 LLBC 的提取；后端将 LLBC 中的规约翻译为 WhyML，供验证使用。</p>
+<p>前端能够提取，不表示后端已经能够处理；生成 WhyML 文件，也不等于通过 Why3 检查或完成证明。</p>
+<p>各页的示例展示已有用法。“尚待补齐”列出具体场景、当前障碍和希望表达的性质；尚未确定的语义标为“待明确”。这些说明不规定开发阶段、优先级或完整支持范围。源码和仓库中的测试见<a href="sources.html">实现依据与测试覆盖</a>。</p>
+<h2 id="共同约定"><a class="header" href="#共同约定">共同约定</a></h2>
+<ul>
+<li><strong>Rust 类型与借用规则</strong>：条件返回 <code>bool</code>，使用 Rust 的类型系统。除类型不变式方法外，规约闭包受 <code>Fn + Copy</code> 约束；修改捕获变量或移走非 <code>Copy</code> 值可能无法满足这些要求。</li>
+<li><strong>普通构建</strong>：规约标注会被移除。普通编译通过，不表示规约已经通过验证模式的检查。</li>
+<li><strong>正常返回</strong>：后置条件描述正常返回时的性质，不同时声明终止或 panic 后的状态。</li>
+</ul>
 <h2 id="名称改写"><a class="header" href="#名称改写">名称改写 <a id="name-rewriting"></a></a></h2>
-<p>在规约宏处理的 token 中，<code>implies</code> 和后置条件里的 <code>old</code> 会被递归替换。将这些名称用于无关绑定、字段或方法可能与改写发生冲突；通用调用语法不能绕过专用接口的约束。</p>
-<h2 id="尚待覆盖的方向"><a class="header" href="#尚待覆盖的方向">尚待覆盖的方向</a></h2>
-<p>当前规约接口没有提供循环不变式、循环与递归终止度量、读写足迹与修改集合、权限与借用契约、异常退出契约、模块契约，以及外部接口补充规约。</p>
-<p>实现与样例来源见<a href="sources.html">实现依据与测试覆盖</a>；文法沿用的 Rust 语法见<a href="notations.html#rust-syntax">词法规则</a>。</p>
+<p>规约宏递归改写 <code>implies</code>，后置条件还改写 <code>old</code>。量词宏自身不做这些改写，需要由外层契约宏处理。</p>
+<p>目前替换仅依据名称，同名的普通方法如 <code>value.old()</code> 也会受到影响。前端需要区分规约标记与普通 Rust 名称，具体例子见<a href="notations.html">词法规则</a>。</p>
+<h2 id="尚待明确的规则"><a class="header" href="#尚待明确的规则">尚待明确的规则 <a id="open-areas"></a></a></h2>
+<p>规约中哪些函数调用可以使用、如何限制副作用，见<a href="expressions.html#contract.expression.boundary-title">逻辑表达式</a>。类型不变式在哪些程序边界成立，见<a href="invariants.html#contract.invariant.boundary-title">类型不变式</a>。这些规则会影响前后端的处理方式，目前保留具体场景，不预先固定完整方案。</p>
 
                     </main>
 

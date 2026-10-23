@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ada5b0dc.js";
+            window.path_to_searchindex_js = "searchindex-30489a1a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -211,9 +211,12 @@ pub fn check(x: u8) {
 <p>断言可以由前面的假设推出。这不证明每次调用 <code>check</code> 时都有 <code>x &lt; 16</code>。</p>
 <div class="rule" id="r-contract.statement.boundary"><a class="rule-link" href="#r-contract.statement.boundary" title="contract.statement.boundary"><span>[contract<wbr>.statement<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态"><a class="header" href="#实现状态">实现状态 <a id="contract.statement.boundary-title"></a></a></h2>
-<p>前端分别记录断言和假设的种类及位置。条件使用 <code>Fn() -&gt; bool + Copy</code> 闭包，遵循 Rust 的捕获和借用规则。普通构建会移除这些标注。</p>
-<p>标注可以出现在分支或循环中。循环体内的语句标注不是循环不变式声明。当前没有循环不变式、终止度量或附着于任意语句块的契约接口。</p>
+<h2 id="实现边界"><a class="header" href="#实现边界">实现边界 <a id="contract.statement.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持断言和假设，保留条件、种类及所在位置。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：分别翻译为 WhyML <code>assert</code> 和 <code>assume</code>。</li>
+</ul>
+<p>具体用法与限制见<a href="assertions.html">断言</a>和<a href="assumptions.html">假设</a>。</p>
 
                     </main>
 

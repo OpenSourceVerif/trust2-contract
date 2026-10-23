@@ -23,8 +23,11 @@ pub fn bounded_square(x: u8) -> u8 {
 
 断言描述乘法执行后局部变量 `y` 的值。
 
-## 实现状态
+前端可以提取这类局部断言，也支持在条件中保留普通函数调用，例如 `contract_assert!(decuple(9) == 90)`。
 
-宏将条件展开为 `Fn() -> bool + Copy` 闭包。前端将其提取为程序相应位置的断言。已有集成样例和 LLBC 快照覆盖断言。
+## 实现边界
 
-`contract_assert!` 是规约标注，在普通构建中会被移除，不提供 Rust `assert!` 宏的运行时检查。
+- **前端 `rust-llbc`**：已支持断言条件的提取，保留其在函数体中的位置，包括分支内的断言。
+- **后端 `llbc-why3`**：已翻译为 WhyML `assert`；条件能否继续验证取决于其中的表达式和程序操作。
+
+共同限制见[逻辑表达式](expressions.md#contract.expression.boundary-title)。普通构建移除契约断言；运行时检查使用 Rust 的 `assert!`。

@@ -28,12 +28,53 @@ pub struct RefRange<'a, T: PartialOrd> {
 
 The condition requires the start of the range to be no greater than its end. The type parameters and their bounds remain available in the invariant.
 
+The frontend can extract this generic struct invariant and retain its association with the type.
+
+An enum can describe a condition for each variant:
+
+```rust,ignore
+#[invariant(match self {
+    Self::Empty => true,
+    Self::Range { start, end } => start <= end,
+})]
+pub enum Range {
+    Empty,
+    Range { start: u32, end: u32 },
+}
+```
+
+The frontend can extract this `match self` condition. Union conditions can also be extracted; reading a field still requires `unsafe` under Rust rules:
+
+```rust,ignore
+#[invariant(unsafe { self.x <= 100 })]
+pub union Data {
+    pub x: u32,
+    pub y: u32,
+}
+```
+
+These examples show how conditions are associated with types; they do not establish automatic backend enforcement.
+
 {{#rule contract.invariant.boundary}}
 
-## Implementation status <a id="contract.invariant.boundary-title"></a>
+## Implementation boundaries <a id="contract.invariant.boundary-title"></a>
 
-The macro preserves generic parameters and bounds and generates a `TypeInvariant` implementation with an `invariant(&self) -> bool` method. The frontend extracts the condition and associates it with the type. The generic `RefRange` example has an existing integration snapshot.
+- **Frontend `rust-llbc`**: extracts invariants on structs, enums, and unions and retains their association with the type. Multiple conditions on one type currently need to be combined with `&&`; repeated attributes conflict.
+- **Backend `llbc-why3`**: does not yet use these conditions to establish invariant checks. Declaring an invariant does not yet guarantee valid objects.
 
-The implementation does not automatically insert obligations at construction, field updates, or the end of a borrow to establish or restore the invariant. Declaring the attribute alone does not ensure that every instance satisfies the condition.
+### Remaining work
 
-Type aliases cannot carry this attribute. Combine requirements in a single condition, for example with `&&`; repeated attributes generate conflicting trait implementations. Macro branches accept enums and unions, but the listed integration examples do not cover them. Union-field access remains subject to Rust's safety rules.
+**From type conditions to checking obligations (backend; checking points remain open).** This type requires `x <= 100`, but constructing an invalid instance does not yet automatically generate the corresponding check:
+
+```rust,ignore
+#[invariant(self.x <= 100)]
+pub struct B {
+    pub x: u32,
+}
+
+pub fn invalid() -> B {
+    B { x: 200 }
+}
+```
+
+The frontend stores `x <= 100`; the generated WhyML does not yet use it. The condition needs to participate in verification of object creation, modification, and external use. Which boundaries require checks, whether modifications may temporarily violate the condition, and how it is restored when a borrow ends remain to be defined.

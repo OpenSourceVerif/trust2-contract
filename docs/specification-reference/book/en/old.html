@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -206,12 +206,20 @@
 <p>This fragment combines an old-state marker with dereferencing. The argument <code>p</code> must match the mutable-reference interface. Whether the fragment is admissible in a postcondition also depends on the surrounding closure’s captures and borrowing.</p>
 <div class="rule" id="r-contract.old.boundary"><a class="rule-link" href="#r-contract.old.boundary" title="contract.old.boundary"><span>[contract<wbr>.old<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.old.boundary-title"></a></a></h2>
-<p>Postcondition macros rewrite the name <code>old</code>; the frontend recognizes and retains a <code>SpecOld</code> marker. Other contract macros do not perform this rewriting.</p>
-<p>The internal signature is:</p>
-<pre><code class="language-rust ignore">pub fn old&lt;T&gt;(x: &amp;mut T) -&gt; &amp;mut T</code></pre>
-<p>The postcondition must still satisfy <code>Fn + Copy</code>. Mutable captures are restricted by these requirements. For an integer <code>x</code>, <code>old(x + 1)</code> does not match the interface even though its surface structure matches <code>OldExpression</code>.</p>
-<p>Name-replacement tests cover rewriting, and the frontend has marker recognition. These stages do not implement snapshots of arbitrary values or reachable heaps, or a mechanism for preserving unchanged memory regions. Complete old-state specifications are not covered by the listed integration examples.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.old.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: recognizes the <code>old</code> marker but does not yet fully represent entry values; its current interface accepts only mutable references.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: old-state translation is not implemented.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Entry values of mutable parameters (frontend and backend).</strong> The following example aims to describe an increment but cannot currently be used:</p>
+<pre><code class="language-rust ignore">#[precondition(*p &lt; u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+fn increment(p: &amp;mut u32) {
+    *p += 1;
+}</code></pre>
+<p>In verification mode, this form is blocked by the closure’s <code>Copy</code> requirement. The frontend needs to let postconditions refer to entry values and distinguish them from return-state values. The backend needs to use that representation to establish the relationship. The intended property is that <code>*p</code> is one greater than its entry value; the interface may change with the state representation.</p>
+<p>The scope of old-state support for fields, compound values, and aliased data remains to be defined.</p>
 
                     </main>
 

@@ -23,8 +23,11 @@ pub fn quotient(value: u32, divisor: u32) -> u32 {
 
 前置条件排除了除零情况。以 `divisor == 0` 调用该函数不满足所声明的要求。
 
-## 实现状态
+基本参数条件已支持前端提取。后端已有的用例包括用 `x < 16` 约束平方计算，以及用 `a >= b` 约束无符号减法。
 
-宏将条件解析为表达式，并表示为 `Fn() -> bool + Copy` 闭包。Rust 的类型、捕获和借用约束仍然适用。前端将提取出的条件作为前置条件关联到函数。
+## 实现边界
 
-已有集成样例和 LLBC 快照覆盖前置条件。支持的函数形式和共同限制见[函数契约](function-contracts.md#contract.function.boundary-title)。
+- **前端 `rust-llbc`**：已支持基本参数条件、方法接收者和多条前置条件。
+- **后端 `llbc-why3`**：已支持基本标量条件的翻译和验证。
+
+无函数体声明的限制见[函数契约](function-contracts.md#contract.function.boundary-title)；切片访问等条件的限制见[逻辑表达式](expressions.md#contract.expression.boundary-title)。

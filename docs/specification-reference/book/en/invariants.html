@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -210,12 +210,41 @@ pub struct RefRange&lt;'a, T: PartialOrd&gt; {
     end: &amp;'a T,
 }</code></pre>
 <p>The condition requires the start of the range to be no greater than its end. The type parameters and their bounds remain available in the invariant.</p>
+<p>The frontend can extract this generic struct invariant and retain its association with the type.</p>
+<p>An enum can describe a condition for each variant:</p>
+<pre><code class="language-rust ignore">#[invariant(match self {
+    Self::Empty =&gt; true,
+    Self::Range { start, end } =&gt; start &lt;= end,
+})]
+pub enum Range {
+    Empty,
+    Range { start: u32, end: u32 },
+}</code></pre>
+<p>The frontend can extract this <code>match self</code> condition. Union conditions can also be extracted; reading a field still requires <code>unsafe</code> under Rust rules:</p>
+<pre><code class="language-rust ignore">#[invariant(unsafe { self.x &lt;= 100 })]
+pub union Data {
+    pub x: u32,
+    pub y: u32,
+}</code></pre>
+<p>These examples show how conditions are associated with types; they do not establish automatic backend enforcement.</p>
 <div class="rule" id="r-contract.invariant.boundary"><a class="rule-link" href="#r-contract.invariant.boundary" title="contract.invariant.boundary"><span>[contract<wbr>.invariant<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.invariant.boundary-title"></a></a></h2>
-<p>The macro preserves generic parameters and bounds and generates a <code>TypeInvariant</code> implementation with an <code>invariant(&amp;self) -&gt; bool</code> method. The frontend extracts the condition and associates it with the type. The generic <code>RefRange</code> example has an existing integration snapshot.</p>
-<p>The implementation does not automatically insert obligations at construction, field updates, or the end of a borrow to establish or restore the invariant. Declaring the attribute alone does not ensure that every instance satisfies the condition.</p>
-<p>Type aliases cannot carry this attribute. Combine requirements in a single condition, for example with <code>&amp;&amp;</code>; repeated attributes generate conflicting trait implementations. Macro branches accept enums and unions, but the listed integration examples do not cover them. Union-field access remains subject to Rust’s safety rules.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.invariant.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts invariants on structs, enums, and unions and retains their association with the type. Multiple conditions on one type currently need to be combined with <code>&amp;&amp;</code>; repeated attributes conflict.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: does not yet use these conditions to establish invariant checks. Declaring an invariant does not yet guarantee valid objects.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>From type conditions to checking obligations (backend; checking points remain open).</strong> This type requires <code>x &lt;= 100</code>, but constructing an invalid instance does not yet automatically generate the corresponding check:</p>
+<pre><code class="language-rust ignore">#[invariant(self.x &lt;= 100)]
+pub struct B {
+    pub x: u32,
+}
+
+pub fn invalid() -&gt; B {
+    B { x: 200 }
+}</code></pre>
+<p>The frontend stores <code>x &lt;= 100</code>; the generated WhyML does not yet use it. The condition needs to participate in verification of object creation, modification, and external use. Which boundaries require checks, whether modifications may temporarily violate the condition, and how it is restored when a borrow ends remain to be defined.</p>
 
                     </main>
 

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -202,7 +202,7 @@
 
 <h2 id="semantics"><a class="header" href="#semantics">Semantics</a></h2>
 <p><code>forall!(|x: T| P)</code> states that <code>P</code> holds for every value <code>x</code> of type <code>T</code>. <code>exists!(|x: T| P)</code> states that there is a value <code>x</code> of type <code>T</code> for which <code>P</code> holds. In both forms, <code>P</code> must have type <code>bool</code>.</p>
-<p>The binding of <code>x</code> extends over the closure body. That body may refer to outer bindings and contain further quantifiers. Multiple quantified variables are expressed by nesting quantifiers, each with one parameter.</p>
+<p>The binding of <code>x</code> extends over the closure body. That body may refer to outer bindings and contain further quantifiers. Multiple quantified variables can be expressed by nesting quantifiers or destructuring a single tuple parameter. Each quantifier accepts one parameter; a two-parameter closure such as <code>|x: u8, y: u8|</code> does not match the current interface.</p>
 <p>The domain is a Rust type. For example, quantifying over <code>u8</code> concerns its finite range of values, not unbounded mathematical integers. A restriction on the domain is expressed in the body: universal quantification uses a conditional property, while existential quantification requires both the restriction and the property to hold.</p>
 <div class="rule" id="r-contract.quantifier.example"><a class="rule-link" href="#r-contract.quantifier.example" title="contract.quantifier.example"><span>[contract<wbr>.quantifier<wbr>.example]</span></a></div>
 
@@ -219,13 +219,28 @@ pub fn zero() -&gt; u8 {
     0
 }</code></pre>
 <p>The first postcondition gives an upper bound for all <code>u8</code> values. The second states that the returned value has a witness in the same type.</p>
+<p>Both examples retain their quantifiers and return-value bindings in LLBC and generate the corresponding WhyML quantified conditions.</p>
+<p>A tuple parameter can introduce two variables at once. This condition states that any two <code>u8</code> values are equal or the returned value is zero:</p>
+<pre><code class="language-rust ignore">#[postcondition(|r| forall!(|(x, y): (u8, u8)| x == y || r == 0))]
+pub fn zero_for_pairs() -&gt; u8 {
+    0
+}</code></pre>
+<p>This form also supports extraction and WhyML generation. Capturing other outer variables and combining nested quantifiers are discussed in the implementation boundaries below.</p>
 <div class="rule" id="r-contract.quantifier.boundary"><a class="rule-link" href="#r-contract.quantifier.boundary" title="contract.quantifier.boundary"><span>[contract<wbr>.quantifier<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.quantifier.boundary-title"></a></a></h2>
-<p>The closure must satisfy <code>Fn(T) -&gt; bool + Copy</code> and accept one quantified value. <code>|x: T, y: U|</code> is not a two-variable form of this interface. The frontend recursively extracts specification closures, including nested quantifiers.</p>
-<p>The grammar uses an explicit parameter type. Omitting it relies on Rust type inference. There are no dedicated interval or set binders, or separate mathematical type domains.</p>
-<p><code>forall!</code> and <code>exists!</code> do not themselves rewrite <code>implies</code> or <code>old</code>. An enclosing contract macro performs that rewriting; only postconditions process <code>old</code>.</p>
-<p>Both quantifiers have macro and extraction support. Existing integration examples and snapshots cover combinations using <code>forall</code>; they do not provide equivalent coverage for <code>exists</code>.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.quantifier.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: has extraction for both quantifiers and nested quantifiers, and retains tuple parameters; passing captured outer variables still has problems.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: has universal and existential quantifier translation, but producing a file does not establish that bindings and conditions were handled correctly.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Passing outer variables (frontend extraction and backend use).</strong> This condition expresses equality between the returned value and the input, but does not currently translate correctly:</p>
+<pre><code class="language-rust ignore">#[postcondition(|r| exists!(|x: u8| x == r &amp;&amp; x == n))]
+pub fn identity(n: u8) -&gt; u8 {
+    n
+}</code></pre>
+<p>The example produces LLBC, but the subsequent WhyML refers to an undefined variable. Problems also occur when quantifiers reference function parameters or multiple quantifier levels capture outer variables. Extraction and translation need to pass each level’s captures correctly, keeping <code>n</code> associated with the input, <code>r</code> with the returned value, and <code>x</code> with the local binding.</p>
+<p>Quantification over ranges and slices also depends on <a href="expressions.html#contract.expression.boundary-title">the corresponding expressions</a>. For example, stating that every valid index refers to a positive element requires quantifiers, lengths, and indexing to work together.</p>
 
                     </main>
 

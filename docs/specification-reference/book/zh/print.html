@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ada5b0dc.js";
+            window.path_to_searchindex_js = "searchindex-30489a1a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -312,7 +312,7 @@ pub fn square(x: u8) -&gt; u8 {
 <li><a href="#语句标注">语句标注</a>：函数体内某个位置的断言和假设。</li>
 <li><a href="#类型不变式">类型不变式</a>：与类型关联的条件。</li>
 </ul>
-<p>每种构造分别说明语法、语义、示例和当前实现状态。<a href="#文法索引">文法索引</a>汇总全部产生式。</p>
+<p>每种构造分别说明语法、语义、示例和实现边界。<a href="#文法索引">文法索引</a>汇总全部产生式。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.lexical"><a class="rule-link" href="#r-contract.lexical" title="contract.lexical"><span>[contract<wbr>.lexical]</span></a></div>
 
@@ -359,10 +359,13 @@ pub fn square(x: u8) -&gt; u8 {
 <pre><code class="language-rust ignore">#[precondition(x /* input */ &lt; 16)]
 #[postcondition(|result: u8| result &gt;= x)]</code></pre>
 <p>注释分隔词法单元，不改变前置条件。第二个属性中的竖线界定返回值绑定。</p>
-<h2 id="实现状态"><a class="header" href="#实现状态">实现状态</a></h2>
-<p>宏使用 <code>syn::Expr</code> 解析表达式，其接受的形式多于这份紧凑文法列出的内容。Rust 类型检查、借用检查和后续的前端提取进一步限制可接受的规约。</p>
-<p>在契约的词法单元中，<code>implies</code> 会被改写为内部标记；后置条件还会改写 <code>old</code>。改写作用于标识符，也会影响无关绑定、字段或方法中使用的同名标识符。参见<a href="#name-rewriting">名称改写</a>。</p>
-<p>各页的实现状态说明已支持的处理阶段及其边界。识别或提取某种构造，本身不代表其证明义务一定能够完成。</p>
+<h2 id="实现边界"><a class="header" href="#实现边界">实现边界</a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：沿用 Rust 词法、表达式解析以及类型与借用检查。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：处理提取后的表示，不直接处理这些词法形式。</li>
+</ul>
+<h3 id="尚待补齐"><a class="header" href="#尚待补齐">尚待补齐</a></h3>
+<p><strong>区分标记与普通名称（前端）。</strong> 当前按名称替换 <code>implies</code> 和后置条件中的 <code>old</code>，会误改普通 Rust 名称。例如 <code>#[postcondition(|r| r == value.old())]</code> 中的 <code>.old()</code> 即使是用户定义的方法，也会受到替换，导致展开失败。名称处理需要保留普通方法调用，同时识别规约标记，见<a href="#name-rewriting">名称改写</a>。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.expression"><a class="rule-link" href="#r-contract.expression" title="contract.expression"><span>[contract<wbr>.expression]</span></a></div>
 
@@ -443,12 +446,26 @@ pub fn positive_at(values: &amp;[u8], i: usize) -&gt; u8 {
     values[i]
 }</code></pre>
 <p>该条件要求索引有效且对应元素为正。短路求值保证仅在索引合法时才求值第二个操作数。</p>
+<p>前端已有切片长度、Vec 索引、字段比较和普通调用等表达式的提取用例；后端对这些表达式的支持仍有差异，见下文。</p>
+<p>条件也可以使用 Rust 表达式块、局部绑定、类型转换和分支。例如，下面的前置条件能够提取：</p>
+<pre><code class="language-rust ignore">#[precondition({
+    let y = x as u32;
+    if flag { y &gt; 0 } else { y == 0 }
+})]
+pub fn selected(x: u8, flag: bool) -&gt; u8 {
+    x
+}</code></pre>
+<p>枚举条件可以使用 <code>match</code>，见<a href="#r-contract.invariant.example">类型不变式中的示例</a>。普通函数调用也能进入规约，例如 <code>#[precondition(positive(x))]</code>，其中 <code>positive</code> 是返回 <code>bool</code> 的 Rust 函数。这些表达式能提取，不表示其所有操作都已接入后端验证。</p>
 <div class="rule" id="r-contract.expression.boundary"><a class="rule-link" href="#r-contract.expression.boundary" title="contract.expression.boundary"><span>[contract<wbr>.expression<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态-1"><a class="header" href="#实现状态-1">实现状态 <a id="contract.expression.boundary-title"></a></a></h2>
-<p>已有前端样例覆盖字段比较、普通调用、切片长度、Vec 索引和 trait 比较，也包括它们与量词的组合。运算符出现在文法中，不代表每种操作数类型或重载都有测试覆盖。</p>
-<p>规约体中的调用可以被保留，但外部函数可能是不透明的。当前没有纯逻辑函数、谓词或 ghost 代码的专用声明机制，也没有独立的逻辑序列、集合、映射接口或完整的标准库契约。</p>
-<p>这份核心文法未展开块、<code>if</code>、<code>match</code>、类型转换、复杂模式等其他 Rust 形式。这些形式能否接受，取决于具体表达式的解析、Rust 类型检查和提取。</p>
+<h2 id="实现边界-1"><a class="header" href="#实现边界-1">实现边界 <a id="contract.expression.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已能提取基本运算、字段访问、切片访问、普通调用，以及条件中的 <code>if</code>、<code>match</code> 和类型转换。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已支持基础标量表达式；切片、索引、<code>usize</code>、部分枚举与 trait 操作仍有缺口。</li>
+</ul>
+<h3 id="尚待补齐-1"><a class="header" href="#尚待补齐-1">尚待补齐</a></h3>
+<p><strong>切片条件（后端）。</strong> 上例的 <code>i &lt; values.len() &amp;&amp; values[i] &gt; 0</code> 可以提取，但验证还需要切片、长度、下标类型和索引操作的翻译，以便表达“索引有效且元素为正”。</p>
+<p><strong>规约中的函数调用（前后端，规则待明确）。</strong> <code>#[precondition(positive(x))]</code> 这类普通调用可以进入 LLBC。当前前端也会接受调用一个修改全局状态、再返回 <code>bool</code> 的函数；<code>Fn + Copy</code> 约束本身并不排除这种副作用。哪些函数可以用于规约、如何约束其副作用，需要先明确，再由前端检查和后端逻辑表示共同落实。普通调用能够提取，还不足以保证它可作为逻辑条件完成验证。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.quantifier"><a class="rule-link" href="#r-contract.quantifier" title="contract.quantifier"><span>[contract<wbr>.quantifier]</span></a></div>
 
@@ -476,7 +493,7 @@ pub fn positive_at(values: &amp;[u8], i: usize) -&gt; u8 {
 
 <h2 id="语义"><a class="header" href="#语义">语义</a></h2>
 <p><code>forall!(|x: T| P)</code> 表示对类型 <code>T</code> 的每个值 <code>x</code>，<code>P</code> 都成立。<code>exists!(|x: T| P)</code> 表示存在类型 <code>T</code> 的某个值 <code>x</code>，使 <code>P</code> 成立。两种形式中的 <code>P</code> 都必须具有 <code>bool</code> 类型。</p>
-<p><code>x</code> 的绑定作用域是闭包体。闭包体可以引用外部绑定，也可以包含其他量词。多个量化变量通过嵌套量词表达，每个量词接受一个参数。</p>
+<p><code>x</code> 的绑定作用域是闭包体。闭包体可以引用外部绑定，也可以包含其他量词。多个量化变量可以通过嵌套量词表达，也可以将一个元组作为参数并解构。每个量词接受一个参数，<code>|x: u8, y: u8|</code> 这样的双参数闭包不符合当前接口。</p>
 <p>量化域是 Rust 类型。例如，对 <code>u8</code> 的量化涉及其有限取值范围，而非无界数学整数。对量化域的限制写在量词体中：全称量化使用条件性质，存在量化则要求范围限制和性质同时成立。</p>
 <div class="rule" id="r-contract.quantifier.example"><a class="rule-link" href="#r-contract.quantifier.example" title="contract.quantifier.example"><span>[contract<wbr>.quantifier<wbr>.example]</span></a></div>
 
@@ -493,13 +510,28 @@ pub fn zero() -&gt; u8 {
     0
 }</code></pre>
 <p>第一个后置条件给出所有 <code>u8</code> 值的上界。第二个后置条件声明，在同一类型中存在一个值与返回值相等。</p>
+<p>这两个例子中的量词及返回值绑定都能进入 LLBC，并生成对应的 WhyML 量化条件。</p>
+<p>元组参数可以同时引入两个变量。例如，下面的条件表示任取两个 <code>u8</code> 值，它们相等或返回值为零：</p>
+<pre><code class="language-rust ignore">#[postcondition(|r| forall!(|(x, y): (u8, u8)| x == y || r == 0))]
+pub fn zero_for_pairs() -&gt; u8 {
+    0
+}</code></pre>
+<p>这一写法也能提取并生成 WhyML。涉及其他外层变量的捕获和嵌套组合，见下面的实现边界。</p>
 <div class="rule" id="r-contract.quantifier.boundary"><a class="rule-link" href="#r-contract.quantifier.boundary" title="contract.quantifier.boundary"><span>[contract<wbr>.quantifier<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态-2"><a class="header" href="#实现状态-2">实现状态 <a id="contract.quantifier.boundary-title"></a></a></h2>
-<p>闭包必须满足 <code>Fn(T) -&gt; bool + Copy</code>，并且只接受一个量化值。<code>|x: T, y: U|</code> 不是该接口的双变量形式。前端递归提取规约闭包，包括嵌套量词。</p>
-<p>文法使用显式参数类型。省略类型依赖 Rust 的类型推断。当前没有专用的区间绑定、集合绑定或独立的数学类型量化域。</p>
-<p><code>forall!</code> 和 <code>exists!</code> 自身不改写 <code>implies</code> 或 <code>old</code>。改写由外层契约宏完成，且只有后置条件处理 <code>old</code>。</p>
-<p>两种量词均有宏和提取支持。已有集成样例与快照覆盖包含 <code>forall</code> 的组合用法，但尚未提供同等的 <code>exists</code> 覆盖。</p>
+<h2 id="实现边界-2"><a class="header" href="#实现边界-2">实现边界 <a id="contract.quantifier.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已有两种量词及嵌套量词的提取，元组参数也能保留；外层变量的捕获传递仍有问题。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已有全称与存在量词翻译，但生成文件不代表绑定和条件均已正确处理。</li>
+</ul>
+<h3 id="尚待补齐-2"><a class="header" href="#尚待补齐-2">尚待补齐</a></h3>
+<p><strong>外层变量的传递（前端提取与后端使用）。</strong> 下面的条件表示返回值与输入相等，但目前尚不能正确翻译：</p>
+<pre><code class="language-rust ignore">#[postcondition(|r| exists!(|x: u8| x == r &amp;&amp; x == n))]
+pub fn identity(n: u8) -&gt; u8 {
+    n
+}</code></pre>
+<p>该例能生成 LLBC，后续 WhyML 却引用了未定义变量。量词引用函数参数时，以及多层量词同时引用外层变量时，都存在这类问题。需要在提取和翻译之间正确传递各层捕获，使 <code>n</code> 始终指向输入、<code>r</code> 指向返回值、<code>x</code> 指向本层绑定。</p>
+<p>区间、切片上的量化还受<a href="#contract.expression.boundary-title">相应表达式</a>的支持限制。例如“所有有效下标对应的元素都为正”，需要量词、长度和索引操作一起工作。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.implies"><a class="rule-link" href="#r-contract.implies" title="contract.implies"><span>[contract<wbr>.implies]</span></a></div>
 
@@ -534,12 +566,17 @@ pub fn identity(x: i32) -&gt; i32 {
     x
 }</code></pre>
 <p>后置条件要求：只要 <code>x &gt; 0</code>，就有 <code>result &gt;= x</code>。</p>
+<p>前端能够提取这种蕴含表达式，也能在量词条件中保留它。</p>
 <div class="rule" id="r-contract.implies.boundary"><a class="rule-link" href="#r-contract.implies.boundary" title="contract.implies.boundary"><span>[contract<wbr>.implies<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态-3"><a class="header" href="#实现状态-3">实现状态 <a id="contract.implies.boundary-title"></a></a></h2>
-<p>契约宏将 <code>implies</code> 改写为内部函数，前端识别并保留 <code>SpecImplies</code> 标记。已有组合样例覆盖这一表示。</p>
-<p>两个参数的计算都会进入规约体。特别是，<code>implies(i &lt; a.len(), a[i] &gt; 0)</code> 不会自动用前件保护索引访问。</p>
-<p>访问需要有条件地进行时，应使用 Rust 短路运算符。例如，<code>i &gt;= a.len() || a[i] &gt; 0</code> 在 <code>i</code> 越界时不会求值索引表达式。</p>
+<h2 id="实现边界-3"><a class="header" href="#实现边界-3">实现边界 <a id="contract.implies.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已识别并在 LLBC 中保留 <code>implies</code> 标记，包括量词体中的用法。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：尚未翻译这一标记，上例还不能完成验证。</li>
+</ul>
+<h3 id="尚待补齐-3"><a class="header" href="#尚待补齐-3">尚待补齐</a></h3>
+<p><strong>逻辑蕴含翻译（后端）。</strong> 对上例的 <code>implies(x &gt; 0, result &gt;= x)</code>，需要生成“当 <code>x &gt; 0</code> 时，<code>result &gt;= x</code>”这一逻辑条件；量词体中的标记也需要按同样含义处理。</p>
+<p>当前两个参数都会求值，<code>implies(i &lt; a.len(), a[i] &gt; 0)</code> 因而不能用前件保护索引访问。需要短路行为时，可以写成 <code>i &gt;= a.len() || a[i] &gt; 0</code>；这仍受切片与索引的后端支持限制。是否让 <code>implies</code> 本身具有条件求值行为，尚待明确。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.old"><a class="rule-link" href="#r-contract.old" title="contract.old"><span>[contract<wbr>.old]</span></a></div>
 
@@ -571,12 +608,20 @@ pub fn identity(x: i32) -&gt; i32 {
 <p>该片段将旧状态标记与解引用组合。参数 <code>p</code> 必须符合可变引用接口。片段能否用于后置条件，还取决于外层闭包的捕获和借用。</p>
 <div class="rule" id="r-contract.old.boundary"><a class="rule-link" href="#r-contract.old.boundary" title="contract.old.boundary"><span>[contract<wbr>.old<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态-4"><a class="header" href="#实现状态-4">实现状态 <a id="contract.old.boundary-title"></a></a></h2>
-<p>后置条件宏改写名称 <code>old</code>，前端识别并保留 <code>SpecOld</code> 标记。其他契约宏不执行这一改写。</p>
-<p>内部签名为：</p>
-<pre><code class="language-rust ignore">pub fn old&lt;T&gt;(x: &amp;mut T) -&gt; &amp;mut T</code></pre>
-<p>后置条件仍须满足 <code>Fn + Copy</code>，可变捕获受到这些要求的限制。对整数 <code>x</code>，<code>old(x + 1)</code> 即使表面结构符合 <code>OldExpression</code>，也不符合该接口。</p>
-<p>名称替换测试覆盖改写，前端具有标记识别能力。这些阶段不提供任意值或可达堆的快照，也不提供保持未修改内存区域的机制。所列集成样例尚未覆盖完整的旧状态规约。</p>
+<h2 id="实现边界-4"><a class="header" href="#实现边界-4">实现边界 <a id="contract.old.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已识别 <code>old</code> 标记，但还不能完整表达入口值；当前接口只接受可变引用。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：尚未实现旧状态翻译。</li>
+</ul>
+<h3 id="尚待补齐-4"><a class="header" href="#尚待补齐-4">尚待补齐</a></h3>
+<p><strong>可变参数的入口值（前后端）。</strong> 以下例子希望描述一次加一操作，目前尚不能使用：</p>
+<pre><code class="language-rust ignore">#[precondition(*p &lt; u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+fn increment(p: &amp;mut u32) {
+    *p += 1;
+}</code></pre>
+<p>这段写法在验证模式下会被闭包的 <code>Copy</code> 要求挡住。前端需要允许后置条件引用入口值，并将它与返回时的值区分；后端需要利用这一表示建立两者的关系。希望表达的是 <code>*p</code> 比入口值大 1，具体接口可以随状态表示调整。</p>
+<p>字段、复合值以及涉及别名的数据如何保留旧状态，范围仍待明确。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.function"><a class="rule-link" href="#r-contract.function" title="contract.function"><span>[contract<wbr>.function]</span></a></div>
 
@@ -614,12 +659,34 @@ pub fn square(x: u8) -&gt; u8 {
     x * x
 }</code></pre>
 <p>前置条件将 <code>x</code> 限制在平方结果能够用 <code>u8</code> 表示的范围内。后置条件要求返回值不小于 <code>x</code>。</p>
+<p>这个例子已支持前端提取和后端验证。前置条件和后置条件也可以分别使用，或在同一函数上声明多个。</p>
+<p>方法上的条件可以引用 <code>self</code>。下面的契约能够提取并生成 WhyML：</p>
+<pre><code class="language-rust ignore">pub struct Counter {
+    value: u32,
+}
+
+impl Counter {
+    #[precondition(self.value &lt; 10)]
+    #[postcondition(|r| r == self.value)]
+    pub fn get(&amp;self) -&gt; u32 {
+        self.value
+    }
+}</code></pre>
 <div class="rule" id="r-contract.function.boundary"><a class="rule-link" href="#r-contract.function.boundary" title="contract.function.boundary"><span>[contract<wbr>.function<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态-5"><a class="header" href="#实现状态-5">实现状态 <a id="contract.function.boundary-title"></a></a></h2>
-<p>带函数体的普通函数、嵌套函数、固有方法、关联函数、trait 默认方法和 impl 中的方法支持契约展开与提取。已有集成样例覆盖前置条件和后置条件。</p>
-<p>仅有签名的 trait 方法和外部函数声明尚不支持。当前没有通用的 trait 契约继承或精化机制。验证模式下的宏展开不支持 <code>const fn</code>；前端尚不能提取异步函数。</p>
-<p>当前契约接口没有修改集合、终止度量或异常退出子句。各类条件的类型和提取限制在后续页面说明。</p>
+<h2 id="实现边界-5"><a class="header" href="#实现边界-5">实现边界 <a id="contract.function.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持普通函数和带函数体的方法上的前置／后置条件。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已支持基本标量函数的契约验证；泛型函数和 trait 声明仍有翻译限制。</li>
+</ul>
+<h3 id="尚待补齐-5"><a class="header" href="#尚待补齐-5">尚待补齐</a></h3>
+<p><strong>无函数体的声明（前端）。</strong> 当前宏通过函数体携带条件，下面的写法无法展开：</p>
+<pre><code class="language-rust ignore">trait Reader {
+    #[postcondition(|result| result &lt;= 100)]
+    fn read(&amp;self) -&gt; u8;
+}</code></pre>
+<p>这里需要能把条件保存到方法声明上，供后续处理实现和调用时使用。契约如何由实现沿用，以及是否允许加强保证，仍待明确。</p>
+<p><strong>特殊函数形式（前端）。</strong> <code>#[precondition(x &lt; 100)] const fn f(x: u32) -&gt; u32 { x }</code> 的展开会调用非常量辅助函数；<code>#[postcondition(|r| r &gt; 0)] async fn f() -&gt; u32 { 1 }</code> 则在前端提取时遇到尚不支持的协程类型。要覆盖这些形式，需要分别适配常量上下文，以及异步函数完成后得到的返回值。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.precondition"><a class="rule-link" href="#r-contract.precondition" title="contract.precondition"><span>[contract<wbr>.precondition]</span></a></div>
 
@@ -650,9 +717,13 @@ pub fn quotient(value: u32, divisor: u32) -&gt; u32 {
     value / divisor
 }</code></pre>
 <p>前置条件排除了除零情况。以 <code>divisor == 0</code> 调用该函数不满足所声明的要求。</p>
-<h2 id="实现状态-6"><a class="header" href="#实现状态-6">实现状态</a></h2>
-<p>宏将条件解析为表达式，并表示为 <code>Fn() -&gt; bool + Copy</code> 闭包。Rust 的类型、捕获和借用约束仍然适用。前端将提取出的条件作为前置条件关联到函数。</p>
-<p>已有集成样例和 LLBC 快照覆盖前置条件。支持的函数形式和共同限制见<a href="#contract.function.boundary-title">函数契约</a>。</p>
+<p>基本参数条件已支持前端提取。后端已有的用例包括用 <code>x &lt; 16</code> 约束平方计算，以及用 <code>a &gt;= b</code> 约束无符号减法。</p>
+<h2 id="实现边界-6"><a class="header" href="#实现边界-6">实现边界</a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持基本参数条件、方法接收者和多条前置条件。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已支持基本标量条件的翻译和验证。</li>
+</ul>
+<p>无函数体声明的限制见<a href="#contract.function.boundary-title">函数契约</a>；切片访问等条件的限制见<a href="#contract.expression.boundary-title">逻辑表达式</a>。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.postcondition"><a class="rule-link" href="#r-contract.postcondition" title="contract.postcondition"><span>[contract<wbr>.postcondition]</span></a></div>
 
@@ -690,10 +761,24 @@ pub fn identity(x: u32) -&gt; u32 {
     x
 }</code></pre>
 <p>这里 <code>value</code> 表示返回值，<code>x</code> 是参与比较的输入。</p>
-<h2 id="实现状态-7"><a class="header" href="#实现状态-7">实现状态</a></h2>
-<p>后置条件必须满足 <code>Fn(ReturnType) -&gt; bool + Copy</code>。宏将函数返回类型传入内部接口，由 Rust 检查闭包参数、结果类型和捕获。</p>
-<p>前端提取后置条件并将其关联到函数，已有集成样例覆盖该路径。文法展示内联闭包；能够解析某个表达式，不代表支持任意函数指针或可调用对象。</p>
-<p>只有后置条件启用 <code>old</code> 的名称改写。这不提供通用快照，也不放宽闭包的借用约束。</p>
+<p>返回值条件已支持前端提取和基本后端验证。例如，最大值函数可以分别声明 <code>result &gt;= a</code> 和 <code>result &gt;= b</code>，同时保证结果不小于两个输入。</p>
+<h2 id="实现边界-7"><a class="header" href="#实现边界-7">实现边界</a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持闭包绑定返回值、引用输入参数和多条后置条件。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已支持基本标量返回值条件；涉及可变引用和旧状态的关系仍不完整。</li>
+</ul>
+<h3 id="尚待补齐-6"><a class="header" href="#尚待补齐-6">尚待补齐</a></h3>
+<p><strong>直接传入函数（前端）。</strong> 以下写法能够通过 Rust 类型检查，但规约提取会失败：</p>
+<pre><code class="language-rust ignore">fn positive(value: u32) -&gt; bool {
+    value &gt; 0
+}
+
+#[postcondition(positive)]
+pub fn one() -&gt; u32 {
+    1
+}</code></pre>
+<p>同一个条件写成 <code>#[postcondition(|value| positive(value))]</code> 可以提取。直接传入函数时，还需要将它关联到返回值条件，或在入口给出明确的不支持提示；函数调用本身的验证限制见<a href="#contract.expression.boundary-title">逻辑表达式</a>。</p>
+<p><strong>修改前后的关系。</strong> 例如“<code>*p</code> 返回时比进入函数时大 1”，还需要补齐 <a href="#contract.old.boundary-title"><code>old</code></a> 及可变引用的状态表示。仅仅捕获 <code>p</code>，不会建立入口值快照。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.statement"><a class="rule-link" href="#r-contract.statement" title="contract.statement"><span>[contract<wbr>.statement]</span></a></div>
 
@@ -730,9 +815,12 @@ pub fn check(x: u8) {
 <p>断言可以由前面的假设推出。这不证明每次调用 <code>check</code> 时都有 <code>x &lt; 16</code>。</p>
 <div class="rule" id="r-contract.statement.boundary"><a class="rule-link" href="#r-contract.statement.boundary" title="contract.statement.boundary"><span>[contract<wbr>.statement<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态-8"><a class="header" href="#实现状态-8">实现状态 <a id="contract.statement.boundary-title"></a></a></h2>
-<p>前端分别记录断言和假设的种类及位置。条件使用 <code>Fn() -&gt; bool + Copy</code> 闭包，遵循 Rust 的捕获和借用规则。普通构建会移除这些标注。</p>
-<p>标注可以出现在分支或循环中。循环体内的语句标注不是循环不变式声明。当前没有循环不变式、终止度量或附着于任意语句块的契约接口。</p>
+<h2 id="实现边界-8"><a class="header" href="#实现边界-8">实现边界 <a id="contract.statement.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持断言和假设，保留条件、种类及所在位置。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：分别翻译为 WhyML <code>assert</code> 和 <code>assume</code>。</li>
+</ul>
+<p>具体用法与限制见<a href="#断言">断言</a>和<a href="#假设">假设</a>。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.assertion"><a class="rule-link" href="#r-contract.assertion" title="contract.assertion"><span>[contract<wbr>.assertion]</span></a></div>
 
@@ -764,9 +852,13 @@ pub fn bounded_square(x: u8) -&gt; u8 {
     y
 }</code></pre>
 <p>断言描述乘法执行后局部变量 <code>y</code> 的值。</p>
-<h2 id="实现状态-9"><a class="header" href="#实现状态-9">实现状态</a></h2>
-<p>宏将条件展开为 <code>Fn() -&gt; bool + Copy</code> 闭包。前端将其提取为程序相应位置的断言。已有集成样例和 LLBC 快照覆盖断言。</p>
-<p><code>contract_assert!</code> 是规约标注，在普通构建中会被移除，不提供 Rust <code>assert!</code> 宏的运行时检查。</p>
+<p>前端可以提取这类局部断言，也支持在条件中保留普通函数调用，例如 <code>contract_assert!(decuple(9) == 90)</code>。</p>
+<h2 id="实现边界-9"><a class="header" href="#实现边界-9">实现边界</a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持断言条件的提取，保留其在函数体中的位置，包括分支内的断言。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已翻译为 WhyML <code>assert</code>；条件能否继续验证取决于其中的表达式和程序操作。</li>
+</ul>
+<p>共同限制见<a href="#contract.expression.boundary-title">逻辑表达式</a>。普通构建移除契约断言；运行时检查使用 Rust 的 <code>assert!</code>。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.assumption"><a class="rule-link" href="#r-contract.assumption" title="contract.assumption"><span>[contract<wbr>.assumption]</span></a></div>
 
@@ -792,14 +884,21 @@ pub fn bounded_square(x: u8) -&gt; u8 {
 <h2 id="示例-9"><a class="header" href="#示例-9">示例</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
-pub fn assumed_bound(x: u8) {
-    contract_assume!(x &lt;= 10);
-    contract_assert!(x &lt; 11);
+pub fn assumed_bound(x: u8, flag: bool) {
+    if flag {
+        contract_assume!(x &lt;= 10);
+        contract_assert!(x &lt; 11);
+    } else {
+        contract_assert!(x &lt;= 255);
+    }
 }</code></pre>
-<p>在假定的上界下可以推出断言。该标注既不检查，也不为调用者建立这个上界。</p>
-<h2 id="实现状态-10"><a class="header" href="#实现状态-10">实现状态</a></h2>
-<p>宏和内部接口将条件表示为 <code>Fn() -&gt; bool + Copy</code> 闭包。专门的提取分支将假设与断言区分开。现有前端集成样例尚未覆盖假设。</p>
-<p>假设在普通构建中会被移除，不约束运行时的值，也不拒绝输入。</p>
+<p>在 <code>flag</code> 为真的分支中，假定的上界足以推出随后的断言；另一分支的断言不使用这条假设。前端提取和 WhyML 翻译会保留这种分支关系。该标注既不检查，也不为调用者建立这个上界。</p>
+<h2 id="实现边界-10"><a class="header" href="#实现边界-10">实现边界</a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持假设提取，与断言区分，并保留所在分支。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已翻译为 WhyML <code>assume</code>；条件能否继续验证取决于其中的表达式和程序操作。</li>
+</ul>
+<p>共同限制见<a href="#contract.expression.boundary-title">逻辑表达式</a>。假设不产生证明自身的义务，普通构建也不会用它过滤输入。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.invariant"><a class="rule-link" href="#r-contract.invariant" title="contract.invariant"><span>[contract<wbr>.invariant]</span></a></div>
 
@@ -835,12 +934,41 @@ pub struct RefRange&lt;'a, T: PartialOrd&gt; {
     end: &amp;'a T,
 }</code></pre>
 <p>条件要求范围起点不大于终点。类型参数及其约束在不变式中仍然可用。</p>
+<p>前端可以提取这个泛型结构体的不变式，并保留它与类型的关联。</p>
+<p>枚举可以分别描述各变体的条件：</p>
+<pre><code class="language-rust ignore">#[invariant(match self {
+    Self::Empty =&gt; true,
+    Self::Range { start, end } =&gt; start &lt;= end,
+})]
+pub enum Range {
+    Empty,
+    Range { start: u32, end: u32 },
+}</code></pre>
+<p>前端可以提取这个 <code>match self</code> 条件。联合体条件也能提取；读取字段仍需遵循 Rust 的 <code>unsafe</code> 要求：</p>
+<pre><code class="language-rust ignore">#[invariant(unsafe { self.x &lt;= 100 })]
+pub union Data {
+    pub x: u32,
+    pub y: u32,
+}</code></pre>
+<p>这些例子说明条件如何与类型关联，尚不表示后端会自动维护这些条件。</p>
 <div class="rule" id="r-contract.invariant.boundary"><a class="rule-link" href="#r-contract.invariant.boundary" title="contract.invariant.boundary"><span>[contract<wbr>.invariant<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态-11"><a class="header" href="#实现状态-11">实现状态 <a id="contract.invariant.boundary-title"></a></a></h2>
-<p>宏保留泛型参数和约束，生成包含 <code>invariant(&amp;self) -&gt; bool</code> 方法的 <code>TypeInvariant</code> 实现。前端提取条件并将其关联到类型。已有集成快照覆盖泛型 <code>RefRange</code> 样例。</p>
-<p>实现尚不会在构造、字段更新或借用结束处自动插入建立或恢复不变式的义务。仅声明这一属性，不能保证所有实例都满足条件。</p>
-<p>类型别名不能使用该属性。多个要求应写在一个条件中，例如通过 <code>&amp;&amp;</code> 组合；重复属性会生成冲突的 trait 实现。宏分支接受枚举和联合体，但所列集成样例尚未覆盖这两类用法。联合体字段访问仍受 Rust 安全规则约束。</p>
+<h2 id="实现边界-11"><a class="header" href="#实现边界-11">实现边界 <a id="contract.invariant.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持结构体、枚举和联合体不变式的提取，保留它与类型的关联。同一类型的多个条件目前需用 <code>&amp;&amp;</code> 合写，重复属性会产生冲突。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：尚未使用这些条件建立不变式检查；声明不变式还不能保证对象有效。</li>
+</ul>
+<h3 id="尚待补齐-7"><a class="header" href="#尚待补齐-7">尚待补齐</a></h3>
+<p><strong>从类型条件到检查义务（后端，检查时机待明确）。</strong> 下面的类型要求 <code>x &lt;= 100</code>，但创建越界实例目前不会自动产生相应检查：</p>
+<pre><code class="language-rust ignore">#[invariant(self.x &lt;= 100)]
+pub struct B {
+    pub x: u32,
+}
+
+pub fn invalid() -&gt; B {
+    B { x: 200 }
+}</code></pre>
+<p>前端会保存 <code>x &lt;= 100</code>；生成的 WhyML 尚未使用它。需要让这条条件参与对象创建、修改及对外使用时的验证。具体在哪些边界检查、是否允许修改过程中暂时不满足条件，以及借用结束时如何恢复，仍待明确。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.grammar"><a class="rule-link" href="#r-contract.grammar" title="contract.grammar"><span>[contract<wbr>.grammar]</span></a></div>
 
@@ -940,24 +1068,31 @@ pub struct RefRange&lt;'a, T: PartialOrd&gt; {
 <div class="rule" id="r-contract.constraints"><a class="rule-link" href="#r-contract.constraints" title="contract.constraints"><span>[contract<wbr>.constraints]</span></a></div>
 
 <h1 id="实现说明"><a class="header" href="#实现说明">实现说明</a></h1>
-<p>本页记录开发中前端的共同实现特征。各构造的具体支持情况在对应参考页面中说明。</p>
 <div class="rule" id="r-contract.constraints.intro"><a class="rule-link" href="#r-contract.constraints.intro" title="contract.constraints.intro"><span>[contract<wbr>.constraints<wbr>.intro]</span></a></div>
 
-<h2 id="内部表示"><a class="header" href="#内部表示">内部表示</a></h2>
-<p>规约须满足表面语法、Rust 类型与借用规则，以及提取过程要求的结构。条件返回 <code>bool</code>；除类型不变式方法外，规约闭包均受 <code>Fn + Copy</code> 约束。</p>
-<p>普通构建会移除规约，因此该模式下编译成功不构成规约通过验证模式检查的证据。</p>
+<h2 id="如何理解实现边界"><a class="header" href="#如何理解实现边界">如何理解实现边界</a></h2>
+<p>各构造页分别说明 <strong>前端 <code>rust-llbc</code></strong> 和 <strong>后端 <code>llbc-why3</code></strong>。这里的前端包括规约宏展开、Rust 类型与借用检查，以及到 LLBC 的提取；后端将 LLBC 中的规约翻译为 WhyML，供验证使用。</p>
+<p>前端能够提取，不表示后端已经能够处理；生成 WhyML 文件，也不等于通过 Why3 检查或完成证明。</p>
+<p>各页的示例展示已有用法。“尚待补齐”列出具体场景、当前障碍和希望表达的性质；尚未确定的语义标为“待明确”。这些说明不规定开发阶段、优先级或完整支持范围。源码和仓库中的测试见<a href="#实现依据与测试覆盖">实现依据与测试覆盖</a>。</p>
+<h2 id="共同约定"><a class="header" href="#共同约定">共同约定</a></h2>
+<ul>
+<li><strong>Rust 类型与借用规则</strong>：条件返回 <code>bool</code>，使用 Rust 的类型系统。除类型不变式方法外，规约闭包受 <code>Fn + Copy</code> 约束；修改捕获变量或移走非 <code>Copy</code> 值可能无法满足这些要求。</li>
+<li><strong>普通构建</strong>：规约标注会被移除。普通编译通过，不表示规约已经通过验证模式的检查。</li>
+<li><strong>正常返回</strong>：后置条件描述正常返回时的性质，不同时声明终止或 panic 后的状态。</li>
+</ul>
 <h2 id="名称改写"><a class="header" href="#名称改写">名称改写 <a id="name-rewriting"></a></a></h2>
-<p>在规约宏处理的 token 中，<code>implies</code> 和后置条件里的 <code>old</code> 会被递归替换。将这些名称用于无关绑定、字段或方法可能与改写发生冲突；通用调用语法不能绕过专用接口的约束。</p>
-<h2 id="尚待覆盖的方向"><a class="header" href="#尚待覆盖的方向">尚待覆盖的方向</a></h2>
-<p>当前规约接口没有提供循环不变式、循环与递归终止度量、读写足迹与修改集合、权限与借用契约、异常退出契约、模块契约，以及外部接口补充规约。</p>
-<p>实现与样例来源见<a href="#实现依据与测试覆盖">实现依据与测试覆盖</a>；文法沿用的 Rust 语法见<a href="#rust-syntax">词法规则</a>。</p>
+<p>规约宏递归改写 <code>implies</code>，后置条件还改写 <code>old</code>。量词宏自身不做这些改写，需要由外层契约宏处理。</p>
+<p>目前替换仅依据名称，同名的普通方法如 <code>value.old()</code> 也会受到影响。前端需要区分规约标记与普通 Rust 名称，具体例子见<a href="#词法规则">词法规则</a>。</p>
+<h2 id="尚待明确的规则"><a class="header" href="#尚待明确的规则">尚待明确的规则 <a id="open-areas"></a></a></h2>
+<p>规约中哪些函数调用可以使用、如何限制副作用，见<a href="#contract.expression.boundary-title">逻辑表达式</a>。类型不变式在哪些程序边界成立，见<a href="#contract.invariant.boundary-title">类型不变式</a>。这些规则会影响前后端的处理方式，目前保留具体场景，不预先固定完整方案。</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.sources"><a class="rule-link" href="#r-contract.sources" title="contract.sources"><span>[contract<wbr>.sources]</span></a></div>
 
 <h1 id="实现依据与测试覆盖"><a class="header" href="#实现依据与测试覆盖">实现依据与测试覆盖</a></h1>
 <div class="rule" id="r-contract.sources.intro"><a class="rule-link" href="#r-contract.sources.intro" title="contract.sources.intro"><span>[contract<wbr>.sources<wbr>.intro]</span></a></div>
 
-<p>以下源码和样例分别对应宏展开、前端提取和已有测试覆盖。</p>
+<p>以下源码和样例分别说明前端提取、后端翻译与已有测试覆盖。</p>
+<h2 id="前端-rust-llbc"><a class="header" href="#前端-rust-llbc">前端 rust-llbc</a></h2>
 <ul>
 <li>
 <p><a href="../../../../trust2-contract-macros/src/impl.rs">规约宏实现</a>与<a href="../../../../trust2-contract-macros/src/impl/parse.rs">标识符替换</a>：入口解析与展开。</p>
@@ -975,6 +1110,18 @@ pub struct RefRange&lt;'a, T: PartialOrd&gt; {
 <p><a href="../../../../charon/charon/tests/cargo/trust2-contract-sample/src/lib.rs">前端集成样例</a>与<a href="../../../../charon/charon/tests/cargo/trust2-contract-sample.out">LLBC 快照</a>：已有组合用例。</p>
 </li>
 </ul>
+<h2 id="后端-llbc-why3"><a class="header" href="#后端-llbc-why3">后端 llbc-why3</a></h2>
+<ul>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/decl.rs">函数契约翻译</a>与<a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/spec.rs">规约闭包翻译</a>：前置条件、后置条件和捕获值。</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_expr.rs">语句翻译</a>与<a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_term.rs">逻辑项翻译</a>：断言、假设和量词的翻译分支。</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/func_ref.rs">内建函数翻译</a>：<code>SpecImplies</code>、<code>SpecOld</code> 尚待实现的分支。</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/ty.rs">类型翻译</a>与<a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/type_decl.rs">类型声明翻译</a>：类型支持范围；类型不变式尚未接入自动保持检查。</li>
+<li><a href="../../../../cargo-verify/tests/end-to-end/simple/src/lib.rs">端到端样例</a>与<a href="../../../../cargo-verify/tests/end-to-end/simple/result.txt">已保存结果</a>：<code>max</code>、<code>strict_sub</code>、<code>square</code> 的基本契约验证。</li>
+</ul>
+<h2 id="测试覆盖"><a class="header" href="#测试覆盖">测试覆盖</a></h2>
+<p>前端集成样例包含前置条件、后置条件、断言、泛型结构体不变式，以及全称量词、蕴含和容器访问的组合。<code>to_sorted</code> 的函数体是返回空向量的占位实现，用于观察提取结果，不是已经验证的排序算法。</p>
+<p>仓库中的前端集成样例尚未包含 <code>contract_assume!</code> 与 <code>exists!</code>。两者已有提取实现；量词的外层捕获问题见<a href="#contract.quantifier.boundary-title">量词的实现边界</a>。<code>old</code> 有名称改写测试，尚无完整旧状态规约的集成用例。</p>
+<p>后端已保存的端到端结果覆盖 <code>max</code>、<code>strict_sub</code> 和 <code>square</code> 的基本前置／后置条件。断言、假设和量词已有翻译实现，但尚未包含在这些端到端用例中。</p>
 
                     </main>
 

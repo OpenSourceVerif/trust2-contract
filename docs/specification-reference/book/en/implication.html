@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -209,12 +209,17 @@ pub fn identity(x: i32) -&gt; i32 {
     x
 }</code></pre>
 <p>The postcondition requires <code>result &gt;= x</code> whenever <code>x &gt; 0</code>.</p>
+<p>The frontend can extract this implication expression and retain it inside quantified conditions.</p>
 <div class="rule" id="r-contract.implies.boundary"><a class="rule-link" href="#r-contract.implies.boundary" title="contract.implies.boundary"><span>[contract<wbr>.implies<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.implies.boundary-title"></a></a></h2>
-<p>Contract macros rewrite <code>implies</code> to an internal function, and the frontend recognizes and retains a <code>SpecImplies</code> marker. Existing combined examples cover this representation.</p>
-<p>Both arguments’ computations enter the specification body. In particular, <code>implies(i &lt; a.len(), a[i] &gt; 0)</code> does not automatically guard the index access with the antecedent.</p>
-<p>When an access must be conditional, use Rust short-circuit operators. For example, <code>i &gt;= a.len() || a[i] &gt; 0</code> avoids evaluating the index expression when <code>i</code> is out of bounds.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.implies.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: recognizes and retains the <code>implies</code> marker in LLBC, including within quantifier bodies.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: does not yet translate this marker, so the example cannot complete verification.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Logical implication translation (backend).</strong> The example’s <code>implies(x &gt; 0, result &gt;= x)</code> needs to generate the logical condition that <code>result &gt;= x</code> holds whenever <code>x &gt; 0</code>. Markers within quantifier bodies need the same treatment.</p>
+<p>Both arguments are currently evaluated, so <code>implies(i &lt; a.len(), a[i] &gt; 0)</code> cannot use its antecedent to guard indexing. Where short-circuit behavior is needed, write <code>i &gt;= a.len() || a[i] &gt; 0</code>; this remains subject to backend slice and index support. Whether <code>implies</code> itself should provide conditional evaluation remains open.</p>
 
                     </main>
 

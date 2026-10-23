@@ -46,10 +46,11 @@ The grammar uses unqualified names, parenthesized macro invocations, and simple 
 
 The comment separates tokens without changing the precondition. The bars in the second attribute delimit the return-value binding.
 
-## Implementation status
+## Implementation boundaries
 
-The macros parse expressions using `syn::Expr`, which accepts more forms than this compact grammar lists. Rust typing and borrowing, followed by frontend extraction, further constrain which specifications are accepted.
+- **Frontend `rust-llbc`**: uses Rust lexical rules, expression parsing, and typing and borrowing checks.
+- **Backend `llbc-why3`**: handles extracted representations rather than these lexical forms directly.
 
-Within contract tokens, `implies` is rewritten to an internal marker; postconditions also rewrite `old`. This rewriting acts on identifiers, including names used for unrelated bindings, fields, or methods. See [Name rewriting](constraints.md#name-rewriting).
+### Remaining work
 
-Implementation status on each page describes the supported stages and their limits. Recognition or extraction of a construct does not by itself establish that its proof obligations can be discharged.
+**Distinguishing markers from ordinary names (frontend).** Name-based replacement of `implies` and postcondition `old` also changes ordinary Rust names. For example, `.old()` in `#[postcondition(|r| r == value.old())]` is replaced even when it denotes a user-defined method, causing expansion to fail. Name handling needs to preserve ordinary method calls while recognizing specification markers. See [Name rewriting](constraints.md#name-rewriting).

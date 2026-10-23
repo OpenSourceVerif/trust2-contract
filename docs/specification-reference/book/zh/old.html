@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ada5b0dc.js";
+            window.path_to_searchindex_js = "searchindex-30489a1a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -206,12 +206,20 @@
 <p>该片段将旧状态标记与解引用组合。参数 <code>p</code> 必须符合可变引用接口。片段能否用于后置条件，还取决于外层闭包的捕获和借用。</p>
 <div class="rule" id="r-contract.old.boundary"><a class="rule-link" href="#r-contract.old.boundary" title="contract.old.boundary"><span>[contract<wbr>.old<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态"><a class="header" href="#实现状态">实现状态 <a id="contract.old.boundary-title"></a></a></h2>
-<p>后置条件宏改写名称 <code>old</code>，前端识别并保留 <code>SpecOld</code> 标记。其他契约宏不执行这一改写。</p>
-<p>内部签名为：</p>
-<pre><code class="language-rust ignore">pub fn old&lt;T&gt;(x: &amp;mut T) -&gt; &amp;mut T</code></pre>
-<p>后置条件仍须满足 <code>Fn + Copy</code>，可变捕获受到这些要求的限制。对整数 <code>x</code>，<code>old(x + 1)</code> 即使表面结构符合 <code>OldExpression</code>，也不符合该接口。</p>
-<p>名称替换测试覆盖改写，前端具有标记识别能力。这些阶段不提供任意值或可达堆的快照，也不提供保持未修改内存区域的机制。所列集成样例尚未覆盖完整的旧状态规约。</p>
+<h2 id="实现边界"><a class="header" href="#实现边界">实现边界 <a id="contract.old.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已识别 <code>old</code> 标记，但还不能完整表达入口值；当前接口只接受可变引用。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：尚未实现旧状态翻译。</li>
+</ul>
+<h3 id="尚待补齐"><a class="header" href="#尚待补齐">尚待补齐</a></h3>
+<p><strong>可变参数的入口值（前后端）。</strong> 以下例子希望描述一次加一操作，目前尚不能使用：</p>
+<pre><code class="language-rust ignore">#[precondition(*p &lt; u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+fn increment(p: &amp;mut u32) {
+    *p += 1;
+}</code></pre>
+<p>这段写法在验证模式下会被闭包的 <code>Copy</code> 要求挡住。前端需要允许后置条件引用入口值，并将它与返回时的值区分；后端需要利用这一表示建立两者的关系。希望表达的是 <code>*p</code> 比入口值大 1，具体接口可以随状态表示调整。</p>
+<p>字段、复合值以及涉及别名的数据如何保留旧状态，范围仍待明确。</p>
 
                     </main>
 

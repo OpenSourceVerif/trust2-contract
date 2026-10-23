@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -312,7 +312,7 @@ pub fn square(x: u8) -&gt; u8 {
 <li><a href="#statement-annotations">Statement Annotations</a>: assertions and assumptions at a point in a function body.</li>
 <li><a href="#type-invariants">Type Invariants</a>: conditions associated with a type.</li>
 </ul>
-<p>Each construct is described by its syntax, semantics, examples, and current implementation status. The <a href="#grammar-index">Grammar Index</a> collects all productions.</p>
+<p>Each construct is described by its syntax, semantics, examples, and implementation boundaries. The <a href="#grammar-index">Grammar Index</a> collects all productions.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.lexical"><a class="rule-link" href="#r-contract.lexical" title="contract.lexical"><span>[contract<wbr>.lexical]</span></a></div>
 
@@ -359,10 +359,13 @@ pub fn square(x: u8) -&gt; u8 {
 <pre><code class="language-rust ignore">#[precondition(x /* input */ &lt; 16)]
 #[postcondition(|result: u8| result &gt;= x)]</code></pre>
 <p>The comment separates tokens without changing the precondition. The bars in the second attribute delimit the return-value binding.</p>
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status</a></h2>
-<p>The macros parse expressions using <code>syn::Expr</code>, which accepts more forms than this compact grammar lists. Rust typing and borrowing, followed by frontend extraction, further constrain which specifications are accepted.</p>
-<p>Within contract tokens, <code>implies</code> is rewritten to an internal marker; postconditions also rewrite <code>old</code>. This rewriting acts on identifiers, including names used for unrelated bindings, fields, or methods. See <a href="#name-rewriting">Name rewriting</a>.</p>
-<p>Implementation status on each page describes the supported stages and their limits. Recognition or extraction of a construct does not by itself establish that its proof obligations can be discharged.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: uses Rust lexical rules, expression parsing, and typing and borrowing checks.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: handles extracted representations rather than these lexical forms directly.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Distinguishing markers from ordinary names (frontend).</strong> Name-based replacement of <code>implies</code> and postcondition <code>old</code> also changes ordinary Rust names. For example, <code>.old()</code> in <code>#[postcondition(|r| r == value.old())]</code> is replaced even when it denotes a user-defined method, causing expansion to fail. Name handling needs to preserve ordinary method calls while recognizing specification markers. See <a href="#name-rewriting">Name rewriting</a>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.expression"><a class="rule-link" href="#r-contract.expression" title="contract.expression"><span>[contract<wbr>.expression]</span></a></div>
 
@@ -443,12 +446,26 @@ pub fn positive_at(values: &amp;[u8], i: usize) -&gt; u8 {
     values[i]
 }</code></pre>
 <p>The condition requires a valid index and a positive element. Short-circuit evaluation ensures the second operand is evaluated only when the index is in bounds.</p>
+<p>The frontend has extraction examples involving slice lengths, Vec indexing, field comparisons, and ordinary calls. Backend support for these expressions varies, as described below.</p>
+<p>Conditions can also use Rust expression blocks, local bindings, casts, and branches. For example, this precondition can be extracted:</p>
+<pre><code class="language-rust ignore">#[precondition({
+    let y = x as u32;
+    if flag { y &gt; 0 } else { y == 0 }
+})]
+pub fn selected(x: u8, flag: bool) -&gt; u8 {
+    x
+}</code></pre>
+<p>Enum conditions can use <code>match</code>, as shown in the <a href="#r-contract.invariant.example">type-invariant examples</a>. Ordinary calls can also enter specifications, such as <code>#[precondition(positive(x))]</code> with a Rust function <code>positive</code> returning <code>bool</code>. Extraction does not establish that every operation involved is supported by backend verification.</p>
 <div class="rule" id="r-contract.expression.boundary"><a class="rule-link" href="#r-contract.expression.boundary" title="contract.expression.boundary"><span>[contract<wbr>.expression<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status-1"><a class="header" href="#implementation-status-1">Implementation status <a id="contract.expression.boundary-title"></a></a></h2>
-<p>Existing frontend examples cover field comparisons, ordinary calls, slice lengths, Vec indexing, and trait comparisons, including combinations with quantifiers. An operator’s presence in the grammar does not imply coverage for every operand type or overload.</p>
-<p>Calls can be retained in specification bodies, but external functions may be opaque. There is no dedicated declaration mechanism for pure logical functions, predicates, or ghost code, and no separate logical sequence, set, or map interface or complete set of standard-library contracts.</p>
-<p>Blocks, <code>if</code>, <code>match</code>, casts, complex patterns, and other Rust forms are not expanded in this core grammar. Their acceptance depends on parsing, Rust typing, and extraction for the particular expression.</p>
+<h2 id="implementation-boundaries-1"><a class="header" href="#implementation-boundaries-1">Implementation boundaries <a id="contract.expression.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts basic operations, field and slice access, ordinary calls, and conditions using <code>if</code>, <code>match</code>, and casts.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports basic scalar expressions; slices, indexing, <code>usize</code>, and some enum and trait operations still have gaps.</li>
+</ul>
+<h3 id="remaining-work-1"><a class="header" href="#remaining-work-1">Remaining work</a></h3>
+<p><strong>Slice conditions (backend).</strong> The example’s <code>i &lt; values.len() &amp;&amp; values[i] &gt; 0</code> can be extracted. Verification still needs translation of slices, lengths, index types, and indexing to express that the index is valid and the element positive.</p>
+<p><strong>Calls within specifications (frontend and backend; rules remain open).</strong> Ordinary calls such as <code>#[precondition(positive(x))]</code> can enter LLBC. The frontend also accepts a call to a function that modifies global state before returning <code>bool</code>; <code>Fn + Copy</code> alone does not exclude such side effects. Which functions are admissible and how their side effects are restricted need to be defined, then enforced through frontend checks and backend logical representations. Extracting an ordinary call is not enough to establish that it can be verified as a logical condition.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.quantifier"><a class="rule-link" href="#r-contract.quantifier" title="contract.quantifier"><span>[contract<wbr>.quantifier]</span></a></div>
 
@@ -476,7 +493,7 @@ pub fn positive_at(values: &amp;[u8], i: usize) -&gt; u8 {
 
 <h2 id="semantics"><a class="header" href="#semantics">Semantics</a></h2>
 <p><code>forall!(|x: T| P)</code> states that <code>P</code> holds for every value <code>x</code> of type <code>T</code>. <code>exists!(|x: T| P)</code> states that there is a value <code>x</code> of type <code>T</code> for which <code>P</code> holds. In both forms, <code>P</code> must have type <code>bool</code>.</p>
-<p>The binding of <code>x</code> extends over the closure body. That body may refer to outer bindings and contain further quantifiers. Multiple quantified variables are expressed by nesting quantifiers, each with one parameter.</p>
+<p>The binding of <code>x</code> extends over the closure body. That body may refer to outer bindings and contain further quantifiers. Multiple quantified variables can be expressed by nesting quantifiers or destructuring a single tuple parameter. Each quantifier accepts one parameter; a two-parameter closure such as <code>|x: u8, y: u8|</code> does not match the current interface.</p>
 <p>The domain is a Rust type. For example, quantifying over <code>u8</code> concerns its finite range of values, not unbounded mathematical integers. A restriction on the domain is expressed in the body: universal quantification uses a conditional property, while existential quantification requires both the restriction and the property to hold.</p>
 <div class="rule" id="r-contract.quantifier.example"><a class="rule-link" href="#r-contract.quantifier.example" title="contract.quantifier.example"><span>[contract<wbr>.quantifier<wbr>.example]</span></a></div>
 
@@ -493,13 +510,28 @@ pub fn zero() -&gt; u8 {
     0
 }</code></pre>
 <p>The first postcondition gives an upper bound for all <code>u8</code> values. The second states that the returned value has a witness in the same type.</p>
+<p>Both examples retain their quantifiers and return-value bindings in LLBC and generate the corresponding WhyML quantified conditions.</p>
+<p>A tuple parameter can introduce two variables at once. This condition states that any two <code>u8</code> values are equal or the returned value is zero:</p>
+<pre><code class="language-rust ignore">#[postcondition(|r| forall!(|(x, y): (u8, u8)| x == y || r == 0))]
+pub fn zero_for_pairs() -&gt; u8 {
+    0
+}</code></pre>
+<p>This form also supports extraction and WhyML generation. Capturing other outer variables and combining nested quantifiers are discussed in the implementation boundaries below.</p>
 <div class="rule" id="r-contract.quantifier.boundary"><a class="rule-link" href="#r-contract.quantifier.boundary" title="contract.quantifier.boundary"><span>[contract<wbr>.quantifier<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status-2"><a class="header" href="#implementation-status-2">Implementation status <a id="contract.quantifier.boundary-title"></a></a></h2>
-<p>The closure must satisfy <code>Fn(T) -&gt; bool + Copy</code> and accept one quantified value. <code>|x: T, y: U|</code> is not a two-variable form of this interface. The frontend recursively extracts specification closures, including nested quantifiers.</p>
-<p>The grammar uses an explicit parameter type. Omitting it relies on Rust type inference. There are no dedicated interval or set binders, or separate mathematical type domains.</p>
-<p><code>forall!</code> and <code>exists!</code> do not themselves rewrite <code>implies</code> or <code>old</code>. An enclosing contract macro performs that rewriting; only postconditions process <code>old</code>.</p>
-<p>Both quantifiers have macro and extraction support. Existing integration examples and snapshots cover combinations using <code>forall</code>; they do not provide equivalent coverage for <code>exists</code>.</p>
+<h2 id="implementation-boundaries-2"><a class="header" href="#implementation-boundaries-2">Implementation boundaries <a id="contract.quantifier.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: has extraction for both quantifiers and nested quantifiers, and retains tuple parameters; passing captured outer variables still has problems.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: has universal and existential quantifier translation, but producing a file does not establish that bindings and conditions were handled correctly.</li>
+</ul>
+<h3 id="remaining-work-2"><a class="header" href="#remaining-work-2">Remaining work</a></h3>
+<p><strong>Passing outer variables (frontend extraction and backend use).</strong> This condition expresses equality between the returned value and the input, but does not currently translate correctly:</p>
+<pre><code class="language-rust ignore">#[postcondition(|r| exists!(|x: u8| x == r &amp;&amp; x == n))]
+pub fn identity(n: u8) -&gt; u8 {
+    n
+}</code></pre>
+<p>The example produces LLBC, but the subsequent WhyML refers to an undefined variable. Problems also occur when quantifiers reference function parameters or multiple quantifier levels capture outer variables. Extraction and translation need to pass each level’s captures correctly, keeping <code>n</code> associated with the input, <code>r</code> with the returned value, and <code>x</code> with the local binding.</p>
+<p>Quantification over ranges and slices also depends on <a href="#contract.expression.boundary-title">the corresponding expressions</a>. For example, stating that every valid index refers to a positive element requires quantifiers, lengths, and indexing to work together.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.implies"><a class="rule-link" href="#r-contract.implies" title="contract.implies"><span>[contract<wbr>.implies]</span></a></div>
 
@@ -534,12 +566,17 @@ pub fn identity(x: i32) -&gt; i32 {
     x
 }</code></pre>
 <p>The postcondition requires <code>result &gt;= x</code> whenever <code>x &gt; 0</code>.</p>
+<p>The frontend can extract this implication expression and retain it inside quantified conditions.</p>
 <div class="rule" id="r-contract.implies.boundary"><a class="rule-link" href="#r-contract.implies.boundary" title="contract.implies.boundary"><span>[contract<wbr>.implies<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status-3"><a class="header" href="#implementation-status-3">Implementation status <a id="contract.implies.boundary-title"></a></a></h2>
-<p>Contract macros rewrite <code>implies</code> to an internal function, and the frontend recognizes and retains a <code>SpecImplies</code> marker. Existing combined examples cover this representation.</p>
-<p>Both arguments’ computations enter the specification body. In particular, <code>implies(i &lt; a.len(), a[i] &gt; 0)</code> does not automatically guard the index access with the antecedent.</p>
-<p>When an access must be conditional, use Rust short-circuit operators. For example, <code>i &gt;= a.len() || a[i] &gt; 0</code> avoids evaluating the index expression when <code>i</code> is out of bounds.</p>
+<h2 id="implementation-boundaries-3"><a class="header" href="#implementation-boundaries-3">Implementation boundaries <a id="contract.implies.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: recognizes and retains the <code>implies</code> marker in LLBC, including within quantifier bodies.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: does not yet translate this marker, so the example cannot complete verification.</li>
+</ul>
+<h3 id="remaining-work-3"><a class="header" href="#remaining-work-3">Remaining work</a></h3>
+<p><strong>Logical implication translation (backend).</strong> The example’s <code>implies(x &gt; 0, result &gt;= x)</code> needs to generate the logical condition that <code>result &gt;= x</code> holds whenever <code>x &gt; 0</code>. Markers within quantifier bodies need the same treatment.</p>
+<p>Both arguments are currently evaluated, so <code>implies(i &lt; a.len(), a[i] &gt; 0)</code> cannot use its antecedent to guard indexing. Where short-circuit behavior is needed, write <code>i &gt;= a.len() || a[i] &gt; 0</code>; this remains subject to backend slice and index support. Whether <code>implies</code> itself should provide conditional evaluation remains open.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.old"><a class="rule-link" href="#r-contract.old" title="contract.old"><span>[contract<wbr>.old]</span></a></div>
 
@@ -571,12 +608,20 @@ pub fn identity(x: i32) -&gt; i32 {
 <p>This fragment combines an old-state marker with dereferencing. The argument <code>p</code> must match the mutable-reference interface. Whether the fragment is admissible in a postcondition also depends on the surrounding closure’s captures and borrowing.</p>
 <div class="rule" id="r-contract.old.boundary"><a class="rule-link" href="#r-contract.old.boundary" title="contract.old.boundary"><span>[contract<wbr>.old<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status-4"><a class="header" href="#implementation-status-4">Implementation status <a id="contract.old.boundary-title"></a></a></h2>
-<p>Postcondition macros rewrite the name <code>old</code>; the frontend recognizes and retains a <code>SpecOld</code> marker. Other contract macros do not perform this rewriting.</p>
-<p>The internal signature is:</p>
-<pre><code class="language-rust ignore">pub fn old&lt;T&gt;(x: &amp;mut T) -&gt; &amp;mut T</code></pre>
-<p>The postcondition must still satisfy <code>Fn + Copy</code>. Mutable captures are restricted by these requirements. For an integer <code>x</code>, <code>old(x + 1)</code> does not match the interface even though its surface structure matches <code>OldExpression</code>.</p>
-<p>Name-replacement tests cover rewriting, and the frontend has marker recognition. These stages do not implement snapshots of arbitrary values or reachable heaps, or a mechanism for preserving unchanged memory regions. Complete old-state specifications are not covered by the listed integration examples.</p>
+<h2 id="implementation-boundaries-4"><a class="header" href="#implementation-boundaries-4">Implementation boundaries <a id="contract.old.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: recognizes the <code>old</code> marker but does not yet fully represent entry values; its current interface accepts only mutable references.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: old-state translation is not implemented.</li>
+</ul>
+<h3 id="remaining-work-4"><a class="header" href="#remaining-work-4">Remaining work</a></h3>
+<p><strong>Entry values of mutable parameters (frontend and backend).</strong> The following example aims to describe an increment but cannot currently be used:</p>
+<pre><code class="language-rust ignore">#[precondition(*p &lt; u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+fn increment(p: &amp;mut u32) {
+    *p += 1;
+}</code></pre>
+<p>In verification mode, this form is blocked by the closure’s <code>Copy</code> requirement. The frontend needs to let postconditions refer to entry values and distinguish them from return-state values. The backend needs to use that representation to establish the relationship. The intended property is that <code>*p</code> is one greater than its entry value; the interface may change with the state representation.</p>
+<p>The scope of old-state support for fields, compound values, and aliased data remains to be defined.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.function"><a class="rule-link" href="#r-contract.function" title="contract.function"><span>[contract<wbr>.function]</span></a></div>
 
@@ -614,12 +659,34 @@ pub fn square(x: u8) -&gt; u8 {
     x * x
 }</code></pre>
 <p>The precondition restricts <code>x</code> to values whose square fits in <code>u8</code>. The postcondition requires the returned value to be at least <code>x</code>.</p>
+<p>This example supports both frontend extraction and backend verification. Preconditions and postconditions can also be used separately, or repeated on the same function.</p>
+<p>Conditions on methods can refer to <code>self</code>. The following contract can be extracted and translated to WhyML:</p>
+<pre><code class="language-rust ignore">pub struct Counter {
+    value: u32,
+}
+
+impl Counter {
+    #[precondition(self.value &lt; 10)]
+    #[postcondition(|r| r == self.value)]
+    pub fn get(&amp;self) -&gt; u32 {
+        self.value
+    }
+}</code></pre>
 <div class="rule" id="r-contract.function.boundary"><a class="rule-link" href="#r-contract.function.boundary" title="contract.function.boundary"><span>[contract<wbr>.function<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status-5"><a class="header" href="#implementation-status-5">Implementation status <a id="contract.function.boundary-title"></a></a></h2>
-<p>Contracts can be expanded and extracted for ordinary functions with bodies, nested functions, inherent methods, associated functions, trait default methods, and methods in impl blocks. Existing integration examples cover preconditions and postconditions.</p>
-<p>Signature-only trait methods and external function declarations are not supported. There is no general mechanism for trait-contract inheritance or refinement. Verification-mode macro expansion does not support <code>const fn</code>; the frontend cannot yet extract async functions.</p>
-<p>The current contract interface has no clauses for modification sets, termination measures, or exceptional exits. Per-clause typing and extraction constraints are described on the following pages.</p>
+<h2 id="implementation-boundaries-5"><a class="header" href="#implementation-boundaries-5">Implementation boundaries <a id="contract.function.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports preconditions/postconditions on ordinary functions and methods with bodies.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports basic scalar-function contract verification; generic functions and trait declarations still have translation limitations.</li>
+</ul>
+<h3 id="remaining-work-5"><a class="header" href="#remaining-work-5">Remaining work</a></h3>
+<p><strong>Bodyless declarations (frontend).</strong> Macros currently carry conditions through the function body, so this form cannot expand:</p>
+<pre><code class="language-rust ignore">trait Reader {
+    #[postcondition(|result| result &lt;= 100)]
+    fn read(&amp;self) -&gt; u8;
+}</code></pre>
+<p>Conditions need to be stored on the method declaration for later handling of implementations and calls. How implementations inherit contracts, and whether they may strengthen guarantees, remains to be defined.</p>
+<p><strong>Special function forms (frontend).</strong> Expanding <code>#[precondition(x &lt; 100)] const fn f(x: u32) -&gt; u32 { x }</code> calls non-constant helper functions. Extracting <code>#[postcondition(|r| r &gt; 0)] async fn f() -&gt; u32 { 1 }</code> encounters unsupported coroutine types. Supporting these forms requires accommodation of constant contexts and of the value obtained when an async function completes, respectively.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.precondition"><a class="rule-link" href="#r-contract.precondition" title="contract.precondition"><span>[contract<wbr>.precondition]</span></a></div>
 
@@ -650,9 +717,13 @@ pub fn quotient(value: u32, divisor: u32) -&gt; u32 {
     value / divisor
 }</code></pre>
 <p>The precondition excludes division by zero. A call with <code>divisor == 0</code> fails the stated requirement.</p>
-<h2 id="implementation-status-6"><a class="header" href="#implementation-status-6">Implementation status</a></h2>
-<p>The macro parses the condition as an expression and represents it as a <code>Fn() -&gt; bool + Copy</code> closure. Rust typing, capture, and borrowing constraints apply. The frontend associates the extracted condition with the function as a precondition.</p>
-<p>Preconditions have existing integration examples and LLBC snapshots. The supported function forms and shared limitations are listed under <a href="#contract.function.boundary-title">Function Contracts</a>.</p>
+<p>Basic parameter conditions support frontend extraction. Existing backend examples include constraining a square calculation with <code>x &lt; 16</code> and unsigned subtraction with <code>a &gt;= b</code>.</p>
+<h2 id="implementation-boundaries-6"><a class="header" href="#implementation-boundaries-6">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports basic parameter conditions, method receivers, and multiple preconditions.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports translation and verification of basic scalar conditions.</li>
+</ul>
+<p>See <a href="#contract.function.boundary-title">Function Contracts</a> for bodyless declarations and <a href="#contract.expression.boundary-title">Logic Expressions</a> for conditions involving slices and other expressions.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.postcondition"><a class="rule-link" href="#r-contract.postcondition" title="contract.postcondition"><span>[contract<wbr>.postcondition]</span></a></div>
 
@@ -690,10 +761,24 @@ pub fn identity(x: u32) -&gt; u32 {
     x
 }</code></pre>
 <p>Here <code>value</code> denotes the returned value, and <code>x</code> is the input used in the comparison.</p>
-<h2 id="implementation-status-7"><a class="header" href="#implementation-status-7">Implementation status</a></h2>
-<p>The postcondition must satisfy <code>Fn(ReturnType) -&gt; bool + Copy</code>. The macro supplies the function’s return type to the internal interface; Rust checks the closure’s parameter, result type, and captures.</p>
-<p>The frontend extracts postconditions and associates them with their functions. Existing integration examples cover this path. The grammar shows inline closures: parsing an expression does not establish support for arbitrary function pointers or callable objects.</p>
-<p>Name rewriting for <code>old</code> is enabled only in postconditions. This does not provide general snapshots or relax the closure’s borrowing constraints.</p>
+<p>Return-value conditions support frontend extraction and basic backend verification. For example, a maximum function can separately declare <code>result &gt;= a</code> and <code>result &gt;= b</code>, guaranteeing that its result is at least both inputs.</p>
+<h2 id="implementation-boundaries-7"><a class="header" href="#implementation-boundaries-7">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports return-binding closures, references to input parameters, and multiple postconditions.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports basic scalar return-value conditions; relationships involving mutable references and old state remain incomplete.</li>
+</ul>
+<h3 id="remaining-work-6"><a class="header" href="#remaining-work-6">Remaining work</a></h3>
+<p><strong>Passing a function directly (frontend).</strong> The following form passes Rust type checking but fails during specification extraction:</p>
+<pre><code class="language-rust ignore">fn positive(value: u32) -&gt; bool {
+    value &gt; 0
+}
+
+#[postcondition(positive)]
+pub fn one() -&gt; u32 {
+    1
+}</code></pre>
+<p>Writing the same condition as <code>#[postcondition(|value| positive(value))]</code> allows extraction. A directly supplied function still needs to be associated with the return-value condition, or rejected with a clear diagnostic at the entry point. Verification limits on the call itself are described under <a href="#contract.expression.boundary-title">Logic Expressions</a>.</p>
+<p><strong>Before/after relationships.</strong> Stating that <code>*p</code> is one greater on return than on entry still requires <a href="#contract.old.boundary-title"><code>old</code></a> and a complete state representation for mutable references. Capturing <code>p</code> alone does not establish an entry-value snapshot.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.statement"><a class="rule-link" href="#r-contract.statement" title="contract.statement"><span>[contract<wbr>.statement]</span></a></div>
 
@@ -730,9 +815,12 @@ pub fn check(x: u8) {
 <p>The assertion follows from the preceding assumption. This does not prove that <code>x &lt; 16</code> holds for every call to <code>check</code>.</p>
 <div class="rule" id="r-contract.statement.boundary"><a class="rule-link" href="#r-contract.statement.boundary" title="contract.statement.boundary"><span>[contract<wbr>.statement<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status-8"><a class="header" href="#implementation-status-8">Implementation status <a id="contract.statement.boundary-title"></a></a></h2>
-<p>The frontend records assertion and assumption kinds and their positions separately. Their conditions use <code>Fn() -&gt; bool + Copy</code> closures and follow Rust capture and borrowing rules. Ordinary builds remove these annotations.</p>
-<p>Annotations may occur in branches or loops. A statement annotation inside a loop is not a loop-invariant declaration. There is currently no interface for loop invariants, termination measures, or contracts attached to an arbitrary block of statements.</p>
+<h2 id="implementation-boundaries-8"><a class="header" href="#implementation-boundaries-8">Implementation boundaries <a id="contract.statement.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports assertions and assumptions, retaining their conditions, kinds, and positions.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: translates them to WhyML <code>assert</code> and <code>assume</code>, respectively.</li>
+</ul>
+<p>See <a href="#assertions">Assertions</a> and <a href="#assumptions">Assumptions</a> for specific uses and limitations.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.assertion"><a class="rule-link" href="#r-contract.assertion" title="contract.assertion"><span>[contract<wbr>.assertion]</span></a></div>
 
@@ -764,9 +852,13 @@ pub fn bounded_square(x: u8) -&gt; u8 {
     y
 }</code></pre>
 <p>The assertion describes the local value <code>y</code> after multiplication.</p>
-<h2 id="implementation-status-9"><a class="header" href="#implementation-status-9">Implementation status</a></h2>
-<p>The macro expands the condition into a <code>Fn() -&gt; bool + Copy</code> closure. The frontend extracts it as an assertion at its program location. An existing integration example and LLBC snapshot cover assertions.</p>
-<p><code>contract_assert!</code> is a specification annotation. It is removed in ordinary builds and does not provide the runtime check performed by Rust’s <code>assert!</code> macro.</p>
+<p>The frontend can extract local assertions of this form. It can also retain ordinary calls in conditions, such as <code>contract_assert!(decuple(9) == 90)</code>.</p>
+<h2 id="implementation-boundaries-9"><a class="header" href="#implementation-boundaries-9">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts assertion conditions and retains their positions in function bodies, including within branches.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: translates them to WhyML <code>assert</code>; further verification depends on the expressions and program operations involved.</li>
+</ul>
+<p>Shared limitations are described under <a href="#contract.expression.boundary-title">Logic Expressions</a>. Ordinary builds remove contract assertions; runtime checks use Rust’s <code>assert!</code>.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.assumption"><a class="rule-link" href="#r-contract.assumption" title="contract.assumption"><span>[contract<wbr>.assumption]</span></a></div>
 
@@ -792,14 +884,21 @@ pub fn bounded_square(x: u8) -&gt; u8 {
 <h2 id="example-8"><a class="header" href="#example-8">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
-pub fn assumed_bound(x: u8) {
-    contract_assume!(x &lt;= 10);
-    contract_assert!(x &lt; 11);
+pub fn assumed_bound(x: u8, flag: bool) {
+    if flag {
+        contract_assume!(x &lt;= 10);
+        contract_assert!(x &lt; 11);
+    } else {
+        contract_assert!(x &lt;= 255);
+    }
 }</code></pre>
-<p>The assertion follows under the assumed bound. The annotation neither checks nor establishes that bound for the caller.</p>
-<h2 id="implementation-status-10"><a class="header" href="#implementation-status-10">Implementation status</a></h2>
-<p>The macro and internal interface represent the condition as a <code>Fn() -&gt; bool + Copy</code> closure. A dedicated extraction branch distinguishes assumptions from assertions. The existing frontend integration examples do not cover assumptions.</p>
-<p>Assumptions are removed in ordinary builds. They do not constrain a runtime value or reject an input.</p>
+<p>On the branch where <code>flag</code> is true, the assumed bound implies the following assertion; the other branch does not use that assumption. Frontend extraction and WhyML translation retain this branch structure. The annotation neither checks nor establishes the bound for the caller.</p>
+<h2 id="implementation-boundaries-10"><a class="header" href="#implementation-boundaries-10">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts assumptions, distinguishes them from assertions, and retains their enclosing branches.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: translates them to WhyML <code>assume</code>; further verification depends on the expressions and program operations involved.</li>
+</ul>
+<p>Shared limitations are described under <a href="#contract.expression.boundary-title">Logic Expressions</a>. Assumptions create no obligation to prove themselves, and ordinary builds do not use them to filter inputs.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.invariant"><a class="rule-link" href="#r-contract.invariant" title="contract.invariant"><span>[contract<wbr>.invariant]</span></a></div>
 
@@ -835,12 +934,41 @@ pub struct RefRange&lt;'a, T: PartialOrd&gt; {
     end: &amp;'a T,
 }</code></pre>
 <p>The condition requires the start of the range to be no greater than its end. The type parameters and their bounds remain available in the invariant.</p>
+<p>The frontend can extract this generic struct invariant and retain its association with the type.</p>
+<p>An enum can describe a condition for each variant:</p>
+<pre><code class="language-rust ignore">#[invariant(match self {
+    Self::Empty =&gt; true,
+    Self::Range { start, end } =&gt; start &lt;= end,
+})]
+pub enum Range {
+    Empty,
+    Range { start: u32, end: u32 },
+}</code></pre>
+<p>The frontend can extract this <code>match self</code> condition. Union conditions can also be extracted; reading a field still requires <code>unsafe</code> under Rust rules:</p>
+<pre><code class="language-rust ignore">#[invariant(unsafe { self.x &lt;= 100 })]
+pub union Data {
+    pub x: u32,
+    pub y: u32,
+}</code></pre>
+<p>These examples show how conditions are associated with types; they do not establish automatic backend enforcement.</p>
 <div class="rule" id="r-contract.invariant.boundary"><a class="rule-link" href="#r-contract.invariant.boundary" title="contract.invariant.boundary"><span>[contract<wbr>.invariant<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status-11"><a class="header" href="#implementation-status-11">Implementation status <a id="contract.invariant.boundary-title"></a></a></h2>
-<p>The macro preserves generic parameters and bounds and generates a <code>TypeInvariant</code> implementation with an <code>invariant(&amp;self) -&gt; bool</code> method. The frontend extracts the condition and associates it with the type. The generic <code>RefRange</code> example has an existing integration snapshot.</p>
-<p>The implementation does not automatically insert obligations at construction, field updates, or the end of a borrow to establish or restore the invariant. Declaring the attribute alone does not ensure that every instance satisfies the condition.</p>
-<p>Type aliases cannot carry this attribute. Combine requirements in a single condition, for example with <code>&amp;&amp;</code>; repeated attributes generate conflicting trait implementations. Macro branches accept enums and unions, but the listed integration examples do not cover them. Union-field access remains subject to Rust’s safety rules.</p>
+<h2 id="implementation-boundaries-11"><a class="header" href="#implementation-boundaries-11">Implementation boundaries <a id="contract.invariant.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts invariants on structs, enums, and unions and retains their association with the type. Multiple conditions on one type currently need to be combined with <code>&amp;&amp;</code>; repeated attributes conflict.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: does not yet use these conditions to establish invariant checks. Declaring an invariant does not yet guarantee valid objects.</li>
+</ul>
+<h3 id="remaining-work-7"><a class="header" href="#remaining-work-7">Remaining work</a></h3>
+<p><strong>From type conditions to checking obligations (backend; checking points remain open).</strong> This type requires <code>x &lt;= 100</code>, but constructing an invalid instance does not yet automatically generate the corresponding check:</p>
+<pre><code class="language-rust ignore">#[invariant(self.x &lt;= 100)]
+pub struct B {
+    pub x: u32,
+}
+
+pub fn invalid() -&gt; B {
+    B { x: 200 }
+}</code></pre>
+<p>The frontend stores <code>x &lt;= 100</code>; the generated WhyML does not yet use it. The condition needs to participate in verification of object creation, modification, and external use. Which boundaries require checks, whether modifications may temporarily violate the condition, and how it is restored when a borrow ends remain to be defined.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.grammar"><a class="rule-link" href="#r-contract.grammar" title="contract.grammar"><span>[contract<wbr>.grammar]</span></a></div>
 
@@ -940,24 +1068,31 @@ pub struct RefRange&lt;'a, T: PartialOrd&gt; {
 <div class="rule" id="r-contract.constraints"><a class="rule-link" href="#r-contract.constraints" title="contract.constraints"><span>[contract<wbr>.constraints]</span></a></div>
 
 <h1 id="implementation-notes"><a class="header" href="#implementation-notes">Implementation Notes</a></h1>
-<p>These notes describe shared properties of the frontend under development. Construct-specific status is documented on the corresponding reference pages.</p>
 <div class="rule" id="r-contract.constraints.intro"><a class="rule-link" href="#r-contract.constraints.intro" title="contract.constraints.intro"><span>[contract<wbr>.constraints<wbr>.intro]</span></a></div>
 
-<h2 id="representation"><a class="header" href="#representation">Representation</a></h2>
-<p>Specifications must satisfy the surface syntax, Rust typing and borrowing, and the structure expected by extraction. Conditions return <code>bool</code>. Apart from the type-invariant method, specification closures are constrained by <code>Fn + Copy</code>.</p>
-<p>Ordinary builds remove specifications. Successful compilation in that mode is not evidence that the specification passes verification-mode checks.</p>
+<h2 id="reading-implementation-boundaries"><a class="header" href="#reading-implementation-boundaries">Reading implementation boundaries</a></h2>
+<p>Each construct page distinguishes <strong>frontend <code>rust-llbc</code></strong> from <strong>backend <code>llbc-why3</code></strong>. Here, the frontend includes macro expansion, Rust typing and borrowing checks, and extraction to LLBC. The backend translates specifications in LLBC to WhyML for verification.</p>
+<p>Successful extraction does not establish backend support. Producing a WhyML file does not establish that it passes Why3 checking or that its obligations have been proved.</p>
+<p>Examples show existing uses. “Remaining work” describes concrete scenarios, current obstacles, and the properties they are intended to express. Unsettled semantics are identified explicitly. These descriptions do not assign development stages, priorities, or an exhaustive support scope. See <a href="#sources-and-test-coverage">Sources and Test Coverage</a> for implementation sources and repository tests.</p>
+<h2 id="shared-conventions"><a class="header" href="#shared-conventions">Shared conventions</a></h2>
+<ul>
+<li><strong>Rust typing and borrowing</strong>: conditions return <code>bool</code> and use Rust’s type system. Apart from type-invariant methods, specification closures require <code>Fn + Copy</code>; modifying captures or moving out non-<code>Copy</code> values may violate these requirements.</li>
+<li><strong>Ordinary builds</strong>: specification annotations are removed. Successful ordinary compilation does not establish that specifications pass verification-mode checks.</li>
+<li><strong>Normal returns</strong>: postconditions describe normal-return properties without also declaring termination or post-panic state.</li>
+</ul>
 <h2 id="name-rewriting"><a class="header" href="#name-rewriting">Name rewriting</a></h2>
-<p>Within tokens processed by a contract macro, <code>implies</code> and, in postconditions, <code>old</code> are rewritten recursively. Using those names for unrelated bindings, fields, or methods can therefore interfere with rewriting. General call syntax does not bypass the dedicated interfaces’ constraints.</p>
-<h2 id="open-areas"><a class="header" href="#open-areas">Open areas</a></h2>
-<p>The current specification interface does not provide loop invariants, loop or recursion termination measures, read/write footprints or modification sets, permission or borrowing contracts, contracts for exceptional exits, module contracts, or supplementary specifications for external interfaces.</p>
-<p>See <a href="#sources-and-test-coverage">Sources and Test Coverage</a> for the implementation and examples behind these descriptions, and <a href="#rust-syntax">Lexical Rules</a> for the Rust syntax used in grammar blocks.</p>
+<p>Contract macros recursively rewrite <code>implies</code>, and postconditions also rewrite <code>old</code>. Quantifier macros do not perform these rewrites themselves; an enclosing contract macro handles them.</p>
+<p>Current replacement is name-based and also affects ordinary same-named methods such as <code>value.old()</code>. The frontend needs to distinguish specification markers from ordinary Rust names. See <a href="#lexical-rules">Lexical Rules</a> for a concrete example.</p>
+<h2 id="rules-still-to-be-defined"><a class="header" href="#rules-still-to-be-defined">Rules still to be defined <a id="open-areas"></a></a></h2>
+<p>Admissible function calls and restrictions on side effects are discussed under <a href="#contract.expression.boundary-title">Logic Expressions</a>. The program boundaries at which type invariants hold are discussed under <a href="#contract.invariant.boundary-title">Type Invariants</a>. These rules affect frontend and backend behavior; the concrete scenarios are retained without fixing a complete design in advance.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.sources"><a class="rule-link" href="#r-contract.sources" title="contract.sources"><span>[contract<wbr>.sources]</span></a></div>
 
 <h1 id="sources-and-test-coverage"><a class="header" href="#sources-and-test-coverage">Sources and Test Coverage</a></h1>
 <div class="rule" id="r-contract.sources.intro"><a class="rule-link" href="#r-contract.sources.intro" title="contract.sources.intro"><span>[contract<wbr>.sources<wbr>.intro]</span></a></div>
 
-<p>The following sources describe macro expansion, frontend extraction, and existing test coverage.</p>
+<p>The following sources describe frontend extraction, backend translation, and existing coverage.</p>
+<h2 id="frontend-rust-llbc"><a class="header" href="#frontend-rust-llbc">Frontend rust-llbc</a></h2>
 <ul>
 <li><a href="../../../../trust2-contract-macros/src/impl.rs">Contract macros</a> and <a href="../../../../trust2-contract-macros/src/impl/parse.rs">identifier rewriting</a>: parsing and expansion.</li>
 <li><a href="../../../../trust2-contract/src/internal.rs">Internal interfaces</a>: argument types and closure constraints.</li>
@@ -965,6 +1100,18 @@ pub struct RefRange&lt;'a, T: PartialOrd&gt; {
 <li><a href="../../../../charon/charon/src/bin/charon-driver/translate/translate_functions.rs">Marker recognition</a>: implication and old-state markers.</li>
 <li><a href="../../../../charon/charon/tests/cargo/trust2-contract-sample/src/lib.rs">Frontend integration examples</a> and <a href="../../../../charon/charon/tests/cargo/trust2-contract-sample.out">LLBC snapshots</a>: existing combined cases.</li>
 </ul>
+<h2 id="backend-llbc-why3"><a class="header" href="#backend-llbc-why3">Backend llbc-why3</a></h2>
+<ul>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/decl.rs">Function-contract translation</a> and <a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/spec.rs">specification-closure translation</a>: preconditions, postconditions, and captured values.</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_expr.rs">Statement translation</a> and <a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_term.rs">logical-term translation</a>: assertion, assumption, and quantifier branches.</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/func_ref.rs">Builtin-function translation</a>: unimplemented <code>SpecImplies</code> and <code>SpecOld</code> branches.</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/ty.rs">Type translation</a> and <a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/type_decl.rs">type-declaration translation</a>: supported types; automatic type-invariant enforcement is not connected.</li>
+<li><a href="../../../../cargo-verify/tests/end-to-end/simple/src/lib.rs">End-to-end examples</a> and <a href="../../../../cargo-verify/tests/end-to-end/simple/result.txt">saved results</a>: basic contract verification for <code>max</code>, <code>strict_sub</code>, and <code>square</code>.</li>
+</ul>
+<h2 id="test-coverage"><a class="header" href="#test-coverage">Test coverage</a></h2>
+<p>Frontend integration cases include preconditions, postconditions, assertions, a generic struct invariant, and combinations of universal quantification, implication, and container access. The <code>to_sorted</code> body is a placeholder returning an empty vector; it illustrates extraction rather than a verified sorting algorithm.</p>
+<p>The repository frontend integration examples do not yet include <code>contract_assume!</code> or <code>exists!</code>. Both have extraction implementations; problems with outer captures are described in the <a href="#contract.quantifier.boundary-title">quantifier implementation boundaries</a>. <code>old</code> has name-rewriting tests but no complete old-state specification integration case.</p>
+<p>Saved backend end-to-end results cover basic preconditions/postconditions for <code>max</code>, <code>strict_sub</code>, and <code>square</code>. Assertions, assumptions, and quantifiers have translation implementations but are not included in these end-to-end cases.</p>
 
                     </main>
 

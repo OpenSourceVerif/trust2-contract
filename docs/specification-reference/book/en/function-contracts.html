@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -212,12 +212,34 @@ pub fn square(x: u8) -&gt; u8 {
     x * x
 }</code></pre>
 <p>The precondition restricts <code>x</code> to values whose square fits in <code>u8</code>. The postcondition requires the returned value to be at least <code>x</code>.</p>
+<p>This example supports both frontend extraction and backend verification. Preconditions and postconditions can also be used separately, or repeated on the same function.</p>
+<p>Conditions on methods can refer to <code>self</code>. The following contract can be extracted and translated to WhyML:</p>
+<pre><code class="language-rust ignore">pub struct Counter {
+    value: u32,
+}
+
+impl Counter {
+    #[precondition(self.value &lt; 10)]
+    #[postcondition(|r| r == self.value)]
+    pub fn get(&amp;self) -&gt; u32 {
+        self.value
+    }
+}</code></pre>
 <div class="rule" id="r-contract.function.boundary"><a class="rule-link" href="#r-contract.function.boundary" title="contract.function.boundary"><span>[contract<wbr>.function<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.function.boundary-title"></a></a></h2>
-<p>Contracts can be expanded and extracted for ordinary functions with bodies, nested functions, inherent methods, associated functions, trait default methods, and methods in impl blocks. Existing integration examples cover preconditions and postconditions.</p>
-<p>Signature-only trait methods and external function declarations are not supported. There is no general mechanism for trait-contract inheritance or refinement. Verification-mode macro expansion does not support <code>const fn</code>; the frontend cannot yet extract async functions.</p>
-<p>The current contract interface has no clauses for modification sets, termination measures, or exceptional exits. Per-clause typing and extraction constraints are described on the following pages.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.function.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports preconditions/postconditions on ordinary functions and methods with bodies.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports basic scalar-function contract verification; generic functions and trait declarations still have translation limitations.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Bodyless declarations (frontend).</strong> Macros currently carry conditions through the function body, so this form cannot expand:</p>
+<pre><code class="language-rust ignore">trait Reader {
+    #[postcondition(|result| result &lt;= 100)]
+    fn read(&amp;self) -&gt; u8;
+}</code></pre>
+<p>Conditions need to be stored on the method declaration for later handling of implementations and calls. How implementations inherit contracts, and whether they may strengthen guarantees, remains to be defined.</p>
+<p><strong>Special function forms (frontend).</strong> Expanding <code>#[precondition(x &lt; 100)] const fn f(x: u32) -&gt; u32 { x }</code> calls non-constant helper functions. Extracting <code>#[postcondition(|r| r &gt; 0)] async fn f() -&gt; u32 { 1 }</code> encounters unsupported coroutine types. Supporting these forms requires accommodation of constant contexts and of the value obtained when an async function completes, respectively.</p>
 
                     </main>
 

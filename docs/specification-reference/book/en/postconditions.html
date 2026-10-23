@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -212,10 +212,24 @@ pub fn identity(x: u32) -&gt; u32 {
     x
 }</code></pre>
 <p>Here <code>value</code> denotes the returned value, and <code>x</code> is the input used in the comparison.</p>
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status</a></h2>
-<p>The postcondition must satisfy <code>Fn(ReturnType) -&gt; bool + Copy</code>. The macro supplies the function’s return type to the internal interface; Rust checks the closure’s parameter, result type, and captures.</p>
-<p>The frontend extracts postconditions and associates them with their functions. Existing integration examples cover this path. The grammar shows inline closures: parsing an expression does not establish support for arbitrary function pointers or callable objects.</p>
-<p>Name rewriting for <code>old</code> is enabled only in postconditions. This does not provide general snapshots or relax the closure’s borrowing constraints.</p>
+<p>Return-value conditions support frontend extraction and basic backend verification. For example, a maximum function can separately declare <code>result &gt;= a</code> and <code>result &gt;= b</code>, guaranteeing that its result is at least both inputs.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports return-binding closures, references to input parameters, and multiple postconditions.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports basic scalar return-value conditions; relationships involving mutable references and old state remain incomplete.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Passing a function directly (frontend).</strong> The following form passes Rust type checking but fails during specification extraction:</p>
+<pre><code class="language-rust ignore">fn positive(value: u32) -&gt; bool {
+    value &gt; 0
+}
+
+#[postcondition(positive)]
+pub fn one() -&gt; u32 {
+    1
+}</code></pre>
+<p>Writing the same condition as <code>#[postcondition(|value| positive(value))]</code> allows extraction. A directly supplied function still needs to be associated with the return-value condition, or rejected with a clear diagnostic at the entry point. Verification limits on the call itself are described under <a href="expressions.html#contract.expression.boundary-title">Logic Expressions</a>.</p>
+<p><strong>Before/after relationships.</strong> Stating that <code>*p</code> is one greater on return than on entry still requires <a href="old.html#contract.old.boundary-title"><code>old</code></a> and a complete state representation for mutable references. Capturing <code>p</code> alone does not establish an entry-value snapshot.</p>
 
                     </main>
 

@@ -15,16 +15,21 @@ Conclusions obtained using the assumption are conditional on it. An inconsistent
 ```rust,ignore
 use trust2_contract::prelude::*;
 
-pub fn assumed_bound(x: u8) {
-    contract_assume!(x <= 10);
-    contract_assert!(x < 11);
+pub fn assumed_bound(x: u8, flag: bool) {
+    if flag {
+        contract_assume!(x <= 10);
+        contract_assert!(x < 11);
+    } else {
+        contract_assert!(x <= 255);
+    }
 }
 ```
 
-The assertion follows under the assumed bound. The annotation neither checks nor establishes that bound for the caller.
+On the branch where `flag` is true, the assumed bound implies the following assertion; the other branch does not use that assumption. Frontend extraction and WhyML translation retain this branch structure. The annotation neither checks nor establishes the bound for the caller.
 
-## Implementation status
+## Implementation boundaries
 
-The macro and internal interface represent the condition as a `Fn() -> bool + Copy` closure. A dedicated extraction branch distinguishes assumptions from assertions. The existing frontend integration examples do not cover assumptions.
+- **Frontend `rust-llbc`**: extracts assumptions, distinguishes them from assertions, and retains their enclosing branches.
+- **Backend `llbc-why3`**: translates them to WhyML `assume`; further verification depends on the expressions and program operations involved.
 
-Assumptions are removed in ordinary builds. They do not constrain a runtime value or reject an input.
+Shared limitations are described under [Logic Expressions](expressions.md#contract.expression.boundary-title). Assumptions create no obligation to prove themselves, and ordinary builds do not use them to filter inputs.

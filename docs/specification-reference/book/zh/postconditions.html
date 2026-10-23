@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ada5b0dc.js";
+            window.path_to_searchindex_js = "searchindex-30489a1a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -212,10 +212,24 @@ pub fn identity(x: u32) -&gt; u32 {
     x
 }</code></pre>
 <p>这里 <code>value</code> 表示返回值，<code>x</code> 是参与比较的输入。</p>
-<h2 id="实现状态"><a class="header" href="#实现状态">实现状态</a></h2>
-<p>后置条件必须满足 <code>Fn(ReturnType) -&gt; bool + Copy</code>。宏将函数返回类型传入内部接口，由 Rust 检查闭包参数、结果类型和捕获。</p>
-<p>前端提取后置条件并将其关联到函数，已有集成样例覆盖该路径。文法展示内联闭包；能够解析某个表达式，不代表支持任意函数指针或可调用对象。</p>
-<p>只有后置条件启用 <code>old</code> 的名称改写。这不提供通用快照，也不放宽闭包的借用约束。</p>
+<p>返回值条件已支持前端提取和基本后端验证。例如，最大值函数可以分别声明 <code>result &gt;= a</code> 和 <code>result &gt;= b</code>，同时保证结果不小于两个输入。</p>
+<h2 id="实现边界"><a class="header" href="#实现边界">实现边界</a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持闭包绑定返回值、引用输入参数和多条后置条件。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已支持基本标量返回值条件；涉及可变引用和旧状态的关系仍不完整。</li>
+</ul>
+<h3 id="尚待补齐"><a class="header" href="#尚待补齐">尚待补齐</a></h3>
+<p><strong>直接传入函数（前端）。</strong> 以下写法能够通过 Rust 类型检查，但规约提取会失败：</p>
+<pre><code class="language-rust ignore">fn positive(value: u32) -&gt; bool {
+    value &gt; 0
+}
+
+#[postcondition(positive)]
+pub fn one() -&gt; u32 {
+    1
+}</code></pre>
+<p>同一个条件写成 <code>#[postcondition(|value| positive(value))]</code> 可以提取。直接传入函数时，还需要将它关联到返回值条件，或在入口给出明确的不支持提示；函数调用本身的验证限制见<a href="expressions.html#contract.expression.boundary-title">逻辑表达式</a>。</p>
+<p><strong>修改前后的关系。</strong> 例如“<code>*p</code> 返回时比进入函数时大 1”，还需要补齐 <a href="old.html#contract.old.boundary-title"><code>old</code></a> 及可变引用的状态表示。仅仅捕获 <code>p</code>，不会建立入口值快照。</p>
 
                     </main>
 

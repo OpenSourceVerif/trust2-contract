@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ada5b0dc.js";
+            window.path_to_searchindex_js = "searchindex-30489a1a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -212,12 +212,34 @@ pub fn square(x: u8) -&gt; u8 {
     x * x
 }</code></pre>
 <p>前置条件将 <code>x</code> 限制在平方结果能够用 <code>u8</code> 表示的范围内。后置条件要求返回值不小于 <code>x</code>。</p>
+<p>这个例子已支持前端提取和后端验证。前置条件和后置条件也可以分别使用，或在同一函数上声明多个。</p>
+<p>方法上的条件可以引用 <code>self</code>。下面的契约能够提取并生成 WhyML：</p>
+<pre><code class="language-rust ignore">pub struct Counter {
+    value: u32,
+}
+
+impl Counter {
+    #[precondition(self.value &lt; 10)]
+    #[postcondition(|r| r == self.value)]
+    pub fn get(&amp;self) -&gt; u32 {
+        self.value
+    }
+}</code></pre>
 <div class="rule" id="r-contract.function.boundary"><a class="rule-link" href="#r-contract.function.boundary" title="contract.function.boundary"><span>[contract<wbr>.function<wbr>.boundary]</span></a></div>
 
-<h2 id="实现状态"><a class="header" href="#实现状态">实现状态 <a id="contract.function.boundary-title"></a></a></h2>
-<p>带函数体的普通函数、嵌套函数、固有方法、关联函数、trait 默认方法和 impl 中的方法支持契约展开与提取。已有集成样例覆盖前置条件和后置条件。</p>
-<p>仅有签名的 trait 方法和外部函数声明尚不支持。当前没有通用的 trait 契约继承或精化机制。验证模式下的宏展开不支持 <code>const fn</code>；前端尚不能提取异步函数。</p>
-<p>当前契约接口没有修改集合、终止度量或异常退出子句。各类条件的类型和提取限制在后续页面说明。</p>
+<h2 id="实现边界"><a class="header" href="#实现边界">实现边界 <a id="contract.function.boundary-title"></a></a></h2>
+<ul>
+<li><strong>前端 <code>rust-llbc</code></strong>：已支持普通函数和带函数体的方法上的前置／后置条件。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：已支持基本标量函数的契约验证；泛型函数和 trait 声明仍有翻译限制。</li>
+</ul>
+<h3 id="尚待补齐"><a class="header" href="#尚待补齐">尚待补齐</a></h3>
+<p><strong>无函数体的声明（前端）。</strong> 当前宏通过函数体携带条件，下面的写法无法展开：</p>
+<pre><code class="language-rust ignore">trait Reader {
+    #[postcondition(|result| result &lt;= 100)]
+    fn read(&amp;self) -&gt; u8;
+}</code></pre>
+<p>这里需要能把条件保存到方法声明上，供后续处理实现和调用时使用。契约如何由实现沿用，以及是否允许加强保证，仍待明确。</p>
+<p><strong>特殊函数形式（前端）。</strong> <code>#[precondition(x &lt; 100)] const fn f(x: u32) -&gt; u32 { x }</code> 的展开会调用非常量辅助函数；<code>#[postcondition(|r| r &gt; 0)] async fn f() -&gt; u32 { 1 }</code> 则在前端提取时遇到尚不支持的协程类型。要覆盖这些形式，需要分别适配常量上下文，以及异步函数完成后得到的返回值。</p>
 
                     </main>
 

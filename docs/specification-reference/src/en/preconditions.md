@@ -23,8 +23,11 @@ pub fn quotient(value: u32, divisor: u32) -> u32 {
 
 The precondition excludes division by zero. A call with `divisor == 0` fails the stated requirement.
 
-## Implementation status
+Basic parameter conditions support frontend extraction. Existing backend examples include constraining a square calculation with `x < 16` and unsigned subtraction with `a >= b`.
 
-The macro parses the condition as an expression and represents it as a `Fn() -> bool + Copy` closure. Rust typing, capture, and borrowing constraints apply. The frontend associates the extracted condition with the function as a precondition.
+## Implementation boundaries
 
-Preconditions have existing integration examples and LLBC snapshots. The supported function forms and shared limitations are listed under [Function Contracts](function-contracts.md#contract.function.boundary-title).
+- **Frontend `rust-llbc`**: supports basic parameter conditions, method receivers, and multiple preconditions.
+- **Backend `llbc-why3`**: supports translation and verification of basic scalar conditions.
+
+See [Function Contracts](function-contracts.md#contract.function.boundary-title) for bodyless declarations and [Logic Expressions](expressions.md#contract.expression.boundary-title) for conditions involving slices and other expressions.

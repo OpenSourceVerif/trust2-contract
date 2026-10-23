@@ -53,12 +53,31 @@ pub fn positive_at(values: &[u8], i: usize) -> u8 {
 
 The condition requires a valid index and a positive element. Short-circuit evaluation ensures the second operand is evaluated only when the index is in bounds.
 
+The frontend has extraction examples involving slice lengths, Vec indexing, field comparisons, and ordinary calls. Backend support for these expressions varies, as described below.
+
+Conditions can also use Rust expression blocks, local bindings, casts, and branches. For example, this precondition can be extracted:
+
+```rust,ignore
+#[precondition({
+    let y = x as u32;
+    if flag { y > 0 } else { y == 0 }
+})]
+pub fn selected(x: u8, flag: bool) -> u8 {
+    x
+}
+```
+
+Enum conditions can use `match`, as shown in the [type-invariant examples](invariants.md#r-contract.invariant.example). Ordinary calls can also enter specifications, such as `#[precondition(positive(x))]` with a Rust function `positive` returning `bool`. Extraction does not establish that every operation involved is supported by backend verification.
+
 {{#rule contract.expression.boundary}}
 
-## Implementation status <a id="contract.expression.boundary-title"></a>
+## Implementation boundaries <a id="contract.expression.boundary-title"></a>
 
-Existing frontend examples cover field comparisons, ordinary calls, slice lengths, Vec indexing, and trait comparisons, including combinations with quantifiers. An operator's presence in the grammar does not imply coverage for every operand type or overload.
+- **Frontend `rust-llbc`**: extracts basic operations, field and slice access, ordinary calls, and conditions using `if`, `match`, and casts.
+- **Backend `llbc-why3`**: supports basic scalar expressions; slices, indexing, `usize`, and some enum and trait operations still have gaps.
 
-Calls can be retained in specification bodies, but external functions may be opaque. There is no dedicated declaration mechanism for pure logical functions, predicates, or ghost code, and no separate logical sequence, set, or map interface or complete set of standard-library contracts.
+### Remaining work
 
-Blocks, `if`, `match`, casts, complex patterns, and other Rust forms are not expanded in this core grammar. Their acceptance depends on parsing, Rust typing, and extraction for the particular expression.
+**Slice conditions (backend).** The example's `i < values.len() && values[i] > 0` can be extracted. Verification still needs translation of slices, lengths, index types, and indexing to express that the index is valid and the element positive.
+
+**Calls within specifications (frontend and backend; rules remain open).** Ordinary calls such as `#[precondition(positive(x))]` can enter LLBC. The frontend also accepts a call to a function that modifies global state before returning `bool`; `Fn + Copy` alone does not exclude such side effects. Which functions are admissible and how their side effects are restricted need to be defined, then enforced through frontend checks and backend logical representations. Extracting an ordinary call is not enough to establish that it can be verified as a logical condition.

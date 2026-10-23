@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -255,12 +255,26 @@ pub fn positive_at(values: &amp;[u8], i: usize) -&gt; u8 {
     values[i]
 }</code></pre>
 <p>The condition requires a valid index and a positive element. Short-circuit evaluation ensures the second operand is evaluated only when the index is in bounds.</p>
+<p>The frontend has extraction examples involving slice lengths, Vec indexing, field comparisons, and ordinary calls. Backend support for these expressions varies, as described below.</p>
+<p>Conditions can also use Rust expression blocks, local bindings, casts, and branches. For example, this precondition can be extracted:</p>
+<pre><code class="language-rust ignore">#[precondition({
+    let y = x as u32;
+    if flag { y &gt; 0 } else { y == 0 }
+})]
+pub fn selected(x: u8, flag: bool) -&gt; u8 {
+    x
+}</code></pre>
+<p>Enum conditions can use <code>match</code>, as shown in the <a href="invariants.html#r-contract.invariant.example">type-invariant examples</a>. Ordinary calls can also enter specifications, such as <code>#[precondition(positive(x))]</code> with a Rust function <code>positive</code> returning <code>bool</code>. Extraction does not establish that every operation involved is supported by backend verification.</p>
 <div class="rule" id="r-contract.expression.boundary"><a class="rule-link" href="#r-contract.expression.boundary" title="contract.expression.boundary"><span>[contract<wbr>.expression<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.expression.boundary-title"></a></a></h2>
-<p>Existing frontend examples cover field comparisons, ordinary calls, slice lengths, Vec indexing, and trait comparisons, including combinations with quantifiers. An operator’s presence in the grammar does not imply coverage for every operand type or overload.</p>
-<p>Calls can be retained in specification bodies, but external functions may be opaque. There is no dedicated declaration mechanism for pure logical functions, predicates, or ghost code, and no separate logical sequence, set, or map interface or complete set of standard-library contracts.</p>
-<p>Blocks, <code>if</code>, <code>match</code>, casts, complex patterns, and other Rust forms are not expanded in this core grammar. Their acceptance depends on parsing, Rust typing, and extraction for the particular expression.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.expression.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts basic operations, field and slice access, ordinary calls, and conditions using <code>if</code>, <code>match</code>, and casts.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: supports basic scalar expressions; slices, indexing, <code>usize</code>, and some enum and trait operations still have gaps.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Slice conditions (backend).</strong> The example’s <code>i &lt; values.len() &amp;&amp; values[i] &gt; 0</code> can be extracted. Verification still needs translation of slices, lengths, index types, and indexing to express that the index is valid and the element positive.</p>
+<p><strong>Calls within specifications (frontend and backend; rules remain open).</strong> Ordinary calls such as <code>#[precondition(positive(x))]</code> can enter LLBC. The frontend also accepts a call to a function that modifies global state before returning <code>bool</code>; <code>Fn + Copy</code> alone does not exclude such side effects. Which functions are admissible and how their side effects are restricted need to be defined, then enforced through frontend checks and backend logical representations. Extracting an ordinary call is not enough to establish that it can be verified as a logical condition.</p>
 
                     </main>
 

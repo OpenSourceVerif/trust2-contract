@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -206,9 +206,13 @@ pub fn bounded_square(x: u8) -&gt; u8 {
     y
 }</code></pre>
 <p>The assertion describes the local value <code>y</code> after multiplication.</p>
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status</a></h2>
-<p>The macro expands the condition into a <code>Fn() -&gt; bool + Copy</code> closure. The frontend extracts it as an assertion at its program location. An existing integration example and LLBC snapshot cover assertions.</p>
-<p><code>contract_assert!</code> is a specification annotation. It is removed in ordinary builds and does not provide the runtime check performed by Rust’s <code>assert!</code> macro.</p>
+<p>The frontend can extract local assertions of this form. It can also retain ordinary calls in conditions, such as <code>contract_assert!(decuple(9) == 90)</code>.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts assertion conditions and retains their positions in function bodies, including within branches.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: translates them to WhyML <code>assert</code>; further verification depends on the expressions and program operations involved.</li>
+</ul>
+<p>Shared limitations are described under <a href="expressions.html#contract.expression.boundary-title">Logic Expressions</a>. Ordinary builds remove contract assertions; runtime checks use Rust’s <code>assert!</code>.</p>
 
                     </main>
 

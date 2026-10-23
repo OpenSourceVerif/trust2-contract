@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -200,14 +200,21 @@
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
-pub fn assumed_bound(x: u8) {
-    contract_assume!(x &lt;= 10);
-    contract_assert!(x &lt; 11);
+pub fn assumed_bound(x: u8, flag: bool) {
+    if flag {
+        contract_assume!(x &lt;= 10);
+        contract_assert!(x &lt; 11);
+    } else {
+        contract_assert!(x &lt;= 255);
+    }
 }</code></pre>
-<p>The assertion follows under the assumed bound. The annotation neither checks nor establishes that bound for the caller.</p>
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status</a></h2>
-<p>The macro and internal interface represent the condition as a <code>Fn() -&gt; bool + Copy</code> closure. A dedicated extraction branch distinguishes assumptions from assertions. The existing frontend integration examples do not cover assumptions.</p>
-<p>Assumptions are removed in ordinary builds. They do not constrain a runtime value or reject an input.</p>
+<p>On the branch where <code>flag</code> is true, the assumed bound implies the following assertion; the other branch does not use that assumption. Frontend extraction and WhyML translation retain this branch structure. The annotation neither checks nor establishes the bound for the caller.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts assumptions, distinguishes them from assertions, and retains their enclosing branches.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: translates them to WhyML <code>assume</code>; further verification depends on the expressions and program operations involved.</li>
+</ul>
+<p>Shared limitations are described under <a href="expressions.html#contract.expression.boundary-title">Logic Expressions</a>. Assumptions create no obligation to prove themselves, and ordinary builds do not use them to filter inputs.</p>
 
                     </main>
 

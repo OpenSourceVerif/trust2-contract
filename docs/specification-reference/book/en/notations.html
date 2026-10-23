@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -221,10 +221,13 @@
 <pre><code class="language-rust ignore">#[precondition(x /* input */ &lt; 16)]
 #[postcondition(|result: u8| result &gt;= x)]</code></pre>
 <p>The comment separates tokens without changing the precondition. The bars in the second attribute delimit the return-value binding.</p>
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status</a></h2>
-<p>The macros parse expressions using <code>syn::Expr</code>, which accepts more forms than this compact grammar lists. Rust typing and borrowing, followed by frontend extraction, further constrain which specifications are accepted.</p>
-<p>Within contract tokens, <code>implies</code> is rewritten to an internal marker; postconditions also rewrite <code>old</code>. This rewriting acts on identifiers, including names used for unrelated bindings, fields, or methods. See <a href="constraints.html#name-rewriting">Name rewriting</a>.</p>
-<p>Implementation status on each page describes the supported stages and their limits. Recognition or extraction of a construct does not by itself establish that its proof obligations can be discharged.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries</a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: uses Rust lexical rules, expression parsing, and typing and borrowing checks.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: handles extracted representations rather than these lexical forms directly.</li>
+</ul>
+<h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
+<p><strong>Distinguishing markers from ordinary names (frontend).</strong> Name-based replacement of <code>implies</code> and postcondition <code>old</code> also changes ordinary Rust names. For example, <code>.old()</code> in <code>#[postcondition(|r| r == value.old())]</code> is replaced even when it denotes a user-defined method, causing expansion to fail. Name handling needs to preserve ordinary method calls while recognizing specification markers. See <a href="constraints.html#name-rewriting">Name rewriting</a>.</p>
 
                     </main>
 

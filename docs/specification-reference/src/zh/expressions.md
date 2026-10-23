@@ -53,12 +53,31 @@ pub fn positive_at(values: &[u8], i: usize) -> u8 {
 
 该条件要求索引有效且对应元素为正。短路求值保证仅在索引合法时才求值第二个操作数。
 
+前端已有切片长度、Vec 索引、字段比较和普通调用等表达式的提取用例；后端对这些表达式的支持仍有差异，见下文。
+
+条件也可以使用 Rust 表达式块、局部绑定、类型转换和分支。例如，下面的前置条件能够提取：
+
+```rust,ignore
+#[precondition({
+    let y = x as u32;
+    if flag { y > 0 } else { y == 0 }
+})]
+pub fn selected(x: u8, flag: bool) -> u8 {
+    x
+}
+```
+
+枚举条件可以使用 `match`，见[类型不变式中的示例](invariants.md#r-contract.invariant.example)。普通函数调用也能进入规约，例如 `#[precondition(positive(x))]`，其中 `positive` 是返回 `bool` 的 Rust 函数。这些表达式能提取，不表示其所有操作都已接入后端验证。
+
 {{#rule contract.expression.boundary}}
 
-## 实现状态 <a id="contract.expression.boundary-title"></a>
+## 实现边界 <a id="contract.expression.boundary-title"></a>
 
-已有前端样例覆盖字段比较、普通调用、切片长度、Vec 索引和 trait 比较，也包括它们与量词的组合。运算符出现在文法中，不代表每种操作数类型或重载都有测试覆盖。
+- **前端 `rust-llbc`**：已能提取基本运算、字段访问、切片访问、普通调用，以及条件中的 `if`、`match` 和类型转换。
+- **后端 `llbc-why3`**：已支持基础标量表达式；切片、索引、`usize`、部分枚举与 trait 操作仍有缺口。
 
-规约体中的调用可以被保留，但外部函数可能是不透明的。当前没有纯逻辑函数、谓词或 ghost 代码的专用声明机制，也没有独立的逻辑序列、集合、映射接口或完整的标准库契约。
+### 尚待补齐
 
-这份核心文法未展开块、`if`、`match`、类型转换、复杂模式等其他 Rust 形式。这些形式能否接受，取决于具体表达式的解析、Rust 类型检查和提取。
+**切片条件（后端）。** 上例的 `i < values.len() && values[i] > 0` 可以提取，但验证还需要切片、长度、下标类型和索引操作的翻译，以便表达“索引有效且元素为正”。
+
+**规约中的函数调用（前后端，规则待明确）。** `#[precondition(positive(x))]` 这类普通调用可以进入 LLBC。当前前端也会接受调用一个修改全局状态、再返回 `bool` 的函数；`Fn + Copy` 约束本身并不排除这种副作用。哪些函数可以用于规约、如何约束其副作用，需要先明确，再由前端检查和后端逻辑表示共同落实。普通调用能够提取，还不足以保证它可作为逻辑条件完成验证。

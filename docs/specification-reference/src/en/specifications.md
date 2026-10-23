@@ -14,4 +14,4 @@ The remaining chapters describe the places where these conditions apply:
 - [Statement Annotations](statements.md): assertions and assumptions at a point in a function body.
 - [Type Invariants](invariants.md): conditions associated with a type.
 
-Each construct is described by its syntax, semantics, examples, and current implementation status. The [Grammar Index](grammar.md) collects all productions.
+Each construct is described by its syntax, semantics, examples, and implementation boundaries. The [Grammar Index](grammar.md) collects all productions.

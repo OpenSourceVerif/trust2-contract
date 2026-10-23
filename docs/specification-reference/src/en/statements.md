@@ -29,8 +29,9 @@ The assertion follows from the preceding assumption. This does not prove that `x
 
 {{#rule contract.statement.boundary}}
 
-## Implementation status <a id="contract.statement.boundary-title"></a>
+## Implementation boundaries <a id="contract.statement.boundary-title"></a>
 
-The frontend records assertion and assumption kinds and their positions separately. Their conditions use `Fn() -> bool + Copy` closures and follow Rust capture and borrowing rules. Ordinary builds remove these annotations.
+- **Frontend `rust-llbc`**: supports assertions and assumptions, retaining their conditions, kinds, and positions.
+- **Backend `llbc-why3`**: translates them to WhyML `assert` and `assume`, respectively.
 
-Annotations may occur in branches or loops. A statement annotation inside a loop is not a loop-invariant declaration. There is currently no interface for loop invariants, termination measures, or contracts attached to an arbitrary block of statements.
+See [Assertions](assertions.md) and [Assumptions](assumptions.md) for specific uses and limitations.

@@ -23,8 +23,11 @@ pub fn bounded_square(x: u8) -> u8 {
 
 The assertion describes the local value `y` after multiplication.
 
-## Implementation status
+The frontend can extract local assertions of this form. It can also retain ordinary calls in conditions, such as `contract_assert!(decuple(9) == 90)`.
 
-The macro expands the condition into a `Fn() -> bool + Copy` closure. The frontend extracts it as an assertion at its program location. An existing integration example and LLBC snapshot cover assertions.
+## Implementation boundaries
 
-`contract_assert!` is a specification annotation. It is removed in ordinary builds and does not provide the runtime check performed by Rust's `assert!` macro.
+- **Frontend `rust-llbc`**: extracts assertion conditions and retains their positions in function bodies, including within branches.
+- **Backend `llbc-why3`**: translates them to WhyML `assert`; further verification depends on the expressions and program operations involved.
+
+Shared limitations are described under [Logic Expressions](expressions.md#contract.expression.boundary-title). Ordinary builds remove contract assertions; runtime checks use Rust's `assert!`.

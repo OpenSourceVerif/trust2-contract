@@ -29,10 +29,28 @@ pub fn identity(x: u32) -> u32 {
 
 Here `value` denotes the returned value, and `x` is the input used in the comparison.
 
-## Implementation status
+Return-value conditions support frontend extraction and basic backend verification. For example, a maximum function can separately declare `result >= a` and `result >= b`, guaranteeing that its result is at least both inputs.
 
-The postcondition must satisfy `Fn(ReturnType) -> bool + Copy`. The macro supplies the function's return type to the internal interface; Rust checks the closure's parameter, result type, and captures.
+## Implementation boundaries
 
-The frontend extracts postconditions and associates them with their functions. Existing integration examples cover this path. The grammar shows inline closures: parsing an expression does not establish support for arbitrary function pointers or callable objects.
+- **Frontend `rust-llbc`**: supports return-binding closures, references to input parameters, and multiple postconditions.
+- **Backend `llbc-why3`**: supports basic scalar return-value conditions; relationships involving mutable references and old state remain incomplete.
 
-Name rewriting for `old` is enabled only in postconditions. This does not provide general snapshots or relax the closure's borrowing constraints.
+### Remaining work
+
+**Passing a function directly (frontend).** The following form passes Rust type checking but fails during specification extraction:
+
+```rust,ignore
+fn positive(value: u32) -> bool {
+    value > 0
+}
+
+#[postcondition(positive)]
+pub fn one() -> u32 {
+    1
+}
+```
+
+Writing the same condition as `#[postcondition(|value| positive(value))]` allows extraction. A directly supplied function still needs to be associated with the return-value condition, or rejected with a clear diagnostic at the entry point. Verification limits on the call itself are described under [Logic Expressions](expressions.md#contract.expression.boundary-title).
+
+**Before/after relationships.** Stating that `*p` is one greater on return than on entry still requires [`old`](old.md#contract.old.boundary-title) and a complete state representation for mutable references. Capturing `p` alone does not establish an entry-value snapshot.

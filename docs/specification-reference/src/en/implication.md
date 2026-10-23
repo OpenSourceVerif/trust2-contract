@@ -27,12 +27,17 @@ pub fn identity(x: i32) -> i32 {
 
 The postcondition requires `result >= x` whenever `x > 0`.
 
+The frontend can extract this implication expression and retain it inside quantified conditions.
+
 {{#rule contract.implies.boundary}}
 
-## Implementation status <a id="contract.implies.boundary-title"></a>
+## Implementation boundaries <a id="contract.implies.boundary-title"></a>
 
-Contract macros rewrite `implies` to an internal function, and the frontend recognizes and retains a `SpecImplies` marker. Existing combined examples cover this representation.
+- **Frontend `rust-llbc`**: recognizes and retains the `implies` marker in LLBC, including within quantifier bodies.
+- **Backend `llbc-why3`**: does not yet translate this marker, so the example cannot complete verification.
 
-Both arguments' computations enter the specification body. In particular, `implies(i < a.len(), a[i] > 0)` does not automatically guard the index access with the antecedent.
+### Remaining work
 
-When an access must be conditional, use Rust short-circuit operators. For example, `i >= a.len() || a[i] > 0` avoids evaluating the index expression when `i` is out of bounds.
+**Logical implication translation (backend).** The example's `implies(x > 0, result >= x)` needs to generate the logical condition that `result >= x` holds whenever `x > 0`. Markers within quantifier bodies need the same treatment.
+
+Both arguments are currently evaluated, so `implies(i < a.len(), a[i] > 0)` cannot use its antecedent to guard indexing. Where short-circuit behavior is needed, write `i >= a.len() || a[i] > 0`; this remains subject to backend slice and index support. Whether `implies` itself should provide conditional evaluation remains open.

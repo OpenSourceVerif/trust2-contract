@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -211,9 +211,12 @@ pub fn check(x: u8) {
 <p>The assertion follows from the preceding assumption. This does not prove that <code>x &lt; 16</code> holds for every call to <code>check</code>.</p>
 <div class="rule" id="r-contract.statement.boundary"><a class="rule-link" href="#r-contract.statement.boundary" title="contract.statement.boundary"><span>[contract<wbr>.statement<wbr>.boundary]</span></a></div>
 
-<h2 id="implementation-status"><a class="header" href="#implementation-status">Implementation status <a id="contract.statement.boundary-title"></a></a></h2>
-<p>The frontend records assertion and assumption kinds and their positions separately. Their conditions use <code>Fn() -&gt; bool + Copy</code> closures and follow Rust capture and borrowing rules. Ordinary builds remove these annotations.</p>
-<p>Annotations may occur in branches or loops. A statement annotation inside a loop is not a loop-invariant declaration. There is currently no interface for loop invariants, termination measures, or contracts attached to an arbitrary block of statements.</p>
+<h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.statement.boundary-title"></a></a></h2>
+<ul>
+<li><strong>Frontend <code>rust-llbc</code></strong>: supports assertions and assumptions, retaining their conditions, kinds, and positions.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: translates them to WhyML <code>assert</code> and <code>assume</code>, respectively.</li>
+</ul>
+<p>See <a href="assertions.html">Assertions</a> and <a href="assumptions.html">Assumptions</a> for specific uses and limitations.</p>
 
                     </main>
 

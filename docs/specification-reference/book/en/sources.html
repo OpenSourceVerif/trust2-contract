@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a150dac9.js";
+            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -181,7 +181,8 @@
 <h1 id="sources-and-test-coverage"><a class="header" href="#sources-and-test-coverage">Sources and Test Coverage</a></h1>
 <div class="rule" id="r-contract.sources.intro"><a class="rule-link" href="#r-contract.sources.intro" title="contract.sources.intro"><span>[contract<wbr>.sources<wbr>.intro]</span></a></div>
 
-<p>The following sources describe macro expansion, frontend extraction, and existing test coverage.</p>
+<p>The following sources describe frontend extraction, backend translation, and existing coverage.</p>
+<h2 id="frontend-rust-llbc"><a class="header" href="#frontend-rust-llbc">Frontend rust-llbc</a></h2>
 <ul>
 <li><a href="../../../../trust2-contract-macros/src/impl.rs">Contract macros</a> and <a href="../../../../trust2-contract-macros/src/impl/parse.rs">identifier rewriting</a>: parsing and expansion.</li>
 <li><a href="../../../../trust2-contract/src/internal.rs">Internal interfaces</a>: argument types and closure constraints.</li>
@@ -189,6 +190,18 @@
 <li><a href="../../../../charon/charon/src/bin/charon-driver/translate/translate_functions.rs">Marker recognition</a>: implication and old-state markers.</li>
 <li><a href="../../../../charon/charon/tests/cargo/trust2-contract-sample/src/lib.rs">Frontend integration examples</a> and <a href="../../../../charon/charon/tests/cargo/trust2-contract-sample.out">LLBC snapshots</a>: existing combined cases.</li>
 </ul>
+<h2 id="backend-llbc-why3"><a class="header" href="#backend-llbc-why3">Backend llbc-why3</a></h2>
+<ul>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/decl.rs">Function-contract translation</a> and <a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/spec.rs">specification-closure translation</a>: preconditions, postconditions, and captured values.</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_expr.rs">Statement translation</a> and <a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/stmt_term.rs">logical-term translation</a>: assertion, assumption, and quantifier branches.</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/func_ref.rs">Builtin-function translation</a>: unimplemented <code>SpecImplies</code> and <code>SpecOld</code> branches.</li>
+<li><a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/ty.rs">Type translation</a> and <a href="../../../../cargo-verify/src/llbc_to_whyml/ctx/type_decl.rs">type-declaration translation</a>: supported types; automatic type-invariant enforcement is not connected.</li>
+<li><a href="../../../../cargo-verify/tests/end-to-end/simple/src/lib.rs">End-to-end examples</a> and <a href="../../../../cargo-verify/tests/end-to-end/simple/result.txt">saved results</a>: basic contract verification for <code>max</code>, <code>strict_sub</code>, and <code>square</code>.</li>
+</ul>
+<h2 id="test-coverage"><a class="header" href="#test-coverage">Test coverage</a></h2>
+<p>Frontend integration cases include preconditions, postconditions, assertions, a generic struct invariant, and combinations of universal quantification, implication, and container access. The <code>to_sorted</code> body is a placeholder returning an empty vector; it illustrates extraction rather than a verified sorting algorithm.</p>
+<p>The repository frontend integration examples do not yet include <code>contract_assume!</code> or <code>exists!</code>. Both have extraction implementations; problems with outer captures are described in the <a href="quantifiers.html#contract.quantifier.boundary-title">quantifier implementation boundaries</a>. <code>old</code> has name-rewriting tests but no complete old-state specification integration case.</p>
+<p>Saved backend end-to-end results cover basic preconditions/postconditions for <code>max</code>, <code>strict_sub</code>, and <code>square</code>. Assertions, assumptions, and quantifiers have translation implementations but are not included in these end-to-end cases.</p>
 
                     </main>
 
