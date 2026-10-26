@@ -1,0 +1,34 @@
+error: the argument of `old` must be a mutable reference parameter of the function
+ --> src/lib.rs:9:1
+  |
+9 | #[postcondition(|r| *r == *old(r))]
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the argument of `old` must be a mutable reference parameter of the function
+  --> src/lib.rs:15:1
+   |
+15 | #[postcondition(|_| forall!(|q: &mut u32| *old(q) == 0))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: the argument of `old` must be a mutable reference parameter of the function
+  --> src/lib.rs:21:1
+   |
+21 | #[postcondition(|_| *pair.first == *old(pair.first))]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `old` can only be used in postconditions
+  --> src/lib.rs:26:1
+   |
+26 | #[precondition(*trust2_contract::internal::old(&p) == 0)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `old` can only be used in postconditions
+  --> src/lib.rs:32:5
+   |
+32 |     contract_assert!(*trust2_contract::internal::old(&p) == 0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+ERROR Charon failed to translate this code (5 errors)
+error: could not compile `trust2-contract-old-errors` (lib)
+
+Caused by:

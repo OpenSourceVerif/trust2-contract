@@ -32,3 +32,16 @@ fn use_assert() {
 
     contract_assert!(decuple(9) == 90);
 }
+
+#[precondition(*p < u64::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+pub fn increment(p: &mut u64) {
+    *p += 1;
+}
+
+#[postcondition(|_| forall!(|i: usize| implies(i < v.len(), v[i] == old(v)[i] / 2)))]
+pub fn halve_all(v: &mut [u64]) {
+    for x in v.iter_mut() {
+        *x /= 2;
+    }
+}

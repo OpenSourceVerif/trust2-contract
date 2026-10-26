@@ -241,6 +241,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             &["--features=trust2-contract/verify".to_owned()],
             Success,
         ),
+        mktest(
+            "trust2-contract-old-errors",
+            root.join("trust2-contract-old-errors"),
+            &[],
+            &["--features=trust2-contract/verify".to_owned()],
+            Failure,
+        ),
     ];
 
     let args = libtest_mimic::Arguments::from_args();

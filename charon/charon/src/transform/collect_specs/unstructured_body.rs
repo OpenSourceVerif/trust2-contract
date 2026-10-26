@@ -1,10 +1,11 @@
 use crate::{
     ast::{
-        Body, BodyVisitable, BuiltinFunId, Call, ContractAssertKind, FnOperand, FnPtrKind, FunDecl,
+        Body, BodyVisitable, BorrowKind, BuiltinFunId, Call, ContractAssertKind, FnOperand, FnPtrKind, FunDecl,
         FunDeclId, FunId, FunSpecs, Local, LocalId, Locals, Operand, Place, PlaceKind,
         ProjectionElem, QuantKind, Rvalue, Span, SpecClosure, SpecClosureId, TraitDeclId, Ty,
         TyKind, TypeId, ullbc_ast_utils::BodyBuilder,
     },
+    errors::Level,
     ids::IndexMap,
     transform::{TransformCtx, ctx::UllbcPass},
     ullbc_ast::{BlockId, ExprBody, Statement, StatementKind, TerminatorKind},
@@ -341,6 +342,158 @@ impl UllbcPass for Transform {
                 }
                 _ => (),
             }
+        }
+
+        check_old(ctx, func_decl);
+    }
+}
+
+/// Checks every `old(p)` reachable from the specifications of `func_decl`.
+///
+/// In a postcondition, possibly inside nested quantifiers, `p` must be a parameter of the
+/// function, reached only through reborrows and copies. `old` is rejected in preconditions,
+/// assertions and assumptions.
+fn check_old(ctx: &TransformCtx, func_decl: &FunDecl) {
+    let Some(body) = func_decl.body.as_unstructured() else {
+        return;
+    };
+    let arg_count = body.locals.arg_count;
+    for postcondition in &func_decl.specs.postconditions {
+        check_old_in(ctx, &mut vec![postcondition], Some(arg_count));
+    }
+    for precondition in &func_decl.specs.preconditions {
+        check_old_in(ctx, &mut vec![precondition], None);
+    }
+    for block in &body.body {
+        if let TerminatorKind::ContractAssert {
+            spec_closure_id, ..
+        } = block.terminator.kind
+        {
+            let spec_closure = &ctx.translated.spec_closures[spec_closure_id];
+            check_old_in(ctx, &mut vec![spec_closure], None);
+        }
+    }
+}
+
+/// `enclosing` lists the spec closures from the outermost one to the one being checked.
+/// `arg_count` is the number of function parameters, or `None` where `old` is not allowed.
+fn check_old_in<'a>(
+    ctx: &'a TransformCtx,
+    enclosing: &mut Vec<&'a SpecClosure>,
+    arg_count: Option<usize>,
+) {
+    let body = enclosing.last().unwrap().body.as_unstructured().unwrap();
+    for block in &body.body {
+        match &block.terminator.kind {
+            TerminatorKind::Call {
+                call:
+                    Call {
+                        func: FnOperand::Regular(func_ptr),
+                        args,
+                        ..
+                    },
+                ..
+            } if matches!(
+                *func_ptr.kind,
+                FnPtrKind::Fun(FunId::Builtin(BuiltinFunId::SpecOld))
+            ) =>
+            {
+                let msg = match arg_count {
+                    None => Some("`old` can only be used in postconditions"),
+                    Some(arg_count) if !old_arg_is_param(enclosing, args, arg_count) => Some(
+                        "the argument of `old` must be a mutable reference parameter of the function",
+                    ),
+                    Some(_) => None,
+                };
+                if let Some(msg) = msg {
+                    ctx.span_err(block.terminator.span, msg, Level::ERROR);
+                }
+            }
+            &TerminatorKind::Quant {
+                spec_closure_id, ..
+            } => {
+                enclosing.push(&ctx.translated.spec_closures[spec_closure_id]);
+                check_old_in(ctx, enclosing, arg_count);
+                enclosing.pop();
+            }
+            _ => (),
+        }
+    }
+}
+
+fn old_arg_is_param(enclosing: &[&SpecClosure], args: &[Operand], arg_count: usize) -> bool {
+    let [Operand::Copy(place) | Operand::Move(place)] = args else {
+        return false;
+    };
+    let Some(mut local_id) = place.as_local() else {
+        return false;
+    };
+    for (depth, spec_closure) in enclosing.iter().enumerate().rev() {
+        let Some(captured) = trace_to_capture(spec_closure, local_id) else {
+            return false;
+        };
+        if depth == 0 {
+            return captured
+                .as_local()
+                .is_some_and(|id| (1..=arg_count).contains(&id.raw()));
+        }
+        let Some(id) = local_through_derefs(captured) else {
+            return false;
+        };
+        local_id = id;
+    }
+    unreachable!()
+}
+
+/// Follows `local_id` in the body of `spec_closure` back through reborrows and copies to one
+/// of its captures, and returns the place of the enclosing body that the capture borrows.
+fn trace_to_capture(spec_closure: &SpecClosure, mut local_id: LocalId) -> Option<&Place> {
+    let body = spec_closure.body.as_unstructured().unwrap();
+    loop {
+        if let Some(capture) = spec_closure.captures.get(local_id) {
+            let Rvalue::Ref {
+                place,
+                kind: BorrowKind::Shared,
+                ..
+            } = capture
+            else {
+                return None;
+            };
+            return Some(place);
+        }
+        let mut assigned = body
+            .body
+            .iter()
+            .flat_map(|block| &block.statements)
+            .filter_map(|statement| match &statement.kind {
+                StatementKind::Assign(place, rvalue) if place.as_local() == Some(local_id) => {
+                    Some(rvalue)
+                }
+                _ => None,
+            });
+        let (Some(rvalue), None) = (assigned.next(), assigned.next()) else {
+            return None;
+        };
+        let place = match rvalue {
+            Rvalue::Ref {
+                place,
+                kind: BorrowKind::Shared,
+                ..
+            } => place,
+            Rvalue::Use(Operand::Copy(place) | Operand::Move(place), _) => place,
+            _ => return None,
+        };
+        local_id = local_through_derefs(place)?;
+    }
+}
+
+/// Returns `l` if `place` is `l` or `*...*l`.
+fn local_through_derefs(mut place: &Place) -> Option<LocalId> {
+    loop {
+        match &place.kind {
+            PlaceKind::Local(local_id) => return Some(*local_id),
+            PlaceKind::Projection(subplace, ProjectionElem::Deref) => place = subplace,
+            _ => return None,
         }
     }
 }

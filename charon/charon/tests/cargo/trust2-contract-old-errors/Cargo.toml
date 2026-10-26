@@ -1,0 +1,9 @@
+[workspace]
+
+[package]
+name = "trust2-contract-old-errors"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+trust2-contract = { path = "../../../../../trust2-contract" }
