@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
+            window.path_to_searchindex_js = "searchindex-d66c575c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -196,30 +196,37 @@
 
 <div class="rule" id="r-contract.old.intro"><a class="rule-link" href="#r-contract.old.intro" title="contract.old.intro"><span>[contract<wbr>.old<wbr>.intro]</span></a></div>
 
-<h2 id="intended-semantics"><a class="header" href="#intended-semantics">Intended semantics</a></h2>
+<h2 id="semantics"><a class="header" href="#semantics">Semantics</a></h2>
 <p>An old-state expression in a postcondition refers to the function’s pre-state: the state on entry to the function. Its purpose is to relate a returned state to an earlier one.</p>
-<p>The current <code>old</code> construct provides a marker for this purpose, with the restricted interface described below. It does not yet provide a general snapshot operation on Rust expressions.</p>
+<p><code>old(p)</code> takes a mutable reference parameter <code>p</code> of the function and denotes that reference as it was on entry, so <code>*old(p)</code> is the value <code>p</code> pointed to on entry, while <code>*p</code> is the value on return. <code>old</code> is a marker on a parameter, not a snapshot operation on arbitrary Rust expressions: <code>old(*p)</code>, <code>old(x + 1)</code> or <code>old(v.len())</code> are not accepted. Only <code>&amp;mut</code> parameters have entry values that differ from their return values; other parameters already denote their entry values.</p>
 <div class="rule" id="r-contract.old.example"><a class="rule-link" href="#r-contract.old.example" title="contract.old.example"><span>[contract<wbr>.old<wbr>.example]</span></a></div>
 
-<h2 id="syntax-example"><a class="header" href="#syntax-example">Syntax example</a></h2>
-<pre><code class="language-rust ignore">*old(p)</code></pre>
-<p>This fragment combines an old-state marker with dereferencing. The argument <code>p</code> must match the mutable-reference interface. Whether the fragment is admissible in a postcondition also depends on the surrounding closure’s captures and borrowing.</p>
+<h2 id="example"><a class="header" href="#example">Example</a></h2>
+<pre><code class="language-rust ignore">use trust2_contract::prelude::*;
+
+#[precondition(*p &lt; u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+pub fn increment(p: &amp;mut u32) {
+    *p += 1;
+}
+
+#[postcondition(|_| forall!(|i: usize| implies(i &lt; v.len(), v[i] == old(v)[i] / 2)))]
+pub fn halve_all(v: &amp;mut [u32]) {
+    for x in v.iter_mut() {
+        *x /= 2;
+    }
+}</code></pre>
+<p><code>old</code> may appear inside quantifiers nested in a postcondition, and applies to unsized pointees such as slices. The postcondition macro rewrites <code>old(p)</code> to <code>old(&amp;p)</code>, so the closure captures <code>p</code> by shared reference and stays <code>Fn + Copy</code>; a non-<code>&amp;mut</code> argument is a type error.</p>
 <div class="rule" id="r-contract.old.boundary"><a class="rule-link" href="#r-contract.old.boundary" title="contract.old.boundary"><span>[contract<wbr>.old<wbr>.boundary]</span></a></div>
 
 <h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.old.boundary-title"></a></a></h2>
 <ul>
-<li><strong>Frontend <code>rust-llbc</code></strong>: recognizes the <code>old</code> marker but does not yet fully represent entry values; its current interface accepts only mutable references.</li>
-<li><strong>Backend <code>llbc-why3</code></strong>: old-state translation is not implemented.</li>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts <code>old(p)</code> as a <code>SpecOld</code> call whose argument is the postcondition’s capture of <code>p</code>. It rejects <code>old</code> outside postconditions, and arguments other than a parameter of the function, such as the returned reference, a quantified variable, or a field <code>old(s.f)</code>.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: old-state translation is not implemented; <code>SpecOld</code> and mutable borrows are not yet translated.</li>
 </ul>
 <h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
-<p><strong>Entry values of mutable parameters (frontend and backend).</strong> The following example aims to describe an increment but cannot currently be used:</p>
-<pre><code class="language-rust ignore">#[precondition(*p &lt; u32::MAX)]
-#[postcondition(|_| *p == *old(p) + 1)]
-fn increment(p: &amp;mut u32) {
-    *p += 1;
-}</code></pre>
-<p>In verification mode, this form is blocked by the closure’s <code>Copy</code> requirement. The frontend needs to let postconditions refer to entry values and distinguish them from return-state values. The backend needs to use that representation to establish the relationship. The intended property is that <code>*p</code> is one greater than its entry value; the interface may change with the state representation.</p>
-<p>The scope of old-state support for fields, compound values, and aliased data remains to be defined.</p>
+<p><strong>Entry values of mutable parameters (backend).</strong> For <code>increment</code> above, the backend needs to translate <code>*old(p)</code> to the entry value of <code>*p</code> and <code>*p</code> to its return value, using its pair representation of mutable references.</p>
+<p><strong>Fields and compound values (frontend and backend).</strong> The entry value of <code>*s.f</code> for <code>s: &amp;mut S</code> with a field <code>f: &amp;mut T</code>, and old state for data reachable through several references, remain to be defined.</p>
 
                     </main>
 

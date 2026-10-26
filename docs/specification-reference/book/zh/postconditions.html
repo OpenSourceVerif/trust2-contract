@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-30489a1a.js";
+            window.path_to_searchindex_js = "searchindex-40992f69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -229,7 +229,7 @@ pub fn one() -&gt; u32 {
     1
 }</code></pre>
 <p>同一个条件写成 <code>#[postcondition(|value| positive(value))]</code> 可以提取。直接传入函数时，还需要将它关联到返回值条件，或在入口给出明确的不支持提示；函数调用本身的验证限制见<a href="expressions.html#contract.expression.boundary-title">逻辑表达式</a>。</p>
-<p><strong>修改前后的关系。</strong> 例如“<code>*p</code> 返回时比进入函数时大 1”，还需要补齐 <a href="old.html#contract.old.boundary-title"><code>old</code></a> 及可变引用的状态表示。仅仅捕获 <code>p</code>，不会建立入口值快照。</p>
+<p><strong>修改前后的关系。</strong> 例如“<code>*p</code> 返回时比进入函数时大 1”，用 <a href="old.html"><code>old</code></a> 写作 <code>*p == *old(p) + 1</code>。验证它仍需要<a href="old.html#contract.old.boundary-title">后端支持</a>旧状态和可变引用。</p>
 
                     </main>
 

@@ -6,41 +6,44 @@
 
 {{#rule contract.old.intro}}
 
-## Intended semantics
+## Semantics
 
 An old-state expression in a postcondition refers to the function's pre-state: the state on entry to the function. Its purpose is to relate a returned state to an earlier one.
 
-The current `old` construct provides a marker for this purpose, with the restricted interface described below. It does not yet provide a general snapshot operation on Rust expressions.
+`old(p)` takes a mutable reference parameter `p` of the function and denotes that reference as it was on entry, so `*old(p)` is the value `p` pointed to on entry, while `*p` is the value on return. `old` is a marker on a parameter, not a snapshot operation on arbitrary Rust expressions: `old(*p)`, `old(x + 1)` or `old(v.len())` are not accepted. Only `&mut` parameters have entry values that differ from their return values; other parameters already denote their entry values.
 
 {{#rule contract.old.example}}
 
-## Syntax example
+## Example
 
 ```rust,ignore
-*old(p)
+use trust2_contract::prelude::*;
+
+#[precondition(*p < u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+pub fn increment(p: &mut u32) {
+    *p += 1;
+}
+
+#[postcondition(|_| forall!(|i: usize| implies(i < v.len(), v[i] == old(v)[i] / 2)))]
+pub fn halve_all(v: &mut [u32]) {
+    for x in v.iter_mut() {
+        *x /= 2;
+    }
+}
 ```
 
-This fragment combines an old-state marker with dereferencing. The argument `p` must match the mutable-reference interface. Whether the fragment is admissible in a postcondition also depends on the surrounding closure's captures and borrowing.
+`old` may appear inside quantifiers nested in a postcondition, and applies to unsized pointees such as slices. The postcondition macro rewrites `old(p)` to `old(&p)`, so the closure captures `p` by shared reference and stays `Fn + Copy`; a non-`&mut` argument is a type error.
 
 {{#rule contract.old.boundary}}
 
 ## Implementation boundaries <a id="contract.old.boundary-title"></a>
 
-- **Frontend `rust-llbc`**: recognizes the `old` marker but does not yet fully represent entry values; its current interface accepts only mutable references.
-- **Backend `llbc-why3`**: old-state translation is not implemented.
+- **Frontend `rust-llbc`**: extracts `old(p)` as a `SpecOld` call whose argument is the postcondition's capture of `p`. It rejects `old` outside postconditions, and arguments other than a parameter of the function, such as the returned reference, a quantified variable, or a field `old(s.f)`.
+- **Backend `llbc-why3`**: old-state translation is not implemented; `SpecOld` and mutable borrows are not yet translated.
 
 ### Remaining work
 
-**Entry values of mutable parameters (frontend and backend).** The following example aims to describe an increment but cannot currently be used:
+**Entry values of mutable parameters (backend).** For `increment` above, the backend needs to translate `*old(p)` to the entry value of `*p` and `*p` to its return value, using its pair representation of mutable references.
 
-```rust,ignore
-#[precondition(*p < u32::MAX)]
-#[postcondition(|_| *p == *old(p) + 1)]
-fn increment(p: &mut u32) {
-    *p += 1;
-}
-```
-
-In verification mode, this form is blocked by the closure's `Copy` requirement. The frontend needs to let postconditions refer to entry values and distinguish them from return-state values. The backend needs to use that representation to establish the relationship. The intended property is that `*p` is one greater than its entry value; the interface may change with the state representation.
-
-The scope of old-state support for fields, compound values, and aliased data remains to be defined.
+**Fields and compound values (frontend and backend).** The entry value of `*s.f` for `s: &mut S` with a field `f: &mut T`, and old state for data reachable through several references, remain to be defined.

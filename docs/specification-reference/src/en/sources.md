@@ -26,6 +26,6 @@ The following sources describe frontend extraction, backend translation, and exi
 
 Frontend integration cases include preconditions, postconditions, assertions, a generic struct invariant, and combinations of universal quantification, implication, and container access. The `to_sorted` body is a placeholder returning an empty vector; it illustrates extraction rather than a verified sorting algorithm.
 
-The repository frontend integration examples do not yet include `contract_assume!` or `exists!`. Both have extraction implementations; problems with outer captures are described in the [quantifier implementation boundaries](quantifiers.md#contract.quantifier.boundary-title). `old` has name-rewriting tests but no complete old-state specification integration case.
+The repository frontend integration examples do not yet include `contract_assume!` or `exists!`. Both have extraction implementations; problems with outer captures are described in the [quantifier implementation boundaries](quantifiers.md#contract.quantifier.boundary-title). `old` cases cover a mutable scalar, a slice inside a quantifier, and a separate crate of rejected uses.
 
 Saved backend end-to-end results cover basic preconditions/postconditions for `max`, `strict_sub`, and `square`. Assertions, assumptions, and quantifiers have translation implementations but are not included in these end-to-end cases.

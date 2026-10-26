@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-30489a1a.js";
+            window.path_to_searchindex_js = "searchindex-40992f69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -210,7 +210,7 @@
 </ul>
 <h2 id="测试覆盖"><a class="header" href="#测试覆盖">测试覆盖</a></h2>
 <p>前端集成样例包含前置条件、后置条件、断言、泛型结构体不变式，以及全称量词、蕴含和容器访问的组合。<code>to_sorted</code> 的函数体是返回空向量的占位实现，用于观察提取结果，不是已经验证的排序算法。</p>
-<p>仓库中的前端集成样例尚未包含 <code>contract_assume!</code> 与 <code>exists!</code>。两者已有提取实现；量词的外层捕获问题见<a href="quantifiers.html#contract.quantifier.boundary-title">量词的实现边界</a>。<code>old</code> 有名称改写测试，尚无完整旧状态规约的集成用例。</p>
+<p>仓库中的前端集成样例尚未包含 <code>contract_assume!</code> 与 <code>exists!</code>。两者已有提取实现；量词的外层捕获问题见<a href="quantifiers.html#contract.quantifier.boundary-title">量词的实现边界</a>。<code>old</code> 的用例包括可变标量、量词中的切片，以及一个单独的被拒绝用法样例 crate。</p>
 <p>后端已保存的端到端结果覆盖 <code>max</code>、<code>strict_sub</code> 和 <code>square</code> 的基本前置／后置条件。断言、假设和量词已有翻译实现，但尚未包含在这些端到端用例中。</p>
 
                     </main>

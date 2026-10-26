@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
+            window.path_to_searchindex_js = "searchindex-d66c575c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -229,7 +229,7 @@ pub fn one() -&gt; u32 {
     1
 }</code></pre>
 <p>Writing the same condition as <code>#[postcondition(|value| positive(value))]</code> allows extraction. A directly supplied function still needs to be associated with the return-value condition, or rejected with a clear diagnostic at the entry point. Verification limits on the call itself are described under <a href="expressions.html#contract.expression.boundary-title">Logic Expressions</a>.</p>
-<p><strong>Before/after relationships.</strong> Stating that <code>*p</code> is one greater on return than on entry still requires <a href="old.html#contract.old.boundary-title"><code>old</code></a> and a complete state representation for mutable references. Capturing <code>p</code> alone does not establish an entry-value snapshot.</p>
+<p><strong>Before/after relationships.</strong> Stating that <code>*p</code> is one greater on return than on entry is written with <a href="old.html"><code>old</code></a> as <code>*p == *old(p) + 1</code>. Verifying it still requires <a href="old.html#contract.old.boundary-title">backend support</a> for old state and mutable references.</p>
 
                     </main>
 

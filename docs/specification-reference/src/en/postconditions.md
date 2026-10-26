@@ -53,4 +53,4 @@ pub fn one() -> u32 {
 
 Writing the same condition as `#[postcondition(|value| positive(value))]` allows extraction. A directly supplied function still needs to be associated with the return-value condition, or rejected with a clear diagnostic at the entry point. Verification limits on the call itself are described under [Logic Expressions](expressions.md#contract.expression.boundary-title).
 
-**Before/after relationships.** Stating that `*p` is one greater on return than on entry still requires [`old`](old.md#contract.old.boundary-title) and a complete state representation for mutable references. Capturing `p` alone does not establish an entry-value snapshot.
+**Before/after relationships.** Stating that `*p` is one greater on return than on entry is written with [`old`](old.md) as `*p == *old(p) + 1`. Verifying it still requires [backend support](old.md#contract.old.boundary-title) for old state and mutable references.

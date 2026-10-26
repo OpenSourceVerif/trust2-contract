@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-a7e3f502.js";
+            window.path_to_searchindex_js = "searchindex-d66c575c.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -598,30 +598,37 @@ pub fn identity(x: i32) -&gt; i32 {
 
 <div class="rule" id="r-contract.old.intro"><a class="rule-link" href="#r-contract.old.intro" title="contract.old.intro"><span>[contract<wbr>.old<wbr>.intro]</span></a></div>
 
-<h2 id="intended-semantics"><a class="header" href="#intended-semantics">Intended semantics</a></h2>
+<h2 id="semantics-2"><a class="header" href="#semantics-2">Semantics</a></h2>
 <p>An old-state expression in a postcondition refers to the function’s pre-state: the state on entry to the function. Its purpose is to relate a returned state to an earlier one.</p>
-<p>The current <code>old</code> construct provides a marker for this purpose, with the restricted interface described below. It does not yet provide a general snapshot operation on Rust expressions.</p>
+<p><code>old(p)</code> takes a mutable reference parameter <code>p</code> of the function and denotes that reference as it was on entry, so <code>*old(p)</code> is the value <code>p</code> pointed to on entry, while <code>*p</code> is the value on return. <code>old</code> is a marker on a parameter, not a snapshot operation on arbitrary Rust expressions: <code>old(*p)</code>, <code>old(x + 1)</code> or <code>old(v.len())</code> are not accepted. Only <code>&amp;mut</code> parameters have entry values that differ from their return values; other parameters already denote their entry values.</p>
 <div class="rule" id="r-contract.old.example"><a class="rule-link" href="#r-contract.old.example" title="contract.old.example"><span>[contract<wbr>.old<wbr>.example]</span></a></div>
 
-<h2 id="syntax-example"><a class="header" href="#syntax-example">Syntax example</a></h2>
-<pre><code class="language-rust ignore">*old(p)</code></pre>
-<p>This fragment combines an old-state marker with dereferencing. The argument <code>p</code> must match the mutable-reference interface. Whether the fragment is admissible in a postcondition also depends on the surrounding closure’s captures and borrowing.</p>
+<h2 id="example-3"><a class="header" href="#example-3">Example</a></h2>
+<pre><code class="language-rust ignore">use trust2_contract::prelude::*;
+
+#[precondition(*p &lt; u32::MAX)]
+#[postcondition(|_| *p == *old(p) + 1)]
+pub fn increment(p: &amp;mut u32) {
+    *p += 1;
+}
+
+#[postcondition(|_| forall!(|i: usize| implies(i &lt; v.len(), v[i] == old(v)[i] / 2)))]
+pub fn halve_all(v: &amp;mut [u32]) {
+    for x in v.iter_mut() {
+        *x /= 2;
+    }
+}</code></pre>
+<p><code>old</code> may appear inside quantifiers nested in a postcondition, and applies to unsized pointees such as slices. The postcondition macro rewrites <code>old(p)</code> to <code>old(&amp;p)</code>, so the closure captures <code>p</code> by shared reference and stays <code>Fn + Copy</code>; a non-<code>&amp;mut</code> argument is a type error.</p>
 <div class="rule" id="r-contract.old.boundary"><a class="rule-link" href="#r-contract.old.boundary" title="contract.old.boundary"><span>[contract<wbr>.old<wbr>.boundary]</span></a></div>
 
 <h2 id="implementation-boundaries-4"><a class="header" href="#implementation-boundaries-4">Implementation boundaries <a id="contract.old.boundary-title"></a></a></h2>
 <ul>
-<li><strong>Frontend <code>rust-llbc</code></strong>: recognizes the <code>old</code> marker but does not yet fully represent entry values; its current interface accepts only mutable references.</li>
-<li><strong>Backend <code>llbc-why3</code></strong>: old-state translation is not implemented.</li>
+<li><strong>Frontend <code>rust-llbc</code></strong>: extracts <code>old(p)</code> as a <code>SpecOld</code> call whose argument is the postcondition’s capture of <code>p</code>. It rejects <code>old</code> outside postconditions, and arguments other than a parameter of the function, such as the returned reference, a quantified variable, or a field <code>old(s.f)</code>.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: old-state translation is not implemented; <code>SpecOld</code> and mutable borrows are not yet translated.</li>
 </ul>
 <h3 id="remaining-work-4"><a class="header" href="#remaining-work-4">Remaining work</a></h3>
-<p><strong>Entry values of mutable parameters (frontend and backend).</strong> The following example aims to describe an increment but cannot currently be used:</p>
-<pre><code class="language-rust ignore">#[precondition(*p &lt; u32::MAX)]
-#[postcondition(|_| *p == *old(p) + 1)]
-fn increment(p: &amp;mut u32) {
-    *p += 1;
-}</code></pre>
-<p>In verification mode, this form is blocked by the closure’s <code>Copy</code> requirement. The frontend needs to let postconditions refer to entry values and distinguish them from return-state values. The backend needs to use that representation to establish the relationship. The intended property is that <code>*p</code> is one greater than its entry value; the interface may change with the state representation.</p>
-<p>The scope of old-state support for fields, compound values, and aliased data remains to be defined.</p>
+<p><strong>Entry values of mutable parameters (backend).</strong> For <code>increment</code> above, the backend needs to translate <code>*old(p)</code> to the entry value of <code>*p</code> and <code>*p</code> to its return value, using its pair representation of mutable references.</p>
+<p><strong>Fields and compound values (frontend and backend).</strong> The entry value of <code>*s.f</code> for <code>s: &amp;mut S</code> with a field <code>f: &amp;mut T</code>, and old state for data reachable through several references, remain to be defined.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.function"><a class="rule-link" href="#r-contract.function" title="contract.function"><span>[contract<wbr>.function]</span></a></div>
 
@@ -644,13 +651,13 @@ fn increment(p: &amp;mut u32) {
 
 <div class="rule" id="r-contract.function.intro"><a class="rule-link" href="#r-contract.function.intro" title="contract.function.intro"><span>[contract<wbr>.function<wbr>.intro]</span></a></div>
 
-<h2 id="semantics-2"><a class="header" href="#semantics-2">Semantics</a></h2>
+<h2 id="semantics-3"><a class="header" href="#semantics-3">Semantics</a></h2>
 <p><a id="grammar-Precondition"></a><a href="#preconditions">Preconditions</a> describe the caller’s obligations and the assumptions under which the function body is verified. <a id="grammar-Postcondition"></a><a href="#postconditions">Postconditions</a> describe the function’s obligations on return.</p>
 <p>Attributes precede the function definition. Preconditions and postconditions may be repeated and interleaved. All stated preconditions are required; all stated postconditions are guarantees to establish. A postcondition alone does not assert termination.</p>
 <p><a id="grammar-ResultPredicate"></a><a id="result-binding"></a>A postcondition binds the returned value with a closure parameter. See <a href="#result-binding-1">Return-value binding</a>. References to an earlier state use <a href="#old-state-expressions">Old-state Expressions</a>, whose current interface is restricted.</p>
 <div class="rule" id="r-contract.function.example"><a class="rule-link" href="#r-contract.function.example" title="contract.function.example"><span>[contract<wbr>.function<wbr>.example]</span></a></div>
 
-<h2 id="example-3"><a class="header" href="#example-3">Example</a></h2>
+<h2 id="example-4"><a class="header" href="#example-4">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
 #[precondition(x &lt; 16)]
@@ -706,10 +713,10 @@ impl Counter {
 
 </div>
 
-<h2 id="semantics-3"><a class="header" href="#semantics-3">Semantics</a></h2>
+<h2 id="semantics-4"><a class="header" href="#semantics-4">Semantics</a></h2>
 <p><code>#[precondition(P)]</code> requires the Boolean condition <code>P</code> to hold on entry to the function. At a call, the caller must establish <code>P</code>; when verifying the function body, <code>P</code> is an assumption.</p>
 <p>The condition may refer to the function’s parameters, a method receiver, and other names visible at the definition. It does not bind a return value. Multiple precondition attributes require all of their conditions to hold.</p>
-<h2 id="example-4"><a class="header" href="#example-4">Example</a></h2>
+<h2 id="example-5"><a class="header" href="#example-5">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
 #[precondition(divisor != 0)]
@@ -747,13 +754,13 @@ pub fn quotient(value: u32, divisor: u32) -&gt; u32 {
 
 </div>
 
-<h2 id="semantics-4"><a class="header" href="#semantics-4">Semantics</a></h2>
+<h2 id="semantics-5"><a class="header" href="#semantics-5">Semantics</a></h2>
 <p><code>#[postcondition(|result| Q)]</code> requires the Boolean condition <code>Q</code> to hold on normal return, with <code>result</code> bound to the returned value. Verification of the function must establish this condition under its preconditions.</p>
 <p>Multiple postconditions state simultaneous guarantees. They do not specify whether the function terminates or what happens on a panic.</p>
 <h2 id="return-value-binding"><a class="header" href="#return-value-binding">Return-value binding <a id="result-binding-1"></a></a></h2>
 <p>The parameter name is arbitrary: <code>result</code> is not a keyword. Its type is the function’s return type and may be written explicitly. A function without a declared return type returns <code>()</code>.</p>
 <p>Function parameters and method receivers are referenced from the surrounding scope. A captured reference does not by itself denote a snapshot of the data it points to. The intended pre-state notation and its implementation limits are described under <a href="#old-state-expressions">Old-state Expressions</a>.</p>
-<h2 id="example-5"><a class="header" href="#example-5">Example</a></h2>
+<h2 id="example-6"><a class="header" href="#example-6">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
 #[postcondition(|value: u32| value == x)]
@@ -778,7 +785,7 @@ pub fn one() -&gt; u32 {
     1
 }</code></pre>
 <p>Writing the same condition as <code>#[postcondition(|value| positive(value))]</code> allows extraction. A directly supplied function still needs to be associated with the return-value condition, or rejected with a clear diagnostic at the entry point. Verification limits on the call itself are described under <a href="#contract.expression.boundary-title">Logic Expressions</a>.</p>
-<p><strong>Before/after relationships.</strong> Stating that <code>*p</code> is one greater on return than on entry still requires <a href="#contract.old.boundary-title"><code>old</code></a> and a complete state representation for mutable references. Capturing <code>p</code> alone does not establish an entry-value snapshot.</p>
+<p><strong>Before/after relationships.</strong> Stating that <code>*p</code> is one greater on return than on entry is written with <a href="#old-state-expressions"><code>old</code></a> as <code>*p == *old(p) + 1</code>. Verifying it still requires <a href="#contract.old.boundary-title">backend support</a> for old state and mutable references.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <div class="rule" id="r-contract.statement"><a class="rule-link" href="#r-contract.statement" title="contract.statement"><span>[contract<wbr>.statement]</span></a></div>
 
@@ -801,11 +808,11 @@ pub fn one() -&gt; u32 {
 
 <div class="rule" id="r-contract.statement.intro"><a class="rule-link" href="#r-contract.statement.intro" title="contract.statement.intro"><span>[contract<wbr>.statement<wbr>.intro]</span></a></div>
 
-<h2 id="semantics-5"><a class="header" href="#semantics-5">Semantics</a></h2>
+<h2 id="semantics-6"><a class="header" href="#semantics-6">Semantics</a></h2>
 <p>An <a href="#assertions">assertion</a> states a condition to establish at its location. An <a href="#assumptions">assumption</a> supplies a condition for reasoning from that location. Both may refer to variables in scope and describe the state at the annotation.</p>
 <div class="rule" id="r-contract.statement.example"><a class="rule-link" href="#r-contract.statement.example" title="contract.statement.example"><span>[contract<wbr>.statement<wbr>.example]</span></a></div>
 
-<h2 id="example-6"><a class="header" href="#example-6">Example</a></h2>
+<h2 id="example-7"><a class="header" href="#example-7">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
 pub fn check(x: u8) {
@@ -840,9 +847,9 @@ pub fn check(x: u8) {
 
 </div>
 
-<h2 id="semantics-6"><a class="header" href="#semantics-6">Semantics</a></h2>
+<h2 id="semantics-7"><a class="header" href="#semantics-7">Semantics</a></h2>
 <p><code>contract_assert!(P);</code> requires the Boolean condition <code>P</code> to hold at that point. It introduces a proof obligation using the function’s preconditions, preceding assumptions, and the effects of the preceding program statements.</p>
-<h2 id="example-7"><a class="header" href="#example-7">Example</a></h2>
+<h2 id="example-8"><a class="header" href="#example-8">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
 #[precondition(x &lt; 16)]
@@ -878,10 +885,10 @@ pub fn bounded_square(x: u8) -&gt; u8 {
 
 </div>
 
-<h2 id="semantics-7"><a class="header" href="#semantics-7">Semantics</a></h2>
+<h2 id="semantics-8"><a class="header" href="#semantics-8">Semantics</a></h2>
 <p><code>contract_assume!(P);</code> introduces the Boolean condition <code>P</code> as a hypothesis at that point. It does not introduce an obligation to prove <code>P</code>.</p>
 <p>Conclusions obtained using the assumption are conditional on it. An inconsistent assumption makes subsequent proof obligations vacuous.</p>
-<h2 id="example-8"><a class="header" href="#example-8">Example</a></h2>
+<h2 id="example-9"><a class="header" href="#example-9">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
 pub fn assumed_bound(x: u8, flag: bool) {
@@ -920,12 +927,12 @@ pub fn assumed_bound(x: u8, flag: bool) {
 
 <div class="rule" id="r-contract.invariant.intro"><a class="rule-link" href="#r-contract.invariant.intro" title="contract.invariant.intro"><span>[contract<wbr>.invariant<wbr>.intro]</span></a></div>
 
-<h2 id="semantics-8"><a class="header" href="#semantics-8">Semantics</a></h2>
+<h2 id="semantics-9"><a class="header" href="#semantics-9">Semantics</a></h2>
 <p><code>#[invariant(P)]</code> associates a Boolean condition <code>P</code> with a struct, enum, or union. Within the condition, <code>self</code> refers to the value whose invariant is described. The condition expresses a property that valid instances are intended to satisfy.</p>
 <p>Declaring an invariant and enforcing it at program boundaries are separate capabilities. The current implementation provides declaration and extraction; automatic enforcement is not yet implemented.</p>
 <div class="rule" id="r-contract.invariant.example"><a class="rule-link" href="#r-contract.invariant.example" title="contract.invariant.example"><span>[contract<wbr>.invariant<wbr>.example]</span></a></div>
 
-<h2 id="example-9"><a class="header" href="#example-9">Example</a></h2>
+<h2 id="example-10"><a class="header" href="#example-10">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
 #[invariant(self.start &lt;= self.end)]
@@ -1110,7 +1117,7 @@ pub fn invalid() -&gt; B {
 </ul>
 <h2 id="test-coverage"><a class="header" href="#test-coverage">Test coverage</a></h2>
 <p>Frontend integration cases include preconditions, postconditions, assertions, a generic struct invariant, and combinations of universal quantification, implication, and container access. The <code>to_sorted</code> body is a placeholder returning an empty vector; it illustrates extraction rather than a verified sorting algorithm.</p>
-<p>The repository frontend integration examples do not yet include <code>contract_assume!</code> or <code>exists!</code>. Both have extraction implementations; problems with outer captures are described in the <a href="#contract.quantifier.boundary-title">quantifier implementation boundaries</a>. <code>old</code> has name-rewriting tests but no complete old-state specification integration case.</p>
+<p>The repository frontend integration examples do not yet include <code>contract_assume!</code> or <code>exists!</code>. Both have extraction implementations; problems with outer captures are described in the <a href="#contract.quantifier.boundary-title">quantifier implementation boundaries</a>. <code>old</code> cases cover a mutable scalar, a slice inside a quantifier, and a separate crate of rejected uses.</p>
 <p>Saved backend end-to-end results cover basic preconditions/postconditions for <code>max</code>, <code>strict_sub</code>, and <code>square</code>. Assertions, assumptions, and quantifiers have translation implementations but are not included in these end-to-end cases.</p>
 
                     </main>

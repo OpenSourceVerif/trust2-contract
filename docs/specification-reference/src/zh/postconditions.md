@@ -53,4 +53,4 @@ pub fn one() -> u32 {
 
 同一个条件写成 `#[postcondition(|value| positive(value))]` 可以提取。直接传入函数时，还需要将它关联到返回值条件，或在入口给出明确的不支持提示；函数调用本身的验证限制见[逻辑表达式](expressions.md#contract.expression.boundary-title)。
 
-**修改前后的关系。** 例如“`*p` 返回时比进入函数时大 1”，还需要补齐 [`old`](old.md#contract.old.boundary-title) 及可变引用的状态表示。仅仅捕获 `p`，不会建立入口值快照。
+**修改前后的关系。** 例如“`*p` 返回时比进入函数时大 1”，用 [`old`](old.md) 写作 `*p == *old(p) + 1`。验证它仍需要[后端支持](old.md#contract.old.boundary-title)旧状态和可变引用。
