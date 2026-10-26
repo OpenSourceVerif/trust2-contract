@@ -38,6 +38,7 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
+    let expr = parse::borrow_old_arguments(expr);
     let expr = parse::replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);

@@ -24,6 +24,8 @@ pub fn implies(_: bool, _: bool) -> bool {
     true
 }
 
-pub fn old<T>(x: &mut T) -> &mut T {
+/// `old(p)` in a postcondition is rewritten to `old(&p)` by the macro, so the closure
+/// only captures `p` by shared reference and remains `Fn + Copy`.
+pub fn old<'a, T: ?Sized>(x: &'a &mut T) -> &'a T {
     x
 }

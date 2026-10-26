@@ -1,5 +1,38 @@
-use proc_macro2::{Group, Ident, TokenStream, TokenTree};
+use proc_macro2::{Delimiter, Group, Ident, TokenStream, TokenTree};
 use quote::quote;
+
+/// Rewrites every `old(e)` to `old(&(e))`.
+///
+/// `old` only accepts a mutable reference. Passing it directly would make the
+/// postcondition closure capture it by unique borrow, which is neither `Fn` nor `Copy`.
+pub fn borrow_old_arguments(old_tokens: TokenStream) -> TokenStream {
+    let mut new_tokens = TokenStream::new();
+    let mut tokens = old_tokens.into_iter().peekable();
+    while let Some(token) = tokens.next() {
+        match token {
+            TokenTree::Group(group) => {
+                let mut new_group =
+                    Group::new(group.delimiter(), borrow_old_arguments(group.stream()));
+                new_group.set_span(group.span());
+                new_tokens.extend([TokenTree::Group(new_group)]);
+            }
+            TokenTree::Ident(ref ident) if ident == "old" => {
+                new_tokens.extend([token]);
+                if let Some(TokenTree::Group(group)) = tokens.peek()
+                    && group.delimiter() == Delimiter::Parenthesis
+                {
+                    let arg = borrow_old_arguments(group.stream());
+                    let mut new_group = Group::new(Delimiter::Parenthesis, quote! { &(#arg) });
+                    new_group.set_span(group.span());
+                    new_tokens.extend([TokenTree::Group(new_group)]);
+                    tokens.next();
+                }
+            }
+            token => new_tokens.extend([token]),
+        }
+    }
+    new_tokens
+}
 
 pub fn replace_keywords(
     old_tokens: TokenStream,
@@ -38,9 +71,25 @@ mod tests {
         };
         let crate_name_ident = crate_name_ident();
         let expect = quote! {
-            *y == *::#crate_name_ident::internal::old(x)
+            *y == *::#crate_name_ident::internal::old(&(x))
         };
-        let result = replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name_ident);
+        let result = borrow_old_arguments(expr);
+        let result = replace_keywords(result, POSTCONDITION_KEYWORDS, &crate_name_ident);
+        assert_eq!(
+            parse::<Expr>(expect).unwrap(),
+            parse::<Expr>(result).unwrap(),
+        );
+    }
+
+    #[test]
+    fn borrows_old_arguments_in_nested_groups() {
+        let expr = quote! {
+            forall!(|i: usize| implies(i < old(v).len(), old(v)[i] == f(old_value(x), old))) && old
+        };
+        let expect = quote! {
+            forall!(|i: usize| implies(i < old(&(v)).len(), old(&(v))[i] == f(old_value(x), old))) && old
+        };
+        let result = borrow_old_arguments(expr);
         assert_eq!(
             parse::<Expr>(expect).unwrap(),
             parse::<Expr>(result).unwrap(),
