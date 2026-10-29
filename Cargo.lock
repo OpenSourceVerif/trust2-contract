@@ -1684,7 +1684,7 @@ dependencies = [
 [[package]]
 name = "serde_state"
 version = "1.0.0"
-source = "git+https://github.com/Nadrieril/serde_state?branch=main#78055e2f2be94b27c58027854d151d87a75957cc"
+source = "git+https://github.com/Nadrieril/serde_state?rev=78055e2#78055e2f2be94b27c58027854d151d87a75957cc"
 dependencies = [
  "serde",
  "serde_state_derive",
@@ -1693,7 +1693,7 @@ dependencies = [
 [[package]]
 name = "serde_state_derive"
 version = "1.0.0"
-source = "git+https://github.com/Nadrieril/serde_state?branch=main#78055e2f2be94b27c58027854d151d87a75957cc"
+source = "git+https://github.com/Nadrieril/serde_state?rev=78055e2#78055e2f2be94b27c58027854d151d87a75957cc"
 dependencies = [
  "proc-macro2",
  "quote",

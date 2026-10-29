@@ -21,7 +21,8 @@ hax-adt-into = { path = "../charon/charon/adt-into" }
 macros = { path = "../charon/charon/macros" }
 rustc_trait_elaboration = { path = "../charon/charon/rustc_trait_elaboration", optional = true }
 
-serde_state = { git = "https://github.com/Nadrieril/serde_state", branch = "main" }
+serde_state = { git = "https://github.com/Nadrieril/serde_state", rev = "78055e2" }
+# serde_state_perfect_derive = { git = "https://github.com/Nadrieril/serde_state", branch = "main" }
 # serde_state = { path = "../../../forks/serde_state/serde_state" }
 
 annotate-snippets = { version = "0.12" }
