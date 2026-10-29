@@ -4,7 +4,7 @@ use charon_lib::{
     ast::{self as a, *},
     ullbc_ast as u,
 };
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 pub(crate) fn unsupported(message: impl Into<String>) -> Error {
     Error::new(ErrorKind::Unsupported, message)
@@ -35,9 +35,16 @@ pub(crate) enum Operation {
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Program {
-    pub operations: Vec<(Location, Operation)>,
+    pub blocks: BTreeMap<u::BlockId, Block>,
     pub references: BTreeSet<LocalId>,
     pub explicit_storage: BTreeSet<LocalId>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Block {
+    pub operations: Vec<Operation>,
+    pub successors: Vec<u::BlockId>,
+    pub predecessors: Vec<u::BlockId>,
 }
 
 fn scalar(ty: &Ty) -> bool {
@@ -206,22 +213,23 @@ pub(crate) fn lower(body: &u::ExprBody) -> Result<Program, Error> {
             return Err(unsupported(format!("type of local {id}: {:?}", local.ty)));
         }
     }
-    let mut operations = vec![];
+    let mut blocks = BTreeMap::new();
     let mut explicit_storage = BTreeSet::new();
     let mut visited = BTreeSet::new();
-    let mut block = u::START_BLOCK_ID;
-    loop {
+    let mut pending = VecDeque::from([u::START_BLOCK_ID]);
+    while let Some(block) = pending.pop_front() {
         let location = Location {
             block,
             statement_index: 0,
         };
         if !visited.insert(block) {
-            return Err(unsupported("loop: fixed-point analysis is not implemented").at(location));
+            continue;
         }
         let data = body
             .body
             .get(block)
             .ok_or_else(|| invalid("missing block").at(location))?;
+        let mut operations = Vec::new();
         for (statement_index, stmt) in data.statements.iter().enumerate() {
             let location = Location {
                 block,
@@ -231,20 +239,63 @@ pub(crate) fn lower(body: &u::ExprBody) -> Result<Program, Error> {
             if let Operation::Allocate(id) = op {
                 explicit_storage.insert(id);
             }
-            operations.push((location, op));
+            operations.push(op);
         }
         let location = Location {
             block,
             statement_index: data.statements.len(),
         };
-        match data.terminator.kind {
-            u::TerminatorKind::Goto { target } => { operations.push((location, Operation::Goto)); block = target; }
-            u::TerminatorKind::Return => { operations.push((location, Operation::Return)); break; }
+        let successors = match data.terminator.kind {
+            u::TerminatorKind::Goto { target } => { operations.push(Operation::Goto); vec![target] }
+            u::TerminatorKind::Return => { operations.push(Operation::Return); Vec::new() }
             _ => return Err(unsupported("terminator: only goto/return are supported; calls, branches and unwinding need separate rules").at(location)),
+        };
+        pending.extend(successors.iter().copied());
+        blocks.insert(
+            block,
+            Block {
+                operations,
+                successors,
+                predecessors: Vec::new(),
+            },
+        );
+    }
+    let edges: Vec<_> = blocks
+        .iter()
+        .flat_map(|(id, block)| block.successors.iter().map(move |target| (*id, *target)))
+        .collect();
+    for (source, target) in edges {
+        blocks.get_mut(&target).unwrap().predecessors.push(source);
+    }
+    // The scheduler is a CFG fixed-point engine; this iteration has no sound
+    // abstraction/join for cyclic PCGs, so reject cycles before emitting results.
+    let mut degrees: BTreeMap<_, _> = blocks
+        .iter()
+        .map(|(id, b)| (*id, b.predecessors.len()))
+        .collect();
+    let mut ready: VecDeque<_> = degrees
+        .iter()
+        .filter(|(_, n)| **n == 0)
+        .map(|(id, _)| *id)
+        .collect();
+    let mut processed = 0;
+    while let Some(id) = ready.pop_front() {
+        processed += 1;
+        for successor in &blocks[&id].successors {
+            let degree = degrees.get_mut(successor).unwrap();
+            *degree -= 1;
+            if *degree == 0 {
+                ready.push_back(*successor);
+            }
         }
     }
+    if processed != blocks.len() {
+        return Err(unsupported(
+            "loop: cyclic PCG abstraction/join is outside this iteration",
+        ));
+    }
     Ok(Program {
-        operations,
+        blocks,
         references,
         explicit_storage,
     })

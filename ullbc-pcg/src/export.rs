@@ -1,7 +1,7 @@
 //! Static viewer data. DOT is derived exclusively from computed graph snapshots.
 use crate::*;
 use charon_lib::{
-    ast::{Body, FunDecl, TranslatedCrate},
+    ast::{Body, BodyBorrowckInfo, FunDecl, TranslatedCrate},
     formatter::{AstFormatter, IntoFormatter},
     pretty::FmtWithCtx,
 };
@@ -45,6 +45,8 @@ pub struct ViewerData {
     pub source_start_line: usize,
     pub locals: Vec<LocalInfo>,
     pub points: Vec<ViewerPoint>,
+    pub blocks: Vec<BlockResult>,
+    pub borrowck_source: String,
 }
 
 fn quote(s: &str) -> String {
@@ -110,7 +112,7 @@ fn edge_name(edge: &Edge, locals: &[LocalInfo]) -> String {
         node_name(edge.target(), locals)
     )
 }
-pub fn dot(graph: &Graph, locals: &[LocalInfo]) -> String {
+pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> String {
     let mut s =
         String::from("digraph PCG {\n  rankdir=TB;\n  node [shape=rect, fontname=Courier];\n");
     let mut nodes: BTreeSet<Node> = graph
@@ -146,10 +148,32 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo]) -> String {
                     format!("color={color}, fontcolor={color}{style}"),
                 )
             }
-            Node::LifetimeProjection(p) => (
-                projection_name(p, locals).replace(" @ ", "\n@ "),
-                "shape=octagon, color=blue, fontcolor=blue".into(),
-            ),
+            Node::LifetimeProjection(p) => {
+                // Keep the actual ULLBC reference/region identifiers. The phase
+                // is detail of the snapshot, not another current-phase label.
+                let mut label = projection_name(LifetimeProjection { label: None, ..p }, locals);
+                if let Some(snapshot) = p.label {
+                    label.push_str(&format!(" before {}", snapshot.location));
+                }
+                let region = facts
+                    .reference_regions
+                    .iter()
+                    .find(|r| r.local == p.reference)
+                    .expect("validated reference-region binding");
+                let tooltip = format!(
+                    "{}; ULLBC region '{}; rustc reference-type region '?{}",
+                    projection_name(p, locals),
+                    p.region.index(),
+                    region.region
+                );
+                (
+                    label,
+                    format!(
+                        "shape=octagon, color=blue, fontcolor=blue, tooltip={}",
+                        quote(&tooltip)
+                    ),
+                )
+            }
         };
         s.push_str(&format!(
             "  {} [label={}, {attrs}];\n",
@@ -158,49 +182,67 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo]) -> String {
         ));
     }
     for (index, edge) in graph.edges.iter().enumerate() {
-        let color = match edge {
-            Edge::Borrow { .. } => "orange",
-            Edge::Deref { .. } => "green",
-            Edge::BorrowFlow { .. } => "purple",
-        };
-        let label = match edge {
+        let (color, label, tooltip) = match edge {
             Edge::Borrow {
                 location,
                 borrow_kind,
                 ..
-            } => format!(
-                "{} @ {location}",
-                if *borrow_kind == BorrowKind::Mutable {
-                    "&mut"
+            } => {
+                let loan = facts
+                    .loans
+                    .iter()
+                    .find(|l| {
+                        l.reserve.block == location.block
+                            && l.reserve.statement_index == location.statement_index
+                    })
+                    .expect("validated borrow creation point");
+                let kind = if *borrow_kind == BorrowKind::Mutable {
+                    "Default"
                 } else {
-                    "&"
-                }
+                    "shared"
+                };
+                (
+                    "orange",
+                    format!("bw{}: {kind} '?{}", loan.id, loan.region),
+                    format!("ULLBC borrow at {location}; loan and edge region IDs come from rustc"),
+                )
+            }
+            Edge::Deref { .. } => (
+                "green",
+                String::new(),
+                format!(
+                    "{}; two arrows represent one Deref hyperedge",
+                    edge_name(edge, locals)
+                ),
             ),
-            Edge::Deref { .. } => "deref".into(),
-            Edge::BorrowFlow { operand, .. } => format!("{operand:?}"),
+            Edge::BorrowFlow { operand, .. } => {
+                ("purple", format!("{operand:?}"), edge_name(edge, locals))
+            }
         };
-        let sources = edge.sources();
-        if sources.len() > 1 {
-            // Preserve the deref hyperedge; do not draw two independent relations.
-            s.push_str(&format!("  h{index} [shape=point, color={color}];\n"));
-            for source in sources {
+        for source in edge.sources() {
+            s.push_str(&format!(
+                "  {} -> {} [color={color}, label={}, tooltip={}, class=\"pcg-edge-{index}\"];\n",
+                id(source),
+                id(edge.target()),
+                quote(&label),
+                quote(&tooltip)
+            ));
+        }
+        // Display-only relation, matching MIR-PCG's materialized alias edges.
+        // An old reference value must not alias the current dereference node.
+        if let Edge::Borrow {
+            borrowed, assigned, ..
+        } = edge
+        {
+            let deref = Node::Place(Place::Deref(assigned.reference));
+            if assigned.base_label.is_none() && nodes.contains(&deref) {
                 s.push_str(&format!(
-                    "  {} -> h{index} [color={color}, arrowhead=none];\n",
-                    id(source)
+                    "  {} -> {} [color=grey, style=dashed, tooltip={}];\n",
+                    id(Node::Place(*borrowed)),
+                    id(deref),
+                    quote("Alias derived from the literal borrow; not an additional loan")
                 ));
             }
-            s.push_str(&format!(
-                "  h{index} -> {} [color={color}, label={}];\n",
-                id(edge.target()),
-                quote(&label)
-            ));
-        } else {
-            s.push_str(&format!(
-                "  {} -> {} [color={color}, label={}];\n",
-                id(sources[0]),
-                id(edge.target()),
-                quote(&label)
-            ));
         }
     }
     s.push_str("}\n");
@@ -293,7 +335,37 @@ pub fn write(
     let Body::Unstructured(body) = &function.body else {
         return Err("expected an ULLBC body".into());
     };
-    let analysis = analyze(body)?;
+    let bundle = krate.borrowck.as_ref().ok_or_else(|| {
+        AnalysisError::new(
+            ErrorKind::InvalidInput,
+            "missing rustc borrow information; re-extract using Charon --export-borrowck",
+        )
+    })?;
+    if bundle.schema_version != 1
+        || bundle.stage != "ullbc-final-borrowck-v2"
+        || bundle.producer != "rustc-nll"
+    {
+        return Err(AnalysisError::new(
+            ErrorKind::InvalidInput,
+            "unsupported borrowck metadata schema/stage/producer",
+        )
+        .into());
+    }
+    let mut matching = bundle
+        .bodies
+        .iter()
+        .filter(|b| b.function_id == function.def_id);
+    let facts = matching.next().ok_or_else(|| {
+        AnalysisError::new(ErrorKind::InvalidInput, "missing function borrowck data")
+    })?;
+    if matching.next().is_some() {
+        return Err(AnalysisError::new(
+            ErrorKind::InvalidInput,
+            "duplicate function borrowck data",
+        )
+        .into());
+    }
+    let analysis = analyze(body, facts)?;
     let fmt = krate.into_fmt();
     let local_fmt = fmt.set_locals(&body.locals);
     let span = function.item_meta.span.data;
@@ -344,7 +416,9 @@ pub fn write(
         });
     }
     let data = ViewerData {
-        schema_version: 2,
+        schema_version: 3,
+        blocks: analysis.blocks,
+        borrowck_source: format!("{} / {}", bundle.producer, bundle.stage),
         name: function.item_meta.name.to_string_with_ctx(&fmt),
         signature: format!(
             "fn {}({}) -> {}",
@@ -366,7 +440,10 @@ pub fn write(
     fs::create_dir_all(output)?;
     for point in &data.points {
         for step in &point.steps {
-            fs::write(output.join(&step.dot), dot(&step.graph, &data.locals))?;
+            fs::write(
+                output.join(&step.dot),
+                dot(&step.graph, &data.locals, facts),
+            )?;
         }
     }
     fs::write(

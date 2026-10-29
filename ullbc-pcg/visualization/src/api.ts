@@ -7,7 +7,7 @@ async function response(path: string): Promise<Response> {
 }
 export async function loadAnalysis(): Promise<Analysis> {
   const data = await (await response("data/analysis.json")).json() as Analysis;
-  if (data.schema_version !== 2 || !Array.isArray(data.points) || !data.points.length || data.points.some(p => !Array.isArray(p.steps) || !p.steps.length)) {
+  if (data.schema_version !== 3 || !Array.isArray(data.blocks) || !Array.isArray(data.points) || !data.points.length || data.points.some(p => !Array.isArray(p.steps) || !p.steps.length)) {
     throw new Error("Unsupported or empty ULLBC-PCG export. Regenerate with scripts/run-case.sh.");
   }
   return data;

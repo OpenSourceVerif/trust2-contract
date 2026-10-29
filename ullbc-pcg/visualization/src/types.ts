@@ -1,4 +1,4 @@
-// The version 2 contract emitted by ullbc-pcg/src/export.rs.
+// The version 3 contract emitted by ullbc-pcg/src/export.rs.
 export type SourcePos = { line: number; column: number };
 export type FunctionSlug = string;
 export type FunctionsMetadata = Record<string, {
@@ -20,6 +20,9 @@ export type Step = {
   graph: Graph;
 };
 export type Location = { block: number; statement_index: number };
+export type BorrowckQuery =
+  | { LoanInScope: { loan: number; location: Location; result: boolean } }
+  | { Outlives: { from: number; to: number; result: boolean } };
 export type Point = {
   location: Location;
   statement: string;
@@ -27,10 +30,15 @@ export type Point = {
   steps: Step[];
   action_labels: string[];
   live_references_after: number[];
+  loans_before: number[];
+  loans_after: number[];
+  phases: { phase: Phase; borrowck_queries: BorrowckQuery[] }[];
 };
 export type Analysis = {
   schema_version: number; name: string; signature: string; source: string;
   source_start_line: number;
   locals: { id: number; name: string | null }[];
   points: Point[];
+  blocks: { block: number; successors: number[]; entry: Graph; exit: Graph }[];
+  borrowck_source: string;
 };

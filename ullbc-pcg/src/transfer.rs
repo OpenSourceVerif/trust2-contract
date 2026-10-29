@@ -11,11 +11,12 @@ use charon_lib::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 struct ReferenceInfo {
     region: RegionId,
     kind: BorrowKind,
 }
+#[derive(Clone, PartialEq, Eq)]
 pub(crate) struct State {
     graph: Graph,
     references: BTreeMap<LocalId, ReferenceInfo>,
@@ -32,6 +33,21 @@ fn denied(place: Place, cap: Capability) -> AnalysisError {
     )
 }
 impl State {
+    pub fn finish_block(&mut self) {
+        self.operand_projection = None;
+    }
+    /// Equality is the only join admitted by this iteration's PCG domain.
+    /// A future branch/loop implementation must supply a sound graph join here.
+    pub fn join(&mut self, incoming: &Self) -> Result<bool, AnalysisError> {
+        if self == incoming {
+            Ok(false)
+        } else {
+            Err(input::unsupported(
+                "join of distinct PCG states is not implemented",
+            ))
+        }
+    }
+
     pub fn new(body: &u::ExprBody, program: &Program) -> Result<Self, AnalysisError> {
         let mut references = BTreeMap::new();
         for (id, local) in body.locals.locals.iter_enumerated() {
@@ -318,7 +334,28 @@ impl State {
         &mut self,
         live: &BTreeSet<LocalId>,
         actions: &mut Vec<AppliedAction>,
+        borrowck: &borrowck::BorrowContext<'_>,
+        location: Location,
+        queries: &mut Vec<BorrowckQuery>,
     ) -> Result<(), AnalysisError> {
+        let mut active = BTreeSet::new();
+        for edge in &self.graph.edges {
+            if let Edge::Borrow {
+                location: creation, ..
+            } = edge
+            {
+                let loan = borrowck.loan(*creation).id;
+                let result = borrowck.in_scope(*creation, location);
+                queries.push(BorrowckQuery::LoanInScope {
+                    loan,
+                    location,
+                    result,
+                });
+                if result {
+                    active.insert(*creation);
+                }
+            }
+        }
         let read_leaves: Vec<_> = self
             .graph
             .capabilities
@@ -348,6 +385,11 @@ impl State {
                 .edges
                 .iter()
                 .find(|edge| {
+                    // Conservative compiler guard in addition to ULLBC liveness
+                    // and dependency leaves; never release an in-scope loan.
+                    if matches!(edge, Edge::Borrow {location, ..} if active.contains(location)) {
+                        return false;
+                    }
                     if !self.graph.is_leaf(edge.target()) {
                         return false;
                     }
@@ -599,8 +641,10 @@ impl State {
         location: Location,
         phase: EvalStmtPhase,
         live: &BTreeSet<LocalId>,
+        borrowck: &borrowck::BorrowContext<'_>,
     ) -> Result<PhaseResult, AnalysisError> {
         let before = self.graph();
+        let mut borrowck_queries = Vec::new();
         let snapshot = Snapshot { location, phase };
         let mut actions = Vec::new();
         let triples = if phase.is_operands_stage() {
@@ -610,7 +654,13 @@ impl State {
         };
         if phase == EvalStmtPhase::PreOperands {
             self.operand_projection = None;
-            self.pack(live, &mut actions)?;
+            self.pack(
+                live,
+                &mut actions,
+                borrowck,
+                location,
+                &mut borrowck_queries,
+            )?;
         }
         match phase {
             EvalStmtPhase::PreOperands | EvalStmtPhase::PreMain => {
@@ -680,8 +730,17 @@ impl State {
                             } else {
                                 OperandKind::Copy
                             };
-                            // Unique lifetime occurrence in &scalar -> &scalar. No
-                            // general outlives query is inferred from region IDs.
+                            let result = borrowck.outlives(from.reference, target);
+                            borrowck_queries.push(BorrowckQuery::Outlives {
+                                from: from.reference,
+                                to: target,
+                                result,
+                            });
+                            if !result {
+                                return Err(invalid(
+                                    "rustc outlives does not justify reference flow",
+                                ));
+                            }
                             self.emit(
                                 Action::AddEdge {
                                     edge: Edge::BorrowFlow {
@@ -699,6 +758,7 @@ impl State {
             }
         }
         Ok(PhaseResult {
+            borrowck_queries,
             phase,
             before,
             actions,

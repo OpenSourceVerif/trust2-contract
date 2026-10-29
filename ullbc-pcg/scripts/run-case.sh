@@ -16,7 +16,7 @@ if [[ ${1:-} != --fixture ]]; then
   cargo +"$toolchain" build --locked --manifest-path charon/charon/Cargo.toml --bin charon --bin charon-driver
   charon_target=$(cargo +"$toolchain" metadata --no-deps --format-version 1 --manifest-path charon/charon/Cargo.toml |
     python3 -c 'import json,sys; print(json.load(sys.stdin)["target_directory"])')
-  "$charon_target/debug/charon" rustc --ullbc --mir promoted --sysroot default \
+  "$charon_target/debug/charon" rustc --ullbc --export-borrowck --mir promoted --sysroot default \
     --dest-file ullbc-pcg/tests/fixtures/mutable_borrow.ullbc -- \
     --crate-type lib --crate-name ullbc_pcg_case ullbc-pcg/tests/fixtures/mutable_borrow.rs
 fi

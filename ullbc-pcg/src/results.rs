@@ -63,6 +63,7 @@ pub struct AppliedAction {
 pub struct PhaseResult {
     pub phase: EvalStmtPhase,
     pub before: Graph,
+    pub borrowck_queries: Vec<BorrowckQuery>,
     pub actions: Vec<AppliedAction>,
     pub after: Graph,
 }
@@ -72,6 +73,8 @@ pub struct PointResult {
     pub initial: Graph,
     pub phases: Vec<PhaseResult>,
     pub live_references_after: Vec<LocalId>,
+    pub loans_before: Vec<usize>,
+    pub loans_after: Vec<usize>,
 }
 impl PointResult {
     pub fn phase(&self, phase: EvalStmtPhase) -> &PhaseResult {
@@ -96,6 +99,7 @@ pub struct LocalInfo {
 pub struct Analysis {
     pub locals: Vec<LocalInfo>,
     pub points: Vec<PointResult>,
+    pub blocks: Vec<BlockResult>,
 }
 impl Analysis {
     pub fn at(&self, location: Location) -> Option<&PointResult> {
@@ -141,3 +145,24 @@ impl fmt::Display for AnalysisError {
     }
 }
 impl std::error::Error for AnalysisError {}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct BlockResult {
+    pub block: u::BlockId,
+    pub successors: Vec<u::BlockId>,
+    pub entry: Graph,
+    pub exit: Graph,
+}
+#[derive(Clone, Debug, Serialize)]
+pub enum BorrowckQuery {
+    LoanInScope {
+        loan: usize,
+        location: Location,
+        result: bool,
+    },
+    Outlives {
+        from: LocalId,
+        to: LocalId,
+        result: bool,
+    },
+}

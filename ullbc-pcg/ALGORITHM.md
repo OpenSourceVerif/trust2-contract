@@ -64,14 +64,21 @@ lifetime projection、按需展开和旧值依赖，已删除这一路径。
 - **AST、位置和类型**：使用 Charon LocalId/RegionId、Statement/Terminator 和 source span。
   `input.rs` 先验证类型与操作；本版只接受 Body region 的直接 `&scalar` / `&mut scalar`。
 - **StorageLive**：Charon `ast/ullbc_ast.rs` 明确定义已分配时释放并重新分配，且插入 return local
-  的 StorageLive。初始分配状态与 PreMain 的存储适配遵循此定义；重新分配前仍须取得权限。
+  的 StorageLive。开启借用信息导出也执行相同的正常转换流程；元数据随插入的位置更新。初始分配状态与 PreMain 的存储适配遵循此定义；重新分配前仍须取得权限。
   已释放位置的 StorageDead 按 Charon 定义无效果。
-- **活跃性**：`liveness.rs` 从 ULLBC use/def 计算当前封闭直线路径上的引用活跃性，提供原
+- **活跃性**：`liveness.rs` 从 ULLBC use/def 在基本块 CFG 上用反向工作队列计算引用活跃性，提供原
   pack 规则需要的 dead 查询。原 PCG 也有基于 MIR 的 liveness（`src/utils/liveness.rs`）；
   此处不伪造 rustc NLL facts。StorageLive 在 ULLBC 中重置旧存储，因此杀死旧局部值的活跃性。
-- **区域关系**：普通 `.ullbc` 不提供原 rustc borrow-checker context。当前仅对已验证的
-  `&scalar → &scalar` 赋值连接唯一 lifetime occurrence；不根据 RegionId 大小/相等猜一般
-  outlives 关系。多个 lifetime occurrence、引用嵌套、跨过程关系不在此适配能力内。
+- **借用查询**：`Charon --export-borrowck` 调用 rustc consumer API，取得同一份 MIR 的
+  `BorrowSet` / `RegionInferenceContext`，运行 rustc `Borrows` 数据流得到 primary effect 前后的作用域。
+  记录转换时的 ULLBC 位置，再导出；分析器本身不链接 rustc。
+  引用赋值只有在 rustc `eval_outlives(source, target)` 成立时才建立 BorrowFlow。
+  ULLBC 的 `Region::Body` 和编译器 region 编号使用不同命名空间，以 local 的绑定表连接。
+- **回收范围**：保留 ULLBC liveness 和依赖叶条件，并额外要求对应 loan 不在编译器作用域内才删除 Borrow 边。
+  这是本轮保守约束，**不是声称原 MIR-PCG 的 dead 查询等同于 loan 不在作用域内**。
+  上游 NLL 路径仍使用自身 place liveness；这里可能比完整上游更保守。
+  rustc 的 before/after primary effect 不等于四阶段边界。目前 transfer 只在 PreOperands 使用 before；
+  after 用于结果检查/展示，不能拿它冒充 PreMain 的编译器状态。
 - **Retag**：Charon 普通赋值附带 WithRetag；当前跟踪权限图，不解释指针 provenance tag。
 
 以上输入适配不改变四阶段、权限偏序、当前操作 Triple 或 Borrow/Deref/Flow 的职责。
@@ -79,14 +86,55 @@ lifetime projection、按需展开和旧值依赖，已删除这一路径。
 ## 4. 尚未移植，不是 ULLBC 差异
 
 通用 obtain/unblock（含同一语句内借用最后使用后写回 owner）、reborrow、嵌套投影、
-函数摘要、region inference、CFG join/fixpoint、循环和路径条件均未移植。
+函数摘要、一般 PCG join、循环图抽象和路径条件均未移植。region inference 由 rustc 提供，
+不在 ULLBC-PCG 中重新求解。CFG worklist、块入口/出口、变化检测、join 调用点以及活跃性不动点
+已实现；PCG 的 join 只接受相等状态，输入验证明确排除分支和循环，不能据此宣称支持循环 PCG。
 不支持的 AST 会报 Unsupported；受限 obtain 无法满足的条件报 CapabilityUnavailable 并带阶段。
 因此错误不等同于证明 Rust 程序非法；合法但超出 obtain 能力的输入仍可能被拒绝。
 
 当前没有形式化等价证明，也没有用 MIR-PCG 运行结果做差分验证。测试根据上述源码规则
-直接写出阶段/边/权限预期，并用非法 ULLBC 检查拒绝行为。这能防止已覆盖规则退化，
+直接写出阶段/边/权限预期，并检查修改 ULLBC 后拒绝旧元数据、修改 loan 作用域和 outlives 后决策随之改变。这能防止已覆盖规则退化，
 不能代替完整算法正确性证明。下一次扩展应继续逐条移植上游所需路径并补对应测试，
 而不是增加与上游不一致的捷径。
+
+## 5. Charon 导出契约
+
+`TranslatedCrate.borrowck: Option<BorrowckData>`，其中 `bodies` 的每个元素由 `function_id`
+关联一个函数。函数级容器不会丢失语句信息：`points` 覆盖每条 ULLBC statement 和 terminator，
+位置为 `(ULLBC BlockId, statement_index)`，terminator 的 index 等于该块语句数。
+
+- `loans`：loan ID、ULLBC 创建位置、borrowed/assigned local、借用种类、编译器 region。
+- `points`：before/after loan 集合；这些是 rustc 的作用域状态，不是全部 Polonius 关系。
+- `reference_regions` / `outlives`：局部引用对应的编译器 region，以及这些 region 与 loan region 间已求值的 outlives 关系。
+- `body_fingerprint`：导出 body 的确定性校验值，防止清理/编辑后的 body 与旧事实混用；不是防篡改签名。
+- `unsupported`：适配器无法忠实表达时的显式原因。不会用空 facts 假装支持。
+
+导出契约为 `ullbc-final-borrowck-v2`。从 borrowck body 的副本翻译，只擦除副本上的 region 名称，原 NLL body/context
+保留用于查询。禁止 optimized MIR fallback；mono、precise-drops、multi-target 和 const 函数尚不支持。
+
+正常 Charon 转换全部执行，不因借用信息改变 AST 或跳过清理。初始翻译记录 MIR 操作的 ULLBC 锚点；
+转换中的位置更新由具体 pass 使用它实际执行的映射维护：存储标记与 unit 初始化插入、goto 合并、
+返回块复制、不可达块清理、块重编号、local 重编号、Nop 删除。标量指针 metadata 和 literal/unit
+常量规范化保持程序点；可能增加操作的其他常量降低明确 Unsupported。新插入的无 loan 效果操作
+使用插入边界处下一条原操作的 before 集合，并标记 synthetic。不能用上一操作的 after 集合
+替代这个集合，因为 NLL 可能在两者之间结束 loan。
+
+每个 pass 后核查 body 指纹；没有适配器的变换如果修改了 body，借用信息会标记 Unsupported，
+仍输出正常 Charon 结果。只有类型区域统一和注释恢复这两类已审核的纯位置保持 pass 直接刷新指纹。
+一对多 MIR 翻译、被删除的 loan 创建以及其他未支持变换同样拒绝借用分析；不猜测对应关系。
+PCG 导出拒绝旧的冻结契约。直接分析接口仍验证最终 body 指纹和每个 loan/point/local 的对应关系。
+
+不要求 `--ullbc` 才能使用 `--export-borrowck`：未指定时，正常 LLBC 结构化仍执行。
+当前 LLBC 的借用信息明确标记不可用，并清除 ULLBC 程序点，不能拿 ULLBC 位置冒充 LLBC 位置。
+
+## 6. 本轮验收用例
+
+原始 `mutable_borrow` 保持默认展示；另外自建 `repeated_write`、`sequential_borrows`、
+`goto_borrow`（正常清理后合并为一个块）、`two_shared`、`unit_result`、`removed_unit_before_borrow`。已有的 shared/move/copy/scalar 参数
+用例重新提取为带借用信息的输入。branch/cycle/reborrow 用例必须拒绝。测试不证明数值计算结果，
+LLBC 只验证正常生成，未集成 LLBC-PCG、Why3 或函数契约证明。
+另有求解器级测试把最终 ULLBC 在借用之后拆成两个块，并同步搬移借用信息，验证跨 goto 的状态传播；
+该测试明确使用构造 CFG，不冒充 Charon 对该源程序的默认导出。
 
 ## 来源说明
 

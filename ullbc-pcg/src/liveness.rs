@@ -1,45 +1,128 @@
+//! Backward local-reference liveness, solved on the ULLBC CFG.
 use crate::{
-    Place,
+    Location, Place,
     input::{Operand, Operation, Program, Rhs},
 };
 use charon_lib::ast::LocalId;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 pub(crate) struct Liveness {
-    pub before: Vec<BTreeSet<LocalId>>,
-    pub after: Vec<BTreeSet<LocalId>>,
+    pub before: BTreeMap<Location, BTreeSet<LocalId>>,
+    pub after: BTreeMap<Location, BTreeSet<LocalId>>,
 }
 
-/// Exact local use/def liveness for the supported straight-line fragment. It is
-/// not a general replacement for NLL: lower() rejects every reference escape.
 pub(crate) fn compute(program: &Program) -> Liveness {
-    let mut live = BTreeSet::new();
-    let mut before = vec![BTreeSet::new(); program.operations.len()];
-    let mut after = vec![BTreeSet::new(); program.operations.len()];
-    for (index, (_, op)) in program.operations.iter().enumerate().rev() {
-        after[index] = live.clone();
-        match op {
-            Operation::Allocate(id) | Operation::Deallocate(id) => {
-                live.remove(id);
-            }
-            Operation::Assign(target, rhs) => {
-                match target {
-                    Place::Local(id) => {
-                        live.remove(id);
+    let mut entries: BTreeMap<_, BTreeSet<LocalId>> = program
+        .blocks
+        .keys()
+        .map(|id| (*id, BTreeSet::new()))
+        .collect();
+    let mut pending: VecDeque<_> = program.blocks.keys().copied().collect();
+    let mut queued: BTreeSet<_> = pending.iter().copied().collect();
+    let mut before = BTreeMap::new();
+    let mut after = BTreeMap::new();
+    while let Some(id) = pending.pop_front() {
+        queued.remove(&id);
+        let block = &program.blocks[&id];
+        let mut live: BTreeSet<_> = block
+            .successors
+            .iter()
+            .flat_map(|s| entries[s].iter().copied())
+            .collect();
+        for (statement_index, op) in block.operations.iter().enumerate().rev() {
+            let location = Location {
+                block: id,
+                statement_index,
+            };
+            after.insert(location, live.clone());
+            match op {
+                Operation::Allocate(id) | Operation::Deallocate(id) => {
+                    live.remove(id);
+                }
+                Operation::Assign(target, rhs) => {
+                    match target {
+                        Place::Local(id) => {
+                            live.remove(id);
+                        }
+                        Place::Deref(id) => {
+                            live.insert(*id);
+                        }
                     }
-                    Place::Deref(id) => {
-                        live.insert(*id);
+                    if let Rhs::Use(Operand::Copy(p) | Operand::Move(p)) = rhs {
+                        let (Place::Local(id) | Place::Deref(id)) = p;
+                        if program.references.contains(id) {
+                            live.insert(*id);
+                        }
                     }
                 }
-                if let Rhs::Use(Operand::Copy(p) | Operand::Move(p)) = rhs {
-                    let (Place::Local(id) | Place::Deref(id)) = p;
-                    if program.references.contains(id) {
-                        live.insert(*id);
-                    }
-                }
+                _ => {}
             }
-            _ => {}
+            before.insert(location, live.clone());
         }
-        before[index] = live.clone();
+        if entries[&id] != live {
+            entries.insert(id, live);
+            for predecessor in &block.predecessors {
+                if queued.insert(*predecessor) {
+                    pending.push_back(*predecessor);
+                }
+            }
+        }
     }
     Liveness { before, after }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::input::Block;
+    use charon_lib::ullbc_ast::BlockId;
+
+    #[test]
+    fn backward_worklist_reaches_a_fixed_point_on_a_cycle() {
+        let a = BlockId::from(0);
+        let b = BlockId::from(1);
+        let r = LocalId::from(2);
+        let program = Program {
+            blocks: BTreeMap::from([
+                (
+                    a,
+                    Block {
+                        operations: vec![Operation::Goto],
+                        successors: vec![b],
+                        predecessors: vec![b],
+                    },
+                ),
+                (
+                    b,
+                    Block {
+                        operations: vec![
+                            Operation::Assign(
+                                Place::Local(LocalId::from(0)),
+                                Rhs::Use(Operand::Copy(Place::Deref(r))),
+                            ),
+                            Operation::Goto,
+                        ],
+                        successors: vec![a],
+                        predecessors: vec![a],
+                    },
+                ),
+            ]),
+            references: BTreeSet::from([r]),
+            explicit_storage: BTreeSet::new(),
+        };
+        let live = compute(&program);
+        assert_eq!(
+            live.before[&Location {
+                block: a,
+                statement_index: 0
+            }],
+            BTreeSet::from([r])
+        );
+        assert_eq!(
+            live.after[&Location {
+                block: b,
+                statement_index: 1
+            }],
+            BTreeSet::from([r])
+        );
+    }
 }

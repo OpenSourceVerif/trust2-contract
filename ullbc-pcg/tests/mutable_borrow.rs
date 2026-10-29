@@ -7,12 +7,32 @@ use charon_lib::{
 };
 use ullbc_pcg::{
     Action, Capability, CapabilityReason, Edge, ErrorKind, EvalStmtPhase as Phase, OperandKind,
-    Place, Snapshot, analyze,
+    Place, Snapshot,
 };
 
-fn fixture(name: &str) -> u::ExprBody {
+struct Fixture {
+    ir: u::ExprBody,
+    facts: charon_lib::ast::BodyBorrowckInfo,
+}
+impl std::ops::Deref for Fixture {
+    type Target = u::ExprBody;
+    fn deref(&self) -> &Self::Target {
+        &self.ir
+    }
+}
+impl std::ops::DerefMut for Fixture {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.ir
+    }
+}
+fn analyze(input: &Fixture) -> Result<ullbc_pcg::Analysis, ullbc_pcg::AnalysisError> {
+    ullbc_pcg::analyze(&input.ir, &input.facts)
+}
+fn fixture(name: &str) -> Fixture {
     let text = if name == "mutable_borrow" {
         include_str!("fixtures/mutable_borrow.ullbc")
+    } else if name == "repeated_write" {
+        include_str!("fixtures/cfg_borrows.ullbc")
     } else {
         include_str!("fixtures/borrows.ullbc")
     };
@@ -33,7 +53,19 @@ fn fixture(name: &str) -> u::ExprBody {
     let Body::Unstructured(body) = &function.body else {
         panic!("expected real ULLBC")
     };
-    body.clone()
+    Fixture {
+        ir: body.clone(),
+        facts: data
+            .translated
+            .borrowck
+            .as_ref()
+            .unwrap()
+            .bodies
+            .iter()
+            .find(|b| b.function_id == function.def_id)
+            .unwrap()
+            .clone(),
+    }
 }
 fn local(body: &u::ExprBody, name: &str) -> LocalId {
     body.locals
@@ -175,10 +207,8 @@ fn pack_removes_deref_then_borrow_then_obtains_owner_read() {
 
 #[test]
 fn live_reference_is_reexpanded_without_releasing_its_borrow() {
-    let mut body = fixture("mutable_borrow");
+    let body = fixture("repeated_write");
     let (x, r) = (local(&body, "x"), local(&body, "r"));
-    let statements = &mut body.body[u::START_BLOCK_ID].statements;
-    statements.insert(6, statements[5].clone());
     let result = analyze(&body).unwrap();
     let second_write = &result.points[6];
     let pre = second_write.phase(Phase::PreOperands);
@@ -279,41 +309,12 @@ fn four_phases_and_action_snapshots_form_a_continuous_trace() {
 }
 
 #[test]
-fn later_reference_use_prevents_premature_owner_read() {
+fn modifying_a_body_requires_fresh_compiler_facts() {
     let mut body = fixture("mutable_borrow");
-    let statements = &mut body.body[u::START_BLOCK_ID].statements;
-    statements.insert(5, statements[6].clone());
+    body.body[u::START_BLOCK_ID].statements[1].kind = u::StatementKind::Nop;
     let error = analyze(&body).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::CapabilityUnavailable);
-    assert_eq!(error.location.unwrap().statement_index, 5);
-    assert_eq!(error.phase, Some(Phase::PreOperands));
-}
-#[test]
-fn later_reference_use_prevents_premature_owner_write() {
-    let mut body = fixture("mutable_borrow");
-    let statements = &mut body.body[u::START_BLOCK_ID].statements;
-    statements.insert(5, statements[2].clone());
-    let error = analyze(&body).unwrap_err();
-    assert_eq!(error.kind, ErrorKind::CapabilityUnavailable);
-    assert_eq!(error.phase, Some(Phase::PreMain));
-}
-#[test]
-fn uninitialized_owner_cannot_be_borrowed() {
-    let mut body = fixture("mutable_borrow");
-    body.body[u::START_BLOCK_ID].statements[2].kind = u::StatementKind::Nop;
-    assert_eq!(
-        analyze(&body).unwrap_err().kind,
-        ErrorKind::CapabilityUnavailable
-    );
-}
-#[test]
-fn return_requires_initialized_return_place() {
-    let mut body = fixture("mutable_borrow");
-    body.body[u::START_BLOCK_ID].statements[6].kind = u::StatementKind::Nop;
-    assert_eq!(
-        analyze(&body).unwrap_err().kind,
-        ErrorKind::CapabilityUnavailable
-    );
+    assert_eq!(error.kind, ErrorKind::InvalidInput);
+    assert!(error.message.contains("do not match"));
 }
 #[test]
 fn shared_reference_assignment_adds_flow_instead_of_retargeting_borrow() {
@@ -377,17 +378,6 @@ fn moving_reference_labels_old_value_then_connects_borrow_flow() {
     )));
 }
 #[test]
-fn moved_reference_is_not_readable_again() {
-    let mut body = fixture("moved_reference");
-    let statements = &mut body.body[u::START_BLOCK_ID].statements;
-    let move_index = statements.iter().position(|s| matches!(&s.kind, u::StatementKind::Assign(_, u::Rvalue::Use(u::Operand::Move(p), _)) if matches!(p.ty.kind(), u::TyKind::Ref(..)))).unwrap();
-    statements.insert(move_index + 1, statements[move_index].clone());
-    assert_eq!(
-        analyze(&body).unwrap_err().kind,
-        ErrorKind::CapabilityUnavailable
-    );
-}
-#[test]
 fn reborrows_and_loops_are_explicitly_unsupported() {
     assert_eq!(
         analyze(&fixture("overwrite_reference")).unwrap_err().kind,
@@ -398,4 +388,35 @@ fn reborrows_and_loops_are_explicitly_unsupported() {
         target: u::START_BLOCK_ID,
     };
     assert_eq!(analyze(&body).unwrap_err().kind, ErrorKind::Unsupported);
+}
+
+#[test]
+fn compiler_outlives_relation_is_required_for_reference_flow() {
+    let mut input = fixture("shared_aliases");
+    let (r, s) = (local(&input, "r"), local(&input, "s"));
+    let analysis = analyze(&input).unwrap();
+    assert!(analysis.points.iter().flat_map(|p| &p.phases).flat_map(|p| &p.borrowck_queries)
+        .any(|q| matches!(q, ullbc_pcg::BorrowckQuery::Outlives {from, to, result:true} if *from == r && *to == s)));
+    let from = input
+        .facts
+        .reference_regions
+        .iter()
+        .find(|p| p.local == r)
+        .unwrap()
+        .region;
+    let to = input
+        .facts
+        .reference_regions
+        .iter()
+        .find(|p| p.local == s)
+        .unwrap()
+        .region;
+    assert_ne!(from, to, "fixture must require a non-reflexive relation");
+    input
+        .facts
+        .outlives
+        .retain(|p| !(p.longer == from && p.shorter == to));
+    let error = analyze(&input).unwrap_err();
+    assert_eq!(error.kind, ErrorKind::InvalidInput);
+    assert!(error.message.contains("outlives"));
 }

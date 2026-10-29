@@ -27,8 +27,10 @@ export default function UllbcGraph({ data, selected, select, showActions }: { da
     y += 90 + entries.reduce((height, e) => height + 32 + (showActions ? e.point.action_labels.length * 15 : 0), 0);
     return node;
   });
-  // The accepted fragment is a single goto chain; order is the actual traversal.
-  const edges = nodes.slice(1).map((node, i) => ({ id: `edge-${i}`, source: nodes[i].id, target: node.id, markerEnd: { type: MarkerType.ArrowClosed } }));
+  const edges = data.blocks.flatMap(block => block.successors.map(target => ({
+    id: `edge-${block.block}-${target}`, source: String(block.block), target: String(target),
+    markerEnd: { type: MarkerType.ArrowClosed },
+  })));
   return <ReactFlow nodes={nodes} edges={edges} nodeTypes={nodeTypes} fitView
     minZoom={0.3} maxZoom={2} nodesConnectable={false} fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}>
     <Background /><Controls showInteractive={false} />

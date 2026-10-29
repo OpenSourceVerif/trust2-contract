@@ -71,7 +71,8 @@ export default function App({ data }: { data: Analysis }) {
           <code>{point.statement}</code><div>{currentStep.label}</div>
           <p>{graph.capabilities.length} capabilities · {graph.edges.filter(e => e.kind === "Borrow").length} active borrows</p>
           <div>E: exclusive · e: shallow exclusive · R: read · W: write · ∅: none</div>
-          <div>Orange: borrow · Green: deref · Purple: reference flow · Blue: lifetime projection</div>
+          <div>Orange: borrow · Green: deref · Purple: reference flow · Blue: lifetime projection · Grey dashed: derived alias</div>
+          <div>Node regions / locations: ULLBC · Borrow edge bw / '? IDs: rustc · Hover for details</div>
         </div>
       </section>
     </main>

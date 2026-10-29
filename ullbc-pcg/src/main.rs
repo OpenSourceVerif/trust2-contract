@@ -1,14 +1,25 @@
 use charon_lib::{
-    export::CrateData, formatter::IntoFormatter, options::SerializationFormat, pretty::FmtWithCtx,
+    ast::Body, export::CrateData, formatter::IntoFormatter, options::SerializationFormat,
+    pretty::FmtWithCtx,
 };
 use std::{env, path::Path};
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = env::args().skip(1).collect();
-    if args.len() != 5 || args[1] != "--function" || args[3] != "--output" {
-        return Err("usage: ullbc-pcg INPUT.ullbc --function NAME --output DIRECTORY".into());
+    let usage = "usage: ullbc-pcg INPUT.ullbc [--function NAME] --output DIRECTORY";
+    let (input, options) = args.split_first().ok_or(usage)?;
+    let (mut function, mut output) = (None, None);
+    let mut options = options.iter();
+    while let Some(option) = options.next() {
+        let value = options.next().ok_or(usage)?;
+        match option.as_str() {
+            "--function" if function.is_none() => function = Some(value),
+            "--output" if output.is_none() => output = Some(value),
+            _ => return Err(usage.into()),
+        }
     }
-    let data = CrateData::deserialize_from_file(Path::new(&args[0]), SerializationFormat::Json)?;
+    let output_dir = output.ok_or(usage)?;
+    let data = CrateData::deserialize_from_file(Path::new(input), SerializationFormat::Json)?;
     if data.has_errors {
         return Err("Charon reported extraction errors; refusing partial input".into());
     }
@@ -17,25 +28,29 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let matches: Vec<_> = krate
         .fun_decls
         .iter()
+        .filter(|f| matches!(&f.body, Body::Unstructured(_)))
         .filter(|f| {
             let name = f.item_meta.name.to_string_with_ctx(&fmt);
-            name == args[2] || name.rsplit("::").next() == Some(args[2].as_str())
+            function.is_none_or(|wanted| {
+                name == *wanted || name.rsplit("::").next() == Some(wanted.as_str())
+            })
         })
         .collect();
     if matches.len() != 1 {
         return Err(format!(
-            "expected one function matching {:?}, found {}",
-            args[2],
-            matches.len()
+            "expected one function matching {:?}, found {}. Use --function NAME. Available functions: {}",
+            function, matches.len(),
+            krate.fun_decls.iter().filter(|f| matches!(&f.body, Body::Unstructured(_)))
+                .map(|f| f.item_meta.name.to_string_with_ctx(&fmt)).collect::<Vec<_>>().join(", ")
         )
         .into());
     }
-    let output = ullbc_pcg::export::write(krate, matches[0], Path::new(&args[4]))?;
+    let output = ullbc_pcg::export::write(krate, matches[0], Path::new(output_dir))?;
     println!(
         "Analyzed {}: {} ULLBC locations → {}/analysis.json",
         output.name,
         output.points.len(),
-        args[4]
+        output_dir
     );
     Ok(())
 }
