@@ -1,6 +1,7 @@
 // Controls and colors adapted from MIR-PCG PCGNavigator.tsx (ISC).
 import React, { useEffect, useRef } from "react";
 import { Point } from "../types";
+import { dataUrl } from "../api";
 
 export default function PCGNavigator({ point, selectedStep, selectStep, previous, next, first, last, graphFile }: {
   point: Point; selectedStep: number; selectStep: (index: number) => void;
@@ -34,7 +35,7 @@ export default function PCGNavigator({ point, selectedStep, selectStep, previous
         <button disabled={last} onClick={next}>Next →</button>
       </div>
     </div>
-    <a className="open-graph" href={`data/${graphFile}`} target="_blank" rel="noreferrer">Open Current DOT</a>
+    <a className="open-graph" href={dataUrl(graphFile)} target="_blank" rel="noreferrer">Open Current DOT</a>
     <div className="navigator-footer">Press ‘q’ / ‘a’ to navigate phases and actions</div>
   </aside>;
 }

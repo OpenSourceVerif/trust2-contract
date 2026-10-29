@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ULLBC-PCG · Rust 输入</title>
+<style>
+body { font: 15px/1.6 system-ui,sans-serif; color:#222; background:#f5f5f5; margin:0; }
+main { max-width:900px; margin:20px auto; padding:24px; background:white; border:1px solid #ddd; }
+h1 { margin:0 0 12px; font-size:25px; } label { display:block; margin:12px 0 6px; font-weight:600; }
+textarea { width:100%; min-height:200px; box-sizing:border-box; font:14px/1.6 monospace; padding:12px; border:1px solid #aaa; }
+input[type=text] { padding:8px; width: min(360px,90%); } button { background:#007acc; border:0; border-radius:4px; color:white; padding:10px 20px; cursor:pointer; margin-top:20px; font-size:15px; }
+button:disabled { opacity:.6; } .note { color:#555; } #status { margin-left:16px; }
+@media(max-width:700px) { main { margin:12px; padding:18px; } }
+</style>
+<main>
+<h1>ULLBC-PCG</h1>
+<p>输入或上传 Rust 文件，经 Charon 提取 ULLBC 和借用检查信息后独立构建 PCG。</p>
+<p class="note">目前支持标量、直接共享/可变引用及 goto 基本块链。暂不支持调用、reborrow、分支和循环。独立文件不会自动加载 Cargo 项目依赖。</p>
+<form method="post" action="/upload" id="analysis-form">
+<label for="source-file">上传 Rust 文件</label>
+<input id="source-file" type="file" accept=".rs">
+<label for="code">Rust 代码</label>
+<textarea id="code" name="code" required spellcheck="false">pub fn mutable_borrow() -> i32 {
+    let mut x = 0;
+    let r = &amp;mut x;
+    *r = 1;
+    x
+}</textarea>
+<label for="function">函数名（可选）</label>
+<input id="function" name="function" type="text" placeholder="例如 mutable_borrow">
+<p class="note">只有一个函数时自动选择；有多个函数时请指定短名称或完整路径。</p>
+<button id="submit" type="submit">分析并查看 PCG</button><span id="status" role="status"></span>
+</form>
+</main>
+<script>
+const fileInput = document.getElementById('source-file');
+const submit = document.getElementById('submit');
+fileInput.addEventListener('change', async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  submit.disabled = true;
+  try { document.getElementById('code').value = await file.text(); }
+  catch { document.getElementById('status').textContent = '文件读取失败，请重新选择。'; }
+  finally { submit.disabled = false; }
+});
+document.getElementById('analysis-form').addEventListener('submit', () => {
+  submit.disabled = true;
+  document.getElementById('status').textContent = '正在提取 ULLBC 并分析…';
+});
+window.addEventListener('pageshow', () => { submit.disabled = false; document.getElementById('status').textContent = ''; });
+</script>
+</html>

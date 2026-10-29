@@ -13,9 +13,59 @@ Rust → Charon --export-borrowck → ULLBC + 借用信息
 
 ## 运行
 
-在工作区 `repo/` 中：
+在外层 `trust2-contract-workspace/` 根目录使用两个入口（与 `repo/`、`pcg/` 同级）：
 
 ```sh
+./ullbc-pcg-view [--no-open] [--function NAME] [文件.rs]
+./mir-pcg-view   [--no-open] [--polonius] [文件.rs]
+```
+
+两者均不传文件时打开代码输入/上传页；传入 `.rs` 时分析该文件并打开此次结果链接。
+服务在后台运行，再次调用复用已有服务。修改代码后再运行，会生成新结果，旧链接仍可访问。
+输入页的默认代码和静态展示均保留最初的 `mutable_borrow` 案例。传入 Rust 文件会重新提取。
+
+```sh
+./ullbc-pcg-view
+./ullbc-pcg-view ./repo/ullbc-pcg/tests/fixtures/mutable_borrow.rs
+./ullbc-pcg-view --function shared_borrow ./repo/ullbc-pcg/tests/fixtures/borrows.rs
+./ullbc-pcg-view --no-open --port 5181 ./repo/ullbc-pcg/tests/fixtures/mutable_borrow.rs
+./mir-pcg-view ./pcg/test-files/001_basic.rs
+```
+
+ULLBC 默认地址是 <http://127.0.0.1:5180/>，MIR 默认地址是 <http://localhost:4000/>。
+ULLBC 只有一个可提取的函数体时自动选择；多个时用 `--function` 或网页中的函数名指定。
+输入路径相对于调用者的当前目录，支持绝对路径和带空格的路径。两者都面向独立 Rust 文件，
+不自动处理 Cargo 项目的外部依赖；ULLBC 仍受当前算法子集限制。
+MIR 的 `--polonius` 不适用于独立的 ULLBC 分析。
+
+ULLBC 首次启动需要 Cargo/rustup、Node.js（带 npm）、Python 3（3.9+）、curl 和以下工具链。
+无需预装 pnpm：已有依赖与锁文件一致时直接构建，否则优先使用 pnpm，未安装时通过
+`npm exec` 临时调用固定版本 pnpm（11.25.0，需要 Node.js 22.13+），不会全局安装。
+首次下载依赖需要网络：
+
+```sh
+rustup toolchain install nightly-2026-06-01 --profile minimal --component rustc-dev
+```
+
+MIR 使用原 `pcg-view.sh` 的官方 PCG 服务流程、工具链和 npm 依赖；默认查找工作区中的
+`pcg/`，也可以通过 `PCG_ROOT=/绝对路径/pcg ./mir-pcg-view` 指定 checkout。
+
+ULLBC 日志/PID 位于 `repo/target/pcg-viewer/ullbc/server-5180.{log,pid}`（随端口变化），
+MIR 日志/PID 位于 `repo/target/pcg-viewer/mir/pcg-server.{log,pid}`。
+关闭终端不会停止服务；需要停止 ULLBC 时运行：
+
+```sh
+kill "$(cat repo/target/pcg-viewer/ullbc/server-5180.pid)"
+```
+
+修改分析器或前端源码后，先停止服务，再运行入口以重新构建。单纯修改输入 `.rs` 无需重启。
+ULLBC 每次分析独立输出到 `repo/ullbc-pcg/visualization/data/runs/<id>/`，网页按链接中的
+`datasrc` 读取本次 JSON/DOT，不覆盖其他结果。该目录属于忽略的生成文件。
+
+如需分步执行，先进入 `repo/`：
+
+```sh
+cd repo
 rustup toolchain install nightly-2026-06-01 --profile minimal --component rustc-dev
 bash ullbc-pcg/scripts/run-case.sh          # 重新提取并分析
 bash ullbc-pcg/scripts/run-case.sh --fixture # 已有 ULLBC 时跳过提取
@@ -25,7 +75,7 @@ pnpm run build
 pnpm run serve
 ```
 
-浏览 <http://127.0.0.1:5180>，需要 Node.js 和 pnpm。服务只绑定本机。
+浏览 <http://127.0.0.1:5180>。以上手动分步命令使用 pnpm；一键入口会自动处理其缺失。服务只绑定本机。
 生成的 `data/`、`dist/`、`node_modules/` 不纳入版本控制。
 
 也可直接分析已有文件：
