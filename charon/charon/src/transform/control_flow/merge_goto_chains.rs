@@ -33,7 +33,8 @@ impl Antecedents {
 
 pub struct Transform;
 impl UllbcPass for Transform {
-    fn transform_body(&self, _ctx: &mut TransformCtx, body: &mut ExprBody) {
+    fn transform_body(&self, ctx: &mut TransformCtx, body: &mut ExprBody) {
+        let mut facts = super::super::borrowck::take(ctx, body);
         // Compute for each block the set of blocks that points to it.
         let mut antecedents: IndexVec<BlockId, Antecedents> =
             body.body.map_ref(|_| Antecedents::Zero);
@@ -59,6 +60,19 @@ impl UllbcPass for Transform {
                 && let TerminatorKind::Goto { target } = source.terminator.kind
                 && let Antecedents::One { .. } = antecedents[target]
             {
+                if let Some(info) = facts.as_mut() {
+                    let source_len = source.statements.len();
+                    super::super::borrowck::remap(info, |mut p| {
+                        if p.block == id && p.statement_index == source_len {
+                            return None;
+                        }
+                        if p.block == target {
+                            p.block = id;
+                            p.statement_index += source_len;
+                        }
+                        Some(p)
+                    });
+                }
                 antecedents[target] = Antecedents::Zero;
                 let mut target = mem::replace(&mut body.body[target], BlockData::new_unreachable());
                 let source = &mut body.body[id];
@@ -88,5 +102,6 @@ impl UllbcPass for Transform {
                 body.body[id] = source;
             }
         }
+        super::super::borrowck::put(ctx, body, facts);
     }
 }

@@ -8,10 +8,14 @@ use crate::ullbc_ast::*;
 
 pub struct Transform;
 impl UllbcPass for Transform {
-    fn transform_function(&self, _ctx: &mut TransformCtx, decl: &mut FunDecl) {
+    fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
         if decl.signature.output.is_unit()
             && let Some(body) = decl.body.as_unstructured_mut()
         {
+            let mut facts = crate::transform::borrowck::take(ctx, body);
+            if let Some(info) = facts.as_mut() {
+                crate::transform::borrowck::insert(info, BlockId::ZERO, 0, 1);
+            }
             let block = &mut body.body[0];
             let return_place = body.locals.return_place();
             let assign_st = Statement::new(
@@ -19,6 +23,7 @@ impl UllbcPass for Transform {
                 StatementKind::Assign(return_place, Rvalue::unit_value()),
             );
             block.statements.insert(0, assign_st);
+            crate::transform::borrowck::put(ctx, body, facts);
         }
     }
 }

@@ -49,6 +49,7 @@ pub(crate) struct BodyTransCtx<'tcx, 'tctx, 'ictx> {
     /// writing the translation functions as recursive functions. We do
     /// so because we had stack overflows in the past.
     pub blocks_stack: VecDeque<mir::BasicBlock>,
+    pub borrowck_anchors: Vec<(mir::Location, BorrowckLocation, usize)>,
 }
 
 impl<'tcx, 'tctx, 'ictx> BodyTransCtx<'tcx, 'tctx, 'ictx> {
@@ -67,6 +68,7 @@ impl<'tcx, 'tctx, 'ictx> BodyTransCtx<'tcx, 'tctx, 'ictx> {
             blocks: Default::default(),
             blocks_map: Default::default(),
             blocks_stack: Default::default(),
+            borrowck_anchors: Default::default(),
         }
     }
 }
@@ -560,17 +562,48 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
         &mut self,
         source_scopes: &rustc_index::IndexVec<mir::SourceScope, mir::SourceScopeData>,
         block: &mir::BasicBlockData<'tcx>,
+        mir_block_id: mir::BasicBlock,
+        block_id: BlockId,
     ) -> Result<BlockData, Error> {
-        // Translate the statements
+        // Record anchors only for the frozen export profile.
         let mut block_ctx = BlockTransCtx::new(self);
-        for statement in &block.statements {
+        for (index, statement) in block.statements.iter().enumerate() {
+            let start = block_ctx.statements.len();
             trace!("statement: {:?}", statement);
             block_ctx.translate_statement(source_scopes, statement)?;
+            if block_ctx.t_ctx.translated.options.export_borrowck {
+                let count = block_ctx.statements.len() - start;
+                block_ctx.borrowck_anchors.push((
+                    mir::Location {
+                        block: mir_block_id,
+                        statement_index: index,
+                    },
+                    BorrowckLocation {
+                        block: block_id,
+                        statement_index: start,
+                    },
+                    count,
+                ));
+            }
         }
 
-        // Translate the terminator
+        let start = block_ctx.statements.len();
         let terminator = block.terminator.as_ref().unwrap();
         let terminator = block_ctx.translate_terminator(source_scopes, terminator)?;
+        if block_ctx.t_ctx.translated.options.export_borrowck {
+            let count = block_ctx.statements.len() - start + 1;
+            block_ctx.borrowck_anchors.push((
+                mir::Location {
+                    block: mir_block_id,
+                    statement_index: block.statements.len(),
+                },
+                BorrowckLocation {
+                    block: block_id,
+                    statement_index: start,
+                },
+                count,
+            ));
+        }
 
         Ok(BlockData {
             statements: block_ctx.statements,
@@ -644,19 +677,58 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
         while let Some(mir_block_id) = self.blocks_stack.pop_front() {
             let mir_block = mir_body.basic_blocks.get(mir_block_id).unwrap();
             let block_id = self.translate_basic_block_id(mir_block_id);
-            let block = self.translate_basic_block(&mir_body.source_scopes, mir_block)?;
+            let block = self.translate_basic_block(
+                &mir_body.source_scopes,
+                mir_block,
+                mir_block_id,
+                block_id,
+            )?;
             self.blocks.set_slot(block_id, block);
         }
 
         // Create the body
         let comments = self.translate_body_comments(source_text, span);
-        Ok(Body::Unstructured(ExprBody {
+        let mut body = ExprBody {
             span,
             locals: self.locals,
             bound_body_regions: self.i_ctx.lifetime_freshener.take().unwrap().slot_count(),
             body: self.blocks.make_contiguous(),
             comments,
-        }))
+        };
+        if self.i_ctx.t_ctx.translated.options.export_borrowck {
+            let function = match self.i_ctx.item_id {
+                Some(ItemId::Fun(id)) => id,
+                _ => unreachable!(),
+            };
+            let local = mir_body.source.def_id().expect_local();
+            let facts = self
+                .i_ctx
+                .t_ctx
+                .borrowck_bodies
+                .get(&local)
+                .expect("matching captured MIR");
+            let info = crate::borrowck::adapt(
+                self.i_ctx.t_ctx.tcx,
+                facts,
+                function,
+                &self.locals_map,
+                &self.borrowck_anchors,
+                &mut body,
+            );
+            self.i_ctx
+                .t_ctx
+                .translated
+                .borrowck
+                .get_or_insert_with(|| BorrowckData {
+                    schema_version: 1,
+                    producer: "rustc-nll".into(),
+                    stage: "ullbc-final-borrowck-v2".into(),
+                    bodies: Vec::new(),
+                })
+                .bodies
+                .push(info);
+        }
+        Ok(Body::Unstructured(body))
     }
 }
 

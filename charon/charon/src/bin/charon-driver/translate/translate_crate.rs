@@ -985,6 +985,7 @@ pub fn translate<'tcx>(
 
     let mut ctx = TranslateCtx {
         tcx,
+        borrowck_bodies: Default::default(),
         sysroot,
         hax_state,
         options: translate_options,

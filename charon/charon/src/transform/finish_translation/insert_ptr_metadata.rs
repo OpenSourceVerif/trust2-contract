@@ -14,6 +14,19 @@ pub struct Transform;
 
 impl UllbcPass for Transform {
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
+        let mut facts = decl
+            .body
+            .as_unstructured()
+            .and_then(|b| crate::transform::borrowck::take(ctx, b));
+        let shape = decl.body.as_unstructured().map(|b| {
+            (
+                b.locals.locals.len(),
+                b.body
+                    .iter()
+                    .map(|b| b.statements.len())
+                    .collect::<Vec<_>>(),
+            )
+        });
         decl.transform_ullbc_statements(ctx, |ctx, st: &mut Statement| {
             st.dyn_visit_in_body_mut(|x: &mut Rvalue| {
                 if let Rvalue::Ref {
@@ -30,6 +43,19 @@ impl UllbcPass for Transform {
                     *ptr_metadata = ctx.compute_place_metadata(place);
                 }
             });
-        })
+        });
+        if let Some(body) = decl.body.as_unstructured() {
+            if shape
+                != Some((
+                    body.locals.locals.len(),
+                    body.body.iter().map(|b| b.statements.len()).collect(),
+                ))
+                && let Some(info) = facts.as_mut()
+            {
+                info.unsupported =
+                    Some("borrowck: pointer metadata expansion is not yet supported".into());
+            }
+            crate::transform::borrowck::put(ctx, body, facts);
+        }
     }
 }

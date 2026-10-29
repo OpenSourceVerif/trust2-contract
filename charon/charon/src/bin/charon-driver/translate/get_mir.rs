@@ -34,6 +34,55 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
     fn get_mir_inner(&mut self, item_ref: &hax::ItemRef) -> Result<Option<mir::Body<'tcx>>, Error> {
         let tcx = self.t_ctx.tcx;
         let mir_level = self.t_ctx.options.mir_level;
+        if self.t_ctx.translated.options.export_borrowck {
+            let span = Span::dummy();
+            error_assert!(
+                self,
+                span,
+                mir_level == MirLevel::Promoted,
+                "--export-borrowck requires --mir promoted"
+            );
+            let Some(local) = item_ref
+                .def_id
+                .as_real_def_id()
+                .and_then(|id| id.as_local())
+            else {
+                raise_error!(
+                    self,
+                    span,
+                    "borrowck export requires a local, non-promoted function"
+                );
+            };
+            error_assert!(
+                self,
+                span,
+                !tcx.is_const_fn(local.to_def_id()),
+                "borrowck export does not yet support const functions"
+            );
+            let root = tcx.typeck_root_def_id(local.to_def_id()).expect_local();
+            if !self.t_ctx.borrowck_bodies.contains_key(&local) {
+                error_assert!(
+                    self,
+                    span,
+                    !tcx.mir_promoted(root).0.is_stolen(),
+                    "borrowck MIR was already stolen; refusing an optimized-MIR fallback"
+                );
+                self.t_ctx.borrowck_bodies.extend(
+                    rustc_borrowck::consumers::get_bodies_with_borrowck_facts(
+                        tcx,
+                        root,
+                        rustc_borrowck::consumers::ConsumerOptions::PoloniusInputFacts,
+                    ),
+                );
+            }
+            let Some(facts) = self.t_ctx.borrowck_bodies.get(&local) else {
+                raise_error!(self, span, "rustc returned no borrowck body");
+            };
+            return Ok(Some(crate::borrowck::erase_regions(
+                tcx,
+                facts.body.clone(),
+            )));
+        }
         let def_id = &item_ref.def_id;
         Ok(match get_mir_for_def_id_and_level(tcx, def_id, mir_level) {
             Some(body) => {

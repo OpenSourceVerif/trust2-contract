@@ -43,7 +43,8 @@ fn is_return_block(block: &BlockData) -> bool {
 }
 
 impl UllbcPass for Transform {
-    fn transform_body(&self, _ctx: &mut TransformCtx, b: &mut ExprBody) {
+    fn transform_body(&self, ctx: &mut TransformCtx, b: &mut ExprBody) {
+        let mut facts = crate::transform::borrowck::take(ctx, b);
         // Find the return block id (there should be one).
         let returns: HashMap<BlockId, BlockData> = b
             .body
@@ -65,7 +66,21 @@ impl UllbcPass for Transform {
         let mut new_blocks = Vec::new();
         b.body.dyn_visit_in_body_mut(|bid: &mut BlockId| {
             if let Some(block) = returns.get(bid) {
+                let old = *bid;
                 *bid = generator.fresh_id();
+                if let Some(info) = facts.as_mut() {
+                    let copied: Vec<_> = info
+                        .points
+                        .iter()
+                        .filter(|p| p.location.block == old)
+                        .cloned()
+                        .map(|mut p| {
+                            p.location.block = *bid;
+                            p
+                        })
+                        .collect();
+                    info.points.extend(copied);
+                }
                 new_blocks.push(block.clone());
             }
         });
@@ -74,5 +89,6 @@ impl UllbcPass for Transform {
         for block in new_blocks {
             let _ = b.body.push(block);
         }
+        crate::transform::borrowck::put(ctx, b, facts);
     }
 }

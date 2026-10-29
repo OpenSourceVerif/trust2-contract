@@ -28,6 +28,10 @@ pub(crate) use charon_lib::errors::{
 pub struct TranslateCtx<'tcx> {
     /// The Rust compiler type context
     pub tcx: TyCtxt<'tcx>,
+    pub borrowck_bodies: HashMap<
+        rustc_hir::def_id::LocalDefId,
+        rustc_borrowck::consumers::BodyWithBorrowckFacts<'tcx>,
+    >,
     /// Path to the toolchain root.
     pub sysroot: PathBuf,
     /// The Hax context

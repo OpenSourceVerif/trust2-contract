@@ -1853,11 +1853,108 @@ and body_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
          Ok (ErrorBody x_0)
      | _ -> Error ("unknown enum variant tag: " ^ string_of_int __tag))
 
+
+and body_borrowck_info_of_postcard (ctx : of_postcard_ctx)
+  (st : postcard_state) =
+  (combine_error_msgs st __FUNCTION__
+     (let* function_id = fun_decl_id_of_postcard ctx st
+       in
+      let* unsupported = option_of_postcard string_of_postcard ctx st
+       in
+      let* body_fingerprint = string_of_postcard ctx st
+       in
+      let* loans = list_of_postcard borrowck_loan_of_postcard ctx st
+       in
+      let* points = list_of_postcard borrowck_point_of_postcard ctx st
+       in
+      let* reference_regions =
+        list_of_postcard borrowck_reference_region_of_postcard ctx st
+       in
+      let* outlives = list_of_postcard borrowck_outlives_of_postcard ctx st
+       in
+      Ok
+        ({
+           function_id;
+           unsupported;
+           body_fingerprint;
+           loans;
+           points;
+           reference_regions;
+           outlives
+         } : body_borrowck_info)) : (body_borrowck_info, string) result)
+and borrowck_data_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) =
+  (combine_error_msgs st __FUNCTION__
+     (let* schema_version = usize_of_postcard ctx st
+       in
+      let* producer = string_of_postcard ctx st
+       in
+      let* stage = string_of_postcard ctx st
+       in
+      let* bodies = list_of_postcard body_borrowck_info_of_postcard ctx st
+       in Ok ({ schema_version; producer; stage; bodies } : borrowck_data)) :
+  (borrowck_data, string) result)
+and borrowck_loan_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) =
+  (combine_error_msgs st __FUNCTION__
+     (let* id = usize_of_postcard ctx st
+       in
+      let* reserve = borrowck_location_of_postcard ctx st
+       in
+      let* borrowed = local_id_of_postcard ctx st
+       in
+      let* assigned = local_id_of_postcard ctx st
+       in
+      let* is_mutable = bool_of_postcard ctx st
+       in
+      let* region = usize_of_postcard ctx st
+       in
+      Ok
+        ({ id; reserve; borrowed; assigned; is_mutable; region } : borrowck_loan)) :
+  (borrowck_loan, string) result)
+and borrowck_location_of_postcard (ctx : of_postcard_ctx)
+  (st : postcard_state) =
+  (combine_error_msgs st __FUNCTION__
+     (let* block = Ullbc.block_id_of_postcard ctx st
+       in
+      let* statement_index = usize_of_postcard ctx st
+       in Ok ({ block; statement_index } : borrowck_location)) : (borrowck_location,
+                                                                   string)
+                                                                   result)
+and borrowck_outlives_of_postcard (ctx : of_postcard_ctx)
+  (st : postcard_state) =
+  (combine_error_msgs st __FUNCTION__
+     (let* longer = usize_of_postcard ctx st
+       in
+      let* shorter = usize_of_postcard ctx st
+       in Ok ({ longer; shorter } : borrowck_outlives)) : (borrowck_outlives,
+                                                            string) result)
+and borrowck_point_of_postcard (ctx : of_postcard_ctx) (st : postcard_state)
+  =
+  (combine_error_msgs st __FUNCTION__
+     (let* location = borrowck_location_of_postcard ctx st
+       in
+      let* synthetic = bool_of_postcard ctx st
+       in
+      let* before = list_of_postcard usize_of_postcard ctx st
+       in
+      let* after = list_of_postcard usize_of_postcard ctx st
+       in Ok ({ location; synthetic; before; after } : borrowck_point)) :
+  (borrowck_point, string) result)
+and borrowck_reference_region_of_postcard (ctx : of_postcard_ctx)
+  (st : postcard_state) =
+  (combine_error_msgs st __FUNCTION__
+     (let* local = local_id_of_postcard ctx st
+       in
+      let* region = usize_of_postcard ctx st
+       in Ok ({ local; region } : borrowck_reference_region)) : (borrowck_reference_region,
+                                                                  string)
+                                                                  result)
+
 and cli_options_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
     (cli_options, string) result =
   combine_error_msgs st __FUNCTION__
     (let* ullbc = bool_of_postcard ctx st in
-     let* precise_drops = bool_of_postcard ctx st in
+     let* export_borrowck = bool_of_postcard ctx st in
+        let* precise_drops = bool_of_postcard ctx st in
      let* mir = option_of_postcard mir_level_of_postcard ctx st in
      let* rustc_args = list_of_postcard string_of_postcard ctx st in
      let* targets = list_of_postcard string_of_postcard ctx st in
@@ -1913,6 +2010,7 @@ and cli_options_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
      Ok
        ({
           ullbc;
+             export_borrowck;
           precise_drops;
           mir;
           rustc_args;
@@ -2658,7 +2756,8 @@ and translated_crate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
               fun_decl_of_postcard ctx st))
          ctx st
      in
-     let* global_decls =
+     let* borrowck = option_of_postcard borrowck_data_of_postcard ctx st in
+        let* global_decls =
        (fun ctx st ->
          Result.map GlobalDeclId.map_of_indexed_list
            (opt_indexed_map_of_postcard global_decl_id_of_postcard
@@ -2709,6 +2808,7 @@ and translated_crate_of_postcard (ctx : of_postcard_ctx) (st : postcard_state) :
           short_names;
           type_decls;
           fun_decls;
+             borrowck;
           global_decls;
           trait_decls;
           trait_impls;

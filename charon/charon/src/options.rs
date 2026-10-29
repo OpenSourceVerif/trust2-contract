@@ -34,6 +34,11 @@ pub struct CliOpts {
     #[clap(long)]
     #[serde(default)]
     pub ullbc: bool,
+    /// Export NLL facts adapted through normal transformations to final ULLBC.
+    /// Unsupported adaptations (including LLBC facts) are reported explicitly.
+    #[clap(long, conflicts_with_all = ["skip_borrowck", "monomorphize", "monomorphize_mut", "precise_drops", "targets"])]
+    #[serde(default)]
+    pub export_borrowck: bool,
     /// Whether to precisely translate drops and drop-related code. For this, we add explicit
     /// `Destruct` bounds to all generic parameters and set the MIR level to at least `elaborated`.
     ///

@@ -191,11 +191,44 @@ impl Transform {
         // Don't insert `StorageDead`s inside global initializers because the locals there are
         // actually statics.
         let insert_missing_storage_deads = fun.is_global_initializer.is_none();
+        let mut facts = fun
+            .body
+            .as_unstructured()
+            .and_then(|body| crate::transform::borrowck::take(ctx, body));
         fun.for_each_body(
             &mut ctx.translated.spec_closures,
             |body, spec_closures| match body {
                 Body::Unstructured(body) => {
-                    self.transform_ullbc_body(body, spec_closures, insert_missing_storage_deads)
+                    let before: Vec<_> = body
+                        .body
+                        .iter_enumerated()
+                        .map(|(id, b)| (id, b.statements.len()))
+                        .collect();
+                    // The entry prefix contains StorageLive; suffixes only StorageDead.
+                    let entry_lives = body.body[BlockId::ZERO]
+                        .statements
+                        .iter()
+                        .take_while(|s| s.kind.is_storage_live())
+                        .count();
+                    self.transform_ullbc_body(body, spec_closures, insert_missing_storage_deads);
+                    let added_lives = body.body[BlockId::ZERO]
+                        .statements
+                        .iter()
+                        .take_while(|s| s.kind.is_storage_live())
+                        .count()
+                        - entry_lives;
+                    if let Some(info) = facts.as_mut() {
+                        crate::transform::borrowck::insert(info, BlockId::ZERO, 0, added_lives);
+                        for (id, len) in before {
+                            let shifted = len + if id == BlockId::ZERO { added_lives } else { 0 };
+                            crate::transform::borrowck::insert(
+                                info,
+                                id,
+                                shifted,
+                                body.body[id].statements.len() - shifted,
+                            );
+                        }
+                    }
                 }
                 Body::Structured(body) => {
                     self.transform_llbc_body(body, spec_closures, insert_missing_storage_deads)
@@ -203,6 +236,9 @@ impl Transform {
                 _ => {}
             },
         );
+        if let Some(body) = fun.body.as_unstructured() {
+            crate::transform::borrowck::put(ctx, body, facts);
+        }
     }
 }
 

@@ -96,6 +96,7 @@ impl VisitBodyMut for LocalsRenumberVisitor {
 fn remove_unused_locals<Body: BodyVisitable>(
     body: &mut GExprBody<Body>,
     spec_closures: &mut IndexMap<SpecClosureId, SpecClosure>,
+    facts: Option<&mut BodyBorrowckInfo>,
 ) {
     // Compute the set of used locals.
     // We always register the return variable and the input arguments.
@@ -125,6 +126,35 @@ fn remove_unused_locals<Body: BodyVisitable>(
     }
     trace!("ids_maps: {:?}", ids_map);
 
+    if let Some(info) = facts {
+        info.reference_regions.retain_mut(|r| {
+            if let Some(id) = ids_map[r.local] {
+                r.local = id;
+                true
+            } else {
+                false
+            }
+        });
+        for loan in &mut info.loans {
+            if let (Some(borrowed), Some(assigned)) =
+                (ids_map[loan.borrowed], ids_map[loan.assigned])
+            {
+                loan.borrowed = borrowed;
+                loan.assigned = assigned;
+            } else {
+                info.unsupported
+                    .get_or_insert("borrowck: removed local used by a loan".into());
+            }
+        }
+        let regions: std::collections::HashSet<_> = info
+            .reference_regions
+            .iter()
+            .map(|r| r.region)
+            .chain(info.loans.iter().map(|l| l.region))
+            .collect();
+        info.outlives
+            .retain(|r| regions.contains(&r.longer) && regions.contains(&r.shorter));
+    }
     // Update all `LocalId`s.
     let mut visitor = LocalsRenumberVisitor { ids_map };
     let _ = body.body.drive_body_mut(&mut visitor);
@@ -137,13 +167,20 @@ fn remove_unused_locals<Body: BodyVisitable>(
 pub struct Transform;
 impl UllbcPass for Transform {
     fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
+        let mut facts = decl
+            .body
+            .as_unstructured()
+            .and_then(|b| crate::transform::borrowck::take(ctx, b));
         let spec_closures: &mut IndexMap<SpecClosureId, SpecClosure> =
             &mut ctx.translated.spec_closures;
         decl.for_each_body(spec_closures, |body, spec_closures| match body {
-            Body::Unstructured(body) => remove_unused_locals(body, spec_closures),
-            Body::Structured(body) => remove_unused_locals(body, spec_closures),
+            Body::Unstructured(body) => remove_unused_locals(body, spec_closures, facts.as_mut()),
+            Body::Structured(body) => remove_unused_locals(body, spec_closures, None),
             _ => {}
         });
+        if let Some(body) = decl.body.as_unstructured() {
+            crate::transform::borrowck::put(ctx, body, facts);
+        }
     }
 }
 impl TransformPass for Transform {

@@ -310,6 +310,9 @@ pub struct TranslatedCrate {
     /// Each item with a body becomes a function: actual functions, methods, and unevaluated
     /// consts/statics.
     pub fun_decls: IndexMap<FunDeclId, FunDecl>,
+    /// NLL facts adapted to final ULLBC; unavailable adaptations are explicit.
+    #[drive(skip)]
+    pub borrowck: Option<BorrowckData>,
     /// The global definitions, which are constants, statics, and thread locals.
     pub global_decls: IndexMap<GlobalDeclId, GlobalDecl>,
     /// The trait declarations.

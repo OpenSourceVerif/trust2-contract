@@ -10,7 +10,8 @@ use crate::transform::ctx::UllbcPass;
 
 pub struct Transform;
 impl UllbcPass for Transform {
-    fn transform_body(&self, _ctx: &mut TransformCtx, b: &mut ExprBody) {
+    fn transform_body(&self, ctx: &mut TransformCtx, b: &mut ExprBody) {
+        let mut facts = crate::transform::borrowck::take(ctx, b);
         // Perform a depth-first search to identify all the blocks reachable
         // from the first block.
         let mut explored: HashSet<BlockId> = HashSet::new();
@@ -36,5 +37,12 @@ impl UllbcPass for Transform {
         b.body.dyn_visit_in_body_mut(|bid: &mut BlockId| {
             *bid = *bid_map.get(bid).unwrap();
         });
+        if let Some(info) = facts.as_mut() {
+            crate::transform::borrowck::remap(info, |mut p| {
+                p.block = bid_map.get(&p.block).copied()?;
+                Some(p)
+            });
+        }
+        crate::transform::borrowck::put(ctx, b, facts);
     }
 }

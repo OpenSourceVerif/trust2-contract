@@ -8,7 +8,8 @@ use crate::transform::ctx::UllbcPass;
 
 pub struct Transform;
 impl UllbcPass for Transform {
-    fn transform_body(&self, _ctx: &mut TransformCtx, body: &mut ExprBody) {
+    fn transform_body(&self, ctx: &mut TransformCtx, body: &mut ExprBody) {
+        let facts = crate::transform::borrowck::take(ctx, body);
         // Replace any copy/move of a unit local to a plain const assignment. Note: we don't touch
         // other `Rvalue`s as they might have side-effects (e.g. reading through a pointer).
         body.visit_statements(|st| {
@@ -71,5 +72,6 @@ impl UllbcPass for Transform {
                 st.kind = StatementKind::Nop;
             }
         });
+        crate::transform::borrowck::put(ctx, body, facts);
     }
 }

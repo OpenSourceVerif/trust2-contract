@@ -10,6 +10,9 @@ Options:
       --ullbc
           Extract the unstructured LLBC (i.e., don't reconstruct the control-flow)
 
+      --export-borrowck
+          Export NLL facts adapted through normal transformations to final ULLBC. Unsupported adaptations (including LLBC facts) are reported explicitly
+
       --precise-drops
           Whether to precisely translate drops and drop-related code. For this, we add explicit `Destruct` bounds to all generic parameters and set the MIR level to at least `elaborated`.
           

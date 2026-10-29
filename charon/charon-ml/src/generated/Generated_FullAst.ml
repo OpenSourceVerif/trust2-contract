@@ -55,10 +55,64 @@ and body =
   | ErrorBody of error
       (** We encountered an error while translating this body. *)
 
+and body_borrowck_info = {
+  function_id : fun_decl_id;
+  unsupported : string option  (** Explicit reason when the compiler adapter cannot represent this body. *);
+  body_fingerprint : string  (** Detect accidental use with a body modified after extraction. *);
+  loans : borrowck_loan list;
+  points : borrowck_point list;
+  reference_regions : borrowck_reference_region list;
+  outlives : borrowck_outlives list  (** Evaluated NLL outlives relation, restricted to the exported regions. *)
+}
+
+and borrowck_data = {
+  schema_version : int;
+  producer : string;
+  stage : string;
+  bodies : body_borrowck_info list
+}
+
+and borrowck_loan = {
+  id : int;
+  reserve : borrowck_location;
+  borrowed : local_id;
+  assigned : local_id;
+  is_mutable : bool;
+  region : int
+}
+
+and borrowck_location = {
+  block : Generated_UllbcAst.block_id;
+  statement_index : int
+}
+
+and borrowck_outlives = {
+  longer : int;
+  shorter : int
+}
+
+and borrowck_point = {
+  location : borrowck_location;
+  synthetic : bool  (** True for inserted operations with no loan effect (storage markers and
+        unit initialization). Both sets equal the before-state at the insertion
+        boundary; locations always name the final ULLBC.
+     *);
+  before : int list  (** rustc Borrows state before/after the primary effect, NOT PCG phases. *);
+  after : int list
+}
+
+and borrowck_reference_region = {
+  local : local_id;
+  region : int
+}
+
 and cli_options = {
   ullbc : bool;
       (** Extract the unstructured LLBC (i.e., don't reconstruct the
           control-flow) *)
+  export_borrowck : bool;
+      (** Export NLL facts adapted through normal transformations to final ULLBC.
+          Unsupported adaptations (including LLBC facts) are reported explicitly. *)
   precise_drops : bool;
       (** Whether to precisely translate drops and drop-related code. For this,
           we add explicit [Destruct] bounds to all generic parameters and set
@@ -367,6 +421,8 @@ and translated_crate = {
   type_decls : type_decl type_decl_id_map;
       (** The type definitions (structs, enums, ...). *)
   fun_decls : fun_decl fun_decl_id_map;
+  borrowck : borrowck_data option;
+      (** NLL facts adapted to final ULLBC; unavailable adaptations are explicit. *)
       (** The function definitions.
 
           Each item with a body becomes a function: actual functions, methods,

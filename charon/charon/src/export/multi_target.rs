@@ -158,6 +158,7 @@ impl CrateMerger {
 
         let TranslatedCrate {
             crate_name,
+            borrowck,
             options: _, // We discard the per-target options we made
             target_information,
             item_names,
@@ -173,6 +174,10 @@ impl CrateMerger {
             spec_closures,
             ordered_decls: _, // Recomputed on the merged crate
         } = krate;
+        assert!(
+            borrowck.is_none(),
+            "borrowck export does not support multi-target merging"
+        );
         if self.merged.translated.crate_name.is_empty() {
             self.merged.translated.crate_name = crate_name;
         }

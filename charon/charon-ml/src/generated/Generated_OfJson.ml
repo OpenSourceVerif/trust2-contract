@@ -2156,6 +2156,128 @@ and body_of_json (ctx : of_json_ctx) (js : json) : (body, string) result =
         Ok (ErrorBody error)
     | _ -> Error "")
 
+
+and body_borrowck_info_of_json (ctx : of_json_ctx) (js : json) =
+  (combine_error_msgs js __FUNCTION__
+     (match js with
+      | `Assoc
+          (("function_id", function_id)::("unsupported", unsupported)::
+          ("body_fingerprint", body_fingerprint)::("loans", loans)::("points",
+                                                                    points)::
+          ("reference_regions", reference_regions)::("outlives", outlives)::[])
+          ->
+          let* function_id = fun_decl_id_of_json ctx function_id
+           in
+          let* unsupported = option_of_json string_of_json ctx unsupported
+           in
+          let* body_fingerprint = string_of_json ctx body_fingerprint
+           in
+          let* loans = list_of_json borrowck_loan_of_json ctx loans
+           in
+          let* points = list_of_json borrowck_point_of_json ctx points
+           in
+          let* reference_regions =
+            list_of_json borrowck_reference_region_of_json ctx
+              reference_regions
+           in
+          let* outlives = list_of_json borrowck_outlives_of_json ctx outlives
+           in
+          Ok
+            ({
+               function_id;
+               unsupported;
+               body_fingerprint;
+               loans;
+               points;
+               reference_regions;
+               outlives
+             } : body_borrowck_info)
+      | _ -> Error "") : (body_borrowck_info, string) result)
+and borrowck_data_of_json (ctx : of_json_ctx) (js : json) =
+  (combine_error_msgs js __FUNCTION__
+     (match js with
+      | `Assoc
+          (("schema_version", schema_version)::("producer", producer)::
+          ("stage", stage)::("bodies", bodies)::[]) ->
+          let* schema_version = int_of_json ctx schema_version
+           in
+          let* producer = string_of_json ctx producer
+           in
+          let* stage = string_of_json ctx stage
+           in
+          let* bodies = list_of_json body_borrowck_info_of_json ctx bodies
+           in
+          Ok ({ schema_version; producer; stage; bodies } : borrowck_data)
+      | _ -> Error "") : (borrowck_data, string) result)
+and borrowck_loan_of_json (ctx : of_json_ctx) (js : json) =
+  (combine_error_msgs js __FUNCTION__
+     (match js with
+      | `Assoc
+          (("id", id)::("reserve", reserve)::("borrowed", borrowed)::
+          ("assigned", assigned)::("is_mutable", is_mutable)::("region",
+                                                               region)::[])
+          ->
+          let* id = int_of_json ctx id
+           in
+          let* reserve = borrowck_location_of_json ctx reserve
+           in
+          let* borrowed = local_id_of_json ctx borrowed
+           in
+          let* assigned = local_id_of_json ctx assigned
+           in
+          let* is_mutable = bool_of_json ctx is_mutable
+           in
+          let* region = int_of_json ctx region
+           in
+          Ok
+            ({ id; reserve; borrowed; assigned; is_mutable; region } :
+            borrowck_loan)
+      | _ -> Error "") : (borrowck_loan, string) result)
+and borrowck_location_of_json (ctx : of_json_ctx) (js : json) =
+  (combine_error_msgs js __FUNCTION__
+     (match js with
+      | `Assoc (("block", block)::("statement_index", statement_index)::[])
+          ->
+          let* block = Ullbc.block_id_of_json ctx block
+           in
+          let* statement_index = int_of_json ctx statement_index
+           in Ok ({ block; statement_index } : borrowck_location)
+      | _ -> Error "") : (borrowck_location, string) result)
+and borrowck_outlives_of_json (ctx : of_json_ctx) (js : json) =
+  (combine_error_msgs js __FUNCTION__
+     (match js with
+      | `Assoc (("longer", longer)::("shorter", shorter)::[]) ->
+          let* longer = int_of_json ctx longer
+           in
+          let* shorter = int_of_json ctx shorter
+           in Ok ({ longer; shorter } : borrowck_outlives)
+      | _ -> Error "") : (borrowck_outlives, string) result)
+and borrowck_point_of_json (ctx : of_json_ctx) (js : json) =
+  (combine_error_msgs js __FUNCTION__
+     (match js with
+      | `Assoc
+          (("location", location)::("synthetic", synthetic)::("before",
+                                                              before)::
+          ("after", after)::[]) ->
+          let* location = borrowck_location_of_json ctx location
+           in
+          let* synthetic = bool_of_json ctx synthetic
+           in
+          let* before = list_of_json int_of_json ctx before
+           in
+          let* after = list_of_json int_of_json ctx after
+           in Ok ({ location; synthetic; before; after } : borrowck_point)
+      | _ -> Error "") : (borrowck_point, string) result)
+and borrowck_reference_region_of_json (ctx : of_json_ctx) (js : json) =
+  (combine_error_msgs js __FUNCTION__
+     (match js with
+      | `Assoc (("local", local)::("region", region)::[]) ->
+          let* local = local_id_of_json ctx local
+           in
+          let* region = int_of_json ctx region
+           in Ok ({ local; region } : borrowck_reference_region)
+      | _ -> Error "") : (borrowck_reference_region, string) result)
+
 and cli_options_of_json (ctx : of_json_ctx) (js : json) :
     (cli_options, string) result =
   combine_error_msgs js __FUNCTION__
@@ -2163,6 +2285,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
     | `Assoc
         [
           ("ullbc", ullbc);
+          ("export_borrowck", export_borrowck);
           ("precise_drops", precise_drops);
           ("mir", mir);
           ("rustc_args", rustc_args);
@@ -2214,6 +2337,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
           ("preset", preset);
         ] ->
         let* ullbc = bool_of_json ctx ullbc in
+        let* export_borrowck = bool_of_json ctx export_borrowck in
         let* precise_drops = bool_of_json ctx precise_drops in
         let* mir = option_of_json mir_level_of_json ctx mir in
         let* rustc_args = list_of_json string_of_json ctx rustc_args in
@@ -2286,6 +2410,7 @@ and cli_options_of_json (ctx : of_json_ctx) (js : json) :
         Ok
           ({
              ullbc;
+             export_borrowck;
              precise_drops;
              mir;
              rustc_args;
@@ -3193,6 +3318,7 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
           ("short_names", short_names);
           ("type_decls", type_decls);
           ("fun_decls", fun_decls);
+          ("borrowck", borrowck);
           ("global_decls", global_decls);
           ("trait_decls", trait_decls);
           ("trait_impls", trait_impls);
@@ -3236,6 +3362,7 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
                  json))
             ctx fun_decls
         in
+        let* borrowck = option_of_json borrowck_data_of_json ctx borrowck in
         let* global_decls =
           (fun ctx json ->
             Result.map GlobalDeclId.map_of_indexed_list
@@ -3287,6 +3414,7 @@ and translated_crate_of_json (ctx : of_json_ctx) (js : json) :
              short_names;
              type_decls;
              fun_decls;
+             borrowck;
              global_decls;
              trait_decls;
              trait_impls;

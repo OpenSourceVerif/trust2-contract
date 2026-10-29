@@ -167,6 +167,23 @@ impl UllbcPass for Transform {
     }
 
     fn transform_function(&self, ctx: &mut TransformCtx, fun_decl: &mut FunDecl) {
+        let mut facts = fun_decl
+            .body
+            .as_unstructured()
+            .and_then(|b| crate::transform::borrowck::take(ctx, b));
+        if let (Some(info), Some(body)) = (facts.as_mut(), fun_decl.body.as_unstructured()) {
+            // Literal/unit constants cannot introduce a loan or an intermediate
+            // operation. All other constant lowering needs a separate adapter.
+            body.dyn_visit_in_body(|c: &ConstantExpr| {
+                if !(matches!(c.kind, ConstantExprKind::Literal(_))
+                    || (c.ty.is_unit() && c.kind.is_adt()))
+                {
+                    info.unsupported.get_or_insert(
+                        "borrowck: non-literal constant lowering is not yet adapted".into(),
+                    );
+                }
+            });
+        }
         fun_decl.transform_ullbc_operands(ctx, transform_operand);
         if let Some(body) = fun_decl.body.as_unstructured_mut() {
             for block in body.body.iter_mut() {
@@ -187,6 +204,9 @@ impl UllbcPass for Transform {
                     });
                 });
             }
+        }
+        if let Some(body) = fun_decl.body.as_unstructured() {
+            crate::transform::borrowck::put(ctx, body, facts);
         }
     }
 }

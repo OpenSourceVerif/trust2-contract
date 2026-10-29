@@ -1,3 +1,5 @@
+use crate::ast::ItemRefMut;
+pub(crate) mod borrowck;
 pub mod ctx;
 pub mod typecheck_and_unify;
 pub mod utils;
@@ -303,7 +305,8 @@ impl TransformCtx {
             Pass::NonBody(pass) => {
                 if pass.should_run(&self.options) {
                     trace!("# Starting pass {}", pass.name());
-                    pass.transform_ctx(self)
+                    pass.transform_ctx(self);
+                    borrowck::audit(self, pass.name());
                 }
             }
             Pass::FusedUnstructuredBody(passes) => {
@@ -320,12 +323,22 @@ impl TransformCtx {
                     for pass in passes.iter() {
                         if pass.should_run(&ctx.options) {
                             trace!("# Starting pass {}", pass.name());
-                            pass.transform_item(ctx, item.reborrow());
+                            if ctx.translated.borrowck.is_some()
+                                && let ItemRefMut::Fun(decl) = item.reborrow()
+                            {
+                                ctx.with_def_id(decl.def_id, decl.item_meta.is_local, |ctx| {
+                                    pass.transform_item(ctx, ItemRefMut::Fun(decl));
+                                    borrowck::audit_function(ctx, decl, pass.name());
+                                });
+                            } else {
+                                pass.transform_item(ctx, item.reborrow());
+                            }
                         }
                     }
                 });
                 for pass in passes.iter() {
                     pass.finalize(self);
+                    borrowck::audit(self, pass.name());
                 }
             }
             Pass::FusedStructuredBody(passes) => {
