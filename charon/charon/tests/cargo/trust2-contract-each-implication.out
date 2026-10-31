@@ -1,0 +1,1702 @@
+# Final LLBC before serialization:
+
+// Full name: core::marker::Destruct
+#[lang_item("destruct")]
+pub trait Destruct<Self>
+{
+    fn drop_glue<'_0_1>;
+    non-dyn-compatible
+}
+
+// Full name: core::slice::{[T]}::len
+#[lang_item("slice_len_fn")]
+pub fn len<'_0, T>(_1: &'_0 [T]) -> usize
+where
+    TraitClause0: (T: Destruct),
+    TypeOutlives0: T: '_0,
+= <opaque>
+
+// Full name: trust2_contract_each_implication::<tuple_1>::{impl Destruct for (A,)}::drop_glue
+unsafe fn impl_Destruct_for_tuple::drop_glue<'_0, A>(_1: &'_0 mut (A,))
+where
+    TraitClause0: (A: Destruct),
+    TypeOutlives0: A: '_0,
+{
+    let _0: (); // return
+    let _1: &'1 mut (A,); // arg #1
+
+    storage_live(_0)
+    _0 = ()
+    drop[TraitClause0::drop_glue<'2>] (*_1).0
+    ↳⚡ storage_dead(_1)
+        unwind_continue
+    storage_dead(_1)
+    return
+}
+
+// Full name: trust2_contract_each_implication::<tuple_1>::{impl Destruct for (A,)}
+impl<A> "impl_Destruct_for_tuple" Destruct for (A,)
+where
+    TraitClause0: (A: Destruct),
+{
+    fn drop_glue<'_0_1> = impl_Destruct_for_tuple::drop_glue<'_0_1, A>[TraitClause0]
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_each_implication::<slice>::{impl Destruct for [T]}::drop_glue
+unsafe fn impl_Destruct_for_slice::drop_glue<'_0, T>(_1: &'_0 mut [T])
+where
+    TraitClause0: (T: Destruct),
+    TypeOutlives0: T: '_0,
+{
+    let _0: (); // return
+    let _1: &'1 mut [T]; // arg #1
+    let _2: usize; // anonymous local
+    let _3: usize; // anonymous local
+    let _4: *mut T; // anonymous local
+    let _5: bool; // anonymous local
+    let _6: *mut T; // anonymous local
+    let _7: bool; // anonymous local
+    let _8: &'_ mut [T]; // anonymous local
+    let _9: &'_ mut T; // anonymous local
+    let _10: &'_ mut [T]; // anonymous local
+    let _11: &'_ mut T; // anonymous local
+
+    storage_live(_0)
+    storage_live(_2)
+    storage_live(_3)
+    storage_live(_4)
+    storage_live(_5)
+    storage_live(_6)
+    storage_live(_7)
+    _0 = ()
+    _2 = copy _1.metadata
+    _3 = const 0usize
+    loop {
+        _7 = copy _3 == copy _2
+        if move _7 {
+            break 0
+        } else {
+            storage_live(_10)
+            _10 = &mut (*_1) with_metadata(copy _1.metadata)
+            storage_live(_11)
+            _11 = @SliceIndexMut<'_, T>(move _10, copy _3)
+            ↳⚡ storage_dead(_11)
+                storage_dead(_10)
+                storage_dead(_9)
+                storage_dead(_8)
+                undefined_behavior
+            _6 = &raw mut (*_11)
+            _3 = move _3 wrap.+ const 1usize
+            drop[TraitClause0::drop_glue<'2>] (*_6)
+            ↳⚡ loop {
+                    _5 = copy _3 == copy _2
+                    if move _5 {
+                        break 0
+                    } else {
+                        storage_live(_8)
+                        _8 = &mut (*_1) with_metadata(copy _1.metadata)
+                        storage_live(_9)
+                        _9 = @SliceIndexMut<'_, T>(move _8, copy _3)
+                        ↳⚡ storage_dead(_11)
+                            storage_dead(_10)
+                            storage_dead(_9)
+                            storage_dead(_8)
+                            undefined_behavior
+                        _4 = &raw mut (*_9)
+                        _3 = move _3 wrap.+ const 1usize
+                        drop[TraitClause0::drop_glue<'3>] (*_4)
+                        ↳⚡ storage_dead(_7)
+                            storage_dead(_6)
+                            storage_dead(_5)
+                            storage_dead(_4)
+                            storage_dead(_3)
+                            storage_dead(_2)
+                            storage_dead(_1)
+                            storage_dead(_11)
+                            storage_dead(_10)
+                            storage_dead(_9)
+                            storage_dead(_8)
+                            unwind_terminate
+                        continue 0
+                    }
+                }
+                storage_dead(_7)
+                storage_dead(_6)
+                storage_dead(_5)
+                storage_dead(_4)
+                storage_dead(_3)
+                storage_dead(_2)
+                storage_dead(_1)
+                unwind_continue
+            continue 0
+        }
+    }
+    storage_dead(_7)
+    storage_dead(_6)
+    storage_dead(_5)
+    storage_dead(_4)
+    storage_dead(_3)
+    storage_dead(_2)
+    storage_dead(_1)
+    storage_dead(_11)
+    storage_dead(_10)
+    storage_dead(_9)
+    storage_dead(_8)
+    return
+}
+
+// Full name: trust2_contract_each_implication::<slice>::{impl Destruct for [T]}
+impl<T> "impl_Destruct_for_slice" Destruct for [T]
+where
+    TraitClause0: (T: Destruct),
+{
+    fn drop_glue<'_0_1> = impl_Destruct_for_slice::drop_glue<'_0_1, T>[TraitClause0]
+    non-dyn-compatible
+}
+
+// Full name: trust2_contract_each_implication::implication
+pub fn implication(x: i32) -> i32
+    postcondition[
+        _1: &'0 i32 = &_1,
+    ](_2: i32)
+    {
+        let _0: bool; // return
+        let _1: &'0 i32; // arg #1
+        let _2: i32; // arg #2
+        let r: i32; // local
+        let _4: bool; // anonymous local
+        let _5: i32; // anonymous local
+        let _6: i32; // anonymous local
+        let _7: i32; // anonymous local
+        let _8: &'1 i32; // anonymous local
+        let _9: &'2 i32; // anonymous local
+
+        storage_live(_0)
+        storage_live(r)
+        storage_live(_8)
+        storage_live(_9)
+        r = move _2
+        storage_live(_4)
+        storage_live(_5)
+        _8 = copy _1
+        _5 = copy (*_8)
+        _4 = move _5 > const 0i32
+        if move _4 {
+            storage_dead(_5)
+            storage_live(_6)
+            _6 = copy r
+            storage_live(_7)
+            _9 = copy _1
+            _7 = copy (*_9)
+            _0 = move _6 >= move _7
+            storage_dead(_7)
+            storage_dead(_6)
+        } else {
+            storage_dead(_5)
+            _0 = const true
+        }
+        storage_dead(_4)
+        storage_dead(_9)
+        storage_dead(_8)
+        storage_dead(r)
+        storage_dead(_2)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: i32; // return
+    let x: i32; // arg #1
+
+    storage_live(_0)
+    _0 = copy x
+    storage_dead(x)
+    return
+}
+
+// Full name: trust2_contract_each_implication::right_associative
+pub fn right_associative(a: u8, b: u8, c: u8) -> u8
+    postcondition[
+        _1: &'0 u8 = &_1,
+        _2: &'1 u8 = &_2,
+        _3: &'2 u8 = &_3,
+    ](_4: u8)
+    {
+        let _0: bool; // return
+        let _1: &'0 u8; // arg #1
+        let _2: &'1 u8; // arg #2
+        let _3: &'2 u8; // arg #3
+        let _4: u8; // arg #4
+        let r: u8; // local
+        let _6: bool; // anonymous local
+        let _7: u8; // anonymous local
+        let _8: u8; // anonymous local
+        let _9: bool; // anonymous local
+        let _10: u8; // anonymous local
+        let _11: u8; // anonymous local
+        let _12: u8; // anonymous local
+        let _13: &'3 u8; // anonymous local
+        let _14: &'4 u8; // anonymous local
+        let _15: &'5 u8; // anonymous local
+        let _16: &'6 u8; // anonymous local
+
+        storage_live(_0)
+        storage_live(r)
+        storage_live(_13)
+        storage_live(_14)
+        storage_live(_15)
+        storage_live(_16)
+        r = move _4
+        storage_live(_6)
+        storage_live(_7)
+        _13 = copy _1
+        _7 = copy (*_13)
+        storage_live(_8)
+        _14 = copy _2
+        _8 = copy (*_14)
+        _6 = move _7 < move _8
+        if move _6 {
+            storage_dead(_8)
+            storage_dead(_7)
+            storage_live(_9)
+            storage_live(_10)
+            _15 = copy _2
+            _10 = copy (*_15)
+            storage_live(_11)
+            _16 = copy _3
+            _11 = copy (*_16)
+            _9 = move _10 < move _11
+            if move _9 {
+                storage_dead(_11)
+                storage_dead(_10)
+                storage_live(_12)
+                _12 = copy r
+                _0 = move _12 == const 1u8
+                storage_dead(_12)
+            } else {
+                storage_dead(_11)
+                storage_dead(_10)
+                _0 = const true
+            }
+            storage_dead(_9)
+        } else {
+            storage_dead(_8)
+            storage_dead(_7)
+            _0 = const true
+        }
+        storage_dead(_6)
+        storage_dead(_16)
+        storage_dead(_15)
+        storage_dead(_14)
+        storage_dead(_13)
+        storage_dead(r)
+        storage_dead(_4)
+        storage_dead(_3)
+        storage_dead(_2)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: u8; // return
+    let a: u8; // arg #1
+    let b: u8; // arg #2
+    let c: u8; // arg #3
+    let _4: (u8, u8, u8); // anonymous local
+    let _5: u8; // anonymous local
+    let _6: u8; // anonymous local
+    let _7: u8; // anonymous local
+
+    storage_live(_0)
+    storage_live(_4)
+    storage_live(_5)
+    _5 = copy a
+    storage_live(_6)
+    _6 = copy b
+    storage_live(_7)
+    _7 = copy c
+    _4 = (move _5, move _6, move _7)
+    storage_dead(_7)
+    storage_dead(_6)
+    storage_dead(_5)
+    storage_dead(_4)
+    _0 = const 1u8
+    storage_dead(c)
+    storage_dead(b)
+    storage_dead(a)
+    return
+}
+
+// Full name: trust2_contract_each_implication::guarded_index
+pub fn guarded_index<'_0>(v: &'_0 [u8])
+    precondition[
+        _1: &'0 [u8] = &(*_1) with_metadata(copy _1.metadata),
+    ]()
+    {
+        let _0: bool; // return
+        let _1: &'0 [u8]; // arg #1
+
+        storage_live(_0)
+        _0 = forall[
+            _1: &'0 [u8] = &(*_1),
+        ](_2: usize)
+        {
+            let _0: bool; // return
+            let _1: &'0 [u8]; // arg #1
+            let _2: usize; // arg #2
+            let i: usize; // local
+            let _4: bool; // anonymous local
+            let _5: usize; // anonymous local
+            let _6: usize; // anonymous local
+            let _7: &'1 [u8]; // anonymous local
+            let _8: u8; // anonymous local
+            let _9: usize; // anonymous local
+            let _10: *const [u8]; // anonymous local
+            let _11: usize; // anonymous local
+            let _12: bool; // anonymous local
+            let _13: &'2 [u8]; // anonymous local
+            let _14: &'3 [u8]; // anonymous local
+            let _15: &'4 [u8]; // anonymous local
+            let _16: &'_ [u8]; // anonymous local
+            let _17: &'_ u8; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_10)
+            storage_live(_11)
+            storage_live(_12)
+            storage_live(_13)
+            storage_live(_14)
+            storage_live(_15)
+            i = move _2
+            storage_live(_4)
+            storage_live(_5)
+            _5 = copy i
+            storage_live(_6)
+            storage_live(_7)
+            _13 = copy _1
+            _7 = &(*_13)
+            _6 = len<'9, u8>[{built_in impl Destruct for u8}](move _7)
+            ↳⚡ unwind_continue
+            storage_dead(_7)
+            _4 = move _5 < move _6
+            if move _4 {
+                storage_dead(_6)
+                storage_dead(_5)
+                storage_live(_8)
+                storage_live(_9)
+                _9 = copy i
+                _14 = copy _1
+                _10 = &raw const (*_14)
+                _11 = copy _10.metadata
+                _12 = copy _9 < copy _11
+                assert(move _12 == true) (bounds_check) else panic
+                ↳⚡ unwind_continue
+                _15 = copy _1
+                storage_live(_16)
+                _16 = &(*_15) with_metadata(copy _15.metadata)
+                storage_live(_17)
+                _17 = @SliceIndexShared<'_, u8>(move _16, copy _9)
+                ↳⚡ storage_dead(_17)
+                    storage_dead(_16)
+                    storage_dead(_15)
+                    storage_dead(_14)
+                    storage_dead(_13)
+                    storage_dead(_12)
+                    storage_dead(_11)
+                    storage_dead(_10)
+                    storage_dead(i)
+                    storage_dead(_2)
+                    storage_dead(_1)
+                    undefined_behavior
+                _8 = copy (*_17)
+                _0 = move _8 > const 0u8
+                storage_dead(_9)
+                storage_dead(_8)
+            } else {
+                storage_dead(_6)
+                storage_dead(_5)
+                _0 = const true
+            }
+            storage_dead(_4)
+            storage_dead(_17)
+            storage_dead(_16)
+            storage_dead(_15)
+            storage_dead(_14)
+            storage_dead(_13)
+            storage_dead(_12)
+            storage_dead(_11)
+            storage_dead(_10)
+            storage_dead(i)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: (); // return
+    let v: &'1 [u8]; // arg #1
+
+    storage_live(_0)
+    _0 = ()
+    _0 = ()
+    storage_dead(v)
+    return
+}
+
+// Full name: trust2_contract_each_implication::each_guard
+pub fn each_guard(n: u8) -> u8
+    postcondition[
+        _1: &'0 u8 = &_1,
+    ](_2: u8)
+    {
+        let _0: bool; // return
+        let _1: &'0 u8; // arg #1
+        let _2: u8; // arg #2
+        let r: u8; // local
+
+        storage_live(_0)
+        storage_live(r)
+        r = move _2
+        _0 = forall[
+            _1: &'0 u8 = &(*_1),
+            _2: &'1 u8 = &_3,
+        ](_3: u8)
+        {
+            let _0: bool; // return
+            let _1: &'0 u8; // arg #1
+            let _2: &'1 u8; // arg #2
+            let _3: u8; // arg #3
+            let i: u8; // local
+            let _5: bool; // anonymous local
+            let _6: u8; // anonymous local
+            let _7: u8; // anonymous local
+            let _8: u8; // anonymous local
+            let _9: u8; // anonymous local
+            let _10: &'2 u8; // anonymous local
+            let _11: &'3 u8; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_10)
+            storage_live(_11)
+            i = move _3
+            storage_live(_5)
+            storage_live(_6)
+            _6 = copy i
+            storage_live(_7)
+            _10 = copy _1
+            _7 = copy (*_10)
+            _5 = move _6 < move _7
+            if move _5 {
+                storage_dead(_7)
+                storage_dead(_6)
+                storage_live(_8)
+                _8 = copy i
+                storage_live(_9)
+                _11 = copy _2
+                _9 = copy (*_11)
+                _0 = move _8 < move _9
+                storage_dead(_9)
+                storage_dead(_8)
+            } else {
+                storage_dead(_7)
+                storage_dead(_6)
+                _0 = const true
+            }
+            storage_dead(_5)
+            storage_dead(_11)
+            storage_dead(_10)
+            storage_dead(i)
+            storage_dead(_3)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(r)
+        storage_dead(_2)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: u8; // return
+    let n: u8; // arg #1
+
+    storage_live(_0)
+    _0 = copy n
+    storage_dead(n)
+    return
+}
+
+// Full name: trust2_contract_each_implication::each_closed_range
+pub fn each_closed_range(x: u8) -> u8
+    postcondition[
+    ](_1: u8)
+    {
+        let _0: bool; // return
+        let _1: u8; // arg #1
+        let r: u8; // local
+
+        storage_live(_0)
+        storage_live(r)
+        r = move _1
+        _0 = forall[
+            _1: &'0 u8 = &_2,
+        ](_2: u8)
+        {
+            let _0: bool; // return
+            let _1: &'0 u8; // arg #1
+            let _2: u8; // arg #2
+            let i: u8; // local
+            let _4: bool; // anonymous local
+            let _5: u8; // anonymous local
+            let _6: bool; // anonymous local
+            let _7: u8; // anonymous local
+            let _8: u8; // anonymous local
+            let _9: u8; // anonymous local
+            let _10: &'1 u8; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_10)
+            i = move _2
+            storage_live(_4)
+            storage_live(_5)
+            _5 = copy i
+            _4 = const 0u8 <= move _5
+            if move _4 {
+                storage_dead(_5)
+                storage_live(_6)
+                storage_live(_7)
+                _7 = copy i
+                _6 = move _7 <= const 9u8
+                if move _6 {
+                    storage_dead(_7)
+                    storage_live(_8)
+                    _8 = copy i
+                    storage_live(_9)
+                    _10 = copy _1
+                    _9 = copy (*_10)
+                    _0 = move _8 <= move _9
+                    storage_dead(_9)
+                    storage_dead(_8)
+                } else {
+                    storage_dead(_7)
+                    _0 = const true
+                }
+            } else {
+                storage_dead(_5)
+                _0 = const true
+            }
+            storage_dead(_6)
+            storage_dead(_4)
+            storage_dead(_10)
+            storage_dead(i)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(r)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: u8; // return
+    let x: u8; // arg #1
+
+    storage_live(_0)
+    _0 = const 9u8
+    storage_dead(x)
+    return
+}
+
+// Full name: trust2_contract_each_implication::each_half_open_range
+pub fn each_half_open_range<'_0>(v: &'_0 [u8])
+    precondition[
+        _1: &'0 [u8] = &(*_1) with_metadata(copy _1.metadata),
+    ]()
+    {
+        let _0: bool; // return
+        let _1: &'0 [u8]; // arg #1
+
+        storage_live(_0)
+        _0 = forall[
+            _1: &'0 [u8] = &(*_1),
+        ](_2: usize)
+        {
+            let _0: bool; // return
+            let _1: &'0 [u8]; // arg #1
+            let _2: usize; // arg #2
+            let i: usize; // local
+            let _4: bool; // anonymous local
+            let _5: usize; // anonymous local
+            let _6: bool; // anonymous local
+            let _7: usize; // anonymous local
+            let _8: usize; // anonymous local
+            let _9: &'1 [u8]; // anonymous local
+            let _10: u8; // anonymous local
+            let _11: usize; // anonymous local
+            let _12: *const [u8]; // anonymous local
+            let _13: usize; // anonymous local
+            let _14: bool; // anonymous local
+            let _15: &'2 [u8]; // anonymous local
+            let _16: &'3 [u8]; // anonymous local
+            let _17: &'4 [u8]; // anonymous local
+            let _18: &'_ [u8]; // anonymous local
+            let _19: &'_ u8; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_12)
+            storage_live(_13)
+            storage_live(_14)
+            storage_live(_15)
+            storage_live(_16)
+            storage_live(_17)
+            i = move _2
+            storage_live(_4)
+            storage_live(_5)
+            _5 = copy i
+            _4 = const 0usize <= move _5
+            if move _4 {
+                storage_dead(_5)
+                storage_live(_6)
+                storage_live(_7)
+                _7 = copy i
+                storage_live(_8)
+                storage_live(_9)
+                _15 = copy _1
+                _9 = &(*_15)
+                _8 = len<'9, u8>[{built_in impl Destruct for u8}](move _9)
+                ↳⚡ unwind_continue
+                storage_dead(_9)
+                _6 = move _7 < move _8
+                if move _6 {
+                    storage_dead(_8)
+                    storage_dead(_7)
+                    storage_live(_10)
+                    storage_live(_11)
+                    _11 = copy i
+                    _16 = copy _1
+                    _12 = &raw const (*_16)
+                    _13 = copy _12.metadata
+                    _14 = copy _11 < copy _13
+                    assert(move _14 == true) (bounds_check) else panic
+                    ↳⚡ unwind_continue
+                    _17 = copy _1
+                    storage_live(_18)
+                    _18 = &(*_17) with_metadata(copy _17.metadata)
+                    storage_live(_19)
+                    _19 = @SliceIndexShared<'_, u8>(move _18, copy _11)
+                    ↳⚡ storage_dead(_19)
+                        storage_dead(_18)
+                        storage_dead(_17)
+                        storage_dead(_16)
+                        storage_dead(_15)
+                        storage_dead(_14)
+                        storage_dead(_13)
+                        storage_dead(_12)
+                        storage_dead(i)
+                        storage_dead(_2)
+                        storage_dead(_1)
+                        undefined_behavior
+                    _10 = copy (*_19)
+                    _0 = move _10 > const 0u8
+                    storage_dead(_11)
+                    storage_dead(_10)
+                } else {
+                    storage_dead(_8)
+                    storage_dead(_7)
+                    _0 = const true
+                }
+            } else {
+                storage_dead(_5)
+                _0 = const true
+            }
+            storage_dead(_6)
+            storage_dead(_4)
+            storage_dead(_19)
+            storage_dead(_18)
+            storage_dead(_17)
+            storage_dead(_16)
+            storage_dead(_15)
+            storage_dead(_14)
+            storage_dead(_13)
+            storage_dead(_12)
+            storage_dead(i)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: (); // return
+    let v: &'1 [u8]; // arg #1
+
+    storage_live(_0)
+    _0 = ()
+    _0 = ()
+    storage_dead(v)
+    return
+}
+
+// Full name: trust2_contract_each_implication::each_nested
+pub fn each_nested()
+    precondition[
+    ]()
+    {
+        let _0: bool; // return
+
+        storage_live(_0)
+        _0 = forall[
+        ](_1: u8)
+        {
+            let _0: bool; // return
+            let _1: u8; // arg #1
+            let i: u8; // local
+            let _3: bool; // anonymous local
+            let _4: u8; // anonymous local
+            let _5: bool; // anonymous local
+            let _6: u8; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            i = move _1
+            storage_live(_3)
+            storage_live(_4)
+            _4 = copy i
+            _3 = const 0u8 <= move _4
+            if move _3 {
+                storage_dead(_4)
+                storage_live(_5)
+                storage_live(_6)
+                _6 = copy i
+                _5 = move _6 < const 10u8
+                if move _5 {
+                    storage_dead(_6)
+                    _0 = forall[
+                        _1: &'0 u8 = &_2,
+                    ](_2: u8)
+                    {
+                        let _0: bool; // return
+                        let _1: &'0 u8; // arg #1
+                        let _2: u8; // arg #2
+                        let j: u8; // local
+                        let _4: bool; // anonymous local
+                        let _5: u8; // anonymous local
+                        let _6: bool; // anonymous local
+                        let _7: u8; // anonymous local
+                        let _8: u8; // anonymous local
+                        let _9: u8; // anonymous local
+                        let _10: u8; // anonymous local
+                        let _11: &'1 u8; // anonymous local
+                        let _12: &'2 u8; // anonymous local
+
+                        storage_live(_0)
+                        storage_live(j)
+                        storage_live(_11)
+                        storage_live(_12)
+                        j = move _2
+                        storage_live(_4)
+                        storage_live(_5)
+                        _5 = copy j
+                        _4 = const 0u8 <= move _5
+                        if move _4 {
+                            storage_dead(_5)
+                            storage_live(_6)
+                            storage_live(_7)
+                            _7 = copy j
+                            storage_live(_8)
+                            _11 = copy _1
+                            _8 = copy (*_11)
+                            _6 = move _7 < move _8
+                            if move _6 {
+                                storage_dead(_8)
+                                storage_dead(_7)
+                                storage_live(_9)
+                                _9 = copy j
+                                storage_live(_10)
+                                _12 = copy _1
+                                _10 = copy (*_12)
+                                _0 = move _9 < move _10
+                                storage_dead(_10)
+                                storage_dead(_9)
+                            } else {
+                                storage_dead(_8)
+                                storage_dead(_7)
+                                _0 = const true
+                            }
+                        } else {
+                            storage_dead(_5)
+                            _0 = const true
+                        }
+                        storage_dead(_6)
+                        storage_dead(_4)
+                        storage_dead(_12)
+                        storage_dead(_11)
+                        storage_dead(j)
+                        storage_dead(_2)
+                        storage_dead(_1)
+                        return
+                    }
+                } else {
+                    storage_dead(_6)
+                    _0 = const true
+                }
+            } else {
+                storage_dead(_4)
+                _0 = const true
+            }
+            storage_dead(_5)
+            storage_dead(_3)
+            storage_dead(i)
+            storage_dead(_1)
+            return
+        }
+        return
+    }
+{
+    let _0: (); // return
+
+    storage_live(_0)
+    _0 = ()
+    _0 = ()
+    return
+}
+
+// Full name: trust2_contract_each_implication::each_under_implication
+pub fn each_under_implication(x: u8) -> u8
+    postcondition[
+        _1: &'0 u8 = &_1,
+    ](_2: u8)
+    {
+        let _0: bool; // return
+        let _1: &'0 u8; // arg #1
+        let _2: u8; // arg #2
+        let r: u8; // local
+        let _4: bool; // anonymous local
+        let _5: u8; // anonymous local
+        let _6: &'5 u8; // anonymous local
+
+        storage_live(_0)
+        storage_live(r)
+        storage_live(_6)
+        r = move _2
+        storage_live(_4)
+        storage_live(_5)
+        _6 = copy _1
+        _5 = copy (*_6)
+        _4 = move _5 > const 0u8
+        if move _4 {
+            storage_dead(_5)
+            _0 = forall[
+                _1: &'0 u8 = &(*_1),
+                _2: &'1 u8 = &_3,
+            ](_3: u8)
+            {
+                let _0: bool; // return
+                let _1: &'0 u8; // arg #1
+                let _2: &'1 u8; // arg #2
+                let _3: u8; // arg #3
+                let i: u8; // local
+                let _5: bool; // anonymous local
+                let _6: u8; // anonymous local
+                let _7: bool; // anonymous local
+                let _8: u8; // anonymous local
+                let _9: u8; // anonymous local
+                let _10: u8; // anonymous local
+                let _11: u8; // anonymous local
+                let _12: &'2 u8; // anonymous local
+                let _13: &'3 u8; // anonymous local
+
+                storage_live(_0)
+                storage_live(i)
+                storage_live(_12)
+                storage_live(_13)
+                i = move _3
+                storage_live(_5)
+                storage_live(_6)
+                _6 = copy i
+                _5 = const 0u8 <= move _6
+                if move _5 {
+                    storage_dead(_6)
+                    storage_live(_7)
+                    storage_live(_8)
+                    _8 = copy i
+                    storage_live(_9)
+                    _12 = copy _1
+                    _9 = copy (*_12)
+                    _7 = move _8 < move _9
+                    if move _7 {
+                        storage_dead(_9)
+                        storage_dead(_8)
+                        storage_live(_10)
+                        _10 = copy i
+                        storage_live(_11)
+                        _13 = copy _2
+                        _11 = copy (*_13)
+                        _0 = move _10 < move _11
+                        storage_dead(_11)
+                        storage_dead(_10)
+                    } else {
+                        storage_dead(_9)
+                        storage_dead(_8)
+                        _0 = const true
+                    }
+                } else {
+                    storage_dead(_6)
+                    _0 = const true
+                }
+                storage_dead(_7)
+                storage_dead(_5)
+                storage_dead(_13)
+                storage_dead(_12)
+                storage_dead(i)
+                storage_dead(_3)
+                storage_dead(_2)
+                storage_dead(_1)
+                return
+            }
+        } else {
+            storage_dead(_5)
+            _0 = const true
+        }
+        storage_dead(_4)
+        storage_dead(_6)
+        storage_dead(r)
+        storage_dead(_2)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: u8; // return
+    let x: u8; // arg #1
+
+    storage_live(_0)
+    _0 = copy x
+    storage_dead(x)
+    return
+}
+
+// Full name: trust2_contract_each_implication::old_in_forall
+pub fn old_in_forall<'_0>(v: &'_0 mut [u64])
+    postcondition[
+        _1: &'0 &'1 mut [u64] = &_1,
+    ](_2: ())
+    {
+        let _0: bool; // return
+        let _1: &'0 &'1 mut [u64]; // arg #1
+        let _2: (); // arg #2
+        let _3: (); // anonymous local
+
+        storage_live(_0)
+        storage_live(_3)
+        _3 = move _2
+        _0 = forall[
+            _1: &'0 &'1 mut [u64] = &(*_1),
+        ](_2: usize)
+        {
+            let _0: bool; // return
+            let _1: &'0 &'1 mut [u64]; // arg #1
+            let _2: usize; // arg #2
+            let i: usize; // local
+            let _4: bool; // anonymous local
+            let _5: usize; // anonymous local
+            let _6: usize; // anonymous local
+            let _7: &'2 [u64]; // anonymous local
+            let _8: u64; // anonymous local
+            let _9: usize; // anonymous local
+            let _10: *const [u64]; // anonymous local
+            let _11: usize; // anonymous local
+            let _12: bool; // anonymous local
+            let _13: u64; // anonymous local
+            let _14: u64; // anonymous local
+            let _15: &'3 [u64]; // anonymous local
+            let _16: &'4 &'5 mut [u64]; // anonymous local
+            let _17: &'6 &'7 mut [u64]; // anonymous local
+            let _18: usize; // anonymous local
+            let _19: usize; // anonymous local
+            let _20: bool; // anonymous local
+            let _21: bool; // anonymous local
+            let _22: &'8 &'9 mut [u64]; // anonymous local
+            let _23: &'10 mut [u64]; // anonymous local
+            let _24: &'11 &'12 mut [u64]; // anonymous local
+            let _25: &'13 mut [u64]; // anonymous local
+            let _26: &'14 &'15 mut [u64]; // anonymous local
+            let _27: &'16 mut [u64]; // anonymous local
+            let _28: &'17 &'18 mut [u64]; // anonymous local
+            let _29: &'_ [u64]; // anonymous local
+            let _30: &'_ u64; // anonymous local
+            let _31: &'_ [u64]; // anonymous local
+            let _32: &'_ u64; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_10)
+            storage_live(_11)
+            storage_live(_12)
+            storage_live(_19)
+            storage_live(_20)
+            storage_live(_21)
+            storage_live(_22)
+            storage_live(_23)
+            storage_live(_24)
+            storage_live(_25)
+            storage_live(_26)
+            storage_live(_27)
+            storage_live(_28)
+            i = move _2
+            storage_live(_4)
+            storage_live(_5)
+            _5 = copy i
+            storage_live(_6)
+            storage_live(_7)
+            _22 = copy _1
+            _23 = copy (*_22)
+            _7 = &(*_23)
+            _6 = len<'29, u64>[{built_in impl Destruct for u64}](move _7)
+            ↳⚡ unwind_continue
+            storage_dead(_7)
+            _4 = move _5 < move _6
+            if move _4 {
+                storage_dead(_6)
+                storage_dead(_5)
+                storage_live(_8)
+                storage_live(_9)
+                _9 = copy i
+                _24 = copy _1
+                _25 = copy (*_24)
+                _10 = &raw const (*_25)
+                _11 = copy _10.metadata
+                _12 = copy _9 < copy _11
+                assert(move _12 == true) (bounds_check) else panic
+                ↳⚡ unwind_continue
+                _26 = copy _1
+                _27 = copy (*_26)
+                storage_live(_29)
+                _29 = &(*_27) with_metadata(copy _27.metadata)
+                storage_live(_30)
+                _30 = @SliceIndexShared<'_, u64>(move _29, copy _9)
+                ↳⚡ storage_dead(_32)
+                    storage_dead(_31)
+                    storage_dead(_30)
+                    storage_dead(_29)
+                    storage_dead(_28)
+                    storage_dead(_27)
+                    storage_dead(_26)
+                    storage_dead(_25)
+                    storage_dead(_24)
+                    storage_dead(_23)
+                    storage_dead(_22)
+                    storage_dead(_21)
+                    storage_dead(_20)
+                    storage_dead(_19)
+                    storage_dead(_12)
+                    storage_dead(_11)
+                    storage_dead(_10)
+                    storage_dead(i)
+                    storage_dead(_2)
+                    storage_dead(_1)
+                    undefined_behavior
+                _8 = copy (*_30)
+                storage_live(_13)
+                storage_live(_14)
+                storage_live(_15)
+                storage_live(_16)
+                storage_live(_17)
+                _28 = copy _1
+                _17 = &(*_28)
+                _16 = &(*_17)
+                _15 = @SpecOld<[u64]>[impl_Destruct_for_slice<u64>[{built_in impl Destruct for u64}]](move _16)
+                ↳⚡ unwind_continue
+                storage_dead(_16)
+                storage_live(_18)
+                _18 = copy i
+                _19 = copy _15.metadata
+                _20 = copy _18 < copy _19
+                assert(move _20 == true) (bounds_check) else panic
+                ↳⚡ unwind_continue
+                storage_live(_31)
+                _31 = &(*_15) with_metadata(copy _15.metadata)
+                storage_live(_32)
+                _32 = @SliceIndexShared<'_, u64>(move _31, copy _18)
+                ↳⚡ storage_dead(_32)
+                    storage_dead(_31)
+                    storage_dead(_30)
+                    storage_dead(_29)
+                    storage_dead(_28)
+                    storage_dead(_27)
+                    storage_dead(_26)
+                    storage_dead(_25)
+                    storage_dead(_24)
+                    storage_dead(_23)
+                    storage_dead(_22)
+                    storage_dead(_21)
+                    storage_dead(_20)
+                    storage_dead(_19)
+                    storage_dead(_12)
+                    storage_dead(_11)
+                    storage_dead(_10)
+                    storage_dead(i)
+                    storage_dead(_2)
+                    storage_dead(_1)
+                    undefined_behavior
+                _14 = copy (*_32)
+                _21 = const 2u64 == const 0u64
+                assert(move _21 == false) (division_by_zero) else panic
+                ↳⚡ unwind_continue
+                _13 = move _14 ub./ const 2u64
+                storage_dead(_14)
+                _0 = move _8 == move _13
+                storage_dead(_18)
+                storage_dead(_17)
+                storage_dead(_15)
+                storage_dead(_13)
+                storage_dead(_9)
+                storage_dead(_8)
+            } else {
+                storage_dead(_6)
+                storage_dead(_5)
+                _0 = const true
+            }
+            storage_dead(_4)
+            storage_dead(_32)
+            storage_dead(_31)
+            storage_dead(_30)
+            storage_dead(_29)
+            storage_dead(_28)
+            storage_dead(_27)
+            storage_dead(_26)
+            storage_dead(_25)
+            storage_dead(_24)
+            storage_dead(_23)
+            storage_dead(_22)
+            storage_dead(_21)
+            storage_dead(_20)
+            storage_dead(_19)
+            storage_dead(_12)
+            storage_dead(_11)
+            storage_dead(_10)
+            storage_dead(i)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(_3)
+        storage_dead(_2)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: (); // return
+    let v: &'1 mut [u64]; // arg #1
+
+    storage_live(_0)
+    _0 = ()
+    _0 = ()
+    storage_dead(v)
+    return
+}
+
+// Full name: trust2_contract_each_implication::old_in_each
+pub fn old_in_each<'_0>(v: &'_0 mut [u64])
+    postcondition[
+        _1: &'0 &'1 mut [u64] = &_1,
+    ](_2: ())
+    {
+        let _0: bool; // return
+        let _1: &'0 &'1 mut [u64]; // arg #1
+        let _2: (); // arg #2
+        let _3: (); // anonymous local
+
+        storage_live(_0)
+        storage_live(_3)
+        _3 = move _2
+        _0 = forall[
+            _1: &'0 &'1 mut [u64] = &(*_1),
+        ](_2: usize)
+        {
+            let _0: bool; // return
+            let _1: &'0 &'1 mut [u64]; // arg #1
+            let _2: usize; // arg #2
+            let i: usize; // local
+            let _4: bool; // anonymous local
+            let _5: usize; // anonymous local
+            let _6: bool; // anonymous local
+            let _7: usize; // anonymous local
+            let _8: usize; // anonymous local
+            let _9: &'2 [u64]; // anonymous local
+            let _10: u64; // anonymous local
+            let _11: usize; // anonymous local
+            let _12: *const [u64]; // anonymous local
+            let _13: usize; // anonymous local
+            let _14: bool; // anonymous local
+            let _15: u64; // anonymous local
+            let _16: u64; // anonymous local
+            let _17: &'3 [u64]; // anonymous local
+            let _18: &'4 &'5 mut [u64]; // anonymous local
+            let _19: &'6 &'7 mut [u64]; // anonymous local
+            let _20: usize; // anonymous local
+            let _21: usize; // anonymous local
+            let _22: bool; // anonymous local
+            let _23: bool; // anonymous local
+            let _24: &'8 &'9 mut [u64]; // anonymous local
+            let _25: &'10 mut [u64]; // anonymous local
+            let _26: &'11 &'12 mut [u64]; // anonymous local
+            let _27: &'13 mut [u64]; // anonymous local
+            let _28: &'14 &'15 mut [u64]; // anonymous local
+            let _29: &'16 mut [u64]; // anonymous local
+            let _30: &'17 &'18 mut [u64]; // anonymous local
+            let _31: &'_ [u64]; // anonymous local
+            let _32: &'_ u64; // anonymous local
+            let _33: &'_ [u64]; // anonymous local
+            let _34: &'_ u64; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_12)
+            storage_live(_13)
+            storage_live(_14)
+            storage_live(_21)
+            storage_live(_22)
+            storage_live(_23)
+            storage_live(_24)
+            storage_live(_25)
+            storage_live(_26)
+            storage_live(_27)
+            storage_live(_28)
+            storage_live(_29)
+            storage_live(_30)
+            i = move _2
+            storage_live(_4)
+            storage_live(_5)
+            _5 = copy i
+            _4 = const 0usize <= move _5
+            if move _4 {
+                storage_dead(_5)
+                storage_live(_6)
+                storage_live(_7)
+                _7 = copy i
+                storage_live(_8)
+                storage_live(_9)
+                _24 = copy _1
+                _25 = copy (*_24)
+                _9 = &(*_25)
+                _8 = len<'29, u64>[{built_in impl Destruct for u64}](move _9)
+                ↳⚡ unwind_continue
+                storage_dead(_9)
+                _6 = move _7 < move _8
+                if move _6 {
+                    storage_dead(_8)
+                    storage_dead(_7)
+                    storage_live(_10)
+                    storage_live(_11)
+                    _11 = copy i
+                    _26 = copy _1
+                    _27 = copy (*_26)
+                    _12 = &raw const (*_27)
+                    _13 = copy _12.metadata
+                    _14 = copy _11 < copy _13
+                    assert(move _14 == true) (bounds_check) else panic
+                    ↳⚡ unwind_continue
+                    _28 = copy _1
+                    _29 = copy (*_28)
+                    storage_live(_31)
+                    _31 = &(*_29) with_metadata(copy _29.metadata)
+                    storage_live(_32)
+                    _32 = @SliceIndexShared<'_, u64>(move _31, copy _11)
+                    ↳⚡ storage_dead(_34)
+                        storage_dead(_33)
+                        storage_dead(_32)
+                        storage_dead(_31)
+                        storage_dead(_30)
+                        storage_dead(_29)
+                        storage_dead(_28)
+                        storage_dead(_27)
+                        storage_dead(_26)
+                        storage_dead(_25)
+                        storage_dead(_24)
+                        storage_dead(_23)
+                        storage_dead(_22)
+                        storage_dead(_21)
+                        storage_dead(_14)
+                        storage_dead(_13)
+                        storage_dead(_12)
+                        storage_dead(i)
+                        storage_dead(_2)
+                        storage_dead(_1)
+                        undefined_behavior
+                    _10 = copy (*_32)
+                    storage_live(_15)
+                    storage_live(_16)
+                    storage_live(_17)
+                    storage_live(_18)
+                    storage_live(_19)
+                    _30 = copy _1
+                    _19 = &(*_30)
+                    _18 = &(*_19)
+                    _17 = @SpecOld<[u64]>[impl_Destruct_for_slice<u64>[{built_in impl Destruct for u64}]](move _18)
+                    ↳⚡ unwind_continue
+                    storage_dead(_18)
+                    storage_live(_20)
+                    _20 = copy i
+                    _21 = copy _17.metadata
+                    _22 = copy _20 < copy _21
+                    assert(move _22 == true) (bounds_check) else panic
+                    ↳⚡ unwind_continue
+                    storage_live(_33)
+                    _33 = &(*_17) with_metadata(copy _17.metadata)
+                    storage_live(_34)
+                    _34 = @SliceIndexShared<'_, u64>(move _33, copy _20)
+                    ↳⚡ storage_dead(_34)
+                        storage_dead(_33)
+                        storage_dead(_32)
+                        storage_dead(_31)
+                        storage_dead(_30)
+                        storage_dead(_29)
+                        storage_dead(_28)
+                        storage_dead(_27)
+                        storage_dead(_26)
+                        storage_dead(_25)
+                        storage_dead(_24)
+                        storage_dead(_23)
+                        storage_dead(_22)
+                        storage_dead(_21)
+                        storage_dead(_14)
+                        storage_dead(_13)
+                        storage_dead(_12)
+                        storage_dead(i)
+                        storage_dead(_2)
+                        storage_dead(_1)
+                        undefined_behavior
+                    _16 = copy (*_34)
+                    _23 = const 2u64 == const 0u64
+                    assert(move _23 == false) (division_by_zero) else panic
+                    ↳⚡ unwind_continue
+                    _15 = move _16 ub./ const 2u64
+                    storage_dead(_16)
+                    _0 = move _10 == move _15
+                    storage_dead(_20)
+                    storage_dead(_19)
+                    storage_dead(_17)
+                    storage_dead(_15)
+                    storage_dead(_11)
+                    storage_dead(_10)
+                } else {
+                    storage_dead(_8)
+                    storage_dead(_7)
+                    _0 = const true
+                }
+            } else {
+                storage_dead(_5)
+                _0 = const true
+            }
+            storage_dead(_6)
+            storage_dead(_4)
+            storage_dead(_34)
+            storage_dead(_33)
+            storage_dead(_32)
+            storage_dead(_31)
+            storage_dead(_30)
+            storage_dead(_29)
+            storage_dead(_28)
+            storage_dead(_27)
+            storage_dead(_26)
+            storage_dead(_25)
+            storage_dead(_24)
+            storage_dead(_23)
+            storage_dead(_22)
+            storage_dead(_21)
+            storage_dead(_14)
+            storage_dead(_13)
+            storage_dead(_12)
+            storage_dead(i)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(_3)
+        storage_dead(_2)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: (); // return
+    let v: &'1 mut [u64]; // arg #1
+
+    storage_live(_0)
+    _0 = ()
+    _0 = ()
+    storage_dead(v)
+    return
+}
+
+// Full name: trust2_contract_each_implication::outer_variables
+pub fn outer_variables(n: u8) -> u8
+    postcondition[
+        _1: &'0 u8 = &_1,
+    ](_2: u8)
+    {
+        let _0: bool; // return
+        let _1: &'0 u8; // arg #1
+        let _2: u8; // arg #2
+        let r: u8; // local
+
+        storage_live(_0)
+        storage_live(r)
+        r = move _2
+        _0 = exists[
+            _1: &'0 u8 = &_3,
+            _2: &'1 u8 = &(*_1),
+        ](_3: u8)
+        {
+            let _0: bool; // return
+            let _1: &'0 u8; // arg #1
+            let _2: &'1 u8; // arg #2
+            let _3: u8; // arg #3
+            let x: u8; // local
+            let _5: bool; // anonymous local
+            let _6: u8; // anonymous local
+            let _7: u8; // anonymous local
+            let _8: u8; // anonymous local
+            let _9: u8; // anonymous local
+            let _10: &'2 u8; // anonymous local
+            let _11: &'3 u8; // anonymous local
+
+            storage_live(_0)
+            storage_live(x)
+            storage_live(_10)
+            storage_live(_11)
+            x = move _3
+            storage_live(_5)
+            storage_live(_6)
+            _6 = copy x
+            storage_live(_7)
+            _10 = copy _1
+            _7 = copy (*_10)
+            _5 = move _6 == move _7
+            if move _5 {
+                storage_dead(_7)
+                storage_dead(_6)
+                storage_live(_8)
+                _8 = copy x
+                storage_live(_9)
+                _11 = copy _2
+                _9 = copy (*_11)
+                _0 = move _8 == move _9
+                storage_dead(_9)
+                storage_dead(_8)
+            } else {
+                storage_dead(_7)
+                storage_dead(_6)
+                _0 = const false
+            }
+            storage_dead(_5)
+            storage_dead(_11)
+            storage_dead(_10)
+            storage_dead(x)
+            storage_dead(_3)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(r)
+        storage_dead(_2)
+        storage_dead(_1)
+        return
+    }
+{
+    let _0: u8; // return
+    let n: u8; // arg #1
+
+    storage_live(_0)
+    _0 = copy n
+    storage_dead(n)
+    return
+}
+
+// Full name: trust2_contract_each_implication::statements
+pub fn statements(n: u8)
+{
+    let _0: (); // return
+    let n: u8; // arg #1
+
+    storage_live(_0)
+    _0 = ()
+    contract_assert[
+        _1: &'0 u8 = &_1,
+    ]()
+    {
+        let _0: bool; // return
+        let _1: &'0 u8; // arg #1
+        let _2: bool; // anonymous local
+        let _3: u8; // anonymous local
+        let _4: u8; // anonymous local
+        let _5: &'1 u8; // anonymous local
+        let _6: &'2 u8; // anonymous local
+
+        storage_live(_0)
+        storage_live(_5)
+        storage_live(_6)
+        storage_live(_2)
+        storage_live(_3)
+        _5 = copy _1
+        _3 = copy (*_5)
+        _2 = move _3 > const 0u8
+        if move _2 {
+            storage_dead(_3)
+            storage_live(_4)
+            _6 = copy _1
+            _4 = copy (*_6)
+            _0 = move _4 >= const 1u8
+            storage_dead(_4)
+        } else {
+            storage_dead(_3)
+            _0 = const true
+        }
+        storage_dead(_2)
+        storage_dead(_6)
+        storage_dead(_5)
+        storage_dead(_1)
+        return
+    }
+    contract_assume[
+        _1: &'0 u8 = &_1,
+    ]()
+    {
+        let _0: bool; // return
+        let _1: &'0 u8; // arg #1
+
+        storage_live(_0)
+        _0 = forall[
+            _1: &'0 u8 = &(*_1),
+        ](_2: u8)
+        {
+            let _0: bool; // return
+            let _1: &'0 u8; // arg #1
+            let _2: u8; // arg #2
+            let i: u8; // local
+            let _4: bool; // anonymous local
+            let _5: u8; // anonymous local
+            let _6: bool; // anonymous local
+            let _7: u8; // anonymous local
+            let _8: u8; // anonymous local
+            let _9: u8; // anonymous local
+            let _10: u8; // anonymous local
+            let _11: &'1 u8; // anonymous local
+            let _12: &'2 u8; // anonymous local
+
+            storage_live(_0)
+            storage_live(i)
+            storage_live(_11)
+            storage_live(_12)
+            i = move _2
+            storage_live(_4)
+            storage_live(_5)
+            _5 = copy i
+            _4 = const 0u8 <= move _5
+            if move _4 {
+                storage_dead(_5)
+                storage_live(_6)
+                storage_live(_7)
+                _7 = copy i
+                storage_live(_8)
+                _11 = copy _1
+                _8 = copy (*_11)
+                _6 = move _7 < move _8
+                if move _6 {
+                    storage_dead(_8)
+                    storage_dead(_7)
+                    storage_live(_9)
+                    _9 = copy i
+                    storage_live(_10)
+                    _12 = copy _1
+                    _10 = copy (*_12)
+                    _0 = move _9 < move _10
+                    storage_dead(_10)
+                    storage_dead(_9)
+                } else {
+                    storage_dead(_8)
+                    storage_dead(_7)
+                    _0 = const true
+                }
+            } else {
+                storage_dead(_5)
+                _0 = const true
+            }
+            storage_dead(_6)
+            storage_dead(_4)
+            storage_dead(_12)
+            storage_dead(_11)
+            storage_dead(i)
+            storage_dead(_2)
+            storage_dead(_1)
+            return
+        }
+        storage_dead(_1)
+        return
+    }
+    _0 = ()
+    storage_dead(n)
+    return
+}
+
+// Full name: trust2_contract_each_implication::Range
+pub struct Range {
+  low: u8,
+  high: u8,
+}
+    invariant
+    {
+        let _0: bool; // return
+        let self: &'1 Range; // arg #1
+        let _2: bool; // anonymous local
+        let _3: u8; // anonymous local
+        let _4: u8; // anonymous local
+
+        storage_live(_0)
+        storage_live(_2)
+        storage_live(_3)
+        _3 = copy ((*self)).low
+        _2 = move _3 > const 0u8
+        if move _2 {
+        } else {
+            storage_dead(_3)
+            _0 = const true
+            storage_dead(_2)
+            storage_dead(self)
+            return
+        }
+        storage_dead(_3)
+        storage_live(_4)
+        _4 = copy ((*self)).high
+        _0 = move _4 > const 0u8
+        storage_dead(_4)
+        storage_dead(_2)
+        storage_dead(self)
+        return
+    }
+
+// Full name: trust2_contract_each_implication::Range::{impl Destruct for Range}::drop_glue
+unsafe fn impl_Destruct_for_Range::drop_glue<'_0>(_1: &'_0 mut Range)
+{
+    let _0: (); // return
+    let _1: &'1 mut Range; // arg #1
+
+    storage_live(_0)
+    _0 = ()
+    storage_dead(_1)
+    return
+}
+
+// Full name: trust2_contract_each_implication::Range::{impl Destruct for Range}
+impl "impl_Destruct_for_Range" Destruct for Range {
+    fn drop_glue<'_0_1> = impl_Destruct_for_Range::drop_glue<'_0_1>
+    non-dyn-compatible
+}
+
+
+

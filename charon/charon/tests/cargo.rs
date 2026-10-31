@@ -248,6 +248,23 @@ fn main() -> Result<(), Box<dyn Error>> {
             &["--features=trust2-contract/verify".to_owned()],
             Failure,
         ),
+        mktest(
+            "trust2-contract-each-implication",
+            root.join("trust2-contract-each-implication"),
+            // The flags `cargo verify` passes, see `cargo-verify/src/rust_to_llbc.rs`.
+            &[
+                "--translate-all-methods".to_owned(),
+                "--treat-box-as-builtin".to_owned(),
+                "--precise-drops".to_owned(),
+                "--index-to-function-calls".to_owned(),
+                "--ops-to-function-calls".to_owned(),
+                "--reconstruct-asserts".to_owned(),
+                "--hide-allocator".to_owned(),
+                "--hide-marker-traits".to_owned(),
+            ],
+            &["--features=trust2-contract/verify".to_owned()],
+            Success,
+        ),
     ];
 
     let args = libtest_mimic::Arguments::from_args();

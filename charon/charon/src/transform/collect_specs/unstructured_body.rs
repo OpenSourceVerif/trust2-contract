@@ -1,9 +1,9 @@
 use crate::{
     ast::{
-        Body, BodyVisitable, BorrowKind, BuiltinFunId, Call, ContractAssertKind, FnOperand, FnPtrKind, FunDecl,
-        FunDeclId, FunId, FunSpecs, Local, LocalId, Locals, Operand, Place, PlaceKind,
-        ProjectionElem, QuantKind, Rvalue, Span, SpecClosure, SpecClosureId, TraitDeclId, Ty,
-        TyKind, TypeId, ullbc_ast_utils::BodyBuilder,
+        Body, BodyVisitable, BorrowKind, BuiltinFunId, Call, ContractAssertKind, FnOperand,
+        FnPtrKind, FunDecl, FunDeclId, FunId, FunSpecs, Local, LocalId, Locals, Operand, Place,
+        PlaceKind, ProjectionElem, QuantKind, Rvalue, Span, SpecClosure, SpecClosureId,
+        TraitDeclId, Ty, TyKind, TypeId, ullbc_ast_utils::BodyBuilder,
     },
     errors::Level,
     ids::IndexMap,
@@ -227,8 +227,9 @@ impl UllbcPass for Transform {
                                 unreachable!();
                             };
                             let new_local_id = self_id + id;
-                            new_captures
-                                .set_slot_extend(new_local_id, old_captures[old_local_id].clone());
+                            let mut capture: Rvalue = old_captures[old_local_id].clone();
+                            inline_capture_temporaries(&mut capture, &old_captures);
+                            new_captures.set_slot_extend(new_local_id, capture);
                             Local {
                                 index: new_local_id,
                                 ..body.locals[old_local_id].clone()
@@ -346,6 +347,27 @@ impl UllbcPass for Transform {
 
         check_old(ctx, func_decl);
     }
+}
+
+/// With `--precise-drops`, a nested closure's capture can go through a temporary, as in
+/// `_5 = &(*_4)` after `_4 = copy _1`. The statements of the block that builds the closure are
+/// discarded, so the capture must not mention those temporaries anymore.
+fn inline_capture_temporaries(capture: &mut Rvalue, assigns: &IndexMap<LocalId, Rvalue>) {
+    fn inline(place: &mut Place, assigns: &IndexMap<LocalId, Rvalue>) {
+        match &mut place.kind {
+            PlaceKind::Local(local_id) => {
+                if let Some(Rvalue::Use(Operand::Copy(source) | Operand::Move(source), _)) =
+                    assigns.get(*local_id)
+                {
+                    *place = source.clone();
+                    inline(place, assigns);
+                }
+            }
+            PlaceKind::Projection(subplace, _) => inline(subplace, assigns),
+            PlaceKind::Global(_) => (),
+        }
+    }
+    capture.dyn_visit_in_body_mut(|place: &mut Place| inline(place, assigns));
 }
 
 /// Checks every `old(p)` reachable from the specifications of `func_decl`.
