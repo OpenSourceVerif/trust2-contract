@@ -20,7 +20,7 @@ Examples show existing uses. “Remaining work” describes concrete scenarios, 
 
 ## Name rewriting
 
-Contract macros recursively rewrite `implies`, and postconditions also rewrite `old`. Quantifier macros do not perform these rewrites themselves; an enclosing contract macro handles them.
+Contract macros recursively rewrite `==>` and `implies`, and postconditions also rewrite `old`. Quantifier macros do not perform these rewrites themselves; an enclosing contract macro handles them.
 
 Current replacement is name-based and also affects ordinary same-named methods such as `value.old()`. The frontend needs to distinguish specification markers from ordinary Rust names. See [Lexical Rules](notations.md) for a concrete example.
 

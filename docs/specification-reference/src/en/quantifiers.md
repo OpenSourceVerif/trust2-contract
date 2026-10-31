@@ -2,7 +2,7 @@
 
 # Quantifiers
 
-{{#syntax Quantifier QuantifierPredicate}}
+{{#syntax Quantifier QuantifierPredicate EachDomain}}
 
 {{#rule contract.quantifier.intro}}
 
@@ -13,6 +13,13 @@
 The binding of `x` extends over the closure body. That body may refer to outer bindings and contain further quantifiers. Multiple quantified variables can be expressed by nesting quantifiers or destructuring a single tuple parameter. Each quantifier accepts one parameter; a two-parameter closure such as `|x: u8, y: u8|` does not match the current interface.
 
 The domain is a Rust type. For example, quantifying over `u8` concerns its finite range of values, not unbounded mathematical integers. A restriction on the domain is expressed in the body: universal quantification uses a conditional property, while existential quantification requires both the restriction and the property to hold.
+
+`each!` is a universal quantifier with an explicit domain:
+
+- `each!(i: T; G; P)` states that `P` holds for every `i` of type `T` satisfying `G`.
+- `each!(i: T in a..b; P)` is the same with `G` being `a <= i && i < b`. `a..=b` includes `b`.
+
+`P` is evaluated only for values in the domain, so `each!(i: usize in 0..v.len(); v[i] > 0)` does not read outside the slice. Both bounds of a range are required. Bounds need not be constant.
 
 {{#rule contract.quantifier.example}}
 
@@ -45,26 +52,29 @@ pub fn zero_for_pairs() -> u8 {
 }
 ```
 
-This form also supports extraction and WhyML generation. Capturing other outer variables and combining nested quantifiers are discussed in the implementation boundaries below.
+This form also supports extraction and WhyML generation.
+
+`each!` restricts the domain directly. Each of these states that every `i` below the bound is below the result:
+
+```rust,ignore
+#[postcondition(|r| each!(i: u8; i < n; i < r))]
+pub fn with_guard(n: u8) -> u8 {
+    n
+}
+
+#[postcondition(|r| each!(i: u8 in 0..n; i < r))]
+pub fn with_range(n: u8) -> u8 {
+    n
+}
+```
 
 {{#rule contract.quantifier.boundary}}
 
 ## Implementation boundaries <a id="contract.quantifier.boundary-title"></a>
 
-- **Frontend `rust-llbc`**: has extraction for both quantifiers and nested quantifiers, and retains tuple parameters; passing captured outer variables still has problems.
+- **Frontend `rust-llbc`**: has extraction for all three quantifiers and nested quantifiers, and retains tuple parameters and captured outer variables. `each!` is expanded by its macro to `forall!` and reaches LLBC as a universal quantifier with a branch on the domain.
 - **Backend `llbc-why3`**: has universal and existential quantifier translation, but producing a file does not establish that bindings and conditions were handled correctly.
 
 ### Remaining work
 
-**Passing outer variables (frontend extraction and backend use).** This condition expresses equality between the returned value and the input, but does not currently translate correctly:
-
-```rust,ignore
-#[postcondition(|r| exists!(|x: u8| x == r && x == n))]
-pub fn identity(n: u8) -> u8 {
-    n
-}
-```
-
-The example produces LLBC, but the subsequent WhyML refers to an undefined variable. Problems also occur when quantifiers reference function parameters or multiple quantifier levels capture outer variables. Extraction and translation need to pass each level's captures correctly, keeping `n` associated with the input, `r` with the returned value, and `x` with the local binding.
-
-Quantification over ranges and slices also depends on [the corresponding expressions](expressions.md#contract.expression.boundary-title). For example, stating that every valid index refers to a positive element requires quantifiers, lengths, and indexing to work together.
+**Quantification over ranges and slices (backend).** Conditions on slices depend on [the corresponding expressions](expressions.md#contract.expression.boundary-title). For example, stating that every valid index refers to a positive element requires quantifiers, lengths, and indexing to work together.

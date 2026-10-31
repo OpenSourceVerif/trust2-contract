@@ -52,15 +52,19 @@
     "chapter": "expressions.md"
   },
   "Quantifier": {
-    "definition": "(\"forall\" | \"exists\") \"!\" \"(\" QuantifierPredicate \")\"",
+    "definition": "(\"forall\" | \"exists\") \"!\" \"(\" QuantifierPredicate \")\"\n| \"each\" \"!\" \"(\" IDENTIFIER \":\" Type EachDomain \";\" Condition \")\"",
     "chapter": "quantifiers.md"
   },
   "QuantifierPredicate": {
     "definition": "\"|\" IDENTIFIER \":\" Type \"|\" Condition",
     "chapter": "quantifiers.md"
   },
+  "EachDomain": {
+    "definition": "\";\" Condition | \"in\" Expr \"..\" Expr | \"in\" Expr \"..=\" Expr",
+    "chapter": "quantifiers.md"
+  },
   "Implication": {
-    "definition": "\"implies\" \"(\" Condition \",\" Condition \",\"? \")\"",
+    "definition": "Condition \"==>\" Condition\n| \"implies\" \"(\" Condition \",\" Condition \",\"? \")\"",
     "chapter": "implication.md"
   },
   "OldExpression": {

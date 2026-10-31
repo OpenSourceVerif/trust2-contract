@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-40992f69.js";
+            window.path_to_searchindex_js = "searchindex-f95a5b15.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -183,43 +183,46 @@
 
 <div class="grammar-container">
 <p><strong><sup>Syntax</sup></strong><br>
-<span class="grammar-text grammar-production" id="grammar-Implication" onclick="show_railroad()"><a href="#railroad-Implication">Implication</a></span> := <br>      <span class="grammar-literal">implies</span> <span class="grammar-literal">(</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span><sup>?</sup> <span class="grammar-literal">)</span></p>
+<span class="grammar-text grammar-production" id="grammar-Implication" onclick="show_railroad()"><a href="#railroad-Implication">Implication</a></span> := <br>      <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">==&gt;</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <br>    | <span class="grammar-literal">implies</span> <span class="grammar-literal">(</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span><sup>?</sup> <span class="grammar-literal">)</span></p>
 
 <p><button class="grammar-toggle-railroad" type="button" title="Toggle railroad display" onclick="toggle_railroad()">Show Railroad</button></p>
 
 </div>
 
 <div class="grammar-railroad grammar-hidden">
-<div class="railroad-production" id="railroad-Implication"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-implication-Implication-title" viewbox="0 0 696 130" width="696" height="130"><title id="railroad-implication-Implication-title">Implication 的语法铁路图</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="implication.html#grammar-Implication"><text class="comment" x="64" y="20">Implication</text></a><g class="terminal"><rect x="32" y="41" width="80" height="32" rx="16" /><text x="72.0" y="61" text-anchor="middle">implies</text></g><path d="M112 57 H132" /><g class="terminal"><rect x="132" y="41" width="48" height="32" rx="16" /><text x="156.0" y="61" text-anchor="middle">(</text></g><path d="M180 57 H200" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="200" y="41" width="96" height="32" rx="3" /><text x="248.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M296 57 H316" /><g class="terminal"><rect x="316" y="41" width="48" height="32" rx="16" /><text x="340.0" y="61" text-anchor="middle">,</text></g><path d="M364 57 H384" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="384" y="41" width="96" height="32" rx="3" /><text x="432.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M480 57 H500" /><path d="M500 57 H512 V57 H524" /><path d="M524 57 H556" /><path d="M556 57 H584 V57 H596" /><path d="M500 57 H512 V99 H524" /><g class="terminal"><rect x="524" y="83" width="48" height="32" rx="16" /><text x="548.0" y="103" text-anchor="middle">,</text></g><path d="M572 99 H584 V57 H596" /><path d="M596 57 H616" /><g class="terminal"><rect x="616" y="41" width="48" height="32" rx="16" /><text x="640.0" y="61" text-anchor="middle">)</text></g><path d="M664 57 H684 M684 51 V63 M688 51 V63" /></svg></div>
+<div class="railroad-production" id="railroad-Implication"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-implication-Implication-title" viewbox="0 0 744 178" width="744" height="178"><title id="railroad-implication-Implication-title">Implication 的语法铁路图</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="implication.html#grammar-Implication"><text class="comment" x="64" y="20">Implication</text></a><path d="M32 57 H44 V57 H56" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="56" y="41" width="96" height="32" rx="3" /><text x="104.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M152 57 H172" /><g class="terminal"><rect x="172" y="41" width="48" height="32" rx="16" /><text x="196.0" y="61" text-anchor="middle">==&gt;</text></g><path d="M220 57 H240" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="240" y="41" width="96" height="32" rx="3" /><text x="288.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M336 57 H700 V57 H712" /><path d="M32 57 H44 V105 H56" /><g class="terminal"><rect x="56" y="89" width="80" height="32" rx="16" /><text x="96.0" y="109" text-anchor="middle">implies</text></g><path d="M136 105 H156" /><g class="terminal"><rect x="156" y="89" width="48" height="32" rx="16" /><text x="180.0" y="109" text-anchor="middle">(</text></g><path d="M204 105 H224" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="224" y="89" width="96" height="32" rx="3" /><text x="272.0" y="109" text-anchor="middle">Condition</text></g></a><path d="M320 105 H340" /><g class="terminal"><rect x="340" y="89" width="48" height="32" rx="16" /><text x="364.0" y="109" text-anchor="middle">,</text></g><path d="M388 105 H408" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="408" y="89" width="96" height="32" rx="3" /><text x="456.0" y="109" text-anchor="middle">Condition</text></g></a><path d="M504 105 H524" /><path d="M524 105 H536 V105 H548" /><path d="M548 105 H580" /><path d="M580 105 H608 V105 H620" /><path d="M524 105 H536 V147 H548" /><g class="terminal"><rect x="548" y="131" width="48" height="32" rx="16" /><text x="572.0" y="151" text-anchor="middle">,</text></g><path d="M596 147 H608 V105 H620" /><path d="M620 105 H640" /><g class="terminal"><rect x="640" y="89" width="48" height="32" rx="16" /><text x="664.0" y="109" text-anchor="middle">)</text></g><path d="M688 105 H700 V57 H712" /><path d="M712 57 H732 M732 51 V63 M736 51 V63" /></svg></div>
 
 </div>
 
 <div class="rule" id="r-contract.implies.intro"><a class="rule-link" href="#r-contract.implies.intro" title="contract.implies.intro"><span>[contract<wbr>.implies<wbr>.intro]</span></a></div>
 
 <h2 id="语义"><a class="header" href="#语义">语义</a></h2>
-<p><code>implies(P, Q)</code> 表示逻辑蕴含，两个参数都具有 <code>bool</code> 类型。该命题仅在 <code>P</code> 为真且 <code>Q</code> 为假时为假，其逻辑含义是 <code>!P || Q</code>。</p>
-<p>这一等价关系针对真值。当前的调用表示不会赋予 <code>implies</code> 短路运算符的求值行为。</p>
+<p><code>P ==&gt; Q</code> 表示逻辑蕴含：仅在 <code>P</code> 为真且 <code>Q</code> 为假时为假。<code>P</code> 和 <code>Q</code> 都具有 <code>bool</code> 类型。</p>
+<p><code>==&gt;</code> 的优先级低于其他所有运算符，并且右结合：<code>a &amp;&amp; b ==&gt; c == d</code> 表示 <code>(a &amp;&amp; b) ==&gt; (c == d)</code>，<code>a ==&gt; b ==&gt; c</code> 表示 <code>a ==&gt; (b ==&gt; c)</code>。要把结果作为操作数使用，需要加括号，例如 <code>(a ==&gt; b) &amp;&amp; c</code>。写在 <code>if</code> 或 <code>match</code> 之后的条件同样要加括号：<code>if (a ==&gt; b) { ... }</code>。</p>
+<p>规约宏把 <code>P ==&gt; Q</code> 改写为 <code>!(P) || (Q)</code>，因此只有 <code>P</code> 成立时才求值 <code>Q</code>。这样，关于下标的条件可以保护依赖它的访问，例如 <code>i &lt; v.len() ==&gt; v[i] &gt; 0</code>。</p>
+<p><code>implies(P, Q)</code> 的真值表相同，但它是普通调用，两个参数都会求值。建议使用 <code>==&gt;</code>。</p>
 <div class="rule" id="r-contract.implies.example"><a class="rule-link" href="#r-contract.implies.example" title="contract.implies.example"><span>[contract<wbr>.implies<wbr>.example]</span></a></div>
 
 <h2 id="示例"><a class="header" href="#示例">示例</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
-#[postcondition(|result| implies(x &gt; 0, result &gt;= x))]
+#[postcondition(|result| x &gt; 0 ==&gt; result &gt;= x)]
 pub fn identity(x: i32) -&gt; i32 {
     x
-}</code></pre>
-<p>后置条件要求：只要 <code>x &gt; 0</code>，就有 <code>result &gt;= x</code>。</p>
-<p>前端能够提取这种蕴含表达式，也能在量词条件中保留它。</p>
+}
+
+#[precondition(forall!(|i: usize| i &lt; v.len() ==&gt; v[i] &gt; 0))]
+pub fn all_positive(v: &amp;[u8]) {}</code></pre>
+<p>第一个后置条件要求：只要 <code>x &gt; 0</code>，就有 <code>result &gt;= x</code>。第二个条件不会读取切片范围之外的 <code>v[i]</code>。</p>
 <div class="rule" id="r-contract.implies.boundary"><a class="rule-link" href="#r-contract.implies.boundary" title="contract.implies.boundary"><span>[contract<wbr>.implies<wbr>.boundary]</span></a></div>
 
 <h2 id="实现边界"><a class="header" href="#实现边界">实现边界 <a id="contract.implies.boundary-title"></a></a></h2>
 <ul>
-<li><strong>前端 <code>rust-llbc</code></strong>：已识别并在 LLBC 中保留 <code>implies</code> 标记，包括量词体中的用法。</li>
-<li><strong>后端 <code>llbc-why3</code></strong>：尚未翻译这一标记，上例还不能完成验证。</li>
+<li><strong>前端 <code>rust-llbc</code></strong>：<code>==&gt;</code> 由规约宏改写，在 LLBC 中表现为分支，没有专门的标记。<code>implies</code> 被识别并作为标记保留在 LLBC 中。</li>
+<li><strong>后端 <code>llbc-why3</code></strong>：<code>==&gt;</code> 翻译为 WhyML 条件表达式，例如 <code>if x &gt; 0 then result &gt;= x else true</code>。<code>implies</code> 标记尚未翻译。涉及切片的条件受<a href="expressions.html#contract.expression.boundary-title">后端切片支持</a>限制。</li>
 </ul>
 <h3 id="尚待补齐"><a class="header" href="#尚待补齐">尚待补齐</a></h3>
-<p><strong>逻辑蕴含翻译（后端）。</strong> 对上例的 <code>implies(x &gt; 0, result &gt;= x)</code>，需要生成“当 <code>x &gt; 0</code> 时，<code>result &gt;= x</code>”这一逻辑条件；量词体中的标记也需要按同样含义处理。</p>
-<p>当前两个参数都会求值，<code>implies(i &lt; a.len(), a[i] &gt; 0)</code> 因而不能用前件保护索引访问。需要短路行为时，可以写成 <code>i &gt;= a.len() || a[i] &gt; 0</code>；这仍受切片与索引的后端支持限制。是否让 <code>implies</code> 本身具有条件求值行为，尚待明确。</p>
+<p><strong><code>implies</code> 标记（后端）。</strong> <code>implies(x &gt; 0, result &gt;= x)</code> 需要翻译；也可以移除 <code>implies</code>，统一使用 <code>==&gt;</code>。</p>
 
                     </main>
 

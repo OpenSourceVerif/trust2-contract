@@ -8,9 +8,13 @@
 
 ## 语义
 
-`implies(P, Q)` 表示逻辑蕴含，两个参数都具有 `bool` 类型。该命题仅在 `P` 为真且 `Q` 为假时为假，其逻辑含义是 `!P || Q`。
+`P ==> Q` 表示逻辑蕴含：仅在 `P` 为真且 `Q` 为假时为假。`P` 和 `Q` 都具有 `bool` 类型。
 
-这一等价关系针对真值。当前的调用表示不会赋予 `implies` 短路运算符的求值行为。
+`==>` 的优先级低于其他所有运算符，并且右结合：`a && b ==> c == d` 表示 `(a && b) ==> (c == d)`，`a ==> b ==> c` 表示 `a ==> (b ==> c)`。要把结果作为操作数使用，需要加括号，例如 `(a ==> b) && c`。写在 `if` 或 `match` 之后的条件同样要加括号：`if (a ==> b) { ... }`。
+
+规约宏把 `P ==> Q` 改写为 `!(P) || (Q)`，因此只有 `P` 成立时才求值 `Q`。这样，关于下标的条件可以保护依赖它的访问，例如 `i < v.len() ==> v[i] > 0`。
+
+`implies(P, Q)` 的真值表相同，但它是普通调用，两个参数都会求值。建议使用 `==>`。
 
 {{#rule contract.implies.example}}
 
@@ -19,25 +23,24 @@
 ```rust,ignore
 use trust2_contract::prelude::*;
 
-#[postcondition(|result| implies(x > 0, result >= x))]
+#[postcondition(|result| x > 0 ==> result >= x)]
 pub fn identity(x: i32) -> i32 {
     x
 }
+
+#[precondition(forall!(|i: usize| i < v.len() ==> v[i] > 0))]
+pub fn all_positive(v: &[u8]) {}
 ```
 
-后置条件要求：只要 `x > 0`，就有 `result >= x`。
-
-前端能够提取这种蕴含表达式，也能在量词条件中保留它。
+第一个后置条件要求：只要 `x > 0`，就有 `result >= x`。第二个条件不会读取切片范围之外的 `v[i]`。
 
 {{#rule contract.implies.boundary}}
 
 ## 实现边界 <a id="contract.implies.boundary-title"></a>
 
-- **前端 `rust-llbc`**：已识别并在 LLBC 中保留 `implies` 标记，包括量词体中的用法。
-- **后端 `llbc-why3`**：尚未翻译这一标记，上例还不能完成验证。
+- **前端 `rust-llbc`**：`==>` 由规约宏改写，在 LLBC 中表现为分支，没有专门的标记。`implies` 被识别并作为标记保留在 LLBC 中。
+- **后端 `llbc-why3`**：`==>` 翻译为 WhyML 条件表达式，例如 `if x > 0 then result >= x else true`。`implies` 标记尚未翻译。涉及切片的条件受[后端切片支持](expressions.md#contract.expression.boundary-title)限制。
 
 ### 尚待补齐
 
-**逻辑蕴含翻译（后端）。** 对上例的 `implies(x > 0, result >= x)`，需要生成“当 `x > 0` 时，`result >= x`”这一逻辑条件；量词体中的标记也需要按同样含义处理。
-
-当前两个参数都会求值，`implies(i < a.len(), a[i] > 0)` 因而不能用前件保护索引访问。需要短路行为时，可以写成 `i >= a.len() || a[i] > 0`；这仍受切片与索引的后端支持限制。是否让 `implies` 本身具有条件求值行为，尚待明确。
+**`implies` 标记（后端）。** `implies(x > 0, result >= x)` 需要翻译；也可以移除 `implies`，统一使用 `==>`。

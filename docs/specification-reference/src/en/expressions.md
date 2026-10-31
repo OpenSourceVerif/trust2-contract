@@ -33,6 +33,7 @@ The following groups are ordered from highest to lowest precedence. Unary operat
 | Comparisons | `==` `!=` `<` `<=` `>` `>=` |
 | Logical AND | `&&` |
 | Logical OR | `\|\|` |
+| Implication | `==>` (right-associative) |
 
 For Boolean operands, `!`, `&&`, and `||` express negation, conjunction, and disjunction. `&&` and `||` short-circuit: their right operand is evaluated only when needed. The single-character bitwise operators do not provide this short-circuit behavior.
 

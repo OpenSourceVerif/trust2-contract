@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d66c575c.js";
+            window.path_to_searchindex_js = "searchindex-1e8b1232.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -192,7 +192,7 @@
 <li><strong>Normal returns</strong>: postconditions describe normal-return properties without also declaring termination or post-panic state.</li>
 </ul>
 <h2 id="name-rewriting"><a class="header" href="#name-rewriting">Name rewriting</a></h2>
-<p>Contract macros recursively rewrite <code>implies</code>, and postconditions also rewrite <code>old</code>. Quantifier macros do not perform these rewrites themselves; an enclosing contract macro handles them.</p>
+<p>Contract macros recursively rewrite <code>==&gt;</code> and <code>implies</code>, and postconditions also rewrite <code>old</code>. Quantifier macros do not perform these rewrites themselves; an enclosing contract macro handles them.</p>
 <p>Current replacement is name-based and also affects ordinary same-named methods such as <code>value.old()</code>. The frontend needs to distinguish specification markers from ordinary Rust names. See <a href="notations.html">Lexical Rules</a> for a concrete example.</p>
 <h2 id="rules-still-to-be-defined"><a class="header" href="#rules-still-to-be-defined">Rules still to be defined <a id="open-areas"></a></a></h2>
 <p>Admissible function calls and restrictions on side effects are discussed under <a href="expressions.html#contract.expression.boundary-title">Logic Expressions</a>. The program boundaries at which type invariants hold are discussed under <a href="invariants.html#contract.invariant.boundary-title">Type Invariants</a>. These rules affect frontend and backend behavior; the concrete scenarios are retained without fixing a complete design in advance.</p>

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-40992f69.js";
+            window.path_to_searchindex_js = "searchindex-f95a5b15.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-d2c5ae73.js"></script>
@@ -192,7 +192,7 @@
 <li><strong>正常返回</strong>：后置条件描述正常返回时的性质，不同时声明终止或 panic 后的状态。</li>
 </ul>
 <h2 id="名称改写"><a class="header" href="#名称改写">名称改写 <a id="name-rewriting"></a></a></h2>
-<p>规约宏递归改写 <code>implies</code>，后置条件还改写 <code>old</code>。量词宏自身不做这些改写，需要由外层契约宏处理。</p>
+<p>规约宏递归改写 <code>==&gt;</code> 和 <code>implies</code>，后置条件还改写 <code>old</code>。量词宏自身不做这些改写，需要由外层契约宏处理。</p>
 <p>目前替换仅依据名称，同名的普通方法如 <code>value.old()</code> 也会受到影响。前端需要区分规约标记与普通 Rust 名称，具体例子见<a href="notations.html">词法规则</a>。</p>
 <h2 id="尚待明确的规则"><a class="header" href="#尚待明确的规则">尚待明确的规则 <a id="open-areas"></a></a></h2>
 <p>规约中哪些函数调用可以使用、如何限制副作用，见<a href="expressions.html#contract.expression.boundary-title">逻辑表达式</a>。类型不变式在哪些程序边界成立，见<a href="invariants.html#contract.invariant.boundary-title">类型不变式</a>。这些规则会影响前后端的处理方式，目前保留具体场景，不预先固定完整方案。</p>

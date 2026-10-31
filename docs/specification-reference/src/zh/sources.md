@@ -30,6 +30,6 @@
 
 前端集成样例包含前置条件、后置条件、断言、泛型结构体不变式，以及全称量词、蕴含和容器访问的组合。`to_sorted` 的函数体是返回空向量的占位实现，用于观察提取结果，不是已经验证的排序算法。
 
-仓库中的前端集成样例尚未包含 `contract_assume!` 与 `exists!`。两者已有提取实现；量词的外层捕获问题见[量词的实现边界](quantifiers.md#contract.quantifier.boundary-title)。`old` 的用例包括可变标量、量词中的切片，以及一个单独的被拒绝用法样例 crate。
+`old` 的用例包括可变标量、量词中的切片，以及一个单独的被拒绝用法样例 crate。另有一个样例 crate 覆盖 `==>`、`each!`、`exists!` 和 `contract_assume!`，并使用与 `cargo verify` 相同的参数提取。
 
 后端已保存的端到端结果覆盖 `max`、`strict_sub` 和 `square` 的基本前置／后置条件。断言、假设和量词已有翻译实现，但尚未包含在这些端到端用例中。

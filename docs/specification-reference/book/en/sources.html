@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d66c575c.js";
+            window.path_to_searchindex_js = "searchindex-1e8b1232.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -200,7 +200,7 @@
 </ul>
 <h2 id="test-coverage"><a class="header" href="#test-coverage">Test coverage</a></h2>
 <p>Frontend integration cases include preconditions, postconditions, assertions, a generic struct invariant, and combinations of universal quantification, implication, and container access. The <code>to_sorted</code> body is a placeholder returning an empty vector; it illustrates extraction rather than a verified sorting algorithm.</p>
-<p>The repository frontend integration examples do not yet include <code>contract_assume!</code> or <code>exists!</code>. Both have extraction implementations; problems with outer captures are described in the <a href="quantifiers.html#contract.quantifier.boundary-title">quantifier implementation boundaries</a>. <code>old</code> cases cover a mutable scalar, a slice inside a quantifier, and a separate crate of rejected uses.</p>
+<p><code>old</code> cases cover a mutable scalar, a slice inside a quantifier, and a separate crate of rejected uses. A further crate covers <code>==&gt;</code>, <code>each!</code>, <code>exists!</code>, and <code>contract_assume!</code>, and is extracted with the same flags as <code>cargo verify</code>.</p>
 <p>Saved backend end-to-end results cover basic preconditions/postconditions for <code>max</code>, <code>strict_sub</code>, and <code>square</code>. Assertions, assumptions, and quantifiers have translation implementations but are not included in these end-to-end cases.</p>
 
                     </main>

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-d66c575c.js";
+            window.path_to_searchindex_js = "searchindex-1e8b1232.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-40026986.js"></script>
@@ -183,43 +183,46 @@
 
 <div class="grammar-container">
 <p><strong><sup>Syntax</sup></strong><br>
-<span class="grammar-text grammar-production" id="grammar-Implication" onclick="show_railroad()"><a href="#railroad-Implication">Implication</a></span> := <br>      <span class="grammar-literal">implies</span> <span class="grammar-literal">(</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span><sup>?</sup> <span class="grammar-literal">)</span></p>
+<span class="grammar-text grammar-production" id="grammar-Implication" onclick="show_railroad()"><a href="#railroad-Implication">Implication</a></span> := <br>      <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">==&gt;</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <br>    | <span class="grammar-literal">implies</span> <span class="grammar-literal">(</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span> <span class="grammar-text"><a href="expressions.html#grammar-Condition">Condition</a></span> <span class="grammar-literal">,</span><sup>?</sup> <span class="grammar-literal">)</span></p>
 
 <p><button class="grammar-toggle-railroad" type="button" title="Toggle railroad display" onclick="toggle_railroad()">Show Railroad</button></p>
 
 </div>
 
 <div class="grammar-railroad grammar-hidden">
-<div class="railroad-production" id="railroad-Implication"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-implication-Implication-title" viewbox="0 0 696 130" width="696" height="130"><title id="railroad-implication-Implication-title">Implication syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="implication.html#grammar-Implication"><text class="comment" x="64" y="20">Implication</text></a><g class="terminal"><rect x="32" y="41" width="80" height="32" rx="16" /><text x="72.0" y="61" text-anchor="middle">implies</text></g><path d="M112 57 H132" /><g class="terminal"><rect x="132" y="41" width="48" height="32" rx="16" /><text x="156.0" y="61" text-anchor="middle">(</text></g><path d="M180 57 H200" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="200" y="41" width="96" height="32" rx="3" /><text x="248.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M296 57 H316" /><g class="terminal"><rect x="316" y="41" width="48" height="32" rx="16" /><text x="340.0" y="61" text-anchor="middle">,</text></g><path d="M364 57 H384" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="384" y="41" width="96" height="32" rx="3" /><text x="432.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M480 57 H500" /><path d="M500 57 H512 V57 H524" /><path d="M524 57 H556" /><path d="M556 57 H584 V57 H596" /><path d="M500 57 H512 V99 H524" /><g class="terminal"><rect x="524" y="83" width="48" height="32" rx="16" /><text x="548.0" y="103" text-anchor="middle">,</text></g><path d="M572 99 H584 V57 H596" /><path d="M596 57 H616" /><g class="terminal"><rect x="616" y="41" width="48" height="32" rx="16" /><text x="640.0" y="61" text-anchor="middle">)</text></g><path d="M664 57 H684 M684 51 V63 M688 51 V63" /></svg></div>
+<div class="railroad-production" id="railroad-Implication"><svg xmlns="http://www.w3.org/2000/svg" class="railroad" style="max-width:100%;height:auto" role="img" aria-labelledby="railroad-implication-Implication-title" viewbox="0 0 744 178" width="744" height="178"><title id="railroad-implication-Implication-title">Implication syntax diagram</title><path d="M8 51 V63 M12 51 V63 M12 57 H32" /><a href="implication.html#grammar-Implication"><text class="comment" x="64" y="20">Implication</text></a><path d="M32 57 H44 V57 H56" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="56" y="41" width="96" height="32" rx="3" /><text x="104.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M152 57 H172" /><g class="terminal"><rect x="172" y="41" width="48" height="32" rx="16" /><text x="196.0" y="61" text-anchor="middle">==&gt;</text></g><path d="M220 57 H240" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="240" y="41" width="96" height="32" rx="3" /><text x="288.0" y="61" text-anchor="middle">Condition</text></g></a><path d="M336 57 H700 V57 H712" /><path d="M32 57 H44 V105 H56" /><g class="terminal"><rect x="56" y="89" width="80" height="32" rx="16" /><text x="96.0" y="109" text-anchor="middle">implies</text></g><path d="M136 105 H156" /><g class="terminal"><rect x="156" y="89" width="48" height="32" rx="16" /><text x="180.0" y="109" text-anchor="middle">(</text></g><path d="M204 105 H224" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="224" y="89" width="96" height="32" rx="3" /><text x="272.0" y="109" text-anchor="middle">Condition</text></g></a><path d="M320 105 H340" /><g class="terminal"><rect x="340" y="89" width="48" height="32" rx="16" /><text x="364.0" y="109" text-anchor="middle">,</text></g><path d="M388 105 H408" /><a href="expressions.html#grammar-Condition"><g class="nonterminal"><rect x="408" y="89" width="96" height="32" rx="3" /><text x="456.0" y="109" text-anchor="middle">Condition</text></g></a><path d="M504 105 H524" /><path d="M524 105 H536 V105 H548" /><path d="M548 105 H580" /><path d="M580 105 H608 V105 H620" /><path d="M524 105 H536 V147 H548" /><g class="terminal"><rect x="548" y="131" width="48" height="32" rx="16" /><text x="572.0" y="151" text-anchor="middle">,</text></g><path d="M596 147 H608 V105 H620" /><path d="M620 105 H640" /><g class="terminal"><rect x="640" y="89" width="48" height="32" rx="16" /><text x="664.0" y="109" text-anchor="middle">)</text></g><path d="M688 105 H700 V57 H712" /><path d="M712 57 H732 M732 51 V63 M736 51 V63" /></svg></div>
 
 </div>
 
 <div class="rule" id="r-contract.implies.intro"><a class="rule-link" href="#r-contract.implies.intro" title="contract.implies.intro"><span>[contract<wbr>.implies<wbr>.intro]</span></a></div>
 
 <h2 id="semantics"><a class="header" href="#semantics">Semantics</a></h2>
-<p><code>implies(P, Q)</code> expresses logical implication. Both arguments have type <code>bool</code>. The proposition is false exactly when <code>P</code> is true and <code>Q</code> is false; its logical meaning is <code>!P || Q</code>.</p>
-<p>This equivalence concerns truth values. The current call representation does not give <code>implies</code> the evaluation behavior of a short-circuit operator.</p>
+<p><code>P ==&gt; Q</code> expresses logical implication: it is false exactly when <code>P</code> is true and <code>Q</code> is false. <code>P</code> and <code>Q</code> have type <code>bool</code>.</p>
+<p><code>==&gt;</code> binds weaker than every other operator and associates to the right, so <code>a &amp;&amp; b ==&gt; c == d</code> means <code>(a &amp;&amp; b) ==&gt; (c == d)</code> and <code>a ==&gt; b ==&gt; c</code> means <code>a ==&gt; (b ==&gt; c)</code>. Parentheses are needed to use the result as an operand, as in <code>(a ==&gt; b) &amp;&amp; c</code>. A condition after <code>if</code> or <code>match</code> must also be parenthesized: <code>if (a ==&gt; b) { ... }</code>.</p>
+<p>The contract macros rewrite <code>P ==&gt; Q</code> to <code>!(P) || (Q)</code>, so <code>Q</code> is evaluated only when <code>P</code> holds. A condition on an index can therefore guard the access that depends on it, as in <code>i &lt; v.len() ==&gt; v[i] &gt; 0</code>.</p>
+<p><code>implies(P, Q)</code> has the same truth table but is an ordinary call: both arguments are evaluated. Prefer <code>==&gt;</code>.</p>
 <div class="rule" id="r-contract.implies.example"><a class="rule-link" href="#r-contract.implies.example" title="contract.implies.example"><span>[contract<wbr>.implies<wbr>.example]</span></a></div>
 
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
 <pre><code class="language-rust ignore">use trust2_contract::prelude::*;
 
-#[postcondition(|result| implies(x &gt; 0, result &gt;= x))]
+#[postcondition(|result| x &gt; 0 ==&gt; result &gt;= x)]
 pub fn identity(x: i32) -&gt; i32 {
     x
-}</code></pre>
-<p>The postcondition requires <code>result &gt;= x</code> whenever <code>x &gt; 0</code>.</p>
-<p>The frontend can extract this implication expression and retain it inside quantified conditions.</p>
+}
+
+#[precondition(forall!(|i: usize| i &lt; v.len() ==&gt; v[i] &gt; 0))]
+pub fn all_positive(v: &amp;[u8]) {}</code></pre>
+<p>The first postcondition requires <code>result &gt;= x</code> whenever <code>x &gt; 0</code>. The second condition does not read <code>v[i]</code> for an index outside the slice.</p>
 <div class="rule" id="r-contract.implies.boundary"><a class="rule-link" href="#r-contract.implies.boundary" title="contract.implies.boundary"><span>[contract<wbr>.implies<wbr>.boundary]</span></a></div>
 
 <h2 id="implementation-boundaries"><a class="header" href="#implementation-boundaries">Implementation boundaries <a id="contract.implies.boundary-title"></a></a></h2>
 <ul>
-<li><strong>Frontend <code>rust-llbc</code></strong>: recognizes and retains the <code>implies</code> marker in LLBC, including within quantifier bodies.</li>
-<li><strong>Backend <code>llbc-why3</code></strong>: does not yet translate this marker, so the example cannot complete verification.</li>
+<li><strong>Frontend <code>rust-llbc</code></strong>: <code>==&gt;</code> is rewritten by the contract macros and reaches LLBC as a branch, without a dedicated marker. <code>implies</code> is recognized and retained as a marker in LLBC.</li>
+<li><strong>Backend <code>llbc-why3</code></strong>: <code>==&gt;</code> translates to a WhyML conditional such as <code>if x &gt; 0 then result &gt;= x else true</code>. The <code>implies</code> marker is not translated. Conditions on slices are subject to the <a href="expressions.html#contract.expression.boundary-title">backend limits on slices</a>.</li>
 </ul>
 <h3 id="remaining-work"><a class="header" href="#remaining-work">Remaining work</a></h3>
-<p><strong>Logical implication translation (backend).</strong> The example’s <code>implies(x &gt; 0, result &gt;= x)</code> needs to generate the logical condition that <code>result &gt;= x</code> holds whenever <code>x &gt; 0</code>. Markers within quantifier bodies need the same treatment.</p>
-<p>Both arguments are currently evaluated, so <code>implies(i &lt; a.len(), a[i] &gt; 0)</code> cannot use its antecedent to guard indexing. Where short-circuit behavior is needed, write <code>i &gt;= a.len() || a[i] &gt; 0</code>; this remains subject to backend slice and index support. Whether <code>implies</code> itself should provide conditional evaluation remains open.</p>
+<p><strong>The <code>implies</code> marker (backend).</strong> <code>implies(x &gt; 0, result &gt;= x)</code> needs a translation, or <code>implies</code> can be removed in favor of <code>==&gt;</code>.</p>
 
                     </main>
 

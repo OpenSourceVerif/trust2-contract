@@ -8,9 +8,13 @@
 
 ## Semantics
 
-`implies(P, Q)` expresses logical implication. Both arguments have type `bool`. The proposition is false exactly when `P` is true and `Q` is false; its logical meaning is `!P || Q`.
+`P ==> Q` expresses logical implication: it is false exactly when `P` is true and `Q` is false. `P` and `Q` have type `bool`.
 
-This equivalence concerns truth values. The current call representation does not give `implies` the evaluation behavior of a short-circuit operator.
+`==>` binds weaker than every other operator and associates to the right, so `a && b ==> c == d` means `(a && b) ==> (c == d)` and `a ==> b ==> c` means `a ==> (b ==> c)`. Parentheses are needed to use the result as an operand, as in `(a ==> b) && c`. A condition after `if` or `match` must also be parenthesized: `if (a ==> b) { ... }`.
+
+The contract macros rewrite `P ==> Q` to `!(P) || (Q)`, so `Q` is evaluated only when `P` holds. A condition on an index can therefore guard the access that depends on it, as in `i < v.len() ==> v[i] > 0`.
+
+`implies(P, Q)` has the same truth table but is an ordinary call: both arguments are evaluated. Prefer `==>`.
 
 {{#rule contract.implies.example}}
 
@@ -19,25 +23,24 @@ This equivalence concerns truth values. The current call representation does not
 ```rust,ignore
 use trust2_contract::prelude::*;
 
-#[postcondition(|result| implies(x > 0, result >= x))]
+#[postcondition(|result| x > 0 ==> result >= x)]
 pub fn identity(x: i32) -> i32 {
     x
 }
+
+#[precondition(forall!(|i: usize| i < v.len() ==> v[i] > 0))]
+pub fn all_positive(v: &[u8]) {}
 ```
 
-The postcondition requires `result >= x` whenever `x > 0`.
-
-The frontend can extract this implication expression and retain it inside quantified conditions.
+The first postcondition requires `result >= x` whenever `x > 0`. The second condition does not read `v[i]` for an index outside the slice.
 
 {{#rule contract.implies.boundary}}
 
 ## Implementation boundaries <a id="contract.implies.boundary-title"></a>
 
-- **Frontend `rust-llbc`**: recognizes and retains the `implies` marker in LLBC, including within quantifier bodies.
-- **Backend `llbc-why3`**: does not yet translate this marker, so the example cannot complete verification.
+- **Frontend `rust-llbc`**: `==>` is rewritten by the contract macros and reaches LLBC as a branch, without a dedicated marker. `implies` is recognized and retained as a marker in LLBC.
+- **Backend `llbc-why3`**: `==>` translates to a WhyML conditional such as `if x > 0 then result >= x else true`. The `implies` marker is not translated. Conditions on slices are subject to the [backend limits on slices](expressions.md#contract.expression.boundary-title).
 
 ### Remaining work
 
-**Logical implication translation (backend).** The example's `implies(x > 0, result >= x)` needs to generate the logical condition that `result >= x` holds whenever `x > 0`. Markers within quantifier bodies need the same treatment.
-
-Both arguments are currently evaluated, so `implies(i < a.len(), a[i] > 0)` cannot use its antecedent to guard indexing. Where short-circuit behavior is needed, write `i >= a.len() || a[i] > 0`; this remains subject to backend slice and index support. Whether `implies` itself should provide conditional evaluation remains open.
+**The `implies` marker (backend).** `implies(x > 0, result >= x)` needs a translation, or `implies` can be removed in favor of `==>`.
