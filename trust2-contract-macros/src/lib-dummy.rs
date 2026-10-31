@@ -34,3 +34,8 @@ pub fn forall(_expr: TokenStream) -> TokenStream {
 pub fn exists(_expr: TokenStream) -> TokenStream {
     TokenStream::new()
 }
+
+#[proc_macro]
+pub fn each(_expr: TokenStream) -> TokenStream {
+    TokenStream::new()
+}

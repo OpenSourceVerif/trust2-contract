@@ -19,6 +19,7 @@ macro_rules! parse_macro_input {
 
 pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let mut item = parse_macro_input!(item as ItemFn);
@@ -37,6 +38,7 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 
 pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse::borrow_old_arguments(expr);
     let expr = parse::replace_keywords(expr, POSTCONDITION_KEYWORDS, &crate_name_ident);
@@ -65,6 +67,7 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 
 pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
     let (type_ident, type_generics) = {
@@ -107,6 +110,7 @@ pub fn invariant(expr: TokenStream, item: TokenStream) -> TokenStream {
 
 pub fn contract_assert(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
@@ -120,6 +124,7 @@ pub fn contract_assert(expr: TokenStream) -> TokenStream {
 
 pub fn contract_assume(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
@@ -153,6 +158,16 @@ pub fn exists(expr: TokenStream) -> TokenStream {
             ::#crate_name_ident::internal::exists(#expr)
         }
     }
+}
+
+pub fn each(expr: TokenStream) -> TokenStream {
+    let parse::Each {
+        var,
+        ty,
+        guard,
+        body,
+    } = parse_macro_input!(expr as parse::Each);
+    forall(quote! { |#var: #ty| !(#guard) || (#body) })
 }
 
 fn crate_name_ident() -> Ident {
@@ -235,6 +250,21 @@ mod tests {
             parse::<ItemFn>(expect).unwrap(),
             parse::<ItemFn>(result).unwrap(),
         );
+    }
+
+    #[test]
+    fn test_each() {
+        let crate_name_ident = crate_name_ident();
+        let result = each(quote! { i: usize in 0..n; a[i] > 0 });
+        let expect = quote! {
+            {
+                ::#crate_name_ident::internal::entry();
+                ::#crate_name_ident::internal::forall(
+                    |i: usize| !((0) <= i && i < (n)) || (a[i] > 0)
+                )
+            }
+        };
+        assert_eq!(result.to_string(), expect.to_string());
     }
 
     #[test]

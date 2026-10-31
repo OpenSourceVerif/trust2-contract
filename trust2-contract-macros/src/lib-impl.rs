@@ -36,3 +36,8 @@ pub fn forall(expr: TokenStream) -> TokenStream {
 pub fn exists(expr: TokenStream) -> TokenStream {
     r#impl::exists(expr.into()).into()
 }
+
+#[proc_macro]
+pub fn each(expr: TokenStream) -> TokenStream {
+    r#impl::each(expr.into()).into()
+}
