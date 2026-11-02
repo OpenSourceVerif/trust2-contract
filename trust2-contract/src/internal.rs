@@ -1,22 +1,22 @@
 pub fn entry() {}
 
-pub fn precondition<T: Fn() -> bool + Copy>(_: T) {}
+pub fn precondition<T: Fn() -> bool>(_: T) {}
 
-pub fn postcondition<T, U: Fn(T) -> bool + Copy>(_: U) {}
+pub fn postcondition<T, U: Fn(T) -> bool>(_: U) {}
 
 pub trait TypeInvariant {
     fn invariant(&self) -> bool;
 }
 
-pub fn contract_assert<T: Fn() -> bool + Copy>(_: T) {}
+pub fn contract_assert<T: Fn() -> bool>(_: T) {}
 
-pub fn contract_assume<T: Fn() -> bool + Copy>(_: T) {}
+pub fn contract_assume<T: Fn() -> bool>(_: T) {}
 
-pub fn forall<T, U: Fn(T) -> bool + Copy>(_: U) -> bool {
+pub fn forall<T, U: Fn(T) -> bool>(_: U) -> bool {
     true
 }
 
-pub fn exists<T, U: Fn(T) -> bool + Copy>(_: U) -> bool {
+pub fn exists<T, U: Fn(T) -> bool>(_: U) -> bool {
     true
 }
 
