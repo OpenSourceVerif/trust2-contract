@@ -5,5 +5,8 @@ authors: "Name <email>"
 license: "MIT OR Apache-2.0"
 homepage: "https://github.com/OpenSourceVerif/trust2-contract"
 bug-reports: "https://github.com/OpenSourceVerif/trust2-contract/issues"
-depends: [ "why3find" ]
+depends: [
+  "why3find"
+  "why3" {= "1.8.2"}
+]
 pin-depends: [ ["why3find.1.3.0+dev" "git+https://git.frama-c.com/pub/why3find.git#e8957262b89ce749fa9a0298a5ed90685cd6064e"] ]
