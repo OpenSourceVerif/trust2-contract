@@ -1,6 +1,6 @@
 # 规格提取与擦除方案讨论
 
-结论：**spec 提取+擦除是必须要做的。且目前的ULLBC上的collect-specs时机过晚**。
+结论：**spec 提取 + 擦除是必须要做的。且目前的ULLBC上的collect-specs时机过晚**。
 
 什么时候提取取决于是否希望保留 `THIR -> mir_built`，以及MIR上的 `mir_built -> mir_promoted -> mir_borrowck -> mir_drops_elaborated_and_const_checked -> optimized_mir` 的变换。
 
@@ -11,21 +11,15 @@ spec 可以在上述任意阶段提取，可以是THIR，也可以是早期MIR�
 
 以下问题相互关联，但不必采用同一个阶段解决：
 
-| 问题 | 可选设计 |
-| --- | --- |
-| 规格以什么形式交给 rustc 检查？ | 闭包、辅助函数、专门的语法和前端检查 |
-| 从哪里获取规格公式？ | THIR、MIR、ULLBC/LLBC |
-| 公式保存在什么 IR 中？ | 程序 body、独立 Spec IR、直接生成后端逻辑 AST |
-| 何时清理辅助借用、move、调用和 drop？ | THIR 构建阶段、`mir_built`、更晚的翻译阶段 |
-| 如何关联程序位置和变量？ | 闭包标记、显式 anchor、作用域映射、lowering 时记录的关联表 |
+1. 怎么生成一个可以跑的代码？
+2. 解除前端的运行时闭包约束。前端改成 FnOnce。FnOnce 在这里是类型检查的载体，不是规格只能使用一次的语义。
+3. 解除 MIR 的线性使用约束。解除规格内部的 move/borrow 限制：提取原公式，给 borrowck
 
-规格以什么形式交给 rustc 检查？闭包或再做一个 lambda lift 的整理pass。
-从哪里获取规格公式？THIR或早期MIR，borrowck之前。
-公式保存在什么 IR 中？独立 Spec IR。**目前的 ULLBC body 过于离谱了**
-何时清理辅助借用、move、调用和 drop？需要讨论
-如何关联程序位置和变量？显式 anchor，和 lambda lift 结合。
-
-解除前端的运行时闭包约束，以及解除 MIR 的线性使用约束。
+- 规格以什么形式交给 rustc 检查？闭包或再做一个 lambda lift 的整理 pass。
+- 从哪里获取规格公式？THIR或早期MIR，borrowck之前。
+- 公式保存在什么 IR 中？独立 Spec IR。**目前的 ULLBC body 过于离谱了**
+- 何时清理辅助借用、move、调用和 drop？需要讨论
+- 如何关联程序位置和变量？显式 anchor，和 lambda lift 结合。
 
 ## 2. 现有方案
 
@@ -52,11 +46,11 @@ Vender 进来的 Charon 增加了 [`collect_specs`](../charon/charon/src/transfo
 
 ### 2.2 现有设计的合理性 & 主要负担
 
-1. **规格表示混用运行时 ULLBC表示。**
-2. **提取时机太晚了，borrowck已经跑过了。** 必须在borrowck之前介入，提取并删除闭包。
+1. **规格表示混用运行时 ULLBC 表示。**
+2. **提取时机太晚了，borrowck 已经跑过了。** 必须在borrowck之前介入，提取并删除闭包。
 
 保留 MIR 获取的一个貌似理由是：**如果普通规格表达式采用受限 Rust 计算的语义，MIR 能提供明确的操作、求值顺序和控制流，验证器可通过纯编码或符号执行得到逻辑表达式。** 但：
-- 很多清理工作其实在MIR早期就完成了，比如 name resolution, trait resolution, etc.
+- 很多清理工作其实在 MIR 早期就完成了，比如 name resolution, trait resolution, etc.
 - 结构化控制流 -> CFG -> 结构化 Spec IR 的无意义往返
 - borrowck 跑过了，直接暴毙。
 
@@ -85,7 +79,7 @@ Prusti 的 2022 年论文描述了从规格及纯函数的 MIR CFG 生成 Viper 
 
 这支持“THIR 提取 + built MIR 清理”的整体可行性。[Pearlite 文档](https://guide.creusot.rs/pearlite.html)
 
-### 3.3 Verus：THIR only 
+### 3.3 Verus：THIR only
 
 检查的上游版本为 `2f9ceed94ce50054c42dc4035115b92818765bf5`。本地 checkout 是其后的 fork 合并提交，本次引用的擦除与 THIR 构建文件已确认与该上游版本一致。该版本的 verifier 将 HIR/THIR 信息转换到 VIR，并依据模式检查结果生成擦除信息；它依赖自带的 `rustc_mir_build`，在 THIR 构建路径调用 `erase_body`、`erase_tree`。[擦除信息](https://github.com/verus-lang/verus/blob/2f9ceed94ce50054c42dc4035115b92818765bf5/source/rust_verify/src/erase.rs)、[THIR 构建](https://github.com/verus-lang/verus/blob/2f9ceed94ce50054c42dc4035115b92818765bf5/source/rustc_mir_build/src/thir/cx/mod.rs)
 
