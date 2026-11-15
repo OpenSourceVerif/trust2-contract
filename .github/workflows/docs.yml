@@ -1,0 +1,41 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  specification-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install mdBook v0.5.4
+        run: |
+          mkdir -p docs/specification-reference/.tools
+          curl --retry 3 -fsSL https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C docs/specification-reference/.tools
+          chmod +x docs/specification-reference/.tools/mdbook
+
+      - name: Build and validate specification reference
+        run: python3 docs/specification-reference/build.py
+
+      - name: Verify working tree is clean
+        run: test -z "$(git status --porcelain)"
+
+      - name: Upload specification reference book
+        uses: actions/upload-artifact@v4
+        with:
+          name: specification-reference-book
+          path: docs/specification-reference/book/

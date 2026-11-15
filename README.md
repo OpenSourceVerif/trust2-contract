@@ -10,9 +10,9 @@ Contracts are verified statically. In an ordinary build, contract annotations ar
 Research workspace: [Open the website](sites/index.html) · [Website README](sites/README.md).
 Open `sites/index.html` in a local browser. The website source and pages live in this repository under `sites/`.
 
-Read the user guide and specification reference: [English](docs/specification-reference/book/en/introduction.html) · [简体中文](docs/specification-reference/book/zh/introduction.html).
+Read the user guide and specification reference sources: [English](docs/specification-reference/src/en/introduction.md) · [简体中文](docs/specification-reference/src/zh/introduction.md).
 
-For local browsing and rebuilding, see [the manual README](docs/specification-reference/README.md).
+To build and browse the full HTML manual locally (`docs/specification-reference/book/index.html`) or download the built artifact from CI, see [the manual README](docs/specification-reference/README.md).
 
 ## Example
 

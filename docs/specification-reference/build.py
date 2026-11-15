@@ -39,9 +39,8 @@ def build(executable):
                 page.write_text(text.replace(marker, marker+link, 1))
     pages = ['index', 'print', 'toc', '404'] + [Path(p).stem for p in sorted(sources['en']) if p != 'SUMMARY.md']
     for page in pages:
-        # Preserve both previous generations of entry URLs. English is default.
+        # Entry URLs under book/ redirect to English by default.
         redirect(ROOT/'book'/f'{page}.html', f'en/{page}.html')
-        redirect(ROOT/f'{page}.html', f'book/en/{page}.html')
 
 
 def main():

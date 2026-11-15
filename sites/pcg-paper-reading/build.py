@@ -2,6 +2,8 @@
 import json
 import re
 import shutil
+import subprocess
+import sys
 import os
 from html import escape as esc
 from pathlib import Path
@@ -136,6 +138,8 @@ def build():
         prefix = '../' if page.parent.name == 'tasks' else ''
         page.write_text(page.read_text().replace(f'<script src="{prefix}research.js"', f'<script src="{prefix}plan-data.js" defer></script><script src="{prefix}research.js"'))
     # Publish a copy; the original mdBook remains the single reference source.
+    if not (BOOK / 'en' / 'introduction.html').exists() or not (BOOK / 'zh' / 'introduction.html').exists():
+        subprocess.run([sys.executable, str(BOOK.parent / 'build.py')], check=True)
     for lang in ('en', 'zh'):
         target = DIST / 'reference' / lang
         shutil.copytree(BOOK / lang, target, dirs_exist_ok=True)
