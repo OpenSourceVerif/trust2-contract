@@ -132,6 +132,7 @@ pub fn contract_assume(expr: TokenStream) -> TokenStream {
 
 pub fn forall(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
     quote! {
@@ -144,6 +145,7 @@ pub fn forall(expr: TokenStream) -> TokenStream {
 
 pub fn exists(expr: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
+    let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
     let expr = parse_macro_input!(expr as Expr);
 
     quote! {
@@ -261,6 +263,45 @@ mod tests {
         assert_eq!(
             parse::<File>(expect).unwrap(),
             parse::<File>(result).unwrap(),
+        );
+    }
+
+    #[test]
+    fn test_quantifiers_replace_keywords_idempotently() {
+        let crate_name_ident = crate_name_ident();
+        let raw = quote! {
+            |x: i32| implies(x > 0, x >= 1)
+        };
+        let already_rewritten = quote! {
+            |x: i32| ::#crate_name_ident::internal::implies(x > 0, x >= 1)
+        };
+        let expect_forall = quote! {
+            {
+                ::#crate_name_ident::internal::entry(0);
+                ::#crate_name_ident::internal::forall(
+                    |x: i32| ::#crate_name_ident::internal::implies(x > 0, x >= 1)
+                )
+            }
+        };
+        let expect_exists = quote! {
+            {
+                ::#crate_name_ident::internal::entry(0);
+                ::#crate_name_ident::internal::exists(
+                    |x: i32| ::#crate_name_ident::internal::implies(x > 0, x >= 1)
+                )
+            }
+        };
+        assert_eq!(
+            parse::<Expr>(expect_forall.clone()).unwrap(),
+            parse::<Expr>(forall(raw.clone())).unwrap(),
+        );
+        assert_eq!(
+            parse::<Expr>(expect_forall).unwrap(),
+            parse::<Expr>(forall(already_rewritten)).unwrap(),
+        );
+        assert_eq!(
+            parse::<Expr>(expect_exists).unwrap(),
+            parse::<Expr>(exists(raw)).unwrap(),
         );
     }
 }
