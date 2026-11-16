@@ -51,6 +51,7 @@ pub fn double_upper_bound(x: u32) -> u32 {
 })]
 pub fn bump_first_reusing_non_copy(p: NonCopyPair) -> NonCopyPair {
     let next = NonCopyPair { a: p.a + 1, b: p.b };
+    let _ = next.a;
     contract_assert!({
         let copy1 = next;
         let copy2 = next;

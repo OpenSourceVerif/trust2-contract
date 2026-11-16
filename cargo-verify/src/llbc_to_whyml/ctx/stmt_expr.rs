@@ -85,11 +85,6 @@ impl<'a> Ctx<'a> {
             todo!()
         }
 
-        fn translate_place_mention(self_: &mut Ctx, trailing_expr: Expr, place: &Place) -> Expr {
-            let expr = self_.translate_place_to_expr(place);
-            sequence_expr(trailing_expr, expr)
-        }
-
         fn translate_abort(_: &AbortKind) -> Expr {
             ABSURD_EXPR.clone()
         }
@@ -341,10 +336,9 @@ impl<'a> Ctx<'a> {
             StatementKind::CopyNonOverlapping(copy_nonoverlapping) => {
                 Ok(translate_copy_nonoverlapping(copy_nonoverlapping))
             }
-            StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => Ok(trailing_expr),
-            StatementKind::PlaceMention(place) => {
-                Ok(translate_place_mention(self, trailing_expr, place))
-            }
+            StatementKind::StorageLive(..)
+            | StatementKind::StorageDead(..)
+            | StatementKind::PlaceMention(..) => Ok(trailing_expr),
             StatementKind::Drop { .. } => Ok(trailing_expr), // Hack
             StatementKind::Assert {
                 assert,

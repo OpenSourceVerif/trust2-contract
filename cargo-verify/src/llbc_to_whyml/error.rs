@@ -18,6 +18,7 @@ pub enum Error {
     MixedDeclGroup(Vec<ItemId>),
     Union(TypeDeclId),
     EnumVariantWithFields(String),
+    TypeInvariant(String),
     RawPointer,
     RawBytesConst,
     InlineAsm,
@@ -44,6 +45,12 @@ impl Display for Error {
             }
             Error::EnumVariantWithFields(variant) => {
                 write!(f, "unsupported enum variant with fields: {variant}")
+            }
+            Error::TypeInvariant(ty_name) => {
+                write!(
+                    f,
+                    "type invariant verification is not yet supported in WhyML backend: {ty_name}"
+                )
             }
             Error::RawPointer => write!(f, "unsupported raw pointer"),
             Error::RawBytesConst => write!(f, "unsupported constant in raw byte representation"),
