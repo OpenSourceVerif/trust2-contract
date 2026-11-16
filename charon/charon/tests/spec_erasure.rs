@@ -403,6 +403,25 @@ fn impure_constructs_inside_specs_and_runtime_quantifiers_are_rejected() {
         "#,
         "quantifiers (`forall!` / `exists!`) can only be used inside specifications",
     );
+
+    // 6. Nested contract assertion inside a specification body.
+    expect_err_containing(
+        r#"
+        pub fn err_nested_assert_in_spec(x: i32) {
+            {
+                internal::entry(0);
+                internal::precondition(|| {
+                    {
+                        internal::entry(0);
+                        internal::contract_assert(|| x > 0);
+                    }
+                    x >= 0
+                });
+            }
+        }
+        "#,
+        "nested contracts or assertions are not allowed inside specifications",
+    );
 }
 
 #[test]

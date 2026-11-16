@@ -287,9 +287,9 @@ impl Transform {
         }
     }
 
-    /// Collects un-erased specification calls (such as `forall!` / `exists!` inside spec bodies)
-    /// directly from ULLBC statements.
-    fn collect_inline_block_spec_closure(
+    /// Collects quantifier closures (`forall!` / `exists!`) inside specification bodies directly
+    /// from ULLBC statements.
+    fn collect_quantifier_spec_closure(
         &self,
         call_args: Vec<Operand>,
         closure_assigns: Vec<Statement>,
@@ -412,14 +412,6 @@ impl Transform {
                 continue;
             };
 
-            let mut take_and_collect = |ctx: &mut TransformCtx| {
-                self.collect_inline_block_spec_closure(
-                    mem::take(args),
-                    mem::take(&mut block.statements),
-                    ctx,
-                    host_region_count,
-                )
-            };
             match builtin_func_id {
                 BuiltinFunId::SpecEntry => {
                     let anchor_id = extract_entry_anchor_id(args);
@@ -443,47 +435,32 @@ impl Transform {
                         block.terminator.kind = TerminatorKind::Goto { target };
                     }
                 }
-                BuiltinFunId::SpecPrecondition => {
-                    func_decl.specs.preconditions.push(take_and_collect(ctx));
-                    block.terminator.kind = TerminatorKind::Goto { target };
-                }
-                BuiltinFunId::SpecPostcondition => {
-                    func_decl.specs.postconditions.push(take_and_collect(ctx));
-                    block.terminator.kind = TerminatorKind::Goto { target };
-                }
-                BuiltinFunId::SpecAssert => {
-                    let spec_closure = take_and_collect(ctx);
-                    block.terminator.kind = TerminatorKind::ContractAssert {
-                        kind: ContractAssertKind::Assert,
-                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
-                        target,
+                BuiltinFunId::SpecForAll | BuiltinFunId::SpecExists => {
+                    let kind = if builtin_func_id == BuiltinFunId::SpecForAll {
+                        QuantKind::ForAll
+                    } else {
+                        QuantKind::Exists
                     };
-                }
-                BuiltinFunId::SpecAssume => {
-                    let spec_closure = take_and_collect(ctx);
-                    block.terminator.kind = TerminatorKind::ContractAssert {
-                        kind: ContractAssertKind::Assume,
-                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
-                        target,
-                    };
-                }
-                BuiltinFunId::SpecForAll => {
-                    let spec_closure = take_and_collect(ctx);
+                    let spec_closure = self.collect_quantifier_spec_closure(
+                        mem::take(args),
+                        mem::take(&mut block.statements),
+                        ctx,
+                        host_region_count,
+                    );
                     block.terminator.kind = TerminatorKind::Quant {
-                        kind: QuantKind::ForAll,
+                        kind,
                         spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
                         dest: dest.clone(),
                         target,
                     };
                 }
-                BuiltinFunId::SpecExists => {
-                    let spec_closure = take_and_collect(ctx);
-                    block.terminator.kind = TerminatorKind::Quant {
-                        kind: QuantKind::Exists,
-                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
-                        dest: dest.clone(),
-                        target,
-                    };
+                BuiltinFunId::SpecPrecondition
+                | BuiltinFunId::SpecPostcondition
+                | BuiltinFunId::SpecAssert
+                | BuiltinFunId::SpecAssume => {
+                    unreachable!(
+                        "host-level specifications are extracted and erased before mir_borrowck"
+                    );
                 }
                 _ => (),
             }

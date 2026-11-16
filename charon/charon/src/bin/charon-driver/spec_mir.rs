@@ -448,6 +448,23 @@ fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mu
                 }
             }
         }
+        if let Some(term) = &block_data.terminator
+            && let TerminatorKind::Call { func, .. } = &term.kind
+            && matches!(
+                operand_spec_call(tcx, body, func),
+                Some(
+                    SpecCallKind::Precondition
+                        | SpecCallKind::Postcondition
+                        | SpecCallKind::Assert
+                        | SpecCallKind::Assume
+                )
+            )
+        {
+            tcx.dcx().span_err(
+                term.source_info.span,
+                "nested contracts or assertions are not allowed inside specifications",
+            );
+        }
     }
 
     if let Some(loop_span) = find_non_cleanup_cycle_span(body) {
