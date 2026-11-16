@@ -8,6 +8,32 @@ use crate::transform::ctx::UllbcPass;
 
 pub struct Transform;
 impl UllbcPass for Transform {
+    fn transform_function(&self, ctx: &mut TransformCtx, decl: &mut FunDecl) {
+        if !ctx.in_spec_body
+            && let Some(pending) = ctx.pending_specs.get_mut(&decl.def_id)
+        {
+            for rvalue in pending.iter_captures_mut() {
+                if let Rvalue::Use(Operand::Move(from) | Operand::Copy(from), _) = rvalue
+                    && from.is_local()
+                    && from.ty().is_unit()
+                {
+                    *rvalue = Rvalue::unit_value();
+                }
+            }
+        }
+        let mut spec_closures = std::mem::take(&mut ctx.translated.spec_closures);
+        let prev_in_spec = ctx.in_spec_body;
+        let mut is_host_body = true;
+        decl.for_each_body(&mut spec_closures, |body, _| {
+            ctx.in_spec_body = prev_in_spec || !std::mem::replace(&mut is_host_body, false);
+            if let Some(body) = body.as_unstructured_mut() {
+                self.transform_body(ctx, body);
+            }
+        });
+        ctx.in_spec_body = prev_in_spec;
+        ctx.translated.spec_closures = spec_closures;
+    }
+
     fn transform_body(&self, ctx: &mut TransformCtx, body: &mut ExprBody) {
         let facts = crate::transform::borrowck::take(ctx, body);
         // Replace any copy/move of a unit local to a plain const assignment. Note: we don't touch

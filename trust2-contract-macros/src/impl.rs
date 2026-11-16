@@ -25,7 +25,7 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
 
     let stmt = parse_quote! {
         {
-            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::entry(0);
             ::#crate_name_ident::internal::precondition(|| #expr);
         }
     };
@@ -52,7 +52,7 @@ pub fn postcondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     };
     let stmt = parse_quote! {
         {
-            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::entry(0);
             ::#crate_name_ident::internal::postcondition::<#ty, _>(#expr);
         }
     };
@@ -111,7 +111,7 @@ pub fn contract_assert(expr: TokenStream) -> TokenStream {
 
     quote! {
         {
-            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::entry(0);
             ::#crate_name_ident::internal::contract_assert(|| #expr);
         }
     }
@@ -124,7 +124,7 @@ pub fn contract_assume(expr: TokenStream) -> TokenStream {
 
     quote! {
         {
-            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::entry(0);
             ::#crate_name_ident::internal::contract_assume(|| #expr);
         }
     }
@@ -136,7 +136,7 @@ pub fn forall(expr: TokenStream) -> TokenStream {
 
     quote! {
         {
-            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::entry(0);
             ::#crate_name_ident::internal::forall(#expr)
         }
     }
@@ -148,7 +148,7 @@ pub fn exists(expr: TokenStream) -> TokenStream {
 
     quote! {
         {
-            ::#crate_name_ident::internal::entry();
+            ::#crate_name_ident::internal::entry(0);
             ::#crate_name_ident::internal::exists(#expr)
         }
     }
@@ -196,7 +196,7 @@ mod tests {
         let expect = quote! {
             fn square(x: u8) -> u8 {
                 {
-                    ::#crate_name_ident::internal::entry();
+                    ::#crate_name_ident::internal::entry(0);
                     ::#crate_name_ident::internal::precondition(|| #expr);
                 }
                 x * x
@@ -223,7 +223,7 @@ mod tests {
         let expect = quote! {
             fn square(x: u8) -> u8 {
                 {
-                    ::#crate_name_ident::internal::entry();
+                    ::#crate_name_ident::internal::entry(0);
                     ::#crate_name_ident::internal::postcondition::<u8, _>(|x2| x2 >= x);
                 }
                 x * x

@@ -686,16 +686,25 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
             self.blocks.set_slot(block_id, block);
         }
 
+        let bound_body_regions = self.i_ctx.lifetime_freshener.take().unwrap().slot_count();
+        self.i_ctx.lifetime_freshener = Some(Default::default());
+        self.translate_host_spec_sites(mir_body)?;
+
         // Create the body
         let comments = self.translate_body_comments(source_text, span);
         let mut body = ExprBody {
             span,
             locals: self.locals,
-            bound_body_regions: self.i_ctx.lifetime_freshener.take().unwrap().slot_count(),
+            bound_body_regions,
             body: self.blocks.make_contiguous(),
             comments,
         };
-        if self.i_ctx.t_ctx.translated.options.export_borrowck {
+        let is_spec_body = mir_body
+            .source
+            .def_id()
+            .as_local()
+            .is_some_and(|local| self.i_ctx.t_ctx.spec_mir_bodies.contains_key(&local));
+        if self.i_ctx.t_ctx.translated.options.export_borrowck && !is_spec_body {
             let function = match self.i_ctx.item_id {
                 Some(ItemId::Fun(id)) => id,
                 _ => unreachable!(),
@@ -729,6 +738,90 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
                 .push(info);
         }
         Ok(Body::Unstructured(body))
+    }
+
+    /// Registers specification closures extracted before `mir_borrowck` and translates their
+    /// captured host places into ULLBC `Rvalue`s.
+    fn translate_host_spec_sites(&mut self, mir_body: &mir::Body<'tcx>) -> Result<(), Error> {
+        if !matches!(mir_body.source.instance, ty::InstanceKind::Item(_)) {
+            return Ok(());
+        }
+        let Some(host_local_def_id) = mir_body.source.def_id().as_local() else {
+            return Ok(());
+        };
+        let Some(ItemId::Fun(host_fun_id)) = self.i_ctx.item_id else {
+            return Ok(());
+        };
+        let Some(sites) = crate::spec_mir::host_spec_sites(host_local_def_id) else {
+            return Ok(());
+        };
+
+        let tcx = self.i_ctx.t_ctx.tcx;
+        let mut pending = charon_lib::transform::collect_specs::PendingFunSpecs::default();
+
+        for site in sites {
+            let span = self.translate_span(&site.span);
+            let mut captures = Vec::with_capacity(site.captures.len());
+            {
+                let mut block_ctx = BlockTransCtx::new(self);
+                for cap in &site.captures {
+                    let cap_span = block_ctx.translate_span(&cap.span);
+                    let mir_place = cap.place.to_mir_place(tcx, mir_body);
+                    let place = block_ctx.translate_place(cap_span, &mir_place)?;
+                    let rvalue = match cap.mode {
+                        crate::spec_mir::CaptureMode::SharedRef => Rvalue::Ref {
+                            place,
+                            kind: BorrowKind::Shared,
+                            ptr_metadata: Operand::mk_const_unit(),
+                        },
+                        crate::spec_mir::CaptureMode::ByValue => {
+                            Rvalue::Use(Operand::Copy(place), WithRetag::No)
+                        }
+                    };
+                    captures.push(rvalue);
+                }
+            }
+
+            let closure_def_id = site.closure_def_id.to_def_id();
+            let closure_ty = tcx
+                .type_of(closure_def_id)
+                .instantiate_identity()
+                .skip_normalization();
+            let ty::TyKind::Closure(_, closure_args) = *closure_ty.kind() else {
+                unreachable!();
+            };
+            let hax_args = {
+                let s = self.i_ctx.hax_state_with_id();
+                hax::ClosureArgs::sfrom(s, closure_def_id, closure_args)
+            };
+            let closure_kind = super::translate_closures::translate_closure_kind(&hax_args.kind);
+            let tref = self.i_ctx.translate_closure_type_ref(span, &hax_args)?;
+            let closure_type_decl_id = *tref.id.as_adt().unwrap();
+            let _ = self
+                .i_ctx
+                .translate_closure_bound_impl_ref(span, &hax_args, closure_kind)?;
+
+            let pending_closure = charon_lib::transform::collect_specs::PendingSpecClosure {
+                closure_type_decl_id,
+                captures,
+            };
+            match site.kind {
+                crate::spec_mir::HostSpecKind::Precondition => {
+                    pending.preconditions.push(pending_closure);
+                }
+                crate::spec_mir::HostSpecKind::Postcondition => {
+                    pending.postconditions.push(pending_closure);
+                }
+                crate::spec_mir::HostSpecKind::InlineAssert { kind, anchor_id } => {
+                    pending
+                        .inline_asserts
+                        .insert(anchor_id.get(), (kind, pending_closure));
+                }
+            }
+        }
+
+        self.i_ctx.t_ctx.pending_specs.insert(host_fun_id, pending);
+        Ok(())
     }
 }
 

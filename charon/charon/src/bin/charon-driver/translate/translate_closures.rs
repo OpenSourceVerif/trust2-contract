@@ -351,6 +351,11 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
                         *local += 1;
                     }
                 });
+                if let Some(ItemId::Fun(fun_id)) = self.item_id
+                    && let Some(pending) = self.t_ctx.pending_specs.get_mut(&fun_id)
+                {
+                    pending.shift_locals_from(2, 1);
+                }
 
                 let mut old_locals = mem::take(&mut locals.locals).into_iter();
                 locals.arg_count = 2;

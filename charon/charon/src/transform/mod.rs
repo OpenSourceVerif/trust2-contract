@@ -26,6 +26,7 @@ pub mod add_missing_info {
 pub mod collect_specs {
     pub mod non_body;
     pub mod unstructured_body;
+    pub use unstructured_body::{PendingFunSpecs, PendingSpecClosure};
 }
 
 /// Passes that effect some kind of normalization on the crate.

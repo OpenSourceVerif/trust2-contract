@@ -952,6 +952,8 @@ pub fn translate<'tcx>(
     mut error_ctx: ErrorCtx,
     sysroot: PathBuf,
 ) -> Result<TransformCtx, Error> {
+    let prepared_specs =
+        crate::spec_mir::prepare_crate_specs(tcx, cli_options).map_err(|_| Error::dummy())?;
     let translate_options = TranslateOptions::new(&mut error_ctx, cli_options);
 
     let traits_to_remove: HashSet<rustc_hir::def_id::DefId> = {
@@ -985,7 +987,9 @@ pub fn translate<'tcx>(
 
     let mut ctx = TranslateCtx {
         tcx,
-        borrowck_bodies: Default::default(),
+        borrowck_bodies: prepared_specs.borrowck_bodies,
+        spec_mir_bodies: prepared_specs.spec_mir_bodies,
+        pending_specs: Default::default(),
         sysroot,
         hax_state,
         options: translate_options,
@@ -1087,5 +1091,7 @@ pub fn translate<'tcx>(
         options: ctx.options,
         translated: ctx.translated,
         errors: ctx.errors,
+        pending_specs: ctx.pending_specs,
+        in_spec_body: false,
     })
 }

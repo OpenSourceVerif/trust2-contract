@@ -195,9 +195,14 @@ impl Transform {
             .body
             .as_unstructured()
             .and_then(|body| crate::transform::borrowck::take(ctx, body));
-        fun.for_each_body(
-            &mut ctx.translated.spec_closures,
-            |body, spec_closures| match body {
+        let mut is_host_body = true;
+        fun.for_each_body(&mut ctx.translated.spec_closures, |body, spec_closures| {
+            let body_facts = if std::mem::replace(&mut is_host_body, false) {
+                facts.as_mut()
+            } else {
+                None
+            };
+            match body {
                 Body::Unstructured(body) => {
                     let before: Vec<_> = body
                         .body
@@ -217,7 +222,7 @@ impl Transform {
                         .take_while(|s| s.kind.is_storage_live())
                         .count()
                         - entry_lives;
-                    if let Some(info) = facts.as_mut() {
+                    if let Some(info) = body_facts {
                         crate::transform::borrowck::insert(info, BlockId::ZERO, 0, added_lives);
                         for (id, len) in before {
                             let shifted = len + if id == BlockId::ZERO { added_lives } else { 0 };
@@ -234,8 +239,8 @@ impl Transform {
                     self.transform_llbc_body(body, spec_closures, insert_missing_storage_deads)
                 }
                 _ => {}
-            },
-        );
+            }
+        });
         if let Some(body) = fun.body.as_unstructured() {
             crate::transform::borrowck::put(ctx, body, facts);
         }
