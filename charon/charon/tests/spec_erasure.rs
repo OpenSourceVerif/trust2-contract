@@ -544,3 +544,79 @@ fn function_contracts_leave_zero_borrowck_pollution_for_ullbc_pcg() -> anyhow::R
 
     Ok(())
 }
+
+#[test]
+fn multi_hop_copy_for_deref_captures_resolve_to_host_places() {
+    // 1. Nested references (`&&T`, `&&&T`) and struct fields holding references (`*w.r`) trigger
+    //    `Rvalue::CopyForDeref` chains in `bb_spec`. Also passes `--error-on-warnings` when
+    //    parameters are only read in specifications.
+    let krate = expect_ok(
+        r#"
+        pub struct NonCopy {
+            pub v: i32,
+        }
+        pub struct RefWrap<'a> {
+            pub r: &'a NonCopy,
+        }
+        pub fn consume(x: NonCopy) -> bool {
+            x.v >= 0
+        }
+
+        pub fn nested_deref_specs<'a>(
+            pp: &&i32,
+            ppp: &&&i32,
+            w: RefWrap<'a>,
+        ) -> i32 {
+            {
+                internal::entry(0);
+                internal::precondition(|| **pp >= 0 && ***ppp >= 0 && consume(*w.r));
+            }
+            {
+                internal::entry(0);
+                internal::postcondition::<i32, _>(|res| {
+                    res >= 0 && **pp >= 0 && ***ppp >= 0 && w.r.v >= 0
+                });
+            }
+            {
+                internal::entry(0);
+                internal::contract_assert(|| **pp >= 0 && consume(*w.r) && consume(*w.r));
+            }
+            0
+        }
+        "#,
+    );
+
+    let fun = krate
+        .fun_decls
+        .iter()
+        .find(|f| {
+            f.item_meta
+                .name
+                .name
+                .last()
+                .is_some_and(|e| e.as_ident().is_some_and(|(s, _)| s == "nested_deref_specs"))
+        })
+        .expect("nested_deref_specs function");
+    assert_eq!(fun.specs.preconditions.len(), 1);
+    assert_eq!(fun.specs.postconditions.len(), 1);
+
+    // 2. Anchor borrow-conflict checking still catches an active `&mut w.r` when a spec reads `*w.r`.
+    expect_err_containing(
+        r#"
+        pub struct RefWrap<'a> {
+            pub r: &'a i32,
+        }
+
+        pub fn reject_mutably_borrowed_ref_field<'a>(mut w: RefWrap<'a>, alt: &'a i32) -> i32 {
+            let slot = &mut w.r;
+            {
+                internal::entry(0);
+                internal::contract_assert(|| *w.r >= 0);
+            }
+            *slot = alt;
+            *w.r
+        }
+        "#,
+        "cannot read mutably borrowed value in specification",
+    );
+}

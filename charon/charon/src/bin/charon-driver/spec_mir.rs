@@ -734,6 +734,71 @@ struct ExtractedSpecClosure {
     temp_locals: Vec<Local>,
 }
 
+/// Substitutes capture-preparation temporaries (`CopyForDeref`, `Use(Copy/Move)`, and `*(&place)`)
+/// recorded earlier in `bb_spec` so the resulting `mir::Place` roots at an un-erased host local.
+fn resolve_capture_place<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    place: Place<'tcx>,
+    place_aliases: &FxHashMap<Local, (Place<'tcx>, Span)>,
+    ref_assigns: &FxHashMap<Local, (BorrowKind, Place<'tcx>, Span)>,
+) -> Place<'tcx> {
+    let remap_elem = |elem: PlaceElem<'tcx>| match elem {
+        ProjectionElem::Index(idx_local) => match place_aliases.get(&idx_local) {
+            Some(&(aliased, _)) if aliased.projection.is_empty() => {
+                ProjectionElem::Index(aliased.local)
+            }
+            _ => elem,
+        },
+        _ => elem,
+    };
+
+    if let Some(&(base_place, _)) = place_aliases.get(&place.local) {
+        let mut elems = Vec::with_capacity(base_place.projection.len() + place.projection.len());
+        elems.extend(base_place.projection.iter());
+        elems.extend(place.projection.iter().map(remap_elem));
+        return Place {
+            local: base_place.local,
+            projection: tcx.mk_place_elems(&elems),
+        };
+    }
+
+    if let Some(&(_, target_place, _)) = ref_assigns.get(&place.local)
+        && place.projection.first() == Some(&ProjectionElem::Deref)
+    {
+        let tail = &place.projection[1..];
+        let mut elems = Vec::with_capacity(target_place.projection.len() + tail.len());
+        elems.extend(target_place.projection.iter());
+        elems.extend(tail.iter().copied().map(remap_elem));
+        return Place {
+            local: target_place.local,
+            projection: tcx.mk_place_elems(&elems),
+        };
+    }
+
+    if place
+        .projection
+        .iter()
+        .any(|e| matches!(e, ProjectionElem::Index(l) if place_aliases.contains_key(&l)))
+    {
+        let elems: Vec<_> = place.projection.iter().map(remap_elem).collect();
+        return Place {
+            local: place.local,
+            projection: tcx.mk_place_elems(&elems),
+        };
+    }
+
+    place
+}
+
+/// Checks whether `place` still references any erased capture-preparation temporary in `temp_set`.
+fn place_mentions_temp(place: Place<'_>, temp_set: &FxHashSet<Local>) -> bool {
+    temp_set.contains(&place.local)
+        || place
+            .projection
+            .iter()
+            .any(|elem| matches!(elem, ProjectionElem::Index(l) if temp_set.contains(&l)))
+}
+
 /// Extracts the closure `LocalDefId`, captured places, and temporary locals from `bb_spec`.
 fn extract_spec_block_closure<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -759,7 +824,10 @@ fn extract_spec_block_closure<'tcx>(
         return None;
     }
 
+    let mut place_aliases: FxHashMap<Local, (Place<'tcx>, Span)> = FxHashMap::default();
     let mut ref_assigns: FxHashMap<Local, (BorrowKind, Place<'tcx>, Span)> = FxHashMap::default();
+    let mut temp_set: FxHashSet<Local> = FxHashSet::default();
+    temp_set.insert(closure_place.local);
     let mut temp_locals = vec![closure_place.local];
     let mut closure_aggregate: Option<(LocalDefId, Vec<Operand<'tcx>>, Span)> = None;
 
@@ -768,12 +836,26 @@ fn extract_spec_block_closure<'tcx>(
             continue;
         };
         if !lhs.projection.is_empty() {
-            continue;
+            tcx.dcx().span_err(
+                stmt.source_info.span,
+                "expected an inline closure literal in specification",
+            );
+            return None;
         }
-        temp_locals.push(lhs.local);
         match rhs {
+            Rvalue::CopyForDeref(src) | Rvalue::Use(Operand::Copy(src) | Operand::Move(src), _) => {
+                let resolved = resolve_capture_place(tcx, *src, &place_aliases, &ref_assigns);
+                place_aliases.insert(lhs.local, (resolved, stmt.source_info.span));
+                if temp_set.insert(lhs.local) {
+                    temp_locals.push(lhs.local);
+                }
+            }
             Rvalue::Ref(_, borrow_kind, place) => {
-                ref_assigns.insert(lhs.local, (*borrow_kind, *place, stmt.source_info.span));
+                let resolved = resolve_capture_place(tcx, *place, &place_aliases, &ref_assigns);
+                ref_assigns.insert(lhs.local, (*borrow_kind, resolved, stmt.source_info.span));
+                if temp_set.insert(lhs.local) {
+                    temp_locals.push(lhs.local);
+                }
             }
             Rvalue::Aggregate(agg_kind, operands) if lhs.local == closure_place.local => {
                 if let AggregateKind::Closure(def_id, _) = &**agg_kind
@@ -786,7 +868,13 @@ fn extract_spec_block_closure<'tcx>(
                     ));
                 }
             }
-            _ => {}
+            _ => {
+                tcx.dcx().span_err(
+                    stmt.source_info.span,
+                    "expected an inline closure literal in specification",
+                );
+                return None;
+            }
         }
     }
 
@@ -801,7 +889,7 @@ fn extract_spec_block_closure<'tcx>(
     let mut captures = Vec::with_capacity(operands.len());
     for operand in operands {
         match operand {
-            Operand::Move(place)
+            Operand::Move(place) | Operand::Copy(place)
                 if place.projection.is_empty() && ref_assigns.contains_key(&place.local) =>
             {
                 let (borrow_kind, target_place, ref_span) = ref_assigns[&place.local];
@@ -809,6 +897,13 @@ fn extract_spec_block_closure<'tcx>(
                     tcx.dcx().span_err(
                         ref_span,
                         "specifications cannot mutably borrow or mutate program variables",
+                    );
+                    return None;
+                }
+                if place_mentions_temp(target_place, &temp_set) {
+                    tcx.dcx().span_err(
+                        ref_span,
+                        "expected an inline closure literal in specification",
                     );
                     return None;
                 }
@@ -826,9 +921,24 @@ fn extract_spec_block_closure<'tcx>(
                 });
             }
             Operand::Move(place) | Operand::Copy(place) => {
-                let Some(saved_place) = SavedPlace::from_mir(place) else {
+                let cap_span = if place.projection.is_empty() {
+                    place_aliases
+                        .get(&place.local)
+                        .map_or(agg_span, |&(_, span)| span)
+                } else {
+                    agg_span
+                };
+                let resolved = resolve_capture_place(tcx, place, &place_aliases, &ref_assigns);
+                if place_mentions_temp(resolved, &temp_set) {
                     tcx.dcx().span_err(
-                        agg_span,
+                        cap_span,
+                        "expected an inline closure literal in specification",
+                    );
+                    return None;
+                }
+                let Some(saved_place) = SavedPlace::from_mir(resolved) else {
+                    tcx.dcx().span_err(
+                        cap_span,
                         "unsupported place projection captured in specification",
                     );
                     return None;
@@ -836,7 +946,7 @@ fn extract_spec_block_closure<'tcx>(
                 captures.push(SavedCapture {
                     mode: CaptureMode::ByValue,
                     place: saved_place,
-                    span: agg_span,
+                    span: cap_span,
                 });
             }
             Operand::Constant(_) | Operand::RuntimeChecks(_) => {
