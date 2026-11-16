@@ -23,11 +23,23 @@ pub struct NonCopyPair {
         && forall!(|q: BoxedInt| {
             let q1 = q;
             let q2 = q;
-            q1.val == q2.val
+            q1.val != res.val || q2.val > x.val
         })
 })]
 pub fn inc_non_copy(x: BoxedInt) -> BoxedInt {
     BoxedInt { val: x.val + 1 }
+}
+
+#[precondition(x <= 1000)]
+#[postcondition(|res| {
+    res == x + x
+        && forall!(|q: u32| q > x || q <= res)
+        && exists!(|w: u32| w == x && w <= res)
+})]
+pub fn double_upper_bound(x: u32) -> u32 {
+    let doubled = x + x;
+    contract_assert!(forall!(|k: u32| k > x || k <= doubled));
+    doubled
 }
 
 #[precondition(p.a >= 0 && p.b >= 0 && p.a < 1000)]

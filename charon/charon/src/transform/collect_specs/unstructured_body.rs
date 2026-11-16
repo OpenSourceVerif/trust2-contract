@@ -287,12 +287,48 @@ impl Transform {
         }
     }
 
+    /// Substitutes single-assignment capture-preparation temporaries (`CopyForDeref`/`Use`
+    /// aliases and `*(&target)` reborrows) inside `place` so quantifier captures never reference
+    /// erased temporary locals.
+    fn resolve_quantifier_place(
+        place: &Place,
+        place_aliases: &HashMap<LocalId, Place>,
+        ref_targets: &HashMap<LocalId, Place>,
+    ) -> Place {
+        match &place.kind {
+            PlaceKind::Local(lid) => place_aliases
+                .get(lid)
+                .cloned()
+                .unwrap_or_else(|| place.clone()),
+            PlaceKind::Global(_) => place.clone(),
+            PlaceKind::Projection(base, proj) => {
+                if matches!(proj, ProjectionElem::Deref)
+                    && let PlaceKind::Local(lid) = base.kind
+                    && let Some(target) = ref_targets.get(&lid)
+                {
+                    return target.clone();
+                }
+                let resolved_base =
+                    Self::resolve_quantifier_place(base, place_aliases, ref_targets);
+                let mut resolved_proj = proj.clone();
+                resolved_proj.dyn_visit_in_body_mut(|p: &mut Place| {
+                    *p = Self::resolve_quantifier_place(p, place_aliases, ref_targets);
+                });
+                Place {
+                    kind: PlaceKind::Projection(Box::new(resolved_base), resolved_proj),
+                    ty: place.ty.clone(),
+                }
+            }
+        }
+    }
+
     /// Collects quantifier closures (`forall!` / `exists!`) inside specification bodies directly
-    /// from ULLBC statements.
+    /// from ULLBC statements, transitively folding compiler-generated capture temporaries while
+    /// preserving any non-capture statements in `statements`.
     fn collect_quantifier_spec_closure(
         &self,
         call_args: Vec<Operand>,
-        closure_assigns: Vec<Statement>,
+        statements: &mut Vec<Statement>,
         ctx: &mut TransformCtx,
         host_region_count: usize,
     ) -> SpecClosure {
@@ -300,7 +336,9 @@ impl Transform {
         let Operand::Move(closure) = closure else {
             unreachable!();
         };
-        assert!(matches!(closure.kind, PlaceKind::Local(..)));
+        let PlaceKind::Local(closure_local_id) = closure.kind else {
+            unreachable!();
+        };
         let TyKind::Adt(type_ref) = closure.ty.kind() else {
             unreachable!();
         };
@@ -308,40 +346,130 @@ impl Transform {
             unreachable!();
         };
 
-        let mut closure_assigns =
-            closure_assigns
-                .into_iter()
-                .filter_map(|old_statement| match old_statement.kind {
-                    StatementKind::Assign(place, rvalue) => Some((place, rvalue)),
-                    StatementKind::StorageLive(..)
-                    | StatementKind::StorageDead(..)
-                    | StatementKind::PlaceMention(..)
-                    | StatementKind::Nop => None,
-                    _ => unreachable!(),
-                });
-        let (_, rvalue) = closure_assigns.next_back().unwrap();
-        let Rvalue::Aggregate(.., closure_env) = rvalue else {
-            unreachable!();
-        };
-        let mut old_captures = IndexMap::new();
-        for (place, rvalue) in closure_assigns {
-            if let PlaceKind::Local(local_id) = place.kind {
-                old_captures.set_slot_extend(local_id, rvalue);
+        let mut assign_counts: HashMap<LocalId, usize> = HashMap::new();
+        for stmt in statements.iter() {
+            if let StatementKind::Assign(lhs, _) = &stmt.kind
+                && let Some(lid) = lhs.local_id()
+            {
+                *assign_counts.entry(lid).or_insert(0) += 1;
             }
         }
+
+        let mut place_aliases: HashMap<LocalId, Place> = HashMap::new();
+        let mut ref_targets: HashMap<LocalId, Place> = HashMap::new();
+        let mut capture_rvalues: IndexMap<LocalId, Rvalue> = IndexMap::new();
+        let mut erased_locals: HashSet<LocalId> = HashSet::from([closure_local_id]);
+        let mut kept_statements: Vec<Statement> = Vec::new();
+        let mut closure_env_opt = None;
+
+        for mut stmt in mem::take(statements) {
+            match stmt.kind {
+                StatementKind::Assign(lhs, rhs) => {
+                    let single_local = match lhs.kind {
+                        PlaceKind::Local(lid) if assign_counts.get(&lid) == Some(&1) => Some(lid),
+                        _ => None,
+                    };
+                    match (single_local, rhs) {
+                        (Some(lid), Rvalue::Aggregate(.., env)) if lid == closure_local_id => {
+                            closure_env_opt = Some(env);
+                        }
+                        (Some(lid), Rvalue::Use(Operand::Copy(src) | Operand::Move(src), _)) => {
+                            let resolved =
+                                Self::resolve_quantifier_place(&src, &place_aliases, &ref_targets);
+                            place_aliases.insert(lid, resolved.clone());
+                            capture_rvalues.set_slot_extend(
+                                lid,
+                                Rvalue::Use(Operand::Copy(resolved), WithRetag::No),
+                            );
+                            erased_locals.insert(lid);
+                        }
+                        (
+                            Some(lid),
+                            Rvalue::Ref {
+                                place,
+                                kind,
+                                mut ptr_metadata,
+                            },
+                        ) => {
+                            let resolved = Self::resolve_quantifier_place(
+                                &place,
+                                &place_aliases,
+                                &ref_targets,
+                            );
+                            ptr_metadata.dyn_visit_in_body_mut(|p: &mut Place| {
+                                *p =
+                                    Self::resolve_quantifier_place(p, &place_aliases, &ref_targets);
+                            });
+                            ref_targets.insert(lid, resolved.clone());
+                            capture_rvalues.set_slot_extend(
+                                lid,
+                                Rvalue::Ref {
+                                    place: resolved,
+                                    kind,
+                                    ptr_metadata,
+                                },
+                            );
+                            erased_locals.insert(lid);
+                        }
+                        (_, mut other_rhs) => {
+                            let mut lhs =
+                                Self::resolve_quantifier_place(&lhs, &place_aliases, &ref_targets);
+                            lhs.dyn_visit_in_body_mut(|p: &mut Place| {
+                                *p =
+                                    Self::resolve_quantifier_place(p, &place_aliases, &ref_targets);
+                            });
+                            other_rhs.dyn_visit_in_body_mut(|p: &mut Place| {
+                                *p =
+                                    Self::resolve_quantifier_place(p, &place_aliases, &ref_targets);
+                            });
+                            stmt.kind = StatementKind::Assign(lhs, other_rhs);
+                            kept_statements.push(stmt);
+                        }
+                    }
+                }
+                StatementKind::StorageLive(_)
+                | StatementKind::StorageDead(_)
+                | StatementKind::PlaceMention(_)
+                | StatementKind::Nop => {
+                    kept_statements.push(stmt);
+                }
+                _ => {
+                    stmt.dyn_visit_in_body_mut(|p: &mut Place| {
+                        *p = Self::resolve_quantifier_place(p, &place_aliases, &ref_targets);
+                    });
+                    kept_statements.push(stmt);
+                }
+            }
+        }
+
+        kept_statements.retain(|stmt| match &stmt.kind {
+            StatementKind::StorageLive(lid) | StatementKind::StorageDead(lid) => {
+                !erased_locals.contains(lid)
+            }
+            StatementKind::PlaceMention(p) => {
+                p.local_id().is_none_or(|lid| !erased_locals.contains(&lid))
+            }
+            StatementKind::Nop => false,
+            _ => true,
+        });
+        *statements = kept_statements;
+
+        let closure_env = closure_env_opt.expect("quantifier call must construct a closure");
         let captures = closure_env
             .into_iter()
-            .map(|operand| match &operand {
-                Operand::Move(place)
-                    if matches!(place.kind, PlaceKind::Local(lid) if old_captures.get(lid).is_some()) =>
+            .map(|operand| match operand {
+                Operand::Move(place) | Operand::Copy(place)
+                    if matches!(place.kind, PlaceKind::Local(lid) if capture_rvalues.get(lid).is_some()) =>
                 {
                     let PlaceKind::Local(lid) = place.kind else {
                         unreachable!();
                     };
-                    old_captures[lid].clone()
+                    capture_rvalues[lid].clone()
                 }
                 Operand::Move(place) | Operand::Copy(place) => {
-                    Rvalue::Use(Operand::Copy(place.clone()), WithRetag::No)
+                    let resolved =
+                        Self::resolve_quantifier_place(&place, &place_aliases, &ref_targets);
+                    Rvalue::Use(Operand::Copy(resolved), WithRetag::No)
                 }
                 Operand::Const(..) => Rvalue::Use(operand, WithRetag::No),
             })
@@ -443,7 +571,7 @@ impl Transform {
                     };
                     let spec_closure = self.collect_quantifier_spec_closure(
                         mem::take(args),
-                        mem::take(&mut block.statements),
+                        &mut block.statements,
                         ctx,
                         host_region_count,
                     );

@@ -620,3 +620,38 @@ fn multi_hop_copy_for_deref_captures_resolve_to_host_places() {
         "cannot read mutably borrowed value in specification",
     );
 }
+
+#[test]
+fn nested_quantifiers_fold_outer_capture_chains_without_orphan_locals() {
+    let krate = expect_ok(
+        r#"
+        pub fn bounded_double(x: u32) -> u32 {
+            {
+                internal::entry(0);
+                internal::postcondition::<u32, _>(|res| {
+                    internal::entry(0);
+                    internal::forall(|a: u32| {
+                        internal::entry(0);
+                        internal::exists(|b: u32| b == a || b == res || b == x)
+                    })
+                });
+            }
+            x
+        }
+        "#,
+    );
+
+    let fun = krate
+        .fun_decls
+        .iter()
+        .find(|f| {
+            f.item_meta
+                .name
+                .name
+                .last()
+                .is_some_and(|e| e.as_ident().is_some_and(|(s, _)| s == "bounded_double"))
+        })
+        .expect("bounded_double function");
+    assert_eq!(fun.specs.postconditions.len(), 1);
+    assert_eq!(krate.spec_closures.slot_count(), 2);
+}
