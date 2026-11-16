@@ -22,7 +22,7 @@ class Page(HTMLParser):
 
 
 def validate(root):
-    paths = list((root/'book').rglob('*.html')) + list(root.glob('*.html'))
+    paths = list((root/'book').rglob('*.html'))
     assert paths, 'No generated pages. Run python3 build.py first.'
     pages = {p.resolve(): Page(p) for p in paths}
     errors, checked = [], 0

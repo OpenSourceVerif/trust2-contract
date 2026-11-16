@@ -1,0 +1,71 @@
+name: Docs
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  specification-reference:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install mdBook v0.5.4
+        run: |
+          mkdir -p docs/specification-reference/.tools
+          curl --retry 3 -fsSL https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-gnu.tar.gz \
+            | tar -xz -C docs/specification-reference/.tools
+          chmod +x docs/specification-reference/.tools/mdbook
+
+      - name: Build and validate specification reference
+        run: >
+          python3 docs/specification-reference/build.py
+          --repo-blob-base "https://github.com/${{ github.repository }}/blob/${{ github.sha }}"
+
+      - name: Verify working tree is clean
+        run: test -z "$(git status --porcelain)"
+
+      - name: Upload specification reference book
+        uses: actions/upload-artifact@v4
+        with:
+          name: specification-reference-book
+          path: docs/specification-reference/book/
+
+      - name: Upload GitHub Pages artifact
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: docs/specification-reference/book/
+
+  deploy:
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: specification-reference
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: "pages"
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

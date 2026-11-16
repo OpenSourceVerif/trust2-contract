@@ -4,11 +4,13 @@
 
 ## 查看
 
-用浏览器打开 [index.html](index.html)，默认进入[英文版](book/en/introduction.html)。[中文版](book/zh/introduction.html)独立生成；每页右上角的语言链接切换到另一版本的同一章。整套目录需要保持在一起；已生成的 `book/` 包含字体、样式、脚本、搜索索引和铁路图，阅读不需要安装工具或连接网络。原来的章节地址继续重定向到新页面，并保留 URL 片段。
+在线阅读 GitHub Pages 发布版：[英文版](https://opensourceverif.github.io/trust2-contract/en/introduction.html) · [中文版](https://opensourceverif.github.io/trust2-contract/zh/introduction.html)。
+
+本地查看时，先在本目录执行 `python3 build.py` 生成静态手册（或从 GitHub Actions 下载 `specification-reference-book` 构建产物），再用浏览器打开 `book/index.html`，默认进入英文版（`book/en/introduction.html`）。中文版（`book/zh/introduction.html`）独立生成；每页右上角的语言链接切换到另一版本的同一章。在未构建的工作树中，也可直接阅读 Markdown 源码（[英文版](src/en/introduction.md) · [中文版](src/zh/introduction.md)）。已生成的 `book/` 包含字体、样式、脚本、搜索索引、铁路图以及 `book/*.html` 入口重定向页（保留 URL 片段），整套 `book/` 目录保持在一起即可离线阅读，不需要安装工具或连接网络。
 
 ## 修改与构建
 
-要求 Python 3.9+ 和 mdBook **0.5.4**。mdBook 可从[官方 release](https://github.com/rust-lang/mdBook/releases/tag/v0.5.4)取得，或执行 `cargo install mdbook --version 0.5.4 --locked`。构建脚本依次使用 `MDBOOK` 环境变量、`.tools/mdbook` 或 PATH 中的程序；`.tools/` 不提交。
+要求 Python 3.9+ 和 mdBook **0.5.4**。mdBook 可从[官方 release](https://github.com/rust-lang/mdBook/releases/tag/v0.5.4)取得，或执行 `cargo install mdbook --version 0.5.4 --locked`。构建脚本依次使用 `MDBOOK` 环境变量、`.tools/mdbook` 或 PATH 中的程序；`.tools/` 和 `book/` 均已加入 `.gitignore`，不提交到 Git。
 
 在本目录执行：
 
@@ -17,7 +19,7 @@ python3 build.py
 python3 build.py --check
 ```
 
-第一条生成中英文手册、注入语言切换链接、兼容旧页面地址，并检查本地链接、资源、锚点及重复 ID。第二条只检查已有生成文件。请将源码和更新后的 `book/` 一起保存；不要手动修改 `book/`。
+第一条在 `book/` 下生成中英文手册、注入语言切换链接、写入 `book/*.html` 入口重定向页，并检查本地链接、资源、锚点及重复 ID。第二条只检查已生成的 `book/`。`book/` 为构建输出目录（GitHub Actions 会在 CI 中自动构建、校验并上传 `specification-reference-book` 构件）；修改手册时只需提交源码文件，不要提交或手动修改 `book/`。
 
 | 文件 | 用途 |
 | --- | --- |
@@ -28,8 +30,8 @@ python3 build.py --check
 | `preprocess.py` | 把语法指令展开为 Rust Reference 格式的 HTML |
 | `railroad.py` | 从同一份文法生成可点击的 SVG 铁路图 |
 | `theme/reference.css`、`theme/reference.js` | 原版 Rust Reference 主题，见下面的来源说明 |
-| `build.py`、`validate.py` | 构建、兼容入口和链接检查 |
-| `book/en/`、`book/zh/` | 两版完整静态站点，各自拥有搜索索引 |
+| `build.py`、`validate.py` | 构建、入口重定向和链接检查 |
+| `book/en/`、`book/zh/` | 本地/CI 构建生成的两版完整静态站点（不提交到 Git），各自拥有搜索索引 |
 | `theme/manual.css` | 语言切换按钮的局部样式；不改动原版主题 |
 
 两版保持相同文件名、章节层级、规则锚点和文法指令。新增章节时需同时更新两版；修改文法只编辑 `grammar.json`。默认 `book.toml` 构建英文，`build.py` 使用 mdBook 的环境变量覆盖生成中文。
