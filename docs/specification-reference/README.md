@@ -4,7 +4,9 @@
 
 ## 查看
 
-先在本目录执行 `python3 build.py` 生成静态手册（或从 GitHub Actions 下载 `specification-reference-book` 构建产物），再用浏览器打开 `book/index.html`，默认进入英文版（`book/en/introduction.html`）。中文版（`book/zh/introduction.html`）独立生成；每页右上角的语言链接切换到另一版本的同一章。在未构建的工作树或 GitHub 页面中，也可直接阅读 Markdown 源码（[英文版](src/en/introduction.md) · [中文版](src/zh/introduction.md)）。已生成的 `book/` 包含字体、样式、脚本、搜索索引、铁路图以及 `book/*.html` 入口重定向页（保留 URL 片段），整套 `book/` 目录保持在一起即可离线阅读，不需要安装工具或连接网络。
+在线阅读 GitHub Pages 发布版：[英文版](https://opensourceverif.github.io/trust2-contract/en/introduction.html) · [中文版](https://opensourceverif.github.io/trust2-contract/zh/introduction.html)。
+
+本地查看时，先在本目录执行 `python3 build.py` 生成静态手册（或从 GitHub Actions 下载 `specification-reference-book` 构建产物），再用浏览器打开 `book/index.html`，默认进入英文版（`book/en/introduction.html`）。中文版（`book/zh/introduction.html`）独立生成；每页右上角的语言链接切换到另一版本的同一章。在未构建的工作树中，也可直接阅读 Markdown 源码（[英文版](src/en/introduction.md) · [中文版](src/zh/introduction.md)）。已生成的 `book/` 包含字体、样式、脚本、搜索索引、铁路图以及 `book/*.html` 入口重定向页（保留 URL 片段），整套 `book/` 目录保持在一起即可离线阅读，不需要安装工具或连接网络。
 
 ## 修改与构建
 
