@@ -7,8 +7,7 @@ Contracts are verified statically. In an ordinary build, contract annotations ar
 
 ## Manual
 
-Research workspace: [Open the website](sites/index.html) · [Website README](sites/README.md).
-Open `sites/index.html` in a local browser. The website source and pages live in this repository under `sites/`.
+Research workspace: [Open the website](https://opensourceverif.github.io/trust2-contract-sites/) (repository: [OpenSourceVerif/trust2-contract-sites](https://github.com/OpenSourceVerif/trust2-contract-sites)).
 
 Read the user guide and specification reference: [English](https://opensourceverif.github.io/trust2-contract/en/introduction.html) · [简体中文](https://opensourceverif.github.io/trust2-contract/zh/introduction.html) (sources: [English](docs/specification-reference/src/en/introduction.md) · [简体中文](docs/specification-reference/src/zh/introduction.md)).
 

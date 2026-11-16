@@ -1,1 +1,0 @@
-window.PAPER_ANNOTATIONS = [];
