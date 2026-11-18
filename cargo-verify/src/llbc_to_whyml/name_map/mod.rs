@@ -20,8 +20,7 @@ pub use names::*;
 
 use charon_lib::{
     ast::{
-        FieldId, FunDeclId, GlobalDeclId, LocalId, SpecBodyId, SpecClosureId, TypeDeclId,
-        TypeVarId, VariantId,
+        FieldId, FunDeclId, GlobalDeclId, LocalId, SpecClosureId, TypeDeclId, TypeVarId, VariantId,
     },
     ids::{IndexMap, IndexVec},
 };
@@ -33,7 +32,6 @@ pub struct NameMap {
     pub type_decl_names: IndexMap<TypeDeclId, TypeDeclNames>,
     pub func_decl_names: IndexMap<FunDeclId, FuncDeclNames>,
     pub global_names: IndexMap<GlobalDeclId, GlobalNames>,
-    pub spec_body_names: IndexMap<SpecBodyId, LocalNames>,
     pub spec_closure_names: IndexMap<SpecClosureId, LocalNames>,
 }
 

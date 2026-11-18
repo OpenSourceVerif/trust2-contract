@@ -149,7 +149,6 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
 
         None
     });
-    let mut spec_body_names_opt = crate_.spec_bodies.map_ref(|_| None);
     let mut spec_closure_names_opt = crate_.spec_closures.map_ref(|_| None);
 
     let mut set_map = |(item_id, sub_id_opt), path: Vec<_>| {
@@ -223,8 +222,7 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
         let item_ident = item_ident_opt.unwrap();
 
         for &spec_body_id in &type_decl.specs.invariants {
-            spec_body_names_opt[spec_body_id] =
-                Some(local_mapper.map(&crate_.spec_bodies[spec_body_id], None, 0));
+            let _ = local_mapper.map(&crate_.spec_bodies[spec_body_id], None, 0);
         }
 
         TypeDeclNames {
@@ -289,13 +287,11 @@ pub fn build(crate_: &TranslatedCrate) -> NameMap {
             type_param_names: map_generic_params(&global.generics, 0),
         }
     });
-    let spec_body_names = spec_body_names_opt.map(Option::unwrap);
     let spec_closure_names = spec_closure_names_opt.map(Option::unwrap);
     NameMap {
         type_decl_names,
         func_decl_names,
         global_names,
-        spec_body_names,
         spec_closure_names,
     }
 }

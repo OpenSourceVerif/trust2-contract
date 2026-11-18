@@ -30,6 +30,8 @@ pub fn merge(options: CliOpts, krates: Vec<CrateData>) -> CrateData {
         options: tr_options,
         translated: merged.translated,
         errors: RefCell::new(error_ctx),
+        pending_specs: Default::default(),
+        in_spec_body: false,
     };
     cleanup_post_merge(&mut ctx);
     merged.translated = ctx.translated;

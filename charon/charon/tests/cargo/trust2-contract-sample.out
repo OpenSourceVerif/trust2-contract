@@ -232,7 +232,7 @@ where
     TraitClause2: (A: Allocator),
 
 // Full name: alloc::vec::Vec::{impl Destruct for Vec<T, A>[TraitClause0, TraitClause1, TraitClause2]}::drop_glue
-unsafe fn impl_Destruct_for_Vec::drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T, A>[TraitClause0, TraitClause1, TraitClause2])
+unsafe fn drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T, A>[TraitClause0, TraitClause1, TraitClause2])
 where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
@@ -248,7 +248,7 @@ where
     TraitClause1: (A: Sized),
     TraitClause2: (A: Allocator),
 {
-    fn drop_glue<'_0_1> = impl_Destruct_for_Vec::drop_glue<'_0_1, T, A>[TraitClause0, TraitClause1, TraitClause2]
+    fn drop_glue<'_0_1> = drop_glue<'_0_1, T, A>[TraitClause0, TraitClause1, TraitClause2]
     non-dyn-compatible
 }
 
@@ -491,11 +491,11 @@ where
 // Full name: trust2_contract_sample::to_sorted
 pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]
     postcondition[
-        _1: &'0 [i32] = &(*_1) with_metadata(copy _1.metadata),
+        _1: &'_0 [i32] = &(*_1) with_metadata(copy _1.metadata),
     ](_2: Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global])
     {
         let _0: bool; // return
-        let _1: &'0 [i32]; // arg #1
+        let _1: &'_0 [i32]; // arg #1
         let _2: Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // arg #2
         let b: Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // local
 
@@ -503,13 +503,13 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
         storage_live(b)
         b = move _2
         _0 = forall[
-            _1: &'0 [i32] = &(*_1),
-            _2: &'1 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global] = &_3,
+            _1: &'_0 [i32] = &(*_1),
+            _2: &'0 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global] = &_3,
         ](_3: usize)
         {
             let _0: bool; // return
-            let _1: &'0 [i32]; // arg #1
-            let _2: &'1 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // arg #2
+            let _1: &'_0 [i32]; // arg #1
+            let _2: &'0 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // arg #2
             let _3: usize; // arg #3
             let i: usize; // local
             let _5: bool; // anonymous local
@@ -517,15 +517,15 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             let _7: usize; // anonymous local
             let _8: (usize, bool); // anonymous local
             let _9: usize; // anonymous local
-            let _10: &'2 [i32]; // anonymous local
+            let _10: &'1 [i32]; // anonymous local
             let _11: bool; // anonymous local
             let _12: i32; // anonymous local
-            let _13: &'3 i32; // anonymous local
-            let _14: &'4 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // anonymous local
+            let _13: &'2 i32; // anonymous local
+            let _14: &'3 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // anonymous local
             let _15: usize; // anonymous local
             let _16: i32; // anonymous local
-            let _17: &'5 i32; // anonymous local
-            let _18: &'6 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // anonymous local
+            let _17: &'4 i32; // anonymous local
+            let _18: &'5 Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]; // anonymous local
             let _19: usize; // anonymous local
             let _20: usize; // anonymous local
             let _21: (usize, bool); // anonymous local
@@ -547,7 +547,7 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             storage_live(_9)
             storage_live(_10)
             _10 = &(*_1)
-            _9 = len<'9, i32>[{built_in impl Sized for i32}](move _10)
+            _9 = len<'7, i32>[{built_in impl Sized for i32}](move _10)
             ↳⚡ unwind_continue
             storage_dead(_10)
             _5 = move _6 < move _9
@@ -560,7 +560,7 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             _14 = &(*_2)
             storage_live(_15)
             _15 = copy i
-            _13 = impl_Index_for_Vec::index<'13, i32, usize, Global>[{built_in impl Sized for i32}, {built_in impl Sized for usize}, {built_in impl Sized for Global}, impl_SliceIndex_slice_for_usize<i32>[{built_in impl Sized for i32}], impl_Allocator_for_Global](move _14, move _15)
+            _13 = impl_Index_for_Vec::index<'11, i32, usize, Global>[{built_in impl Sized for i32}, {built_in impl Sized for usize}, {built_in impl Sized for Global}, impl_SliceIndex_slice_for_usize<i32>[{built_in impl Sized for i32}], impl_Allocator_for_Global](move _14, move _15)
             ↳⚡ unwind_continue
             _12 = copy (*_13)
             storage_dead(_15)
@@ -577,7 +577,7 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             ↳⚡ unwind_continue
             _19 = move _21.0
             storage_dead(_20)
-            _17 = impl_Index_for_Vec::index<'19, i32, usize, Global>[{built_in impl Sized for i32}, {built_in impl Sized for usize}, {built_in impl Sized for Global}, impl_SliceIndex_slice_for_usize<i32>[{built_in impl Sized for i32}], impl_Allocator_for_Global](move _18, move _19)
+            _17 = impl_Index_for_Vec::index<'17, i32, usize, Global>[{built_in impl Sized for i32}, {built_in impl Sized for usize}, {built_in impl Sized for Global}, impl_SliceIndex_slice_for_usize<i32>[{built_in impl Sized for i32}], impl_Allocator_for_Global](move _18, move _19)
             ↳⚡ unwind_continue
             _16 = copy (*_17)
             storage_dead(_19)
@@ -599,7 +599,7 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             storage_dead(_1)
             return
         }
-        conditional_drop[impl_Destruct_for_Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]::drop_glue<'6>] b
+        conditional_drop[impl_Destruct_for_Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]::drop_glue<'5>] b
         ↳⚡ unwind_continue
         storage_dead(b)
         storage_dead(_2)

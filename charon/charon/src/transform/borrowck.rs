@@ -3,6 +3,9 @@
 use crate::{ast::*, transform::TransformCtx, ullbc_ast as u};
 
 pub(crate) fn take(ctx: &mut TransformCtx, body: &u::ExprBody) -> Option<BodyBorrowckInfo> {
+    if ctx.in_spec_body {
+        return None;
+    }
     let ItemId::Fun(id) = ctx.errors.borrow().def_id? else {
         return None;
     };

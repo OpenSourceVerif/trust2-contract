@@ -33,6 +33,21 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
 
     fn get_mir_inner(&mut self, item_ref: &hax::ItemRef) -> Result<Option<mir::Body<'tcx>>, Error> {
         let tcx = self.t_ctx.tcx;
+        if let Some(local) = item_ref
+            .def_id
+            .as_real_def_id()
+            .and_then(|id| id.as_local())
+            && let Some(body) = self.t_ctx.spec_mir_bodies.get(&local).cloned()
+        {
+            let s = self.hax_state_with_id();
+            return Ok(Some(if self.monomorphize() {
+                let typing_env = s.typing_env();
+                let args = item_ref.rustc_args(s);
+                hax::substitute(tcx, typing_env, Some(args), body)
+            } else {
+                body
+            }));
+        }
         let mir_level = self.t_ctx.options.mir_level;
         if self.t_ctx.translated.options.export_borrowck {
             let span = Span::dummy();

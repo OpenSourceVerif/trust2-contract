@@ -6,7 +6,7 @@
 /// metadata computation code because it involves non-hax things like emitting new statements.
 use crate::transform::{
     TransformCtx,
-    ctx::{BodyTransformCtx, UllbcPass},
+    ctx::{BodyTransformCtx, UllbcPass, UllbcStatementTransformCtx},
 };
 use crate::ullbc_ast::*;
 
@@ -44,6 +44,38 @@ impl UllbcPass for Transform {
                 }
             });
         });
+        if !ctx.in_spec_body
+            && let Some(body) = decl.body.as_unstructured_mut()
+            && let Some(mut pending) = ctx.pending_specs.remove(&decl.def_id)
+        {
+            let mut stmt_ctx = UllbcStatementTransformCtx {
+                ctx,
+                params: &decl.generics,
+                locals: &mut body.locals,
+                span: decl.item_meta.span,
+                statements: Vec::new(),
+            };
+            for rvalue in pending.iter_captures_mut() {
+                if let Rvalue::Ref {
+                    place,
+                    ptr_metadata,
+                    ..
+                }
+                | Rvalue::RawPtr {
+                    place,
+                    ptr_metadata,
+                    ..
+                } = rvalue
+                {
+                    *ptr_metadata = stmt_ctx.compute_place_metadata(place);
+                }
+            }
+            debug_assert!(
+                stmt_ctx.statements.is_empty(),
+                "closure capture metadata must not emit host statements"
+            );
+            ctx.pending_specs.insert(decl.def_id, pending);
+        }
         if let Some(body) = decl.body.as_unstructured() {
             if shape
                 != Some((

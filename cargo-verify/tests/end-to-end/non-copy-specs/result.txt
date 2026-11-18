@@ -1,0 +1,7 @@
+exit status: ExitStatus(unix_wait_status(0))
+
+[non_copy_specs]
+bump_first_reusing_non_copy''_non_copy_specs: ✅
+double_upper_bound''_non_copy_specs: ✅
+inc_non_copy''_non_copy_specs: ✅
+
