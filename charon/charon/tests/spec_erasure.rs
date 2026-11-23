@@ -655,3 +655,178 @@ fn nested_quantifiers_fold_outer_capture_chains_without_orphan_locals() {
     assert_eq!(fun.specs.postconditions.len(), 1);
     assert_eq!(krate.spec_closures.slot_count(), 2);
 }
+
+#[test]
+fn spec_bodies_strip_all_implicit_drops_and_reject_explicit_drop() -> anyhow::Result<()> {
+    // 1. Implicit drops on spec-local values with custom `Drop` impls are completely erased from
+    //    `SpecClosure` bodies and do not synthesize `drop_glue` when only dropped in specs.
+    let krate = run_charon_as_trust2_contract(
+        r#"
+        pub struct SpecDropOnly {
+            pub v: i32,
+        }
+        impl Drop for SpecDropOnly {
+            fn drop(&mut self) {
+                panic!("runtime destructor must never run in specifications");
+            }
+        }
+
+        pub fn inspect_ref(x: &SpecDropOnly) -> i32 {
+            {
+                internal::entry(0);
+                internal::precondition(|| {
+                    let local_a = SpecDropOnly { v: x.v };
+                    let local_b = SpecDropOnly { v: local_a.v + 1 };
+                    local_b.v > x.v
+                });
+            }
+            {
+                internal::entry(0);
+                internal::postcondition::<i32, _>(|res| {
+                    res == x.v && {
+                        internal::entry(0);
+                        internal::forall(|q: SpecDropOnly| {
+                            let copy_q = q;
+                            copy_q.v == q.v
+                        })
+                    }
+                });
+            }
+            {
+                internal::entry(0);
+                internal::contract_assert(|| {
+                    let tmp = SpecDropOnly { v: 0 };
+                    tmp.v == 0
+                });
+            }
+            x.v
+        }
+        "#,
+        &[
+            "--ullbc",
+            "--precise-drops",
+            "--desugar-drops",
+            "--error-on-warnings",
+            "--sysroot",
+            "default",
+        ],
+    )?
+    .expect("implicit drops inside specifications should be erased");
+
+    let check_no_drops = |spec: &SpecClosure| {
+        let Body::Unstructured(body) = &spec.body else {
+            panic!("expected unstructured ULLBC spec body");
+        };
+        for block in &body.body {
+            assert!(
+                !matches!(block.terminator.kind, u::TerminatorKind::Drop { .. }),
+                "unexpected Drop terminator in spec closure: {:?}",
+                block.terminator.kind
+            );
+        }
+    };
+    let fun = krate
+        .fun_decls
+        .iter()
+        .find(|f| {
+            f.item_meta
+                .name
+                .name
+                .last()
+                .is_some_and(|e| e.as_ident().is_some_and(|(s, _)| s == "inspect_ref"))
+        })
+        .expect("inspect_ref function");
+    for spec in fun
+        .specs
+        .preconditions
+        .iter()
+        .chain(&fun.specs.postconditions)
+    {
+        check_no_drops(spec);
+    }
+    for (_, spec) in krate.spec_closures.iter_indexed() {
+        check_no_drops(spec);
+    }
+    assert!(
+        !krate
+            .fun_decls
+            .iter()
+            .any(|f| f.item_meta.lang_item.as_deref() == Some("drop_glue")),
+        "spec-only drops should not synthesize drop_glue items"
+    );
+
+    // 2. Explicit `drop(...)` inside a specification is rejected.
+    expect_err_containing(
+        r#"
+        pub struct NonCopy(pub i32);
+        pub fn err_explicit_drop_in_pre(x: NonCopy) -> NonCopy {
+            {
+                internal::entry(0);
+                internal::precondition(|| {
+                    drop(x);
+                    true
+                });
+            }
+            x
+        }
+        "#,
+        "explicit `drop` is not allowed in specifications",
+    );
+
+    // 3. Explicit `core::mem::drop` inside a quantifier closure is rejected.
+    expect_err_containing(
+        r#"
+        pub struct NonCopy(pub i32);
+        pub fn err_explicit_drop_in_quantifier() {
+            {
+                internal::entry(0);
+                internal::contract_assert(|| {
+                    internal::entry(0);
+                    internal::forall(|q: NonCopy| {
+                        core::mem::drop(q);
+                        true
+                    })
+                });
+            }
+        }
+        "#,
+        "explicit `drop` is not allowed in specifications",
+    );
+
+    // 4. Coercing or passing `drop` as a function item inside a specification is rejected.
+    expect_err_containing(
+        r#"
+        pub struct NonCopy(pub i32);
+        pub fn err_reified_drop_fn(x: NonCopy) -> NonCopy {
+            {
+                internal::entry(0);
+                internal::contract_assert(|| {
+                    let f: fn(NonCopy) = drop;
+                    f(x);
+                    true
+                });
+            }
+            x
+        }
+        "#,
+        "explicit `drop` is not allowed in specifications",
+    );
+
+    // 5. Explicit `core::ptr::drop_in_place` inside a specification is rejected.
+    expect_err_containing(
+        r#"
+        pub fn err_drop_in_place_in_spec(p: *mut i32) {
+            {
+                internal::entry(0);
+                internal::precondition(|| {
+                    unsafe { core::ptr::drop_in_place(p) };
+                    true
+                });
+            }
+        }
+        "#,
+        "explicit `drop` is not allowed in specifications",
+    );
+
+    Ok(())
+}

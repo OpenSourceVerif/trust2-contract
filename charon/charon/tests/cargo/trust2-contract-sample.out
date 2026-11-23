@@ -97,14 +97,6 @@ where
     RegionOutlives1: '_0: '_3,
 = <opaque>
 
-// Full name: core::marker::Destruct
-#[lang_item("destruct")]
-pub trait Destruct<Self>
-{
-    fn drop_glue<'_0_1>;
-    non-dyn-compatible
-}
-
 // Full name: core::slice::index::private_slice_index::Sealed
 pub trait Sealed<Self>
 {
@@ -230,27 +222,6 @@ where
     TraitClause0: (T: Sized),
     TraitClause1: (A: Sized),
     TraitClause2: (A: Allocator),
-
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T, A>[TraitClause0, TraitClause1, TraitClause2]}::drop_glue
-unsafe fn drop_glue<'_0, T, A>(_1: &'_0 mut Vec<T, A>[TraitClause0, TraitClause1, TraitClause2])
-where
-    TraitClause0: (T: Sized),
-    TraitClause1: (A: Sized),
-    TraitClause2: (A: Allocator),
-    TypeOutlives0: T: '_0,
-    TypeOutlives1: A: '_0,
-= <opaque>
-
-// Full name: alloc::vec::Vec::{impl Destruct for Vec<T, A>[TraitClause0, TraitClause1, TraitClause2]}
-impl<T, A> "impl_Destruct_for_Vec" Destruct for Vec<T, A>[TraitClause0, TraitClause1, TraitClause2]
-where
-    TraitClause0: (T: Sized),
-    TraitClause1: (A: Sized),
-    TraitClause2: (A: Allocator),
-{
-    fn drop_glue<'_0_1> = drop_glue<'_0_1, T, A>[TraitClause0, TraitClause1, TraitClause2]
-    non-dyn-compatible
-}
 
 // Full name: alloc::vec::{Vec<T, Global>[TraitClause0, {built_in impl Sized for Global}, impl_Allocator_for_Global]}::new
 #[lang_item("vec_new")]
@@ -599,8 +570,6 @@ pub fn to_sorted<'_0>(a: &'_0 [i32]) -> Vec<i32, Global>[{built_in impl Sized fo
             storage_dead(_1)
             return
         }
-        conditional_drop[impl_Destruct_for_Vec<i32, Global>[{built_in impl Sized for i32}, {built_in impl Sized for Global}, impl_Allocator_for_Global]::drop_glue<'5>] b
-        ↳⚡ unwind_continue
         storage_dead(b)
         storage_dead(_2)
         storage_dead(_1)

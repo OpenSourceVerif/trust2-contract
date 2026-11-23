@@ -17,10 +17,10 @@
 //!   zero-capture `entry(anchor_id)` marker for inline assertions).
 //! - For **specification bodies** (spec closures, transitively nested quantifier closures, and
 //!   `TypeInvariant::invariant` implementations), `mir_built` validates pure-spec structural rules
-//!   (no loops, no `&mut` borrows, no projected writes) and strips closure-env runtime drops;
-//!   before `mir_borrowck` runs, `prepare_crate_specs` snapshots their `mir_built` bodies for
-//!   Charon while `mir_promoted` substitutes a trivial self-loop so `mir_borrowck` and drop
-//!   elaboration ignore linear move constraints inside specifications.
+//!   (no loops, no `&mut` borrows, no projected writes, no explicit `drop` calls) and strips all
+//!   implicit runtime drops; before `mir_borrowck` runs, `prepare_crate_specs` snapshots their
+//!   `mir_built` bodies for Charon while `mir_promoted` substitutes a trivial self-loop so
+//!   `mir_borrowck` and drop elaboration ignore linear move constraints inside specifications.
 //! - After `mir_borrowck` runs on the cleaned host bodies, `prepare_crate_specs` checks at every
 //!   anchor point (via `MoveData`, `MaybeUninitializedPlaces`, `Borrows`, and `places_conflict`)
 //!   that captured host places are initialized, not moved, and not frozen by an active `&mut`.
@@ -34,7 +34,9 @@ use rustc_borrowck::consumers::{
     get_bodies_with_borrowck_facts, places_conflict,
 };
 use rustc_const_eval::interpret::Scalar;
+use rustc_data_structures::steal::Steal;
 use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hir::LangItem;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathData;
@@ -53,7 +55,7 @@ use rustc_mir_dataflow::{
     move_paths::{LookupResult, MoveData},
     on_all_children_bits,
 };
-use rustc_span::{DUMMY_SP, Span};
+use rustc_span::{DUMMY_SP, Span, sym};
 use std::num::NonZeroU32;
 use std::sync::{LazyLock, Mutex};
 
@@ -344,15 +346,12 @@ fn classify_spec_body(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
 
 /// Custom `mir_built` query provider: validates/cleans spec bodies and erases spec captures from
 /// host bodies.
-fn mir_built_hook<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> &'tcx rustc_data_structures::steal::Steal<Body<'tcx>> {
+fn mir_built_hook<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
     let is_spec = classify_spec_body(tcx, def_id);
     let mut body =
         (rustc_interface::DEFAULT_QUERY_PROVIDERS.queries.mir_built)(tcx, def_id).steal();
     if is_spec {
-        process_spec_mir_built(tcx, def_id, &mut body);
+        process_spec_mir_built(tcx, &mut body);
     } else {
         process_host_mir_built(tcx, def_id, &mut body);
     }
@@ -365,8 +364,8 @@ fn mir_promoted_hook<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: LocalDefId,
 ) -> (
-    &'tcx rustc_data_structures::steal::Steal<Body<'tcx>>,
-    &'tcx rustc_data_structures::steal::Steal<IndexVec<mir::Promoted, Body<'tcx>>>,
+    &'tcx Steal<Body<'tcx>>,
+    &'tcx Steal<IndexVec<mir::Promoted, Body<'tcx>>>,
 ) {
     let is_spec = classify_spec_body(tcx, def_id);
     let (body_steal, promoted_steal) = (rustc_interface::DEFAULT_QUERY_PROVIDERS
@@ -415,10 +414,60 @@ fn check_liveness_hook(tcx: TyCtxt<'_>, def_id: LocalDefId) -> DenseBitSet<Field
         .check_liveness)(tcx, def_id)
 }
 
-/// Validates structural purity invariants on a specification MIR body and strips runtime drops on
-/// closure environments.
-fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mut Body<'tcx>) {
-    let is_closure = tcx.def_kind(def_id) == DefKind::Closure;
+/// Checks whether `def_id` is an explicit value-destruction function (`core::mem::drop` or
+/// `core::ptr::drop_in_place`).
+fn is_explicit_drop_fn(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
+    if tcx.is_diagnostic_item(sym::mem_drop, def_id) || tcx.is_lang_item(def_id, LangItem::DropGlue)
+    {
+        return true;
+    }
+    if tcx.crate_name(def_id.krate) == sym::core {
+        let path = tcx.def_path(def_id);
+        if matches!(path.data.first(), Some(d) if matches!(d.data, DefPathData::TypeNs(s) if s.as_str() == "ptr"))
+            && matches!(path.data.last(), Some(d) if matches!(d.data, DefPathData::ValueNs(s) if s.as_str() == "drop_in_place"))
+        {
+            return true;
+        }
+    }
+    false
+}
+
+/// Checks whether `operand` references `core::mem::drop` or `core::ptr::drop_in_place`.
+fn operand_is_explicit_drop<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    operand: &Operand<'tcx>,
+) -> bool {
+    matches!(
+        *operand.ty(&body.local_decls, tcx).kind(),
+        ty::TyKind::FnDef(def_id, _) if is_explicit_drop_fn(tcx, def_id)
+    )
+}
+
+/// Checks whether `rvalue` mentions `core::mem::drop` or `core::ptr::drop_in_place` as a function
+/// value (e.g. coercion to `fn(T)` or closure/tuple capture).
+fn rvalue_mentions_explicit_drop<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    body: &Body<'tcx>,
+    rvalue: &Rvalue<'tcx>,
+) -> bool {
+    match rvalue {
+        Rvalue::Use(op, ..)
+        | Rvalue::Repeat(op, _)
+        | Rvalue::Cast(_, op, _)
+        | Rvalue::UnaryOp(_, op) => operand_is_explicit_drop(tcx, body, op),
+        Rvalue::BinaryOp(_, pair) => {
+            operand_is_explicit_drop(tcx, body, &pair.0)
+                || operand_is_explicit_drop(tcx, body, &pair.1)
+        }
+        Rvalue::Aggregate(_, ops) => ops.iter().any(|op| operand_is_explicit_drop(tcx, body, op)),
+        _ => false,
+    }
+}
+
+/// Validates structural purity invariants on a specification MIR body and strips all implicit
+/// runtime `Drop` terminators.
+fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut nested_closures = Vec::new();
 
     for block_data in body.basic_blocks.iter() {
@@ -428,6 +477,12 @@ fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mu
                     tcx.dcx().span_err(
                         stmt.source_info.span,
                         "mutating fields or dereferenced references is not allowed in specifications",
+                    );
+                }
+                if rvalue_mentions_explicit_drop(tcx, body, rvalue) {
+                    tcx.dcx().span_err(
+                        stmt.source_info.span,
+                        "explicit `drop` is not allowed in specifications",
                     );
                 }
                 match rvalue {
@@ -449,8 +504,9 @@ fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mu
             }
         }
         if let Some(term) = &block_data.terminator
-            && let TerminatorKind::Call { func, .. } = &term.kind
-            && matches!(
+            && let TerminatorKind::Call { func, args, .. } = &term.kind
+        {
+            if matches!(
                 operand_spec_call(tcx, body, func),
                 Some(
                     SpecCallKind::Precondition
@@ -458,12 +514,23 @@ fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mu
                         | SpecCallKind::Assert
                         | SpecCallKind::Assume
                 )
-            )
-        {
-            tcx.dcx().span_err(
-                term.source_info.span,
-                "nested contracts or assertions are not allowed inside specifications",
-            );
+            ) {
+                tcx.dcx().span_err(
+                    term.source_info.span,
+                    "nested contracts or assertions are not allowed inside specifications",
+                );
+            } else if operand_is_explicit_drop(tcx, body, func) {
+                tcx.dcx().span_err(
+                    term.source_info.span,
+                    "explicit `drop` is not allowed in specifications",
+                );
+            }
+            for arg in args {
+                if operand_is_explicit_drop(tcx, body, &arg.node) {
+                    tcx.dcx()
+                        .span_err(arg.span, "explicit `drop` is not allowed in specifications");
+                }
+            }
         }
     }
 
@@ -472,18 +539,13 @@ fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: &mu
             .span_err(loop_span, "loops are not allowed in specifications");
     }
 
-    // Strip runtime `Drop` terminators on the closure's own environment (`_1`) or nested spec
-    // closures so removed closure ADTs never leave dangling `Destruct` references.
-    let local_decls = body.local_decls.clone();
+    // Specifications operate on pure mathematical snapshots without runtime lifecycles; strip all
+    // implicit `Drop` terminators so scope exits never invoke `Destruct` / `Drop::drop` glue.
     for block_data in body.basic_blocks_mut() {
         if let Some(terminator) = &mut block_data.terminator
-            && let TerminatorKind::Drop { place, target, .. } = terminator.kind
+            && let TerminatorKind::Drop { target, .. } = terminator.kind
         {
-            let is_closure_env = is_closure && place.local == Local::from_usize(1);
-            let is_closure_ty = place.ty(&local_decls, tcx).ty.is_closure();
-            if is_closure_env || is_closure_ty {
-                terminator.kind = TerminatorKind::Goto { target };
-            }
+            terminator.kind = TerminatorKind::Goto { target };
         }
     }
 
@@ -1040,8 +1102,7 @@ pub(crate) fn prepare_crate_specs<'tcx>(
     })
 }
 
-/// Checks initialization, move status, and active `&mut` borrow conflicts for every specification
-/// site in `facts.body`.
+/// Checks uninit and active `&mut` borrow conflicts for every captured values in `facts.body`.
 fn validate_host_sites_at_anchors<'tcx>(
     tcx: TyCtxt<'tcx>,
     facts: &BodyWithBorrowckFacts<'tcx>,
