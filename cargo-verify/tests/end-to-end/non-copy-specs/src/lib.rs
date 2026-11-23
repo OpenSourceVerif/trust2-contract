@@ -12,7 +12,8 @@ pub struct NonCopyPair {
 #[precondition({
     let first = x;
     let second = x;
-    first.val < 100 && second.val >= 0
+    let heap_val = Box::new(first.val);
+    *heap_val < 100 && second.val >= 0
 })]
 #[postcondition(|res| {
     let orig = x;

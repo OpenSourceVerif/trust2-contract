@@ -121,7 +121,7 @@ Proved (test01.mlw) ✔
 | `abort`/不可达 | `Abort` → `absurd`（逻辑项中为 `false`） |
 | 契约断言 | `ContractAssert` → WhyML `assert`/`assume` + 规格闭包（由 `trust2-contract` 宏生成） |
 | 规格量词 | `Quant`（`forall`/`exists`）→ WhyML 量词，仅在规格中出现 |
-| 生命周期标记 | `StorageLive`/`StorageDead`/`Drop`/`PlaceMention` 被忽略（`Drop` 处标注为 Hack） |
+| 生命周期标记 | `StorageLive`/`StorageDead`/`PlaceMention` 被忽略；规格体的隐式 `Drop` 已在前端擦除（显式 `drop` 报错拒绝），函数体的 `Drop` 暂被忽略（标注为 Hack） |
 
 ### 4.2 表达式与右值（`ctx/rvalue.rs`、`ctx/place.rs`、`ctx/const_expr.rs`）
 

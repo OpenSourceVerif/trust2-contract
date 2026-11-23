@@ -505,7 +505,7 @@ impl<'a> Ctx<'a> {
             StatementKind::CopyNonOverlapping(..) => Err(Error::CopyNonOverlappingInSpec),
             StatementKind::StorageLive(..) | StatementKind::StorageDead(..) => Ok(trailing_term),
             StatementKind::PlaceMention(_place) => Ok(trailing_term),
-            StatementKind::Drop { .. } => Ok(trailing_term),
+            StatementKind::Drop { .. } => unreachable!(),
             StatementKind::Assert {
                 assert,
                 on_failure,
