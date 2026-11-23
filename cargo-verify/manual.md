@@ -121,7 +121,7 @@ Proved (test01.mlw) ✔
 | `abort`/不可达 | `Abort` → `absurd`（逻辑项中为 `false`） |
 | 契约断言 | `ContractAssert` → WhyML `assert`/`assume` + 规格闭包（由 `trust2-contract` 宏生成） |
 | 规格量词 | `Quant`（`forall`/`exists`）→ WhyML 量词，仅在规格中出现 |
-| 生命周期标记 | `StorageLive`/`StorageDead`/`Drop`/`PlaceMention` 被忽略（`Drop` 处标注为 Hack） |
+| 生命周期标记 | `StorageLive`/`StorageDead`/`PlaceMention` 被忽略；规格体的隐式 `Drop` 已在前端擦除（显式 `drop` 报错拒绝），函数体的 `Drop` 暂被忽略（标注为 Hack） |
 
 ### 4.2 表达式与右值（`ctx/rvalue.rs`、`ctx/place.rs`、`ctx/const_expr.rs`）
 
@@ -202,13 +202,6 @@ Proved (test01.mlw) ✔
 2. 权宜做法：把带字段的枚举编码成「抽象类型 + 未解释的构造子/访问函数」，不动依赖，但语义变弱
    （与载荷相关的性质都证不出来）。
 
-### B2. 规格里的 `forall!` / `exists!` 捕获外层变量会生成未绑定变量
-
-量词闭包若引用外层局部变量（例如后置条件里的返回值），生成的目标里会出现
-`let _1'2 = _4'1 in`（`_4'1` 从未被绑定），why3 报 `unbound function or predicate symbol '_4'1'`。
-涉及 `ctx/spec.rs::translate_spec_closure`（只绑定当前闭包的捕获）与
-`ctx/stmt_term.rs::translate_quant`（只绑定量词自身）。用例：test10 早期版本的 `upper`/`double`。
-
 ### B3. 整数的 `overflowing_*` / `wrapping_*` 方法调用被翻译成无参 `val`
 
 `a.overflowing_add(b)`、`i.wrapping_add(1)` 这类 core 方法会生成
@@ -224,6 +217,9 @@ Proved (test01.mlw) ✔
 
 ### 已修
 
+- **量词 `forall!` / `exists!` 捕获外层变量生成未绑定变量（原 B2）**：外层规格通过共享引用捕获变量后，
+  内层量词闭包会产生 `CopyForDeref` + 二次借用的多跳临时变量链；原先 `collect_specs` 清空语句块时只展开一跳，
+  导致中间临时变量（如 `_4'1`）失去绑定，现已在 `unstructured_body.rs` 中对捕获临时变量做传递展开并保留非捕获语句。
 - **枚举构造子名非法**：拼接后的构造子名以类型名（小写）开头，WhyML 要求大写；
   现在 `name_map/build.rs::set_map` 拼接后再过一次 `ensure_u`（`Cshape''_Empty''_test10`）。
 - **打印陈旧的证明记录**：why3find 若在证明前退出，`proof.json` 不会被更新，

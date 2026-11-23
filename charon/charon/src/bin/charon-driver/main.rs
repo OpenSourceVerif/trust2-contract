@@ -52,6 +52,7 @@ mod borrowck;
 mod driver;
 #[macro_use]
 pub mod hax;
+mod spec_mir;
 mod translate;
 
 use charon_lib::{export, logger, transform::run_transformation_passes};

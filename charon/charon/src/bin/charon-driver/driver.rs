@@ -73,6 +73,7 @@ fn setup_compiler(
     config: &mut Config,
     options: &CliOpts,
     do_translate: bool,
+    erase_specs: bool,
     emit_artifacts: bool,
     codegen: bool,
 ) {
@@ -83,15 +84,8 @@ fn setup_compiler(
         }
 
         config.override_queries = Some(|_sess, providers| {
+            crate::spec_mir::install_query_overrides(providers);
             skip_borrowck_if_set(providers);
-
-            // TODO: catch the MIR in-flight to avoid stealing issues?
-            // providers.mir_built = |tcx, def_id| {
-            //     let mir = (rustc_interface::DEFAULT_QUERY_PROVIDERS.mir_built)(tcx, def_id);
-            //     let mut mir = mir.steal();
-            //     // use the mir
-            //     tcx.alloc_steal_mir(mir)
-            // };
         });
 
         config.opts.unstable_opts.no_codegen = !codegen;
@@ -99,6 +93,10 @@ fn setup_compiler(
             config.opts.output_types = OutputTypes::new(&[(OutputType::Object, None)]);
         }
         set_parallel_frontend(config);
+    } else if erase_specs {
+        config.override_queries = Some(|_sess, providers| {
+            crate::spec_mir::install_query_overrides(providers);
+        });
     }
     set_mir_options(config);
 }
@@ -200,6 +198,8 @@ fn setup_miri_sysroot(target: &str) -> Option<PathBuf> {
 /// charon (e.g. because it was a dependency). Otherwise returns the translated crate, ready for
 /// post-processing transformations.
 pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailure> {
+    SKIP_BORROWCK.store(false, Ordering::SeqCst);
+    crate::spec_mir::reset_state();
     // Retreive the command-line arguments pased to `charon_driver`. The first arg is the path to
     // the current executable, we skip it.
     let mut compiler_args: Vec<String> = env::args().skip(1).collect();
@@ -261,6 +261,7 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
         }
     };
 
+    let is_target_crate = target.is_some();
     if options.sysroot.as_deref() == Some("default") {
         // Do nothing
     } else if let Some(sysroot) = options.sysroot.as_ref()
@@ -279,7 +280,12 @@ pub fn run_rustc_driver() -> Result<Option<(TransformCtx, CliOpts)>, CharonFailu
     let output = if !is_selected_crate {
         trace!("Skipping charon; running compiler normally instead.");
         // Run the compiler normally.
-        run_compiler_with_callbacks(compiler_args, &mut RunCompilerNormallyCallbacks)?;
+        run_compiler_with_callbacks(
+            compiler_args,
+            &mut RunCompilerNormallyCallbacks {
+                erase_specs: is_target_crate,
+            },
+        )?;
         None
     } else {
         options.apply_preset();
@@ -327,6 +333,7 @@ impl<'a> Callbacks for CharonCallbacks<'a> {
             config,
             self.options,
             true,
+            true,
             self.emit_artifacts,
             self.codegen,
         );
@@ -364,11 +371,20 @@ impl<'a> Callbacks for CharonCallbacks<'a> {
 }
 
 /// Dummy callbacks used to run the compiler normally when we shouldn't be analyzing the crate.
-pub struct RunCompilerNormallyCallbacks;
+pub struct RunCompilerNormallyCallbacks {
+    erase_specs: bool,
+}
 
 impl Callbacks for RunCompilerNormallyCallbacks {
     fn config(&mut self, config: &mut Config) {
-        setup_compiler(config, &Default::default(), false, true, true);
+        setup_compiler(
+            config,
+            &Default::default(),
+            false,
+            self.erase_specs,
+            true,
+            true,
+        );
     }
 }
 

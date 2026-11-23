@@ -173,10 +173,18 @@ impl UllbcPass for Transform {
             .and_then(|b| crate::transform::borrowck::take(ctx, b));
         let spec_closures: &mut IndexMap<SpecClosureId, SpecClosure> =
             &mut ctx.translated.spec_closures;
-        decl.for_each_body(spec_closures, |body, spec_closures| match body {
-            Body::Unstructured(body) => remove_unused_locals(body, spec_closures, facts.as_mut()),
-            Body::Structured(body) => remove_unused_locals(body, spec_closures, None),
-            _ => {}
+        let mut is_host_body = true;
+        decl.for_each_body(spec_closures, |body, spec_closures| {
+            let body_facts = if mem::replace(&mut is_host_body, false) {
+                facts.as_mut()
+            } else {
+                None
+            };
+            match body {
+                Body::Unstructured(body) => remove_unused_locals(body, spec_closures, body_facts),
+                Body::Structured(body) => remove_unused_locals(body, spec_closures, None),
+                _ => {}
+            }
         });
         if let Some(body) = decl.body.as_unstructured() {
             crate::transform::borrowck::put(ctx, body, facts);

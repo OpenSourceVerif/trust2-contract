@@ -42,6 +42,13 @@ impl<'a> Ctx<'a> {
         let type_decl = &self.crate_.type_decls[type_decl_id];
         let names = &self.name_map.type_decl_names[type_decl_id];
 
+        if !type_decl.specs.invariants.is_empty() {
+            return Err(Error::TypeInvariant(format!(
+                "{}",
+                type_decl.item_meta.name.with_ctx(&FmtCtx::new())
+            )));
+        }
+
         assert!(type_decl.generics.types.is_empty());
         assert!(type_decl.generics.const_generics.is_empty());
         assert!(type_decl.generics.trait_clauses.is_empty());
