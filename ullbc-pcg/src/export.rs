@@ -1,7 +1,7 @@
 //! Static viewer data. DOT is derived exclusively from computed graph snapshots.
 use crate::*;
 use charon_lib::{
-    ast::{Body, BodyBorrowckInfo, FunDecl, TranslatedCrate},
+    ast::{BodyBorrowckInfo, FunDecl, TranslatedCrate},
     formatter::{AstFormatter, IntoFormatter},
     pretty::FmtWithCtx,
 };
@@ -47,6 +47,9 @@ pub struct ViewerData {
     pub points: Vec<ViewerPoint>,
     pub blocks: Vec<BlockResult>,
     pub borrowck_source: String,
+    pub analysis_stage: &'static str,
+    pub function_id: charon_lib::ast::FunDeclId,
+    pub body_fingerprint: String,
 }
 
 fn quote(s: &str) -> String {
@@ -332,40 +335,33 @@ pub fn write(
     function: &FunDecl,
     output: &Path,
 ) -> Result<ViewerData, Box<dyn std::error::Error>> {
-    let Body::Unstructured(body) = &function.body else {
-        return Err("expected an ULLBC body".into());
-    };
-    let bundle = krate.borrowck.as_ref().ok_or_else(|| {
-        AnalysisError::new(
-            ErrorKind::InvalidInput,
-            "missing rustc borrow information; re-extract using Charon --export-borrowck",
-        )
-    })?;
-    if bundle.schema_version != 1
-        || bundle.stage != "ullbc-final-borrowck-v2"
-        || bundle.producer != "rustc-nll"
+    write_analysis(krate, &analyze_function(krate, function)?, output)
+}
+
+pub fn write_analysis(
+    krate: &TranslatedCrate,
+    result: &FunctionAnalysis,
+    output: &Path,
+) -> Result<ViewerData, Box<dyn std::error::Error>> {
+    let function = krate
+        .fun_decls
+        .get(result.function_id)
+        .ok_or("analysis function is missing")?;
+    let input = function_input(krate, function)?;
+    if result.analysis_stage != input.analysis_stage() {
+        return Err("PCG result belongs to a different analysis stage".into());
+    }
+    let FunctionInput {
+        body,
+        facts,
+        bundle,
+    } = input;
+    if result.body_fingerprint != charon_lib::ast::borrowck_body_fingerprint(body)
+        || result.body_fingerprint != facts.body_fingerprint
     {
-        return Err(AnalysisError::new(
-            ErrorKind::InvalidInput,
-            "unsupported borrowck metadata schema/stage/producer",
-        )
-        .into());
+        return Err("PCG result does not match the current ULLBC".into());
     }
-    let mut matching = bundle
-        .bodies
-        .iter()
-        .filter(|b| b.function_id == function.def_id);
-    let facts = matching.next().ok_or_else(|| {
-        AnalysisError::new(ErrorKind::InvalidInput, "missing function borrowck data")
-    })?;
-    if matching.next().is_some() {
-        return Err(AnalysisError::new(
-            ErrorKind::InvalidInput,
-            "duplicate function borrowck data",
-        )
-        .into());
-    }
-    let analysis = analyze(body, facts)?;
+    let analysis = &result.analysis;
     let fmt = krate.into_fmt();
     let local_fmt = fmt.set_locals(&body.locals);
     let span = function.item_meta.span.data;
@@ -382,7 +378,7 @@ pub fn write(
         })
         .unwrap_or_default();
     let mut points = Vec::new();
-    for result in analysis.points {
+    for result in &analysis.points {
         let location = result.location;
         let block = &body.body[location.block];
         let (statement, stmt_span) =
@@ -407,17 +403,20 @@ pub fn write(
         points.push(ViewerPoint {
             statement,
             span,
-            steps: viewer_steps(&result, &analysis.locals),
+            steps: viewer_steps(result, &analysis.locals),
             action_labels: result
                 .actions()
                 .map(|a| action_label(&a.action, &analysis.locals))
                 .collect(),
-            result,
+            result: result.clone(),
         });
     }
     let data = ViewerData {
         schema_version: 3,
-        blocks: analysis.blocks,
+        analysis_stage: result.analysis_stage,
+        function_id: result.function_id,
+        body_fingerprint: result.body_fingerprint.clone(),
+        blocks: analysis.blocks.clone(),
         borrowck_source: format!("{} / {}", bundle.producer, bundle.stage),
         name: function.item_meta.name.to_string_with_ctx(&fmt),
         signature: format!(
@@ -434,10 +433,11 @@ pub fn write(
         ),
         source,
         source_start_line: span.beg.line,
-        locals: analysis.locals,
+        locals: analysis.locals.clone(),
         points,
     };
     fs::create_dir_all(output)?;
+    fs::write(output.join("pcg.json"), serde_json::to_vec(result)?)?;
     for point in &data.points {
         for step in &point.steps {
             fs::write(

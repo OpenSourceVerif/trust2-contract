@@ -1,7 +1,4 @@
-use charon_lib::{
-    ast::Body, export::CrateData, formatter::IntoFormatter, options::SerializationFormat,
-    pretty::FmtWithCtx,
-};
+use charon_lib::{export::CrateData, options::SerializationFormat};
 use std::{env, path::Path};
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,28 +21,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         return Err("Charon reported extraction errors; refusing partial input".into());
     }
     let krate = &data.translated;
-    let fmt = krate.into_fmt();
-    let matches: Vec<_> = krate
-        .fun_decls
-        .iter()
-        .filter(|f| matches!(&f.body, Body::Unstructured(_)))
-        .filter(|f| {
-            let name = f.item_meta.name.to_string_with_ctx(&fmt);
-            function.is_none_or(|wanted| {
-                name == *wanted || name.rsplit("::").next() == Some(wanted.as_str())
-            })
-        })
-        .collect();
-    if matches.len() != 1 {
-        return Err(format!(
-            "expected one function matching {:?}, found {}. Use --function NAME. Available functions: {}",
-            function, matches.len(),
-            krate.fun_decls.iter().filter(|f| matches!(&f.body, Body::Unstructured(_)))
-                .map(|f| f.item_meta.name.to_string_with_ctx(&fmt)).collect::<Vec<_>>().join(", ")
-        )
-        .into());
-    }
-    let output = ullbc_pcg::export::write(krate, matches[0], Path::new(output_dir))?;
+    let output = ullbc_pcg::export::write(
+        krate,
+        ullbc_pcg::select_function(krate, function.map(String::as_str))?,
+        Path::new(output_dir),
+    )?;
     println!(
         "Analyzed {}: {} ULLBC locations → {}/analysis.json",
         output.name,

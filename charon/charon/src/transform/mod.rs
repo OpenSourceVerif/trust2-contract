@@ -86,10 +86,14 @@ use crate::options::CliOpts;
 
 /// Run transformation passes on the crate before outputting it.
 pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
+    run_ullbc_passes(options, ctx);
+    finish_transformation_passes(options, ctx);
+}
+
+/// Stop with a normalized CFG, before structured or shared finalization passes.
+pub fn run_ullbc_passes(options: &CliOpts, ctx: &mut TransformCtx) {
     // Passes that apply to the whole crate at once, typically those that change item signatures.
     let global = |x| Pass::NonBody(CowBox::Borrowed(x));
-    // Passes that apply to bodies but work on either kind.
-    let mixed_body = |x| Pass::NonBody(CowBox::Borrowed(x));
 
     ctx.run_pass(Pass::NonBody(PrintCtxPass::new(
         options.print_original_ullbc,
@@ -198,7 +202,15 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
         CowBox::Borrowed(&simplify_output::update_block_indices::Transform),
     ]));
     ctx.run_pass(pass);
+    if let Some(facts) = &mut ctx.translated.borrowck {
+        facts.stage = crate::ast::PRE_STRUCTURE_BORROWCK_STAGE.into();
+    }
+}
 
+/// Continue normal Charon output from the pre-reconstruction CFG.
+pub fn finish_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
+    let global = |x| Pass::NonBody(CowBox::Borrowed(x));
+    let mixed_body = |x| Pass::NonBody(CowBox::Borrowed(x));
     if !options.ullbc {
         // If we're reconstructing control-flow, print the ullbc here.
         ctx.run_pass(Pass::NonBody(PrintCtxPass::new(
@@ -264,6 +276,10 @@ pub fn run_transformation_passes(options: &CliOpts, ctx: &mut TransformCtx) {
         mixed_body(&simplify_output::unbind_item_vars::Check),
     ]);
 
+    if let Some(facts) = &mut ctx.translated.borrowck {
+        // Preserve the existing serialized contract; LLBC bodies carry an unsupported reason.
+        facts.stage = crate::ast::FINAL_ULLBC_BORROWCK_STAGE.into();
+    }
     if options.ullbc {
         // If we're not reconstructing control-flow, print the ullbc after finalizing passes.
         ctx.run_pass(Pass::NonBody(PrintCtxPass::new(

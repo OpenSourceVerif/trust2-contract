@@ -2069,8 +2069,10 @@ name = "ullbc-pcg"
 version = "0.1.0"
 dependencies = [
  "charon",
+ "charon-driver-bin-interface",
  "serde",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]

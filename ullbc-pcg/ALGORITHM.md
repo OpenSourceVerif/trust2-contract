@@ -109,7 +109,7 @@ lifetime projection、按需展开和旧值依赖，已删除这一路径。
 - `body_fingerprint`：导出 body 的确定性校验值，防止清理/编辑后的 body 与旧事实混用；不是防篡改签名。
 - `unsupported`：适配器无法忠实表达时的显式原因。不会用空 facts 假装支持。
 
-导出契约为 `ullbc-final-borrowck-v2`。从 borrowck body 的副本翻译，只擦除副本上的 region 名称，原 NLL body/context
+源码入口在 `ullbc_to_llbc` 之前运行，阶段标记为 `ullbc-pre-structure-borrowck-v2`。最终 ULLBC 文件的导出契约为 `ullbc-final-borrowck-v2`。从 borrowck body 的副本翻译，只擦除副本上的 region 名称，原 NLL body/context
 保留用于查询。禁止 optimized MIR fallback；mono、precise-drops、multi-target 和 const 函数尚不支持。
 
 正常 Charon 转换全部执行，不因借用信息改变 AST 或跳过清理。初始翻译记录 MIR 操作的 ULLBC 锚点；

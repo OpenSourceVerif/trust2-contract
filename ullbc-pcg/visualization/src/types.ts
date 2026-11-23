@@ -40,5 +40,6 @@ export type Analysis = {
   locals: { id: number; name: string | null }[];
   points: Point[];
   blocks: { block: number; successors: number[]; entry: Graph; exit: Graph }[];
+  analysis_stage?: "before-control-flow-reconstruction" | "final-ullbc";
   borrowck_source: string;
 };
