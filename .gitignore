@@ -1,8 +1,8 @@
 /target
 /charon-driver-bin-interface/target
+/examples/**/target
+/_opam
+/dune.lock
 
 # macOS metadata, including variants, at any directory depth
 *.DS_Store*
-
-_opam/
-dune.lock/
