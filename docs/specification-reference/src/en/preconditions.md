@@ -10,6 +10,8 @@
 
 The condition may refer to the function's parameters, a method receiver, and other names visible at the definition. It does not bind a return value. Multiple precondition attributes require all of their conditions to hold.
 
+A precondition attribute can contain several Boolean conditions separated by semicolons, with an optional trailing semicolon. For example, `#[precondition(a <= b; b <= 10;)]` is equivalent to `#[precondition((a <= b) && (b <= 10))]`. Conditions are checked in order and short-circuit at the first false condition.
+
 ## Example
 
 ```rust,ignore

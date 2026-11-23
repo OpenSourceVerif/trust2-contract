@@ -8,7 +8,7 @@
     "chapter": "function-contracts.md"
   },
   "Precondition": {
-    "definition": "\"#\" \"[\" \"precondition\" \"(\" Condition \")\" \"]\"",
+    "definition": "\"#\" \"[\" \"precondition\" \"(\" Condition (\";\" Condition)* \";\"? \")\" \"]\"",
     "chapter": "preconditions.md"
   },
   "Postcondition": {

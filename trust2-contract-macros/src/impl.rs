@@ -1,7 +1,8 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
 use syn::{
-    Error, Expr, ItemEnum, ItemFn, ItemStruct, ItemUnion, ReturnType, parse_quote, parse2 as parse,
+    Error, Expr, ItemEnum, ItemFn, ItemStruct, ItemUnion, ReturnType, Token, parse::Parser,
+    parse_quote, parse2 as parse, punctuated::Punctuated,
 };
 
 use std::sync::LazyLock;
@@ -21,7 +22,19 @@ pub fn precondition(expr: TokenStream, item: TokenStream) -> TokenStream {
     let crate_name_ident = crate_name_ident();
     let expr = parse::rewrite_implications(expr);
     let expr = parse::replace_keywords(expr, COMMON_KEYWORDS, &crate_name_ident);
-    let expr = parse_macro_input!(expr as Expr);
+    let mut conditions = match Punctuated::<Expr, Token![;]>::parse_terminated.parse2(expr) {
+        Ok(conditions) => conditions.into_iter(),
+        Err(err) => return err.into_compile_error(),
+    };
+    let Some(first) = conditions.next() else {
+        return Error::new(Span::call_site(), "expected at least one precondition")
+            .into_compile_error();
+    };
+    let expr = if conditions.len() == 0 {
+        quote! { #first }
+    } else {
+        quote! { (#first) #(&& (#conditions))* }
+    };
     let mut item = parse_macro_input!(item as ItemFn);
 
     let stmt = parse_quote! {
@@ -223,6 +236,30 @@ mod tests {
             parse::<ItemFn>(expect).unwrap(),
             parse::<ItemFn>(result).unwrap(),
         );
+    }
+
+    #[test]
+    fn precondition_list_matches_a_short_circuit_conjunction() {
+        let item = quote! { fn f(a: bool, b: bool, c: bool, d: bool, e: bool) {} };
+        let list = precondition(quote! { a || b; c ==> d; { let p = e; p }; }, item.clone());
+        let conjunction =
+            precondition(quote! { (a || b) && (c ==> d) && ({ let p = e; p }) }, item);
+        assert_eq!(
+            parse::<ItemFn>(list).unwrap(),
+            parse::<ItemFn>(conjunction).unwrap(),
+        );
+    }
+
+    #[test]
+    fn precondition_list_rejects_missing_conditions() {
+        let item = quote! { fn f() {} };
+        for input in [quote! {}, quote! { ; true }, quote! { true;; false }] {
+            let error = parse::<syn::ItemMacro>(precondition(input, item.clone())).unwrap();
+            assert_eq!(
+                error.mac.path.segments.last().unwrap().ident,
+                "compile_error"
+            );
+        }
     }
 
     #[test]
