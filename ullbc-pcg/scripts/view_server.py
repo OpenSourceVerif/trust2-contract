@@ -4,7 +4,7 @@ import argparse
 import html
 import json
 import mimetypes
-import shutil
+import os
 import subprocess
 import tempfile
 import threading
@@ -17,10 +17,10 @@ from urllib.parse import parse_qs, urlsplit
 class ViewerServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, port, repo, charon, analyzer):
+    def __init__(self, port, repo, charon, driver):
         self.repo = repo
         self.charon = charon
-        self.analyzer = analyzer
+        self.driver = driver
         self.viewer = repo / 'ullbc-pcg/visualization'
         self.work = repo / 'target/pcg-viewer/ullbc'
         self.work.mkdir(parents=True, exist_ok=True)
@@ -32,26 +32,21 @@ class ViewerServer(ThreadingHTTPServer):
         output = self.viewer / 'data/runs' / run_id
         with self.analysis_lock, tempfile.TemporaryDirectory(dir=self.work) as work:
             source = Path(work) / 'input.rs'
-            extracted = Path(work) / 'input.ullbc'
             source.write_text(code, encoding='utf-8')
-            commands = [
-                [str(self.charon), 'rustc', '--ullbc', '--export-borrowck', '--mir', 'promoted', '--sysroot', 'default',
-                 '--dest-file', str(extracted), '--', '--crate-type', 'lib', '--crate-name',
-                 'ullbc_pcg_input', str(source)],
-                [str(self.analyzer), str(extracted), '--output', str(output)],
-            ]
-            if function:
-                commands[1].extend(['--function', function])
-            try:
-                for command in commands:
-                    result = subprocess.run(command, cwd=self.repo, text=True,
-                                            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                            timeout=120)
-                    if result.returncode:
-                        raise ValueError(result.stdout)
-            except (ValueError, subprocess.TimeoutExpired, OSError):
-                shutil.rmtree(output, ignore_errors=True)
-                raise
+            # Publish only after both the pre-structure analysis and normal Charon output succeed.
+            pending = Path(work) / 'viewer'
+            command = [str(self.charon), 'rustc', '--export-borrowck', '--mir', 'promoted',
+                       '--sysroot', 'default', '--error-on-warnings',
+                       '--dest-file', str(Path(work) / 'input.llbc'), '--', '--crate-type',
+                       'lib', '--crate-name', 'ullbc_pcg_input', str(source)]
+            env = dict(os.environ, CHARON_DRIVER=str(self.driver), ULLBC_PCG_OUTPUT=str(pending),
+                       ULLBC_PCG_FUNCTION=function)
+            result = subprocess.run(command, cwd=work, env=env, text=True,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=120)
+            if result.returncode:
+                raise ValueError(result.stdout)
+            output.parent.mkdir(parents=True, exist_ok=True)
+            pending.rename(output)
         return '/visualization/?datasrc=/data/runs/' + run_id
 
 
@@ -79,7 +74,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(403, 'Local requests only.')
         path = urlsplit(self.path).path
         if path == '/health':
-            return self.reply(200, json.dumps({'service': 'ullbc-pcg-view', 'version': 1,
+            return self.reply(200, json.dumps({'service': 'ullbc-pcg-view', 'version': 2,
                                                'repo': str(self.server.repo)}), 'application/json')
         if path == '/':
             return self.reply(200, (self.server.repo / 'ullbc-pcg/scripts/view_home.html').read_bytes(),
@@ -134,9 +129,9 @@ if __name__ == '__main__':
     parser.add_argument('--port', type=int, default=5180)
     parser.add_argument('--repo', type=Path, required=True)
     parser.add_argument('--charon', type=Path, required=True)
-    parser.add_argument('--analyzer', type=Path, required=True)
+    parser.add_argument('--driver', type=Path, required=True)
     args = parser.parse_args()
-    server = ViewerServer(args.port, args.repo.resolve(), args.charon.resolve(), args.analyzer.resolve())
+    server = ViewerServer(args.port, args.repo.resolve(), args.charon.resolve(), args.driver.resolve())
     print(f'ULLBC-PCG listening on http://127.0.0.1:{args.port}/', flush=True)
     try:
         server.serve_forever()

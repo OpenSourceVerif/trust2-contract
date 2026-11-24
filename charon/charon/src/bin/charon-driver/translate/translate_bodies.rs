@@ -731,7 +731,7 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
                 .get_or_insert_with(|| BorrowckData {
                     schema_version: 1,
                     producer: "rustc-nll".into(),
-                    stage: "ullbc-final-borrowck-v2".into(),
+                    stage: "ullbc-after-mir-translation".into(),
                     bodies: Vec::new(),
                 })
                 .bodies

@@ -3,9 +3,22 @@ name = "ullbc-pcg"
 version = "0.1.0"
 edition = "2024"
 publish = false
+default-run = "ullbc-pcg"
 description = "Independent place capability analysis of Charon ULLBC"
 
 [dependencies]
 charon = { path = "../charon/charon", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+charon-driver-bin-interface = { path = "../charon-driver-bin-interface", optional = true }
+
+[features]
+driver = ["dep:charon-driver-bin-interface"]
+
+[[bin]]
+name = "ullbc-pcg-driver"
+path = "src/bin/ullbc-pcg-driver.rs"
+required-features = ["driver"]
+
+[dev-dependencies]
+tempfile = "3"

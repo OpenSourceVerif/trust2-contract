@@ -60,7 +60,7 @@ export default function App({ data }: { data: Analysis }) {
           onClickPosition={sourceClick} minimized={minimized} onToggleMinimized={() => setMinimized(!minimized)}
           fontSize={fontSize} onFontSizeChange={setFontSize} showSettings={settings} onToggleSettings={() => setSettings(!settings)} />
         {settings && <div className="settings"><label><input type="checkbox" checked={showActions} onChange={e => setShowActions(e.target.checked)} /> Show actions in ULLBC</label></div>}
-        <div className="panel-label">ULLBC</div>
+        <div className="panel-label">ULLBC{data.analysis_stage === "before-control-flow-reconstruction" ? " · 结构化前" : data.analysis_stage === "final-ullbc" ? " · 最终导出" : ""}</div>
         <div className="ullbc"><UllbcGraph data={data} selected={selected} select={select} showActions={showActions} /></div>
       </section>
       <div className="divider" onMouseDown={() => setDragging(true)}><span /></div>

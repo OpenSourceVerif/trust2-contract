@@ -55,7 +55,11 @@ pub mod hax;
 mod spec_mir;
 mod translate;
 
-use charon_lib::{export, logger, transform::run_transformation_passes};
+use charon_lib::{
+    export, logger,
+    options::CliOpts,
+    transform::{TransformCtx, run_transformation_passes},
+};
 use std::{fmt, panic};
 
 pub enum CharonFailure {
@@ -64,11 +68,13 @@ pub enum CharonFailure {
     RustcError,
     Panic,
     Serialize,
+    Analysis(String),
 }
 
 impl fmt::Display for CharonFailure {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            CharonFailure::Analysis(message) => write!(f, "{message}")?,
             CharonFailure::RustcError => write!(f, "Code failed to compile")?,
             CharonFailure::CharonError(err_count) => write!(
                 f,
@@ -82,7 +88,9 @@ impl fmt::Display for CharonFailure {
 }
 
 /// Run charon. Returns the number of warnings generated.
-fn run_charon() -> Result<usize, CharonFailure> {
+fn run_charon(
+    transform: fn(&CliOpts, &mut TransformCtx) -> Result<(), CharonFailure>,
+) -> Result<usize, CharonFailure> {
     // Run the driver machinery.
     let Some((mut ctx, options)) = driver::run_rustc_driver()? else {
         // We didn't run charon.
@@ -91,7 +99,7 @@ fn run_charon() -> Result<usize, CharonFailure> {
 
     // The bulk of the translation is done, we no longer need to interact with rustc internals. We
     // run several passes that simplify the items and cleanup the bodies.
-    run_transformation_passes(&options, &mut ctx);
+    transform(&options, &mut ctx)?;
 
     let error_count = ctx.errors.borrow().error_count;
 
@@ -110,11 +118,21 @@ fn run_charon() -> Result<usize, CharonFailure> {
 }
 
 pub fn main() {
+    main_with_transform(|options, ctx| {
+        run_transformation_passes(options, ctx);
+        Ok(())
+    })
+}
+
+/// Use the standard rustc extraction and output with a caller-supplied transformation pipeline.
+pub fn main_with_transform(
+    transform: fn(&CliOpts, &mut TransformCtx) -> Result<(), CharonFailure>,
+) {
     // Initialize the logger
     logger::initialize_logger();
 
     // Catch any and all panics coming from charon to display a clear error.
-    let res = panic::catch_unwind(run_charon)
+    let res = panic::catch_unwind(|| run_charon(transform))
         .map_err(|_| CharonFailure::Panic)
         .and_then(|x| x);
 
@@ -128,7 +146,9 @@ pub fn main() {
         Err(err) => {
             log::error!("{err}");
             let exit_code = match err {
-                CharonFailure::CharonError(_) | CharonFailure::Serialize => 1,
+                CharonFailure::CharonError(_)
+                | CharonFailure::Serialize
+                | CharonFailure::Analysis(_) => 1,
                 CharonFailure::RustcError => 2,
                 // This is a real panic, exit with the standard rust panic error code.
                 CharonFailure::Panic => 101,

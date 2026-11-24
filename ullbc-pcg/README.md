@@ -5,9 +5,10 @@
 具体源码对应、适配理由和未移植部分见 [ALGORITHM.md](ALGORITHM.md)。
 
 ```text
-Rust → Charon --export-borrowck → ULLBC + 借用信息
+Rust → Charon → 控制流结构化前的 ULLBC + 对齐后的 rustc 借用信息
   → 输入校验与分析上下文 → ULLBC CFG 活跃性 → 初始化 PCG
   → 基本块工作队列 → 每个操作四阶段转移 → 块入口/出口状态
+  → pcg.json（结构化求解结果）
   → analysis.json + 每个动作/阶段的 DOT → React 网页
 ```
 
@@ -61,6 +62,11 @@ kill "$(cat repo/target/pcg-viewer/ullbc/server-5180.pid)"
 修改分析器或前端源码后，先停止服务，再运行入口以重新构建。单纯修改输入 `.rs` 无需重启。
 ULLBC 每次分析独立输出到 `repo/ullbc-pcg/visualization/data/runs/<id>/`，网页按链接中的
 `datasrc` 读取本次 JSON/DOT，不覆盖其他结果。该目录属于忽略的生成文件。
+
+从源码启动时，`ullbc-pcg-driver` 在 `update_block_indices` 之后取得当前函数体及其
+`BodyBorrowckInfo`，调用一次 `analyze_function`，随后 Charon 继续正常的结构化和清理。
+`FunctionAnalysis` 拥有函数 ID、函数体指纹、阶段、块入口／出口和每条语句的四阶段记录，可独立持有。
+每次运行的 `pcg.json` 保存该结果；`analysis.json` 和 DOT 从同一结果生成。历史文件输入沿用文件中记录的阶段。
 
 如需分步执行，先进入 `repo/`：
 
@@ -118,7 +124,7 @@ ShallowExclusive，`∅` 表示无权限。初始化状态单独保存；不能�
 逐步遍历动作和阶段。点击源码可定位语句，重复点击在同位置的语句间切换。
 JSON schema 为 3；包含真实 CFG 边、块入口/出口状态、逐点 NLL loan 集合和四阶段查询记录。网页中的图全部从分析结果导出，没有案例专用图。
 
-PCG 绘图保留 ULLBC 的 `_0`、`(*r)`、区域编号和程序点，左侧语句由最终 ULLBC 原样格式化。
+PCG 绘图保留 ULLBC 的 `_0`、`(*r)`、区域编号和程序点，左侧显示参与本次求解的 ULLBC 语句。
 仅图的连线采用 MIR-PCG 约定：解引用超边画为两条绿色箭头；在直接借用的解引用节点存在时，
 派生灰色别名虚线。JSON 中仍是一条 Deref 超边，不增加实际动作或 loan。
 橙色边显示 rustc loan 编号、种类和区域；悬浮提示显示 ULLBC 创建位置。蓝色节点仍使用 ULLBC

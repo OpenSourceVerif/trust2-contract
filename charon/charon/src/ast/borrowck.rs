@@ -1,6 +1,9 @@
 //! Compiler facts adapted to the final ULLBC after normal transformations.
 //! All public locations/locals are ULLBC identities. Compiler region numbers
 //! inhabit a separate namespace from `Region::Body`.
+pub const PRE_STRUCTURE_BORROWCK_STAGE: &str = "ullbc-pre-structure-borrowck-v2";
+pub const FINAL_ULLBC_BORROWCK_STAGE: &str = "ullbc-final-borrowck-v2";
+
 use crate::ast::*;
 use crate::ullbc_ast::{BlockId, ExprBody};
 use derive_generic_visitor::{Drive, DriveMut, DriveTwo};

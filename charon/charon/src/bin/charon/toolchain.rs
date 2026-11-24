@@ -69,6 +69,9 @@ pub fn toolchain_version() -> String {
 }
 
 pub fn driver_path() -> PathBuf {
+    if let Some(path) = env::var_os("CHARON_DRIVER") {
+        return PathBuf::from(path);
+    }
     let mut path = env::current_exe()
         .expect("current executable path invalid")
         .with_file_name("charon-driver");
