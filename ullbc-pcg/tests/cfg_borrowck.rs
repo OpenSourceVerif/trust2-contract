@@ -222,12 +222,21 @@ fn unit_initialization_has_explicit_synthetic_anchor() {
 }
 
 #[test]
-fn unsupported_semantics_never_return_partial_analysis() {
-    for name in ["branch", "cycle", "reborrow"] {
+fn branches_and_stable_cycles_reach_a_fixpoint() {
+    for name in ["branch", "cycle"] {
         let (body, facts) = fixture(name);
-        assert_eq!(
-            analyze(&body, &facts).unwrap_err().kind,
-            ErrorKind::Unsupported
-        );
+        let analysis = analyze(&body, &facts).unwrap();
+        assert!(analysis.blocks.len() > 1);
+        assert_eq!(analysis.points.len(), facts.points.len());
     }
+}
+
+#[test]
+fn an_older_adapter_explicitly_marking_projection_loss_is_rejected() {
+    let (body, facts) = fixture("reborrow");
+    assert!(facts.unsupported.is_some());
+    assert_eq!(
+        analyze(&body, &facts).unwrap_err().kind,
+        ErrorKind::Unsupported
+    );
 }

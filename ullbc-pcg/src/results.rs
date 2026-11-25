@@ -20,6 +20,8 @@ impl fmt::Display for Location {
 pub enum CapabilityReason {
     TriplePostcondition,
     PrepareWrite,
+    PrepareExclusive,
+    ControlFlowJoin,
     DerefExpansion,
     CollapseDeref,
     RestoreUnblocked,
@@ -27,6 +29,17 @@ pub enum CapabilityReason {
 }
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub enum Action {
+    /// Owned-PCG repacking operations. Their field sets come from the type declaration.
+    Expand {
+        base: Place,
+        fields: Vec<Place>,
+        capability: Capability,
+    },
+    Collapse {
+        base: Place,
+        fields: Vec<Place>,
+        capability: Capability,
+    },
     Require {
         place: Place,
         capability: Capability,
@@ -56,6 +69,9 @@ pub enum Action {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct AppliedAction {
+    /// An edge removal only executes on paths where that edge exists.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub condition: Option<crate::PathAlternatives>,
     pub action: Action,
     pub after: Graph,
 }
@@ -69,6 +85,8 @@ pub struct PhaseResult {
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct PointResult {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub callee: Option<charon_lib::ast::FunDeclId>,
     pub location: Location,
     pub initial: Graph,
     pub phases: Vec<PhaseResult>,
@@ -90,16 +108,40 @@ impl PointResult {
         self.phases.iter().flat_map(|p| &p.actions)
     }
 }
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 pub struct LocalInfo {
     pub id: LocalId,
+    pub name: Option<String>,
+    pub fields: Vec<FieldInfo>,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct FieldInfo {
+    pub parent: Place,
+    pub index: charon_lib::ast::FieldId,
     pub name: Option<String>,
 }
 #[derive(Clone, Debug, Serialize)]
 pub struct Analysis {
+    pub arguments: Vec<LocalId>,
+    pub return_place: Place,
     pub locals: Vec<LocalInfo>,
+    pub loans: Vec<AnalysisLoan>,
+    /// Shared reborrows of *(&T) omitted by rustc BorrowSet::ignore_borrow.
+    pub unindexed_shared_reborrows: Vec<Location>,
+    /// ULLBC reference locals mapped to the original rustc RegionVids.
+    pub reference_regions: Vec<charon_lib::ast::BorrowckReferenceRegion>,
+    pub outlives: Vec<charon_lib::ast::BorrowckOutlives>,
     pub points: Vec<PointResult>,
     pub blocks: Vec<BlockResult>,
+}
+#[derive(Clone, Debug, Serialize)]
+pub struct AnalysisLoan {
+    pub id: usize,
+    pub reserve: Location,
+    pub borrowed: Place,
+    pub assigned: charon_lib::ast::LocalId,
+    pub kind: crate::BorrowKind,
+    pub region: usize,
 }
 impl Analysis {
     pub fn at(&self, location: Location) -> Option<&PointResult> {
@@ -147,7 +189,19 @@ impl fmt::Display for AnalysisError {
 impl std::error::Error for AnalysisError {}
 
 #[derive(Clone, Debug, Serialize)]
+pub struct Incoming {
+    /// None identifies the function entry, including when bb0 has a backedge.
+    pub predecessor: Option<u::BlockId>,
+    /// Repacking and capability weakening specific to this predecessor.
+    /// The predecessor's block exit is the graph before these actions.
+    pub actions: Vec<AppliedAction>,
+}
+#[derive(Clone, Debug, Serialize)]
 pub struct BlockResult {
+    /// Original exceptional successor, excluded from normal-flow PCG transfer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unwind: Option<u::BlockId>,
+    pub incoming: Vec<Incoming>,
     pub block: u::BlockId,
     pub successors: Vec<u::BlockId>,
     pub entry: Graph,

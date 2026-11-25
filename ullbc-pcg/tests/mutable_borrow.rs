@@ -378,7 +378,7 @@ fn moving_reference_labels_old_value_then_connects_borrow_flow() {
     )));
 }
 #[test]
-fn reborrows_and_loops_are_explicitly_unsupported() {
+fn unsupported_legacy_facts_and_stale_cfg_are_rejected() {
     assert_eq!(
         analyze(&fixture("overwrite_reference")).unwrap_err().kind,
         ErrorKind::Unsupported
@@ -387,7 +387,7 @@ fn reborrows_and_loops_are_explicitly_unsupported() {
     body.body[u::START_BLOCK_ID].terminator.kind = u::TerminatorKind::Goto {
         target: u::START_BLOCK_ID,
     };
-    assert_eq!(analyze(&body).unwrap_err().kind, ErrorKind::Unsupported);
+    assert_eq!(analyze(&body).unwrap_err().kind, ErrorKind::InvalidInput);
 }
 
 #[test]

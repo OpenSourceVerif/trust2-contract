@@ -35,7 +35,7 @@ fn cli_exports_actual_statements_actions_and_graphs() {
     );
     let json: serde_json::Value =
         serde_json::from_str(&fs::read_to_string(output.0.join("analysis.json")).unwrap()).unwrap();
-    assert_eq!(json["schema_version"], 3);
+    assert_eq!(json["schema_version"], 4);
     assert!(json["source"].as_str().unwrap().contains("let r = &mut x;"));
     let points = json["points"].as_array().unwrap();
     assert_eq!(points.len(), 10);
@@ -177,6 +177,10 @@ fn dot_labels_escape_local_names() {
     use ullbc_pcg::{Capability, Graph, LocalInfo, Place, PlaceCapability, export::dot};
     let id = LocalId::from(0);
     let graph = Graph {
+        edge_conditions: vec![],
+        initialized_referents: Default::default(),
+        expanded: Default::default(),
+        initialized_fields: Default::default(),
         capabilities: vec![PlaceCapability {
             place: Place::Local(id),
             capability: Capability::Exclusive,
@@ -190,6 +194,7 @@ fn dot_labels_escape_local_names() {
     let result = dot(
         &graph,
         &[LocalInfo {
+            fields: vec![],
             id,
             name: Some("a\"\\\nb".into()),
         }],

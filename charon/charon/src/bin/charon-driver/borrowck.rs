@@ -5,6 +5,31 @@ use rustc_middle::{mir, ty};
 use rustc_mir_dataflow::Analysis;
 use std::collections::{BTreeSet, HashMap};
 
+/// The loan table stores the root local. Its full place is the typed operand at the
+/// reservation in the fingerprinted ULLBC body. Check every projection before
+/// publishing that link, including the distinction between a field and a dereference.
+fn same_place(
+    place: mir::Place<'_>,
+    mut translated: &Place,
+    locals: &HashMap<usize, LocalId>,
+) -> bool {
+    for elem in place.projection.iter().rev() {
+        let PlaceKind::Projection(base, projection) = &translated.kind else {
+            return false;
+        };
+        match (elem, projection) {
+            (mir::ProjectionElem::Deref, ProjectionElem::Deref) => {}
+            (
+                mir::ProjectionElem::Field(i, _),
+                ProjectionElem::Field(FieldProjKind::Adt(_, None) | FieldProjKind::Tuple(_), j),
+            ) if i.index() == j.index() => {}
+            _ => return false,
+        }
+        translated = base;
+    }
+    matches!(translated.kind, PlaceKind::Local(id) if locals.get(&place.local.index()) == Some(&id))
+}
+
 /// Translate the exact borrowck body, erasing only its types' region names.
 /// The original body stays alive alongside its matching inference context.
 pub fn erase_regions<'tcx>(tcx: ty::TyCtxt<'tcx>, mut body: mir::Body<'tcx>) -> mir::Body<'tcx> {
@@ -68,13 +93,6 @@ pub fn adapt<'tcx>(
             }
         }
         for (id, loan) in facts.borrow_set.location_map().values().enumerate() {
-            if !loan.borrowed_place().projection.is_empty()
-                || !loan.assigned_place().projection.is_empty()
-            {
-                return Err(
-                    "borrowck adapter: projected loans/reborrows are not supported yet".into(),
-                );
-            }
             if loan.activation_location() != TwoPhaseActivation::NotTwoPhase {
                 return Err("borrowck adapter: two-phase loans are not supported yet".into());
             }
@@ -88,6 +106,25 @@ pub fn adapt<'tcx>(
             let reserve = *map
                 .get(&loan.reserve_location())
                 .ok_or("borrowck adapter: loan reservation has no unique ULLBC anchor")?;
+            let Some(u::StatementKind::Assign(assigned, Rvalue::Ref { place, .. })) = body.body
+                [reserve.block]
+                .statements
+                .get(reserve.statement_index)
+                .map(|s| &s.kind)
+            else {
+                return Err(
+                    "borrowck adapter: reservation does not designate a ULLBC borrow".into(),
+                );
+            };
+            if !loan.assigned_place().projection.is_empty()
+                || !same_place(loan.assigned_place(), assigned, locals)
+                || !same_place(loan.borrowed_place(), place, locals)
+            {
+                return Err(
+                    "borrowck adapter: unsupported or mismatched projected loan at reservation"
+                        .into(),
+                );
+            }
             regions.insert(loan.region());
             info.loans.push(BorrowckLoan {
                 id,

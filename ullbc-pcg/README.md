@@ -1,7 +1,7 @@
 # ULLBC-PCG：CFG 分析与 rustc 借用信息
 
 独立读取 Charon `ullbc_ast::ExprBody` 及对应的 rustc NLL 借用信息并构建 PCG。当前算法按固定版本 MIR-PCG
-移植标量/直接引用子集；运行时不链接、不执行 MIR-PCG，也不读取其分析结果。
+移植字段权限、借用与再借用、引用流动和控制流汇合等规则，在 ULLBC 上独立求解。
 具体源码对应、适配理由和未移植部分见 [ALGORITHM.md](ALGORITHM.md)。
 
 ```text
@@ -94,6 +94,20 @@ cargo +nightly-2026-06-01 run --locked -p ullbc-pcg -- \
 
 函数名允许完整路径或唯一短名称。分析失败不导出成功结果。
 
+## 从 Rust 源码查看字段借用
+
+在外层工作区运行：
+
+```sh
+./ullbc-pcg-view --function change repo/ullbc-pcg/tests/fixtures/projected_borrows.rs
+```
+
+`change(mut p: Pair) -> Pair` 用 `r = &mut p.x` 借出字段。点击该语句的 `pre_operands` 可以看到
+`Expand p (p.x, p.y)`。到 `post_main`，借用边从 `p.x` 指向 `r` 的生命周期投影，`p.y` 仍有 E。
+接着选 `(*r) = const 7i32` 看解引用边，最后选 `_0 = move p`。在这个程序点的 `pre_operands`
+中依次收起解引用、移除借用边、恢复 `p.x: E`、合回 `p`。`storage_dead(r)` 在移动之后。
+把函数名换成 `borrow_choice`，可查看两个分支在汇合处的图。虚线借用边上的 `bb1→bb3` 等标记给出该边成立的前驱路径。
+
 ## 案例与预期
 
 ```rust
@@ -122,7 +136,7 @@ ShallowExclusive，`∅` 表示无权限。初始化状态单独保存；不能�
 点击 ULLBC 语句选位置，右侧显示 Initial 和四个阶段。每阶段内每个实际动作均可点击，
 显示的是该动作执行后的快照；无动作的阶段仍保留边界。`q`/`a`、Previous/Next
 逐步遍历动作和阶段。点击源码可定位语句，重复点击在同位置的语句间切换。
-JSON schema 为 3；包含真实 CFG 边、块入口/出口状态、逐点 NLL loan 集合和四阶段查询记录。网页中的图全部从分析结果导出，没有案例专用图。
+可视化接口版本为 4，仍可读取版本 3 的旧快照。版本 4 包含真实 CFG 边、块入口/出口状态、逐点 NLL loan 集合和四阶段查询记录。网页中的图全部从分析结果导出，没有案例专用图。
 
 PCG 绘图保留 ULLBC 的 `_0`、`(*r)`、区域编号和程序点，左侧显示参与本次求解的 ULLBC 语句。
 仅图的连线采用 MIR-PCG 约定：解引用超边画为两条绿色箭头；在直接借用的解引用节点存在时，
@@ -159,16 +173,19 @@ bash ullbc-pcg/scripts/regenerate-fixtures.sh
 
 ## 范围与验证
 
-框架按 CFG 保存并传播状态，活跃性使用反向工作队列直到不动点。
-本轮 PCG 语义支持 goto 基本块链、标量/unit、非逃逸直接共享/可变引用、引用移动与共享复制。
-提供 join 入口，但目前仅接受相同状态；不同状态的合流及循环抽象尚未实现，循环在分析前拒绝。
-调用、分支/循环、引用参数/返回、reborrow、聚合投影和原始指针明确报 Unsupported。
-通用 obtain/unblock 也尚未移植：例如同一语句内最后一次读取引用并写回其源变量，
-可能被保守拒绝。这是实现缺口，不能归因于 ULLBC 天生不支持。
-本版不证明与完整 MIR-PCG 等价，不计算具体返回值，不分析 LLBC。
+求解器覆盖标量、unit、由这些类型组成的结构体与元组、嵌套字段、标量引用的共享与可变借用、再借用、
+引用移动和共享复制。引用形参从调用方生命周期投影引入，返回引用保留到调用方的来源关系。
+分支在控制流汇合处对齐字段展开树，计算共同可用的能力，合并带路径条件的借用边。
+循环使用工作队列求不动点，支持迭代内建立并归还的借用。支持普通直接调用，以及单一引用输入与返回值共享签名生命周期的调用。调用的生命周期依赖记录为 `CallAbstraction`。需要跨迭代建立借用摘要、需要更一般生命周期关系的调用、
+含引用的聚合、索引和两阶段借用等输入会报告对应的分析限制。NLL 程序点或函数指纹不匹配也会报错。
+
+`pcg.json` 是后续规约转换可读取的结构化结果。它保存函数和函数体指纹、形参与返回位置、字段路径、
+loan 的创建位置和 rustc region、引用 local 与 rustc region 的对应，以及已求值的 outlives。
+调用和运行时断言沿正常返回路径传播，另存 ULLBC 的 unwind 目标。逐条语句保留四阶段的有序动作与快照，汇合块记录各前驱的调整动作，条件删边记录生效路径。
+规约转换可以在同一份 ULLBC 上用 `(block, statement_index, phase)` 定位动作。
 
 ```sh
-cargo +nightly-2026-06-01 test --locked -p ullbc-pcg
+cargo +nightly-2026-06-01 test --locked -p ullbc-pcg --features driver
 cargo +nightly-2026-06-01 clippy --locked -p ullbc-pcg --all-targets -- -D warnings
 cd ullbc-pcg/visualization
 pnpm run typecheck

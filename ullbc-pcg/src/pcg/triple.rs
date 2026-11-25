@@ -3,7 +3,7 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 // Adapted from pcg/src/pcg/triple.rs at 6fdb05e6377da5316e5388320d2ddf3d13082f6e.
-// Only the validated scalar/direct-reference ULLBC subset is translated here.
+// Only operations validated by input::lower reach these triples.
 use crate::{
     BorrowKind, Capability, Place,
     input::{Operand, Operation, Rhs},
@@ -29,33 +29,36 @@ pub(crate) struct TripleWalker {
     pub main_triples: Vec<Triple>,
 }
 impl TripleWalker {
-    pub fn for_operation(op: Operation) -> Self {
+    pub fn for_operation(op: &Operation) -> Self {
         use Capability as K;
         use PlaceCondition as C;
         let mut result = Self::default();
-        if let Operation::Assign(_, rhs) = op {
-            let triple = match rhs {
-                Rhs::Use(Operand::Constant) => None,
-                Rhs::Use(Operand::Copy(p)) => Some(Triple {
+        for operand in op.operands() {
+            result.operand_triples.extend(match *operand {
+                Operand::Constant => None,
+                Operand::Copy(p) => Some(Triple {
                     pre: C::Capability(p, K::Read),
                     post: None,
                 }),
-                Rhs::Use(Operand::Move(p)) => Some(Triple {
+                Operand::Move(p) => Some(Triple {
                     pre: C::Capability(p, K::Exclusive),
                     post: Some(C::Capability(p, K::Write)),
                 }),
-                Rhs::Borrow(BorrowKind::Shared, id) => Some(Triple {
-                    pre: C::Capability(Place::Local(id), K::Read),
-                    post: Some(C::Capability(Place::Local(id), K::Read)),
-                }),
-                Rhs::Borrow(BorrowKind::Mutable, id) => Some(Triple {
-                    pre: C::Capability(Place::Local(id), K::Exclusive),
-                    post: Some(C::RemoveCapability(Place::Local(id))),
-                }),
-            };
-            result.operand_triples.extend(triple);
+            });
         }
-        let triple = match op {
+        if let Operation::Assign(_, Rhs::Borrow(kind, p)) = op {
+            result.operand_triples.push(match kind {
+                BorrowKind::Shared => Triple {
+                    pre: C::Capability(*p, K::Read),
+                    post: Some(C::Capability(*p, K::Read)),
+                },
+                BorrowKind::Mutable => Triple {
+                    pre: C::Capability(*p, K::Exclusive),
+                    post: Some(C::RemoveCapability(*p)),
+                },
+            });
+        }
+        let triple = match *op {
             Operation::Assign(p, _) => Some(Triple {
                 pre: C::Capability(p, K::Write),
                 post: Some(C::Capability(p, K::Exclusive)),
@@ -70,9 +73,9 @@ impl TripleWalker {
             }),
             Operation::Return => Some(Triple {
                 pre: C::Return,
-                post: None,
+                post: Some(C::Capability(Place::Local(LocalId::ZERO), K::Write)),
             }),
-            Operation::Nop | Operation::Goto => None,
+            Operation::Nop | Operation::Inspect(_) | Operation::Goto => None,
         };
         result.main_triples.extend(triple);
         result

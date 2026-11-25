@@ -1,4 +1,5 @@
 //! Validate the closed supported fragment before using local reference liveness.
+use crate::places::Places;
 use crate::{AnalysisError as Error, BorrowKind, ErrorKind, Location, Place};
 use charon_lib::{
     ast::{self as a, *},
@@ -9,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 pub(crate) fn unsupported(message: impl Into<String>) -> Error {
     Error::new(ErrorKind::Unsupported, message)
 }
-fn invalid(message: impl Into<String>) -> Error {
+pub(crate) fn invalid(message: impl Into<String>) -> Error {
     Error::new(ErrorKind::InvalidInput, message)
 }
 
@@ -19,23 +20,41 @@ pub(crate) enum Operand {
     Copy(Place),
     Move(Place),
 }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) enum Rhs {
     Use(Operand),
-    Borrow(BorrowKind, LocalId),
+    Borrow(BorrowKind, Place),
+    Operands(Vec<Operand>),
+    Call {
+        callee: FunDeclId,
+        arguments: Vec<Operand>,
+        result_source: Option<LocalId>,
+    },
 }
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub(crate) enum Operation {
     Allocate(LocalId),
     Deallocate(LocalId),
     Assign(Place, Rhs),
     Nop,
     Goto,
+    Inspect(Operand),
     Return,
 }
+impl Operation {
+    pub fn operands(&self) -> &[Operand] {
+        match self {
+            Self::Assign(_, Rhs::Use(op)) | Self::Inspect(op) => std::slice::from_ref(op),
+            Self::Assign(_, Rhs::Operands(ops) | Rhs::Call { arguments: ops, .. }) => ops,
+            _ => &[],
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Program {
     pub blocks: BTreeMap<u::BlockId, Block>,
+    pub locals: Vec<crate::LocalInfo>,
     pub references: BTreeSet<LocalId>,
     pub explicit_storage: BTreeSet<LocalId>,
 }
@@ -47,7 +66,7 @@ pub(crate) struct Block {
     pub predecessors: Vec<u::BlockId>,
 }
 
-fn scalar(ty: &Ty) -> bool {
+pub(crate) fn scalar(ty: &Ty) -> bool {
     ty.is_unit()
         || matches!(
             ty.kind(),
@@ -70,24 +89,6 @@ fn local_ty(locals: &Locals, id: LocalId) -> Result<&Ty, Error> {
         .map(|l| &l.ty)
         .ok_or_else(|| invalid(format!("unknown local {id}")))
 }
-fn place(p: &a::Place, locals: &Locals) -> Result<Place, Error> {
-    match &p.kind {
-        PlaceKind::Local(id) if compatible(&p.ty, local_ty(locals, *id)?) => Ok(Place::Local(*id)),
-        PlaceKind::Local(_) => Err(invalid("local place type differs from declaration")),
-        PlaceKind::Projection(base, ProjectionElem::Deref) => {
-            let Place::Local(id) = place(base, locals)? else {
-                return Err(unsupported("nested dereference"));
-            };
-            match local_ty(locals, id)?.kind() {
-                TyKind::Ref(_, inner, _) if inner == &p.ty && scalar(inner) => Ok(Place::Deref(id)),
-                _ => Err(unsupported(
-                    "dereference must be of a direct reference to a scalar/unit",
-                )),
-            }
-        }
-        _ => Err(unsupported("field/index/global/raw-pointer place")),
-    }
-}
 fn constant(c: &ConstantExpr) -> bool {
     match (&c.kind, c.ty.kind()) {
         (
@@ -104,11 +105,11 @@ fn constant(c: &ConstantExpr) -> bool {
         _ => false,
     }
 }
-fn operand(op: &a::Operand, expected: &Ty, locals: &Locals) -> Result<Operand, Error> {
+fn operand(op: &a::Operand, expected: &Ty, places: &Places) -> Result<Operand, Error> {
     match op {
         a::Operand::Const(c) if compatible(&c.ty, expected) && constant(c) => Ok(Operand::Constant),
         a::Operand::Copy(p) | a::Operand::Move(p) if compatible(&p.ty, expected) => {
-            let lowered = place(p, locals)?;
+            let lowered = places.lower(p)?;
             if matches!(op, a::Operand::Copy(_)) {
                 if matches!(p.ty.kind(), TyKind::Ref(_, _, RefKind::Mut)) {
                     return Err(unsupported("copy of mutable reference"));
@@ -121,7 +122,11 @@ fn operand(op: &a::Operand, expected: &Ty, locals: &Locals) -> Result<Operand, E
         _ => Err(unsupported("operand constant/type/operation")),
     }
 }
-fn statement(stmt: &u::StatementKind, locals: &Locals) -> Result<Operation, Error> {
+fn statement(
+    stmt: &u::StatementKind,
+    locals: &Locals,
+    places: &Places,
+) -> Result<Operation, Error> {
     Ok(match stmt {
         u::StatementKind::StorageLive(id) => {
             local_ty(locals, *id)?;
@@ -132,28 +137,34 @@ fn statement(stmt: &u::StatementKind, locals: &Locals) -> Result<Operation, Erro
             Operation::Deallocate(*id)
         }
         u::StatementKind::Nop => Operation::Nop,
+        u::StatementKind::Assert { assert, .. } => {
+            Operation::Inspect(operand(&assert.cond, assert.cond.ty(), places)?)
+        }
         u::StatementKind::Assign(dst, value) => {
-            let target = place(dst, locals)?;
+            let target = places.lower(dst)?;
             let rhs = match value {
                 // Charon marks ordinary assignments WithRetag::Yes. In this closed
                 // direct-reference fragment retagging does not change capability
                 // ownership; this analysis does not model pointer provenance tags.
-                Rvalue::Use(op, _) => Rhs::Use(operand(op, &dst.ty, locals)?),
+                Rvalue::Use(op, _) => Rhs::Use(operand(op, &dst.ty, places)?),
                 Rvalue::Ref {
                     place: borrowed,
                     kind,
                     ptr_metadata,
                 } => {
-                    let Place::Local(x) = place(borrowed, locals)? else {
-                        return Err(unsupported("reborrow"));
-                    };
-                    if !scalar(local_ty(locals, x)?) {
+                    let x = places.lower(borrowed)?;
+                    if !scalar(&borrowed.ty) {
                         return Err(unsupported("borrow of non-scalar"));
                     }
                     let kind = match kind {
                         a::BorrowKind::Mut => BorrowKind::Mutable,
                         a::BorrowKind::Shared => BorrowKind::Shared,
-                        _ => return Err(unsupported("two-phase/fake/unique-immutable borrow")),
+                        a::BorrowKind::TwoPhaseMut => {
+                            return Err(unsupported(
+                                "two-phase mutable borrow requires a rustc activation point",
+                            ));
+                        }
+                        _ => return Err(unsupported("unsupported borrow kind")),
                     };
                     let expected_kind = if kind == BorrowKind::Mutable {
                         RefKind::Mut
@@ -180,11 +191,49 @@ fn statement(stmt: &u::StatementKind, locals: &Locals) -> Result<Operation, Erro
                 {
                     Rhs::Use(Operand::Constant)
                 }
-                _ => {
-                    return Err(unsupported(
-                        "rvalue (only use, direct borrow, and unit are supported)",
-                    ));
+                Rvalue::BinaryOp(bin, a, b)
+                    if scalar(a.ty())
+                        && scalar(b.ty())
+                        && match bin {
+                            BinOp::AddChecked | BinOp::SubChecked | BinOp::MulChecked => {
+                                dst.ty.as_tuple().is_some_and(|ts| {
+                                    ts.len() == 2
+                                        && &ts[0] == a.ty()
+                                        && ts[1] == Ty::new(TyKind::Literal(LiteralTy::Bool))
+                                })
+                            }
+                            BinOp::Offset => false,
+                            _ => scalar(&dst.ty),
+                        } =>
+                {
+                    Rhs::Operands(vec![
+                        operand(a, a.ty(), places)?,
+                        operand(b, b.ty(), places)?,
+                    ])
                 }
+                Rvalue::UnaryOp(_, a) if scalar(a.ty()) && scalar(&dst.ty) => {
+                    Rhs::Operands(vec![operand(a, a.ty(), places)?])
+                }
+                Rvalue::Aggregate(AggregateKind::Adt(t, None, None), fields)
+                    if dst.ty.as_adt() == Some(t) && !matches!(dst.ty.kind(), TyKind::Ref(..)) =>
+                {
+                    let children: Vec<_> = places.locals[target.local().index()]
+                        .children(target)
+                        .collect();
+                    if children.len() != fields.len() {
+                        return Err(invalid("aggregate arity does not match declaration"));
+                    }
+                    Rhs::Operands(
+                        fields
+                            .iter()
+                            .zip(children)
+                            .map(|(operand_value, child)| {
+                                operand(operand_value, places.ty(child), places)
+                            })
+                            .collect::<Result<_, _>>()?,
+                    )
+                }
+                _ => return Err(unsupported("unsupported ULLBC rvalue")),
             };
             Operation::Assign(target, rhs)
         }
@@ -192,25 +241,97 @@ fn statement(stmt: &u::StatementKind, locals: &Locals) -> Result<Operation, Erro
     })
 }
 
-pub(crate) fn lower(body: &u::ExprBody) -> Result<Program, Error> {
+/// For a direct call the signature determines the lifetime dependencies of the
+/// result. A single scalar reference parameter with the same bound lifetime as
+/// the returned reference gives one abstraction edge. It does not assert aliasing.
+fn call_operation(
+    call: &Call,
+    krate: Option<&TranslatedCrate>,
+    places: &Places,
+) -> Result<Operation, Error> {
+    let FnOperand::Regular(ptr) = &call.func else {
+        return Err(unsupported("indirect call"));
+    };
+    let FnPtrKind::Fun(FunId::Regular(callee)) = *ptr.kind else {
+        return Err(unsupported("trait or builtin call"));
+    };
+    let fun = krate
+        .and_then(|k| k.fun_decls.get(callee))
+        .ok_or_else(|| unsupported("callee signature is required"))?;
+    let sig = &fun.signature;
+    if sig.is_unsafe
+        || sig.is_variadic
+        || !fun.generics.types.is_empty()
+        || !fun.generics.const_generics.is_empty()
+        || !fun.generics.trait_clauses.is_empty()
+        || !fun.generics.regions_outlive.is_empty()
+    {
+        return Err(unsupported("call requires a general function abstraction"));
+    }
+    if sig.inputs.len() != call.args.len() || !compatible(&sig.output, &call.dest.ty) {
+        return Err(invalid("call does not match callee signature"));
+    }
+    let target = places.lower(&call.dest)?;
+    let arguments = call
+        .args
+        .iter()
+        .zip(&sig.inputs)
+        .map(|(a, t)| operand(a, t, places))
+        .collect::<Result<Vec<_>, _>>()?;
+    let mut result_source = None;
+    if let TyKind::Ref(return_region, _, _) = sig.output.kind() {
+        let mut inputs = sig
+            .inputs
+            .iter()
+            .enumerate()
+            .filter_map(|(i, ty)| match ty.kind() {
+                TyKind::Ref(r, _, _) => Some((i, r)),
+                _ => None,
+            });
+        let Some((i, input_region)) = inputs.next() else {
+            return Err(unsupported("reference return without an input lifetime"));
+        };
+        if inputs.next().is_some()
+            || input_region != return_region
+            || !matches!(return_region, Region::Var(_))
+        {
+            return Err(unsupported(
+                "call needs multiple or independent lifetime projections",
+            ));
+        }
+        let (Operand::Move(Place::Local(id)) | Operand::Copy(Place::Local(id))) = arguments[i]
+        else {
+            return Err(unsupported(
+                "reference call operand must identify a local projection",
+            ));
+        };
+        result_source = Some(id);
+    }
+    Ok(Operation::Assign(
+        target,
+        Rhs::Call {
+            callee,
+            arguments,
+            result_source,
+        },
+    ))
+}
+
+pub(crate) fn lower(body: &u::ExprBody, krate: Option<&TranslatedCrate>) -> Result<Program, Error> {
     if body.locals.locals.is_empty() || body.locals.arg_count >= body.locals.locals.len() {
         return Err(invalid("missing return local or invalid argument count"));
     }
+    let places = Places::new(&body.locals, krate)?;
     let mut references = BTreeSet::new();
     for (id, local) in body.locals.locals.iter_enumerated() {
         if local.index != id {
             return Err(invalid("local index differs from its position"));
         }
         if let TyKind::Ref(_, ty, _) = local.ty.kind() {
-            if id.index() <= body.locals.arg_count {
-                return Err(unsupported("reference arguments or return"));
-            }
             if !scalar(ty) {
                 return Err(unsupported("nested/aggregate reference"));
             }
             references.insert(id);
-        } else if !scalar(&local.ty) {
-            return Err(unsupported(format!("type of local {id}: {:?}", local.ty)));
         }
     }
     let mut blocks = BTreeMap::new();
@@ -235,7 +356,7 @@ pub(crate) fn lower(body: &u::ExprBody) -> Result<Program, Error> {
                 block,
                 statement_index,
             };
-            let op = statement(&stmt.kind, &body.locals).map_err(|e| e.at(location))?;
+            let op = statement(&stmt.kind, &body.locals, &places).map_err(|e| e.at(location))?;
             if let Operation::Allocate(id) = op {
                 explicit_storage.insert(id);
             }
@@ -245,11 +366,34 @@ pub(crate) fn lower(body: &u::ExprBody) -> Result<Program, Error> {
             block,
             statement_index: data.statements.len(),
         };
-        let successors = match data.terminator.kind {
-            u::TerminatorKind::Goto { target } => { operations.push(Operation::Goto); vec![target] }
-            u::TerminatorKind::Return => { operations.push(Operation::Return); Vec::new() }
-            _ => return Err(unsupported("terminator: only goto/return are supported; calls, branches and unwinding need separate rules").at(location)),
+        let (op, mut successors) = match &data.terminator.kind {
+            u::TerminatorKind::Goto { target }
+            | u::TerminatorKind::ContractAssert { target, .. } => (Operation::Goto, vec![*target]),
+            u::TerminatorKind::Return => (Operation::Return, vec![]),
+            u::TerminatorKind::Abort(_) | u::TerminatorKind::UnwindResume => {
+                (Operation::Nop, vec![])
+            }
+            u::TerminatorKind::Switch { discr, .. } => (
+                Operation::Inspect(
+                    operand(discr, discr.ty(), &places).map_err(|e| e.at(location))?,
+                ),
+                data.targets().into_vec(),
+            ),
+            u::TerminatorKind::Call { call, target, .. } => (
+                call_operation(call, krate, &places).map_err(|e| e.at(location))?,
+                vec![*target],
+            ),
+            u::TerminatorKind::Assert { assert, target, .. } => (
+                Operation::Inspect(
+                    operand(&assert.cond, assert.cond.ty(), &places).map_err(|e| e.at(location))?,
+                ),
+                vec![*target],
+            ),
+            _ => return Err(unsupported("unsupported ULLBC terminator").at(location)),
         };
+        operations.push(op);
+        successors.sort_unstable();
+        successors.dedup();
         pending.extend(successors.iter().copied());
         blocks.insert(
             block,
@@ -267,34 +411,8 @@ pub(crate) fn lower(body: &u::ExprBody) -> Result<Program, Error> {
     for (source, target) in edges {
         blocks.get_mut(&target).unwrap().predecessors.push(source);
     }
-    // The scheduler is a CFG fixed-point engine; this iteration has no sound
-    // abstraction/join for cyclic PCGs, so reject cycles before emitting results.
-    let mut degrees: BTreeMap<_, _> = blocks
-        .iter()
-        .map(|(id, b)| (*id, b.predecessors.len()))
-        .collect();
-    let mut ready: VecDeque<_> = degrees
-        .iter()
-        .filter(|(_, n)| **n == 0)
-        .map(|(id, _)| *id)
-        .collect();
-    let mut processed = 0;
-    while let Some(id) = ready.pop_front() {
-        processed += 1;
-        for successor in &blocks[&id].successors {
-            let degree = degrees.get_mut(successor).unwrap();
-            *degree -= 1;
-            if *degree == 0 {
-                ready.push_back(*successor);
-            }
-        }
-    }
-    if processed != blocks.len() {
-        return Err(unsupported(
-            "loop: cyclic PCG abstraction/join is outside this iteration",
-        ));
-    }
     Ok(Program {
+        locals: places.locals,
         blocks,
         references,
         explicit_storage,

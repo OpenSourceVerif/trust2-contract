@@ -7,8 +7,19 @@ import PcgGraph from "./PcgGraph";
 import PCGNavigator from "./PCGNavigator";
 
 export default function App({ data }: { data: Analysis }) {
-  const [selected, setSelected] = useState(() => Math.max(0, data.points.findIndex(p => p.steps.at(-1)!.graph.edges.some(e => e.kind === "Borrow"))));
-  const [step, setStep] = useState(() => data.points[selected].steps.length - 1);
+  const [initial] = useState(() => {
+    const query = new URLSearchParams(window.location.search);
+    const pointIndex = data.points.findIndex(p => String(p.location.block) === query.get("bb")
+      && String(p.location.statement_index) === query.get("stmt"));
+    if (pointIndex >= 0) {
+      const step = data.points[pointIndex].steps.findIndex(s => s.kind === "phase" && s.phase === query.get("phase"));
+      return { point: pointIndex, step: Math.max(0, step) };
+    }
+    const point = Math.max(0, data.points.findIndex(p => p.steps.at(-1)!.graph.edges.some(e => e.kind === "Borrow")));
+    return { point, step: data.points[point].steps.length - 1 };
+  });
+  const [selected, setSelected] = useState(initial.point);
+  const [step, setStep] = useState(initial.step);
   const [minimized, setMinimized] = useState(false);
   const [fontSize, setFontSize] = useState(13);
   const [settings, setSettings] = useState(false);
@@ -69,7 +80,7 @@ export default function App({ data }: { data: Analysis }) {
         <PcgGraph filename={file} />
         <div className="graph-footer">
           <code>{point.statement}</code><div>{currentStep.label}</div>
-          <p>{graph.capabilities.length} capabilities · {graph.edges.filter(e => e.kind === "Borrow").length} active borrows</p>
+          <p>{graph.capabilities.length} capabilities · {graph.edges.filter(e => e.kind === "Borrow").length} borrow edges{(graph.edge_conditions?.length ?? 0) > 0 && <> · {graph.edge_conditions!.length} path-dependent edges</>}</p>
           <div>E: exclusive · e: shallow exclusive · R: read · W: write · ∅: none</div>
           <div>Orange: borrow · Green: deref · Purple: reference flow · Blue: lifetime projection · Grey dashed: derived alias</div>
           <div>Node regions / locations: ULLBC · Borrow edge bw / '? IDs: rustc · Hover for details</div>

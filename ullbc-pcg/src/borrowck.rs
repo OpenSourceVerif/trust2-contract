@@ -8,6 +8,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) struct BorrowContext<'a> {
     points: BTreeMap<Location, &'a BorrowckPoint>,
+    pub unindexed_shared_reborrows: Vec<Location>,
     loans: BTreeMap<Location, &'a BorrowckLoan>,
     regions: BTreeMap<LocalId, usize>,
     outlives: BTreeSet<(usize, usize)>,
@@ -76,11 +77,12 @@ impl<'a> BorrowContext<'a> {
                 return Err(invalid("loan reservation outside analyzed CFG"));
             };
             if !matches!(op, Operation::Assign(crate::Place::Local(target), Rhs::Borrow(kind, owner))
-                if *target == loan.assigned && *owner == loan.borrowed && (*kind == crate::BorrowKind::Mutable) == loan.is_mutable)
+                if *target == loan.assigned && owner.local() == loan.borrowed && (*kind == crate::BorrowKind::Mutable) == loan.is_mutable)
             {
                 return Err(invalid("loan does not match ULLBC borrow assignment").at(reserve));
             }
         }
+        let mut unindexed_shared_reborrows = vec![];
         for (&block, data) in &program.blocks {
             for (statement_index, op) in data.operations.iter().enumerate() {
                 let location = Location {
@@ -90,7 +92,17 @@ impl<'a> BorrowContext<'a> {
                 if matches!(op, Operation::Assign(_, Rhs::Borrow(..)))
                     && !loans.contains_key(&location)
                 {
-                    return Err(invalid("ULLBC borrow has no compiler loan").at(location));
+                    // rustc_borrowck::PlaceExt::ignore_borrow skips a dereference
+                    // of &T. The new borrow still depends on the old reference in
+                    // the PCG. Thread-local statics and raw pointers are rejected
+                    // by input::lower before reaching this point.
+                    if matches!(op, Operation::Assign(_, Rhs::Borrow(crate::BorrowKind::Shared, crate::Place::Deref(id)))
+                        if matches!(body.locals.locals[*id].ty.kind(), TyKind::Ref(_,_,RefKind::Shared)))
+                    {
+                        unindexed_shared_reborrows.push(location);
+                    } else {
+                        return Err(invalid("ULLBC borrow has no compiler loan").at(location));
+                    }
                 }
             }
         }
@@ -125,22 +137,43 @@ impl<'a> BorrowContext<'a> {
             return Err(invalid("invalid/incomplete outlives relation"));
         }
         Ok(Self {
+            unindexed_shared_reborrows,
             points,
             loans,
             regions,
             outlives,
         })
     }
+    pub fn loans(&self, program: &Program) -> Vec<AnalysisLoan> {
+        let mut result = Vec::new();
+        for (&reserve, &loan) in &self.loans {
+            let Operation::Assign(_, Rhs::Borrow(kind, borrowed)) =
+                program.blocks[&reserve.block].operations[reserve.statement_index]
+            else {
+                unreachable!("validated reservation")
+            };
+            result.push(AnalysisLoan {
+                id: loan.id,
+                reserve,
+                borrowed,
+                assigned: loan.assigned,
+                kind,
+                region: loan.region,
+            });
+        }
+        result.sort_by_key(|l| l.id);
+        result
+    }
     pub fn point(&self, location: Location) -> &BorrowckPoint {
         self.points[&location]
     }
-    pub fn loan(&self, creation: Location) -> &BorrowckLoan {
-        self.loans[&creation]
+    pub fn loan(&self, creation: Location) -> Option<&BorrowckLoan> {
+        self.loans.get(&creation).copied()
     }
     /// Only before-primary state is used during PCG transfer. After-primary facts
     /// must not be misinterpreted as the intermediate PostOperands/PreMain phase.
-    pub fn in_scope(&self, creation: Location, at: Location) -> bool {
-        self.point(at).before.contains(&self.loan(creation).id)
+    pub fn in_scope(&self, loan: usize, at: Location) -> bool {
+        self.point(at).before.contains(&loan)
     }
     pub fn outlives(&self, from: LocalId, to: LocalId) -> bool {
         self.outlives

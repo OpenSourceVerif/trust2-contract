@@ -1,6 +1,6 @@
 # 算法来源与移植边界
 
-目标是把原 PCG 在当前案例所需的规则移到 ULLBC 上，而不是设计另一套“类似 PCG”的借用计数算法。
+ULLBC 求解器对照固定版本的 MIR-PCG，在 Charon 控制流重建的输入上计算各程序点的图和动作。
 基准是工作区 `pcg/` 的提交 `6fdb05e6377da5316e5388320d2ddf3d13082f6e`。
 以下上游路径均相对该 checkout；本地路径相对本 crate。
 
@@ -18,7 +18,7 @@
 | `src/pcg/obtain/expand.rs` / `expand_place_one_level` | `State::obtain` | 按需展开解引用，先加边、更新权限，再标记被阻塞投影 |
 | `src/pcg/place_capabilities.rs` / `update_for_deref` | `State::obtain` | 读展开为 R/R；可变写展开为 e/E |
 | `src/pcg/visitor/pack.rs` / `pack_old_and_dead_borrow_leaves` | `State::pack` | 反复移除可回收叶边；存在下游依赖时不能因局部变量已死而删边 |
-| `src/pcg/visitor/obtain.rs` / `remove_deref_edges_to`、`restore_place` | `State::pack`、`restore_owned` | 收起解引用、移除/取消标签、按 owned 初始化恢复权限；已有 R 不在 restore 中直接升级 |
+| `src/pcg/visitor/obtain.rs` / `remove_deref_edges_to`、`restore_place` | `State::pack`、`restore_place` | 收起解引用、移除/取消标签、按 owned 初始化恢复权限；已有 R 不在 restore 中直接升级 |
 | `src/owned_pcg/impl/update.rs` / `ensures` | `State::emit` | owned 初始化独立于借用权限；借用撤权限不等于移走值 |
 | `src/pcg/visitor/obtain.rs` / `record_and_apply_action` | `State::emit`、`src/export.rs` | 执行动作后立即保存图；前端不推测中间状态 |
 
@@ -38,7 +38,7 @@ SetCapability/LabelProjection，快照粒度不承诺与上游网页逐帧完全
 | `target = rhs` | 由 rhs 决定 | W → E |
 | `StorageLive` | 无 | Unalloc → AllocateOrDeallocate |
 | `StorageDead` | 无 | AllocateOrDeallocate → Unalloc |
-| `Return` | 无 | Return 条件：当前片段返回位置须 E |
+| `Return` | 无 | 返回位置 E → W，返回值移交给调用者 |
 
 阶段顺序是：PreOperands 回收叶边并满足 operand 前置条件；PostOperands 执行 operand
 后置条件和 move 旧值标记；PreMain 满足 main 前置条件并准备赋值目标；PostMain
@@ -62,7 +62,7 @@ lifetime projection、按需展开和旧值依赖，已删除这一路径。
 ## 3. 确实由 ULLBC 输入造成的适配
 
 - **AST、位置和类型**：使用 Charon LocalId/RegionId、Statement/Terminator 和 source span。
-  `input.rs` 先验证类型与操作；本版只接受 Body region 的直接 `&scalar` / `&mut scalar`。
+  `input.rs` 校验类型与操作。引用指向标量，函数体中的引用类型使用 Charon 的 Body region。
 - **StorageLive**：Charon `ast/ullbc_ast.rs` 明确定义已分配时释放并重新分配，且插入 return local
   的 StorageLive。开启借用信息导出也执行相同的正常转换流程；元数据随插入的位置更新。初始分配状态与 PreMain 的存储适配遵循此定义；重新分配前仍须取得权限。
   已释放位置的 StorageDead 按 Charon 定义无效果。
@@ -83,19 +83,32 @@ lifetime projection、按需展开和旧值依赖，已删除这一路径。
 
 以上输入适配不改变四阶段、权限偏序、当前操作 Triple 或 Borrow/Deref/Flow 的职责。
 
-## 4. 尚未移植，不是 ULLBC 差异
+## 4. 字段、引用来源与控制流汇合
 
-通用 obtain/unblock（含同一语句内借用最后使用后写回 owner）、reborrow、嵌套投影、
-函数摘要、一般 PCG join、循环图抽象和路径条件均未移植。region inference 由 rustc 提供，
-不在 ULLBC-PCG 中重新求解。CFG worklist、块入口/出口、变化检测、join 调用点以及活跃性不动点
-已实现；PCG 的 join 只接受相等状态，输入验证明确排除分支和循环，不能据此宣称支持循环 PCG。
-不支持的 AST 会报 Unsupported；受限 obtain 无法满足的条件报 CapabilityUnavailable 并带阶段。
-因此错误不等同于证明 Rust 程序非法；合法但超出 obtain 能力的输入仍可能被拒绝。
+`src/places.rs` 从 Charon 类型声明取得字段标识与实例化类型，元组使用分量序号。每次展开使用父位置
+的全部直接字段，故只借用 `p.x` 时也能保留 `p.y` 的能力。结构体与元组可以嵌套。
+`State::expand_to` 和 `collapse` 对照上游 `owned_pcg/impl/join_semi_lattice.rs` 及
+`pcg/obtain/mod.rs`。读展开在父位置及子位置保留 R。对拥有 E 的聚合写字段时，以 E 展开，
+随后弱化目标字段。可变再借用的来源是 `*r`，它通过 Deref 边和底层借用保持与原位置的依赖。
+引用形参按上游 `introduce_initial_borrows` 建立调用方投影到形参投影的初始流动边。
+返回引用通过这条链追溯到调用方。返回前的位置能力与执行 `return` 后的能力可分别读取。
 
-当前没有形式化等价证明，也没有用 MIR-PCG 运行结果做差分验证。测试根据上述源码规则
-直接写出阶段/边/权限预期，并检查修改 ULLBC 后拒绝旧元数据、修改 loan 作用域和 outlives 后决策随之改变。这能防止已覆盖规则退化，
-不能代替完整算法正确性证明。下一次扩展应继续逐条移植上游所需路径并补对应测试，
-而不是增加与上游不一致的捷径。
+`src/transfer/join.rs` 对照上游所有者展开树的 join 和 `borrow_pcg/graph/join.rs`。
+所有前驱首先对齐展开树，确定已初始化的位置取交集，能力按 E/e/R/W 偏序取共同下界。
+借用边取并集。只在部分前驱成立的边记录 ULLBC CFG 条件，每个备选路径内部取合取，
+路径之间取析取。各前驱的权限弱化和展开动作记录在 `blocks[].incoming[].actions`。
+条件边被移除时，动作沿用同一生效条件。循环头从当前前驱出口重新计算入口。
+若回边携带在循环内新建的借用或仍带路径条件的边，求解器报告需要循环抽象。
+
+直接调用先按操作数的 copy/move 规则处理参数，再按返回目标的 W → E 更新。对于单一引用输入与返回值共享签名生命周期的直接调用，
+`CallAbstraction` 按上游 `visitor/function_call.rs` 连接参数与结果的生命周期投影，并记录被调函数和调用点。
+这条边表达函数签名允许的资源依赖，具体借用来源仍由函数实现决定。返回值无生命周期投影时，相应的输出边集为空。
+沿用 MIR-PCG 的 `edges_to_analyze`，调用和运行时断言仅向正常后继传播状态，原 ULLBC 的异常后继编号保存在 `blocks[].unwind`。
+rustc 会省略通过共享引用解引用建立的部分借用。求解器保留其借用边与程序点，将这些位置列在 `unindexed_shared_reborrows`，
+图上用 `shared reborrow` 标记。其他来源的借用缺少编译器记录时，输入校验会失败。
+
+多个引用实参到引用返回值的一般调用摘要、需要跨迭代汇总的借用图、含引用的聚合、索引与两阶段借用仍需相应规则。
+遇到输入语义超出范围时报 `Unsupported`，无法取得所需能力时报 `CapabilityUnavailable`。
 
 ## 5. Charon 导出契约
 
@@ -127,17 +140,16 @@ PCG 导出拒绝旧的冻结契约。直接分析接口仍验证最终 body 指�
 不要求 `--ullbc` 才能使用 `--export-borrowck`：未指定时，正常 LLBC 结构化仍执行。
 当前 LLBC 的借用信息明确标记不可用，并清除 ULLBC 程序点，不能拿 ULLBC 位置冒充 LLBC 位置。
 
-## 6. 本轮验收用例
+## 6. 同源程序对照
 
-原始 `mutable_borrow` 保持默认展示；另外自建 `repeated_write`、`sequential_borrows`、
-`goto_borrow`（正常清理后合并为一个块）、`two_shared`、`unit_result`、`removed_unit_before_borrow`。已有的 shared/move/copy/scalar 参数
-用例重新提取为带借用信息的输入。branch/cycle/reborrow 用例必须拒绝。测试不证明数值计算结果，
-LLBC 只验证正常生成，未集成 LLBC-PCG、Why3 或函数契约证明。
-另有求解器级测试把最终 ULLBC 在借用之后拆成两个块，并同步搬移借用信息，验证跨 goto 的状态传播；
-该测试明确使用构造 CFG，不冒充 Charon 对该源程序的默认导出。
+`tests/pre_structure.rs` 从真实 Rust 源码提取字段、嵌套再借用、路径条件、循环和引用返回的结果。
+对照 `tests/fixtures/projected_borrows.rs::change` 时，两端均使用自己的编译器和求解器。
+MIR 的 `FakeRead` 和 Charon 插入的存储标记影响语句编号，比较按语句语义和源码行对齐。
 
-## 来源说明
+```sh
+python3 ullbc-pcg/scripts/compare-pair.py <MIR-PCG结果目录>/change <ULLBC-PCG结果目录>
+```
 
-保留各移植文件的来源注释。`src/pcg/triple.rs` 保留上游 © 2023 ETH Zurich 和 MPL-2.0
-声明，适用文件级条款见 <https://mozilla.org/MPL/2.0/>。其余来源与修改范围在上表列明。
-网页来源及许可单独记录在 `visualization/THIRD_PARTY.md`。
+脚本核对四个观察点：取字段前的 Expand，建立借用后两字段的能力与借用边，
+写入前的 Deref 与 W，以及整体移动前的有序回收。最后一项在两端都依次发生
+移除解引用边、移除字段借用边、恢复 `p.x: E`、Collapse。覆盖范围是该函数的这四个程序点。

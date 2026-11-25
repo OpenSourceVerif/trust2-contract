@@ -35,6 +35,9 @@ pub(crate) fn compute(program: &Program) -> Liveness {
             };
             after.insert(location, live.clone());
             match op {
+                Operation::Return if program.references.contains(&LocalId::ZERO) => {
+                    live.insert(LocalId::ZERO);
+                }
                 Operation::Allocate(id) | Operation::Deallocate(id) => {
                     live.remove(id);
                 }
@@ -46,15 +49,20 @@ pub(crate) fn compute(program: &Program) -> Liveness {
                         Place::Deref(id) => {
                             live.insert(*id);
                         }
+                        Place::Field { .. } => {}
                     }
-                    if let Rhs::Use(Operand::Copy(p) | Operand::Move(p)) = rhs {
-                        let (Place::Local(id) | Place::Deref(id)) = p;
-                        if program.references.contains(id) {
-                            live.insert(*id);
-                        }
+                    if let Rhs::Borrow(_, Place::Deref(id)) = rhs {
+                        live.insert(*id);
                     }
                 }
                 _ => {}
+            }
+            for operand in op.operands() {
+                if let Operand::Copy(p) | Operand::Move(p) = operand
+                    && program.references.contains(&p.local())
+                {
+                    live.insert(p.local());
+                }
             }
             before.insert(location, live.clone());
         }
@@ -82,6 +90,7 @@ mod tests {
         let b = BlockId::from(1);
         let r = LocalId::from(2);
         let program = Program {
+            locals: vec![],
             blocks: BTreeMap::from([
                 (
                     a,

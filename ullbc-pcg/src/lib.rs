@@ -1,7 +1,7 @@
 //! Independent CFG PCG construction over Charon ULLBC and adapted rustc NLL facts.
-//! No rustc dependency or MIR-PCG results are needed by this crate. The initial
-//! supported semantics are scalar/unit locals and non-escaping direct references.
-//! Branch joins, cyclic PCG abstraction, calls and reborrows are explicitly rejected.
+//! The solver takes typed ULLBC places and adapted NLL facts. The crate entry
+//! point resolves field layouts and produces owned repacks, borrow graph edges
+//! and path-conditioned actions before control-flow reconstruction.
 mod analysis;
 mod borrowck;
 pub mod export;
@@ -9,6 +9,7 @@ mod graph;
 mod input;
 mod liveness;
 mod pcg;
+mod places;
 pub use pcg::EvalStmtPhase;
 mod results;
 mod transfer;
@@ -23,7 +24,7 @@ pub fn analyze(
     body: &u::ExprBody,
     facts: &charon_lib::ast::BodyBorrowckInfo,
 ) -> Result<Analysis, AnalysisError> {
-    analysis::run(body, facts)
+    analysis::run(body, facts, None)
 }
 
 use charon_lib::{
@@ -38,6 +39,7 @@ use charon_lib::{
 /// Owned PCG result, identified independently of the Charon context or any viewer.
 #[derive(serde::Serialize)]
 pub struct FunctionAnalysis {
+    pub schema_version: u32,
     pub function_id: charon_lib::ast::FunDeclId,
     pub analysis_stage: &'static str,
     pub body_fingerprint: String,
@@ -96,8 +98,9 @@ pub fn analyze_function(
     function: &FunDecl,
 ) -> Result<FunctionAnalysis, Box<dyn std::error::Error>> {
     let input = function_input(krate, function)?;
-    let analysis = analyze(input.body, input.facts)?;
+    let analysis = analysis::run(input.body, input.facts, Some(krate))?;
     Ok(FunctionAnalysis {
+        schema_version: 1,
         function_id: function.def_id,
         analysis_stage: input.analysis_stage(),
         body_fingerprint: input.facts.body_fingerprint.clone(),

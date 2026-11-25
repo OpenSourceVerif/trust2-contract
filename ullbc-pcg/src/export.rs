@@ -56,7 +56,16 @@ fn quote(s: &str) -> String {
     serde_json::to_string(s).unwrap()
 }
 pub fn place_name(p: Place, locals: &[LocalInfo]) -> String {
-    let (Place::Local(id) | Place::Deref(id)) = p;
+    let id = p.local();
+    if let Place::Field { .. } = p
+        && let Some(field) = locals.get(id.index()).and_then(|local| local.field(p))
+    {
+        let name = field
+            .name
+            .clone()
+            .unwrap_or_else(|| field.index.index().to_string());
+        return format!("{}.{name}", place_name(field.parent, locals));
+    }
     let name = locals
         .iter()
         .find(|l| l.id == id)
@@ -86,6 +95,20 @@ fn projection_name(p: LifetimeProjection, locals: &[LocalInfo]) -> String {
 }
 fn node_name(node: Node, locals: &[LocalInfo]) -> String {
     match node {
+        Node::ArgumentProjection { argument, region } => format!(
+            "caller({})|'{}",
+            place_name(Place::Local(argument), locals),
+            region.index()
+        ),
+        Node::PreviousReference {
+            reference,
+            snapshot,
+        } => format!(
+            "{} [old @ {} {:?}]",
+            place_name(Place::Local(reference), locals),
+            snapshot.location,
+            snapshot.phase
+        ),
         Node::Place(p) => place_name(p, locals),
         Node::LifetimeProjection(p) => projection_name(p, locals),
     }
@@ -98,6 +121,8 @@ fn edge_name(edge: &Edge, locals: &[LocalInfo]) -> String {
         .collect::<Vec<_>>()
         .join(", ");
     let kind = match edge {
+        Edge::CallAbstraction { .. } => "Call abstraction",
+        Edge::InitialBorrowFlow { .. } => "BorrowFlow initial",
         Edge::Borrow {
             borrow_kind: BorrowKind::Mutable,
             ..
@@ -115,6 +140,19 @@ fn edge_name(edge: &Edge, locals: &[LocalInfo]) -> String {
         node_name(edge.target(), locals)
     )
 }
+fn path_label(alternatives: &PathAlternatives) -> String {
+    alternatives
+        .iter()
+        .map(|path| {
+            path.iter()
+                .map(|edge| format!("bb{}→bb{}", edge.from.index(), edge.to.index()))
+                .collect::<Vec<_>>()
+                .join(" ∧ ")
+        })
+        .collect::<Vec<_>>()
+        .join(" ∨ ")
+}
+
 pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> String {
     let mut s =
         String::from("digraph PCG {\n  rankdir=TB;\n  node [shape=rect, fontname=Courier];\n");
@@ -123,6 +161,10 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
         .iter()
         .map(|c| Node::Place(c.place))
         .collect();
+    for &base in &graph.expanded {
+        nodes.insert(Node::Place(base));
+        nodes.extend(locals[base.local().index()].children(base).map(Node::Place));
+    }
     for e in &graph.edges {
         nodes.extend(e.sources());
         nodes.insert(e.target());
@@ -151,6 +193,9 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
                     format!("color={color}, fontcolor={color}{style}"),
                 )
             }
+            Node::PreviousReference { .. } => (node_name(node, locals), "shape=rect, style=dashed".into()),
+            Node::ArgumentProjection { .. } => (node_name(node, locals),
+                "shape=octagon, color=purple, fontcolor=purple, tooltip=\"Caller lifetime projection\"".into()),
             Node::LifetimeProjection(p) => {
                 // Keep the actual ULLBC reference/region identifiers. The phase
                 // is detail of the snapshot, not another current-phase label.
@@ -184,6 +229,15 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
             quote(&label)
         ));
     }
+    for &base in &graph.expanded {
+        for field in locals[base.local().index()].children(base) {
+            s.push_str(&format!(
+                "  {} -> {} [color=black, label=\"field\", tooltip=\"owned place expansion\"];\n",
+                id(Node::Place(base)),
+                id(Node::Place(field))
+            ));
+        }
+    }
     for (index, edge) in graph.edges.iter().enumerate() {
         let (color, label, tooltip) = match edge {
             Edge::Borrow {
@@ -191,14 +245,10 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
                 borrow_kind,
                 ..
             } => {
-                let loan = facts
-                    .loans
-                    .iter()
-                    .find(|l| {
-                        l.reserve.block == location.block
-                            && l.reserve.statement_index == location.statement_index
-                    })
-                    .expect("validated borrow creation point");
+                let loan = facts.loans.iter().find(|l| {
+                    l.reserve.block == location.block
+                        && l.reserve.statement_index == location.statement_index
+                });
                 let kind = if *borrow_kind == BorrowKind::Mutable {
                     "Default"
                 } else {
@@ -206,8 +256,19 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
                 };
                 (
                     "orange",
-                    format!("bw{}: {kind} '?{}", loan.id, loan.region),
-                    format!("ULLBC borrow at {location}; loan and edge region IDs come from rustc"),
+                    loan.map_or_else(
+                        || "shared reborrow".into(),
+                        |l| format!("bw{}: {kind} '?{}", l.id, l.region),
+                    ),
+                    if loan.is_some() {
+                        format!(
+                            "ULLBC borrow at {location}; loan and edge region IDs come from rustc"
+                        )
+                    } else {
+                        format!(
+                            "Shared reborrow at {location}; rustc omits this place from the BorrowSet"
+                        )
+                    },
                 )
             }
             Edge::Deref { .. } => (
@@ -218,13 +279,30 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
                     edge_name(edge, locals)
                 ),
             ),
+            Edge::CallAbstraction {
+                callee, location, ..
+            } => (
+                "darkviolet",
+                format!("call fn#{callee}"),
+                format!("Signature lifetime dependency at {location}"),
+            ),
+            Edge::InitialBorrowFlow { .. } => (
+                "purple",
+                "InitialBorrows".to_owned(),
+                edge_name(edge, locals),
+            ),
             Edge::BorrowFlow { operand, .. } => {
                 ("purple", format!("{operand:?}"), edge_name(edge, locals))
             }
         };
+        let (label, line_style) = if let Some(when) = graph.condition(edge) {
+            (format!("{} [{}]", label, path_label(when)), "dashed")
+        } else {
+            (label, "solid")
+        };
         for source in edge.sources() {
             s.push_str(&format!(
-                "  {} -> {} [color={color}, label={}, tooltip={}, class=\"pcg-edge-{index}\"];\n",
+                "  {} -> {} [color={color}, style={line_style}, label={}, tooltip={}, class=\"pcg-edge-{index}\"];\n",
                 id(source),
                 id(edge.target()),
                 quote(&label),
@@ -238,7 +316,10 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
         } = edge
         {
             let deref = Node::Place(Place::Deref(assigned.reference));
-            if assigned.base_label.is_none() && nodes.contains(&deref) {
+            if assigned.base_label.is_none()
+                && graph.condition(edge).is_none()
+                && nodes.contains(&deref)
+            {
                 s.push_str(&format!(
                     "  {} -> {} [color=grey, style=dashed, tooltip={}];\n",
                     id(Node::Place(*borrowed)),
@@ -253,6 +334,19 @@ pub fn dot(graph: &Graph, locals: &[LocalInfo], facts: &BodyBorrowckInfo) -> Str
 }
 pub fn action_label(action: &Action, locals: &[LocalInfo]) -> String {
     match action {
+        Action::Expand { base, fields, .. } | Action::Collapse { base, fields, .. } => {
+            let verb = if matches!(action, Action::Expand { .. }) {
+                "Expand"
+            } else {
+                "Collapse"
+            };
+            let children = fields
+                .iter()
+                .map(|p| place_name(*p, locals))
+                .collect::<Vec<_>>()
+                .join(", ");
+            format!("{verb} {} ({children})", place_name(*base, locals))
+        }
         Action::Require { place, capability } => {
             format!("Require {}: {capability:?}", place_name(*place, locals))
         }
@@ -312,7 +406,14 @@ fn viewer_steps(result: &PointResult, locals: &[LocalInfo]) -> Vec<ViewerStep> {
                 kind: "action",
                 phase: Some(phase.phase),
                 action_index: Some(index),
-                label: action_label(&action.action, locals),
+                label: match &action.condition {
+                    Some(paths) => format!(
+                        "{} [{}]",
+                        action_label(&action.action, locals),
+                        path_label(paths)
+                    ),
+                    None => action_label(&action.action, locals),
+                },
                 dot: format!("{prefix}-{name}-action-{index}.dot"),
                 graph: action.after.clone(),
             });
@@ -412,7 +513,7 @@ pub fn write_analysis(
         });
     }
     let data = ViewerData {
-        schema_version: 3,
+        schema_version: 4,
         analysis_stage: result.analysis_stage,
         function_id: result.function_id,
         body_fingerprint: result.body_fingerprint.clone(),
