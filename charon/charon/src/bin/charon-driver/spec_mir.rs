@@ -148,7 +148,7 @@ fn stash_spec_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: Body<'tcx>
 fn take_stashed_spec_bodies<'tcx>(
     tcx: TyCtxt<'tcx>,
     state: &mut GlobalSpecState,
-) -> FxHashMap<LocalDefId, Body<'tcx>> {
+) -> FxHashMap<LocalDefId, &'tcx Body<'tcx>> {
     let expected_session = state.session_id;
     let expected_arena = tcx_arena_addr(tcx);
     std::mem::take(&mut state.stashed_spec_bodies)
@@ -164,10 +164,10 @@ fn take_stashed_spec_bodies<'tcx>(
             // - `stash_spec_body` obtains `entry.body_ptr` from `tcx.arena.alloc(body)` and tags it
             //   with `(session_id, gcx_addr)`.
             // - Holding `tcx: TyCtxt<'tcx>` keeps the originating `GlobalCtxt` and its arena alive
-            //   at `expected_gcx` for `'tcx`, verified by the assertions above.
+            //   at `expected_arena` for `'tcx`, verified by the assertions above.
             // Trusted callees:
             // - `rustc_middle::arena::Arena::alloc` preserves pointee validity for `'tcx`.
-            let body = unsafe { &*(entry.body_ptr as *const Body<'tcx>) }.clone();
+            let body = unsafe { &*(entry.body_ptr as *const Body<'tcx>) };
             (def_id, body)
         })
         .collect()
@@ -176,7 +176,7 @@ fn take_stashed_spec_bodies<'tcx>(
 /// Prepared MIR artifacts extracted before borrow checking and drop elaboration.
 pub(crate) struct PreparedSpecMir<'tcx> {
     /// Pre-borrowck MIR bodies for all specification closures and `TypeInvariant` methods.
-    pub spec_mir_bodies: FxHashMap<LocalDefId, Body<'tcx>>,
+    pub spec_mir_bodies: FxHashMap<LocalDefId, &'tcx Body<'tcx>>,
     /// Cached `BodyWithBorrowckFacts` computed while validating host specification anchors.
     pub borrowck_bodies: FxHashMap<LocalDefId, BodyWithBorrowckFacts<'tcx>>,
     /// Extracted host specification sites per host body owner.
@@ -433,30 +433,58 @@ fn classify_spec_body(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     false
 }
 
-/// Builds a two-block self-loop (`bb0 -> bb1 -> bb1`) preserving only return/argument declarations
-/// so `mir_borrowck` and drop elaboration ignore linear moves inside specification bodies without
+/// Constructs the two-block self-loop (`bb0 -> bb1 -> bb1`) used as a borrowck placeholder without
 /// violating `START_BLOCK`'s zero-predecessor invariant.
-fn build_dummy_spec_loop<'tcx>(spec_body: &Body<'tcx>) -> Body<'tcx> {
-    let mut dummy = spec_body.clone();
-    dummy.local_decls.truncate(dummy.arg_count + 1);
-    dummy.var_debug_info.clear();
+fn make_self_loop_blocks<'tcx>(span: Span) -> IndexVec<BasicBlock, BasicBlockData<'tcx>> {
     let loop_block = BasicBlock::from_usize(1);
-    let mut blocks = IndexVec::new();
-    blocks.push(BasicBlockData::new(
-        Some(Terminator {
-            source_info: SourceInfo::outermost(dummy.span),
-            kind: TerminatorKind::Goto { target: loop_block },
-        }),
-        false,
-    ));
-    blocks.push(BasicBlockData::new(
-        Some(Terminator {
-            source_info: SourceInfo::outermost(dummy.span),
-            kind: TerminatorKind::Goto { target: loop_block },
-        }),
-        false,
-    ));
-    *dummy.basic_blocks_mut() = blocks;
+    let mut blocks = IndexVec::with_capacity(2);
+    for _ in 0..2 {
+        blocks.push(BasicBlockData::new(
+            Some(Terminator {
+                source_info: SourceInfo::outermost(span),
+                kind: TerminatorKind::Goto { target: loop_block },
+            }),
+            false,
+        ));
+    }
+    blocks
+}
+
+/// Stashes `body` in `tcx.arena` when translating the crate and returns a minimal self-loop
+/// placeholder (`arg_count + 1` locals, two `Goto` blocks) without cloning the specification CFG.
+fn stash_and_build_dummy_loop<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+    mut body: Body<'tcx>,
+) -> Body<'tcx> {
+    let retain = STATE.lock().unwrap().record_host_sites;
+    let dummy_blocks = make_self_loop_blocks(body.span);
+    if !retain {
+        body.local_decls.truncate(body.arg_count + 1);
+        body.var_debug_info.clear();
+        if body.source_scopes.len() > 1 {
+            body.source_scopes.truncate(1);
+        }
+        *body.basic_blocks_mut() = dummy_blocks;
+        return body;
+    }
+
+    let real_blocks = std::mem::replace(body.basic_blocks_mut(), dummy_blocks);
+    let real_debug_info = std::mem::take(&mut body.var_debug_info);
+    let tail_locals = body.local_decls.raw.split_off(body.arg_count + 1);
+    let tail_scopes = if body.source_scopes.raw.len() > 1 {
+        body.source_scopes.raw.split_off(1)
+    } else {
+        Vec::new()
+    };
+
+    let dummy = body.clone();
+
+    *body.basic_blocks_mut() = real_blocks;
+    body.var_debug_info = real_debug_info;
+    body.local_decls.raw.extend(tail_locals);
+    body.source_scopes.raw.extend(tail_scopes);
+    stash_spec_body(tcx, def_id, body);
     dummy
 }
 
@@ -480,8 +508,7 @@ fn mir_promoted_hook<'tcx>(
     }
 
     process_spec_mir_promoted(tcx, &mut body);
-    let dummy = build_dummy_spec_loop(&body);
-    stash_spec_body(tcx, def_id, body);
+    let dummy = stash_and_build_dummy_loop(tcx, def_id, body);
     (tcx.alloc_steal_mir(dummy), promoted_steal)
 }
 
