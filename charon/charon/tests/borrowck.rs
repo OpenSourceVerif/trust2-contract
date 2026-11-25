@@ -48,9 +48,55 @@ fn compiler_facts_follow_the_exported_cfg_and_survive_serialization() -> anyhow:
 }
 
 #[test]
+fn projected_loan_reservations_identify_the_field_and_reborrow_source() -> anyhow::Result<()> {
+    let krate = util::translate_rust_text(
+        "pub struct Pair { x: i32, y: i32 } pub fn test(mut p: Pair) -> Pair { let r = &mut p.y; let s = &mut *r; *s = p.x; p }",
+        &[
+            "--ullbc",
+            "--mir",
+            "promoted",
+            "--export-borrowck",
+            "--sysroot",
+            "default",
+        ],
+    )?;
+    let facts = krate
+        .borrowck
+        .as_ref()
+        .unwrap()
+        .bodies
+        .iter()
+        .find(|b| b.loans.len() == 2)
+        .unwrap();
+    assert!(facts.unsupported.is_none());
+    let Body::Unstructured(body) = &krate.fun_decls[facts.function_id].body else {
+        panic!("expected ULLBC")
+    };
+    for (i, loan) in facts.loans.iter().enumerate() {
+        let u::StatementKind::Assign(dst, Rvalue::Ref { place, .. }) =
+            &body.body[loan.reserve.block].statements[loan.reserve.statement_index].kind
+        else {
+            panic!("expected borrow assignment")
+        };
+        assert_eq!(dst.as_local(), Some(loan.assigned));
+        let PlaceKind::Projection(base, elem) = &place.kind else {
+            panic!("expected projection")
+        };
+        assert_eq!(base.as_local(), Some(loan.borrowed));
+        if i == 0 {
+            assert!(matches!(elem, ProjectionElem::Field(_, id) if id.index() == 1));
+        } else {
+            assert!(matches!(elem, ProjectionElem::Deref));
+            assert_eq!(loan.borrowed, facts.loans[0].assigned);
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn unsupported_adapter_data_is_explicit() -> anyhow::Result<()> {
     let krate = util::translate_rust_text(
-        "pub fn test() -> i32 { let mut x = 0; let r = &mut x; let s = &mut *r; *s = 1; x }",
+        "pub fn test(a: &mut [i32], i: usize) { let r = &mut a[i]; *r = 1; }",
         &["--ullbc", "--export-borrowck", "--sysroot", "default"],
     )?;
     assert!(
@@ -58,7 +104,7 @@ fn unsupported_adapter_data_is_explicit() -> anyhow::Result<()> {
             .unsupported
             .as_ref()
             .unwrap()
-            .contains("reborrow")
+            .contains("projected loan")
     );
     Ok(())
 }
