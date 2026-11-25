@@ -11,24 +11,25 @@
 //! 2. Specification bodies themselves are pure logical formulas and should allow multiple by-value
 //!    uses of non-`Copy` values or projections out of shared references without runtime moves.
 //!
-//! This module intercepts `mir_built` and `mir_promoted` via `override_queries`:
-//! - For **host bodies**, `mir_built` records each specification closure and its captured places,
-//!   then erases the closure construction and helper call (`Goto` for function contracts; a
-//!   zero-capture `entry(anchor_id)` marker for inline assertions).
+//! This module intercepts `mir_promoted` and `check_liveness` via `override_queries`:
+//! - For **host bodies**, `mir_promoted` records each specification closure, its captured places,
+//!   and its promoted-MIR anchor location, then erases the closure construction and helper call
+//!   (`Goto` for function contracts; a zero-capture `entry(anchor_id)` marker for inline assertions).
 //! - For **specification bodies** (spec closures, transitively nested quantifier closures, and
-//!   `TypeInvariant::invariant` implementations), `mir_built` validates pure-spec structural rules
-//!   (no loops, no `&mut` borrows, no projected writes, no explicit `drop` calls) and strips all
-//!   implicit runtime drops; before `mir_borrowck` runs, `prepare_crate_specs` snapshots their
-//!   `mir_built` bodies for Charon while `mir_promoted` substitutes a trivial self-loop so
-//!   `mir_borrowck` and drop elaboration ignore linear move constraints inside specifications.
+//!   `TypeInvariant::invariant` implementations), `mir_promoted` validates pure-spec structural
+//!   rules (no loops, no `&mut` borrows, no projected writes, no explicit `drop` calls), strips all
+//!   implicit runtime drops, stashes the cleaned promoted `Body` in `tcx.arena` for Charon, and
+//!   substitutes a trivial self-loop so `mir_borrowck` and drop elaboration ignore linear move
+//!   constraints inside specifications.
 //! - After `mir_borrowck` runs on the cleaned host bodies, `prepare_crate_specs` checks at every
-//!   anchor point (via `MoveData`, `MaybeUninitializedPlaces`, `Borrows`, and `places_conflict`)
-//!   that captured host places are initialized, not moved, and not frozen by an active `&mut`.
+//!   recorded anchor location (via `MoveData`, `MaybeUninitializedPlaces`, `Borrows`, and
+//!   `places_conflict`) that captured host places are initialized, not moved, and not frozen by an
+//!   active `&mut`.
 
 use crate::hax::Spanned;
 use charon_lib::ast::ContractAssertKind;
 use charon_lib::options::CliOpts;
-use rustc_abi::{FieldIdx, Size, VariantIdx};
+use rustc_abi::{FieldIdx, VariantIdx};
 use rustc_borrowck::consumers::{
     BodyWithBorrowckFacts, Borrows, ConsumerOptions, PlaceConflictBias,
     get_bodies_with_borrowck_facts, places_conflict,
@@ -59,14 +60,33 @@ use rustc_span::{DUMMY_SP, Span, sym};
 use std::num::NonZeroU32;
 use std::sync::{LazyLock, Mutex};
 
+/// Lifetime-erased handle to a `&'tcx Body<'tcx>` allocated in `tcx.arena` during the active
+/// compiler session.
+///
+/// Semantically represents `&'tcx Body<'tcx>`, paired with `(session_id, gcx_addr)` so
+/// `take_stashed_spec_bodies` can verify it is redeemed against the exact originating `TyCtxt<'tcx>`.
+#[derive(Clone, Copy)]
+struct StashedSpecBody {
+    /// Monotonic driver session identifier matching `GlobalSpecState::session_id`.
+    session_id: u64,
+    /// Address of the owning `GlobalCtxt<'tcx>`.
+    gcx_addr: usize,
+    /// Raw pointer to the arena-allocated `Body<'tcx>`.
+    body_ptr: usize,
+}
+
 /// Global per-driver state shared with `rustc`'s `override_queries` function pointers.
 #[derive(Default)]
 struct GlobalSpecState {
+    /// Monotonic counter incremented whenever state is reset or configured for a new session.
+    session_id: u64,
     /// Whether this compiler invocation translates the crate into ULLBC (`true`) or only erases
     /// specifications for a normal dependency build (`false`).
     record_host_sites: bool,
     /// Local definitions whose bodies are pure logical specifications.
     spec_bodies: FxHashSet<LocalDefId>,
+    /// Pre-loop promoted `Body<'tcx>` handles for specification items, drained by `prepare_crate_specs`.
+    stashed_spec_bodies: FxHashMap<LocalDefId, StashedSpecBody>,
     /// Extracted specification sites per host body owner, drained by `prepare_crate_specs`.
     host_sites: FxHashMap<LocalDefId, Vec<HostSpecSite>>,
 }
@@ -77,24 +97,80 @@ static STATE: LazyLock<Mutex<GlobalSpecState>> =
 /// Clears global specification state before or after a compiler invocation.
 pub(crate) fn reset_state() {
     let mut state = STATE.lock().unwrap();
+    state.session_id += 1;
     state.record_host_sites = false;
     state.spec_bodies.clear();
+    state.stashed_spec_bodies.clear();
     state.host_sites.clear();
 }
 
-/// Configures whether query hooks should retain `HostSpecSite` metadata for Charon translation.
+/// Configures whether query hooks should retain specification bodies and `HostSpecSite` metadata
+/// for Charon translation.
 pub(crate) fn configure_session(record_host_sites: bool) {
     let mut state = STATE.lock().unwrap();
+    state.session_id += 1;
     state.record_host_sites = record_host_sites;
     state.spec_bodies.clear();
+    state.stashed_spec_bodies.clear();
     state.host_sites.clear();
 }
 
-/// Installs `mir_built`, `mir_promoted`, and `check_liveness` query hooks into `providers`.
+/// Installs `mir_promoted` and `check_liveness` query hooks into `providers`.
 pub(crate) fn install_query_overrides(providers: &mut Providers) {
-    providers.queries.mir_built = mir_built_hook;
     providers.queries.mir_promoted = mir_promoted_hook;
     providers.queries.check_liveness = check_liveness_hook;
+}
+
+/// Returns the address of the `'tcx` arena backing `tcx`.
+fn tcx_arena_addr(tcx: TyCtxt<'_>) -> usize {
+    std::ptr::from_ref(tcx.arena) as usize
+}
+
+/// Allocates `body` in `tcx.arena` and records it in `STATE` if this session translates the crate.
+fn stash_spec_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId, body: Body<'tcx>) {
+    let mut state = STATE.lock().unwrap();
+    if !state.record_host_sites {
+        return;
+    }
+    let arena_ref: &'tcx Body<'tcx> = tcx.arena.alloc(body);
+    let session_id = state.session_id;
+    state.stashed_spec_bodies.insert(
+        def_id,
+        StashedSpecBody {
+            session_id,
+            gcx_addr: tcx_arena_addr(tcx),
+            body_ptr: std::ptr::from_ref(arena_ref) as usize,
+        },
+    );
+}
+
+/// Drains all stashed specification bodies allocated in `tcx.arena`.
+fn take_stashed_spec_bodies<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    state: &mut GlobalSpecState,
+) -> FxHashMap<LocalDefId, Body<'tcx>> {
+    let expected_session = state.session_id;
+    let expected_arena = tcx_arena_addr(tcx);
+    std::mem::take(&mut state.stashed_spec_bodies)
+        .into_iter()
+        .map(|(def_id, entry)| {
+            assert_eq!(entry.session_id, expected_session);
+            assert_eq!(entry.gcx_addr, expected_arena);
+            // SAFETY:
+            // Required by `&*(entry.body_ptr as *const Body<'tcx>)`:
+            // - `entry.body_ptr` points to an aligned, initialized, immutable `Body<'tcx>` valid
+            //   for `'tcx`.
+            // Maintained by:
+            // - `stash_spec_body` obtains `entry.body_ptr` from `tcx.arena.alloc(body)` and tags it
+            //   with `(session_id, gcx_addr)`.
+            // - Holding `tcx: TyCtxt<'tcx>` keeps the originating `GlobalCtxt` and its arena alive
+            //   at `expected_gcx` for `'tcx`, verified by the assertions above.
+            // Trusted callees:
+            // - `rustc_middle::arena::Arena::alloc` preserves pointee validity for `'tcx`.
+            let body = unsafe { &*(entry.body_ptr as *const Body<'tcx>) }.clone();
+            (def_id, body)
+        })
+        .collect()
 }
 
 /// Prepared MIR artifacts extracted before borrow checking and drop elaboration.
@@ -133,6 +209,8 @@ pub(crate) enum HostSpecKind {
         kind: ContractAssertKind,
         /// 1-based anchor identifier encoded in `internal::entry(anchor_id)`.
         anchor_id: NonZeroU32,
+        /// Terminator `Location` of the anchor call in promoted MIR (`facts.body`).
+        location: Location,
     },
 }
 
@@ -334,11 +412,11 @@ fn is_type_invariant_impl_fn(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool 
 }
 
 /// Determines whether `local_def_id` is a pure specification body, ensuring any lexical parent's
-/// `mir_built` has already run so closure classification is deterministic under `-Zthreads`.
+/// `mir_promoted` has already run so closure classification is deterministic under `-Zthreads`.
 fn classify_spec_body(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     if tcx.def_kind(local_def_id) == DefKind::Closure {
         let parent = tcx.local_parent(local_def_id);
-        let _ = tcx.mir_built(parent);
+        let _ = tcx.mir_promoted(parent);
         let mut state = STATE.lock().unwrap();
         if state.spec_bodies.contains(&local_def_id) || state.spec_bodies.contains(&parent) {
             state.spec_bodies.insert(local_def_id);
@@ -353,38 +431,11 @@ fn classify_spec_body(tcx: TyCtxt<'_>, local_def_id: LocalDefId) -> bool {
     false
 }
 
-/// Custom `mir_built` query provider: validates/cleans spec bodies and erases spec captures from
-/// host bodies.
-fn mir_built_hook<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> &'tcx Steal<Body<'tcx>> {
-    let is_spec = classify_spec_body(tcx, def_id);
-    let mut body =
-        (rustc_interface::DEFAULT_QUERY_PROVIDERS.queries.mir_built)(tcx, def_id).steal();
-    if is_spec {
-        process_spec_mir_built(tcx, &mut body);
-    } else {
-        process_host_mir_built(tcx, def_id, &mut body);
-    }
-    tcx.alloc_steal_mir(body)
-}
-
-/// Custom `mir_promoted` query provider: replaces specification bodies with a trivial self-loop so
-/// `mir_borrowck` and drop elaboration never reject non-linear moves inside specifications.
-fn mir_promoted_hook<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: LocalDefId,
-) -> (
-    &'tcx Steal<Body<'tcx>>,
-    &'tcx Steal<IndexVec<mir::Promoted, Body<'tcx>>>,
-) {
-    let is_spec = classify_spec_body(tcx, def_id);
-    let (body_steal, promoted_steal) = (rustc_interface::DEFAULT_QUERY_PROVIDERS
-        .queries
-        .mir_promoted)(tcx, def_id);
-    if !is_spec {
-        return (body_steal, promoted_steal);
-    }
-
-    let mut dummy = body_steal.steal();
+/// Builds a two-block self-loop (`bb0 -> bb1 -> bb1`) preserving only return/argument declarations
+/// so `mir_borrowck` and drop elaboration ignore linear moves inside specification bodies without
+/// violating `START_BLOCK`'s zero-predecessor invariant.
+fn build_dummy_spec_loop<'tcx>(spec_body: &Body<'tcx>) -> Body<'tcx> {
+    let mut dummy = spec_body.clone();
     dummy.local_decls.truncate(dummy.arg_count + 1);
     dummy.var_debug_info.clear();
     let loop_block = BasicBlock::from_usize(1);
@@ -404,6 +455,31 @@ fn mir_promoted_hook<'tcx>(
         false,
     ));
     *dummy.basic_blocks_mut() = blocks;
+    dummy
+}
+
+/// Custom `mir_promoted` query provider: erases specification captures from host bodies, and
+/// validates, stashes, and substitutes a dummy self-loop for specification bodies.
+fn mir_promoted_hook<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    def_id: LocalDefId,
+) -> (
+    &'tcx Steal<Body<'tcx>>,
+    &'tcx Steal<IndexVec<mir::Promoted, Body<'tcx>>>,
+) {
+    let is_spec = classify_spec_body(tcx, def_id);
+    let (body_steal, promoted_steal) = (rustc_interface::DEFAULT_QUERY_PROVIDERS
+        .queries
+        .mir_promoted)(tcx, def_id);
+    let mut body = body_steal.steal();
+    if !is_spec {
+        process_host_mir_promoted(tcx, def_id, &mut body);
+        return (tcx.alloc_steal_mir(body), promoted_steal);
+    }
+
+    process_spec_mir_promoted(tcx, &mut body);
+    let dummy = build_dummy_spec_loop(&body);
+    stash_spec_body(tcx, def_id, body);
     (tcx.alloc_steal_mir(dummy), promoted_steal)
 }
 
@@ -476,7 +552,7 @@ fn rvalue_mentions_explicit_drop<'tcx>(
 
 /// Validates structural purity invariants on a specification MIR body and strips all implicit
 /// runtime `Drop` terminators.
-fn process_spec_mir_built<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+fn process_spec_mir_promoted<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let mut nested_closures = Vec::new();
 
     for block_data in body.basic_blocks.iter() {
@@ -606,8 +682,22 @@ fn find_non_cleanup_cycle_span(body: &Body<'_>) -> Option<Span> {
 
 /// Scans a host MIR body for `trust2_contract::internal` specification blocks, records their
 /// closures and captured places, and erases closure captures from the host MIR.
-fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body: &mut Body<'tcx>) {
-    let mut sites = Vec::new();
+fn process_host_mir_promoted<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    host_def_id: LocalDefId,
+    body: &mut Body<'tcx>,
+) {
+    enum RawHostSiteKind {
+        Precondition,
+        Postcondition,
+        InlineAssert {
+            kind: ContractAssertKind,
+            anchor_id: NonZeroU32,
+            anchor_block: BasicBlock,
+        },
+    }
+
+    let mut raw_sites = Vec::new();
     let mut spec_closures = Vec::new();
     let mut erased_locals = FxHashSet::default();
     let mut next_anchor: u32 = 1;
@@ -696,6 +786,7 @@ fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body
             erased_locals.insert(spec_dest.local);
         }
 
+        // Suppress `unused_variables` warnings when a local is only read in specifications.
         let mention_stmts: Vec<_> = extracted
             .captures
             .iter()
@@ -707,7 +798,7 @@ fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body
             })
             .collect();
 
-        let host_kind = match spec_call_kind {
+        let raw_kind = match spec_call_kind {
             SpecCallKind::Precondition => {
                 if entry_dest.projection.is_empty() {
                     erased_locals.insert(entry_dest.local);
@@ -717,7 +808,7 @@ fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body
                 body.basic_blocks_mut()[bb_spec].statements = mention_stmts;
                 body.basic_blocks_mut()[bb_spec].terminator_mut().kind =
                     TerminatorKind::Goto { target: bb_after };
-                HostSpecKind::Precondition
+                RawHostSiteKind::Precondition
             }
             SpecCallKind::Postcondition => {
                 if entry_dest.projection.is_empty() {
@@ -728,7 +819,7 @@ fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body
                 body.basic_blocks_mut()[bb_spec].statements = mention_stmts;
                 body.basic_blocks_mut()[bb_spec].terminator_mut().kind =
                     TerminatorKind::Goto { target: bb_after };
-                HostSpecKind::Postcondition
+                RawHostSiteKind::Postcondition
             }
             SpecCallKind::Assert | SpecCallKind::Assume => {
                 let anchor_id = NonZeroU32::new(next_anchor).unwrap();
@@ -759,17 +850,21 @@ fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body
                 spec_stmts.extend(mention_stmts);
                 body.basic_blocks_mut()[bb_spec].terminator_mut().kind =
                     TerminatorKind::Goto { target: bb_after };
-                HostSpecKind::InlineAssert { kind, anchor_id }
+                RawHostSiteKind::InlineAssert {
+                    kind,
+                    anchor_id,
+                    anchor_block: bb_entry,
+                }
             }
             SpecCallKind::Entry | SpecCallKind::ForAll | SpecCallKind::Exists => unreachable!(),
         };
 
-        sites.push(HostSpecSite {
-            kind: host_kind,
-            closure_def_id: extracted.closure_def_id,
-            captures: extracted.captures.into_boxed_slice(),
-            span: spec_span,
-        });
+        raw_sites.push((
+            raw_kind,
+            extracted.closure_def_id,
+            extracted.captures.into_boxed_slice(),
+            spec_span,
+        ));
     }
 
     if !erased_locals.is_empty() {
@@ -790,10 +885,37 @@ fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body
         }
     }
 
-    if !spec_closures.is_empty() || !sites.is_empty() {
+    if !spec_closures.is_empty() || !raw_sites.is_empty() {
         let mut state = STATE.lock().unwrap();
         state.spec_bodies.extend(spec_closures);
-        if state.record_host_sites && !sites.is_empty() {
+        if state.record_host_sites && !raw_sites.is_empty() {
+            let sites = raw_sites
+                .into_iter()
+                .map(|(raw_kind, closure_def_id, captures, span)| {
+                    let kind = match raw_kind {
+                        RawHostSiteKind::Precondition => HostSpecKind::Precondition,
+                        RawHostSiteKind::Postcondition => HostSpecKind::Postcondition,
+                        RawHostSiteKind::InlineAssert {
+                            kind,
+                            anchor_id,
+                            anchor_block,
+                        } => HostSpecKind::InlineAssert {
+                            kind,
+                            anchor_id,
+                            location: Location {
+                                block: anchor_block,
+                                statement_index: body.basic_blocks[anchor_block].statements.len(),
+                            },
+                        },
+                    };
+                    HostSpecSite {
+                        kind,
+                        closure_def_id,
+                        captures,
+                        span,
+                    }
+                })
+                .collect();
             state.host_sites.insert(host_def_id, sites);
         }
     }
@@ -1037,8 +1159,8 @@ fn extract_spec_block_closure<'tcx>(
     })
 }
 
-/// Forces `mir_built` across the crate, snapshots pre-borrowck MIR for all specification bodies,
-/// and checks host borrow/initialization legality at every specification anchor.
+/// Forces `mir_promoted` across the crate, drains stashed pre-loop promoted MIR for all
+/// specification bodies, and checks host borrow/initialization legality at every specification anchor.
 ///
 /// Returns `Err(())` if `rustc` or specification legality checks reported any errors.
 pub(crate) fn prepare_crate_specs<'tcx>(
@@ -1048,7 +1170,7 @@ pub(crate) fn prepare_crate_specs<'tcx>(
     for def_id in tcx.hir_body_owners() {
         let def_kind = tcx.def_kind(def_id);
         if !matches!(def_kind, DefKind::AnonConst | DefKind::InlineConst) {
-            let _ = tcx.mir_built(def_id);
+            let _ = tcx.mir_promoted(def_id);
         }
     }
 
@@ -1056,23 +1178,13 @@ pub(crate) fn prepare_crate_specs<'tcx>(
         return Err(());
     }
 
-    let (spec_ids, host_sites): (Vec<LocalDefId>, FxHashMap<LocalDefId, Vec<HostSpecSite>>) = {
+    let (spec_mir_bodies, host_sites) = {
         let mut state = STATE.lock().unwrap();
         (
-            state.spec_bodies.iter().copied().collect(),
+            take_stashed_spec_bodies(tcx, &mut state),
             std::mem::take(&mut state.host_sites),
         )
     };
-
-    let mut spec_mir_bodies = FxHashMap::default();
-    for spec_id in spec_ids {
-        let mir_steal = tcx.mir_built(spec_id);
-        assert!(
-            !mir_steal.is_stolen(),
-            "specification `mir_built` for {spec_id:?} was unexpectedly stolen before snapshot"
-        );
-        spec_mir_bodies.insert(spec_id, mir_steal.borrow().clone());
-    }
 
     let mut borrowck_bodies: FxHashMap<LocalDefId, BodyWithBorrowckFacts<'tcx>> =
         FxHashMap::default();
@@ -1117,7 +1229,6 @@ fn validate_host_sites_at_anchors<'tcx>(
     sites: &[HostSpecSite],
 ) {
     let body = &facts.body;
-    let anchor_locations = collect_anchor_locations(tcx, body);
 
     let move_data = MoveData::gather_moves(body, tcx, |_| true);
     let mut uninit_cursor = MaybeUninitializedPlaces::new(tcx, body, &move_data)
@@ -1139,12 +1250,12 @@ fn validate_host_sites_at_anchors<'tcx>(
         }
         let location = match site.kind {
             HostSpecKind::Precondition | HostSpecKind::Postcondition => Location::START,
-            HostSpecKind::InlineAssert { anchor_id, .. } => {
-                let Some(&loc) = anchor_locations.get(&anchor_id.get()) else {
-                    // Anchor block is statically unreachable in promoted MIR.
-                    continue;
-                };
-                loc
+            HostSpecKind::InlineAssert { location, .. } => {
+                debug_assert_eq!(
+                    body.basic_blocks[location.block].statements.len(),
+                    location.statement_index
+                );
+                location
             }
         };
 
@@ -1217,39 +1328,4 @@ fn validate_host_sites_at_anchors<'tcx>(
             }
         }
     }
-}
-
-/// Maps 1-based `anchor_id`s from `internal::entry(anchor_id)` calls to their `mir::Location` in `body`.
-fn collect_anchor_locations<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    body: &Body<'tcx>,
-) -> FxHashMap<u32, Location> {
-    let mut map = FxHashMap::default();
-    for (bb, data) in body.basic_blocks.iter_enumerated() {
-        let Some(term) = &data.terminator else {
-            continue;
-        };
-        let TerminatorKind::Call { func, args, .. } = &term.kind else {
-            continue;
-        };
-        if operand_spec_call(tcx, body, func) != Some(SpecCallKind::Entry) {
-            continue;
-        }
-        if let Some(arg) = args.first()
-            && let Operand::Constant(c) = &arg.node
-            && let Some(val) = c.const_.try_to_bits(Size::from_bytes(4))
-        {
-            let anchor_id = val as u32;
-            if anchor_id != 0 {
-                map.insert(
-                    anchor_id,
-                    Location {
-                        block: bb,
-                        statement_index: data.statements.len(),
-                    },
-                );
-            }
-        }
-    }
-    map
 }

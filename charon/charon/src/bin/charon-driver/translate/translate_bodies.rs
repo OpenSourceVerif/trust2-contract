@@ -812,7 +812,11 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
                 crate::spec_mir::HostSpecKind::Postcondition => {
                     pending.postconditions.push(pending_closure);
                 }
-                crate::spec_mir::HostSpecKind::InlineAssert { kind, anchor_id } => {
+                crate::spec_mir::HostSpecKind::InlineAssert {
+                    kind,
+                    anchor_id,
+                    location: _,
+                } => {
                     pending
                         .inline_asserts
                         .insert(anchor_id.get(), (kind, pending_closure));
