@@ -61,7 +61,7 @@ fn recognize_spec_call(name: &Name) -> Option<BuiltinFunId> {
     };
 
     match ident {
-        "entry" => Some(BuiltinFunId::SpecEntry),
+        "anchor" => Some(BuiltinFunId::SpecEntry),
         "precondition" => Some(BuiltinFunId::SpecPrecondition),
         "postcondition" => Some(BuiltinFunId::SpecPostcondition),
         "forall" => Some(BuiltinFunId::SpecForAll),

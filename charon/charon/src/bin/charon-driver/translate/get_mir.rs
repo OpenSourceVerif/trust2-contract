@@ -37,15 +37,15 @@ impl<'tcx> ItemTransCtx<'tcx, '_> {
             .def_id
             .as_real_def_id()
             .and_then(|id| id.as_local())
-            && let Some(body) = self.t_ctx.spec_mir_bodies.get(&local).cloned()
+            && let Some(&body) = self.t_ctx.spec_mir_bodies.get(&local)
         {
             let s = self.hax_state_with_id();
             return Ok(Some(if self.monomorphize() {
                 let typing_env = s.typing_env();
                 let args = item_ref.rustc_args(s);
-                hax::substitute(tcx, typing_env, Some(args), body)
+                hax::substitute(tcx, typing_env, Some(args), body.clone())
             } else {
-                body
+                body.clone()
             }));
         }
         let mir_level = self.t_ctx.options.mir_level;

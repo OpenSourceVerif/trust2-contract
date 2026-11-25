@@ -4,8 +4,11 @@
 //! these helpers so `rustc` typechecks the specification expressions against the surrounding
 //! scope. `charon-driver` intercepts and erases them before borrow checking.
 
-/// Marks the start or inline anchor of a specification block.
-pub fn entry(_: u32) {}
+/// Delimits the start of a function contract block (`#[precondition]` / `#[postcondition]`).
+pub fn entry() {}
+
+/// Marks the program point of an inline `contract_assert!` or `contract_assume!` with a 0-based ID.
+pub fn anchor(_: u32) {}
 
 /// Attaches a precondition closure to the enclosing function.
 pub fn precondition<T: FnOnce() -> bool>(_: T) {}

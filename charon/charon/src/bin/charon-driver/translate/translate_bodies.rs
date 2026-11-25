@@ -752,7 +752,7 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
         let Some(ItemId::Fun(host_fun_id)) = self.i_ctx.item_id else {
             return Ok(());
         };
-        let Some(sites) = crate::spec_mir::host_spec_sites(host_local_def_id) else {
+        let Some(sites) = self.i_ctx.t_ctx.host_spec_sites.remove(&host_local_def_id) else {
             return Ok(());
         };
 
@@ -812,10 +812,14 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
                 crate::spec_mir::HostSpecKind::Postcondition => {
                     pending.postconditions.push(pending_closure);
                 }
-                crate::spec_mir::HostSpecKind::InlineAssert { kind, anchor_id } => {
+                crate::spec_mir::HostSpecKind::InlineAssert {
+                    kind,
+                    anchor_id,
+                    location: _,
+                } => {
                     pending
                         .inline_asserts
-                        .insert(anchor_id.get(), (kind, pending_closure));
+                        .insert(anchor_id, (kind, pending_closure));
                 }
             }
         }
