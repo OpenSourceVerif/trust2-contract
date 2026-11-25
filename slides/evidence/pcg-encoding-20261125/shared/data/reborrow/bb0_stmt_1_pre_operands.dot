@@ -1,0 +1,28 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?5 mut U/#0"]
+"p1" [label=<<FONT FACE="courier">x: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut U/#0"]
+"p2" [label=<<FONT FACE="courier">_2: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?7 mut U/#0"]
+"r0" [label=<Remote(_1)↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r1" [label=<x↓'?6 before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"p3" [label=<<FONT FACE="courier">*x: E</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="U/#0"]
+"r2" [label=<*x↓RegionsIn(U)>, fontcolor="blue", color="blue", shape="octagon", tooltip="U/#0\
+"]
+"r3" [label=<x↓RegionsIn(U) before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r4" [label=<x↓RegionsIn(U) FUTURE>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r5" [label=<Remote(_1)↓RegionsIn(U)>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+    "r2" -> "r4" [label="Future", id="edge_0", color="purple"]
+    "p1" -> "p3" [label="", id="edge_1", color="green", edgetooltip=""]
+    "r3" -> "r2" [label="", id="edge_2", color="green", edgetooltip=""]
+    "r1" -> "p3" [label="", id="edge_3", color="green", edgetooltip=""]
+    "r3" -> "r4" [label="Future", id="edge_4", color="purple"]
+    "r5" -> "r3" [label="InitialBorrows", id="edge_5", color="purple"]
+    "r0" -> "r1" [label="InitialBorrows", id="edge_6", color="purple"]
+}
+

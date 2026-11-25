@@ -1,0 +1,39 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut i32"]
+"r0" [label=<RETURN↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut i32\
+"]
+"p1" [label=<<FONT FACE="courier">x: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 mut (i32, i32)"]
+"p2" [label=<<FONT FACE="courier">_2: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?8 mut i32"]
+"p3" [label=<<FONT FACE="courier">(*_3) before bb0[5]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p4" [label=<<FONT FACE="courier">_3 before bb0[5]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?9 mut i32"]
+"r1" [label=<_3 before bb0[5]↓'?9 before bb0[3]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?9 mut i32\
+"]
+"p5" [label=<<FONT FACE="courier">(*_2) before bb0[6]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p6" [label=<<FONT FACE="courier">(*x).0</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"r2" [label=<Remote(_1)↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut (i32, i32)\
+"]
+"r3" [label=<x↓'?7 before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut (i32, i32)\
+"]
+"p7" [label=<<FONT FACE="courier">_2: e before bb0[6]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?8 mut i32"]
+"r4" [label=<_2 before bb0[6]↓'?8 before bb0[4]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut i32\
+"]
+"p8" [label=<<FONT FACE="courier">*x</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="(i32, i32)"]
+"p9" [label=<<FONT FACE="courier">(*x).1: E</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+    "p4" -> "p3" [label="", id="edge_0", color="green", edgetooltip=""]
+    "p6" -> "r1" [label="bw0: Default '?3", id="edge_1", color="orange", edgetooltip=""]
+    "r2" -> "r3" [label="InitialBorrows", id="edge_2", color="purple"]
+    "p7" -> "p5" [label="", id="edge_3", color="green", edgetooltip=""]
+    "p3" -> "r4" [label="bw1: Default '?4", id="edge_4", color="orange", edgetooltip=""]
+    "p8" -> "p9" [label="", id="edge_5", color="green", edgetooltip=""]
+    "r4" -> "p5" [label="", id="edge_6", color="green", edgetooltip=""]
+    "p8" -> "p6" [label="", id="edge_7", color="green", edgetooltip=""]
+    "p3" -> "p5" [label="", id="edge_8", style="dashed", color="grey"]
+    "r3" -> "p8" [label="", id="edge_9", color="green", edgetooltip=""]
+    "r1" -> "p3" [label="", id="edge_10", color="green", edgetooltip=""]
+    "p1" -> "p8" [label="", id="edge_11", color="green", edgetooltip=""]
+    "p5" -> "r0" [label="bw2: Default '?5", id="edge_12", color="orange", edgetooltip=""]
+    "p6" -> "p3" [label="", id="edge_13", style="dashed", color="grey"]
+}
+

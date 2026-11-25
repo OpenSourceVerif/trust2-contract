@@ -1,0 +1,102 @@
+{
+  "case": "loop_inv",
+  "function": "main",
+  "block": "bb1",
+  "statement_index": 0,
+  "phase": "pre_operands",
+  "mir": {
+    "stmt": "falseUnwind -> [real: bb2, unwind: bb12]",
+    "debug_stmt": "falseUnwind -> [real: bb2, unwind: bb12]",
+    "span": {
+      "low": {
+        "line": 6,
+        "column": 4
+      },
+      "high": {
+        "line": 13,
+        "column": 5
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": []
+  },
+  "phase_actions": [],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb2": {
+      "actions": []
+    }
+  },
+  "loop_data": {
+    "used_places": {
+      "usages": {
+        "_4": "Exclusive",
+        "(*_10)": "Read",
+        "_13.1": "Exclusive",
+        "_8": "Write",
+        "_3": "Write",
+        "_11": "Exclusive",
+        "_9": "Exclusive",
+        "_5": "Exclusive",
+        "_7": "Exclusive",
+        "_6": "Write",
+        "_10": "Write",
+        "_13": "Write",
+        "i": "Exclusive",
+        "_13.0": "Exclusive",
+        "_12": "Exclusive"
+      }
+    },
+    "live_loop_places": {
+      "usages": {
+        "i": "Exclusive"
+      }
+    },
+    "dot_graphs": [
+      [
+        "Pre-Loop",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n}\n\n"
+      ],
+      [
+        "Place-Label",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n}\n\n"
+      ],
+      [
+        "Post-Expand",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n}\n\n"
+      ],
+      [
+        "Abstraction",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n}\n\n"
+      ],
+      [
+        "To Cut",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n}\n\n"
+      ]
+    ],
+    "loop_blocked_places": {
+      "usages": {}
+    },
+    "ancestors_of_live_places": [
+      [
+        "i: Exclusive",
+        []
+      ]
+    ],
+    "root_places": [],
+    "loop_blocker_places": {
+      "usages": {}
+    },
+    "place_labels": []
+  },
+  "loop_invariant_capabilities": {
+    "bb1": {
+      "_13": "Write",
+      "_3": "Write",
+      "i": "Exclusive"
+    }
+  },
+  "dot": "loop_inv/data/main/bb1_stmt_0_pre_operands.dot"
+}

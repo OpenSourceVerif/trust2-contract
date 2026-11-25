@@ -1,0 +1,2367 @@
+domain ParamTyp  {
+  
+  function s_Param_typ(arg0: s_Param): Type 
+  
+  function s_Param_has_typ(arg0: s_Param, arg1: Type): Bool 
+  
+  axiom s_Param_has_typ_own {
+    (forall p: s_Param ::
+      { s_Param_typ(p) }
+      s_Param_has_typ(p, s_Param_typ(p)))
+  }
+}
+
+domain ParamTyp_make_generic_s_UInt_u32  {
+  
+  axiom s_Param_typ_def_make_generic_s_UInt_u32 {
+    (forall x: s_UInt_u32 ::
+      { make_generic_s_UInt_u32(x) }
+      s_Param_typ(make_generic_s_UInt_u32(x)) == s_UInt_u32_type())
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_UInt_u32 {
+    (forall p: s_Param ::
+      { p.make_concrete_s_UInt_u32, s_Param_typ(p) }
+      s_Param_typ(p) == s_UInt_u32_type() ==>
+      make_generic_s_UInt_u32(p.make_concrete_s_UInt_u32) == p)
+  }
+}
+
+domain ParamTyp_make_generic_s_0_Tuple  {
+  
+  axiom s_Param_typ_def_make_generic_s_0_Tuple {
+    (forall x: s_0_Tuple ::
+      { make_generic_s_0_Tuple(x) }
+      s_Param_typ(make_generic_s_0_Tuple(x)) == s_0_Tuple_type())
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_0_Tuple {
+    (forall p: s_Param ::
+      { s_Param_has_typ(p, s_0_Tuple_type()) }
+      s_Param_typ(p) == s_0_Tuple_type() ==>
+      make_generic_s_0_Tuple(s_0_Tuple_cons()) == p)
+  }
+  
+  axiom make_generic_s_0_Tuple_unit {
+    (forall p: s_Param ::
+      { p.make_concrete_s_0_Tuple }
+      p.make_concrete_s_0_Tuple == s_0_Tuple_cons())
+  }
+}
+
+domain ParamTyp_make_generic_s_loop_borrow$col$$col$List  {
+  
+  axiom s_Param_typ_def_make_generic_s_loop_borrow$col$$col$List {
+    (forall x: s_loop_borrow$col$$col$List ::
+      { make_generic_s_loop_borrow$col$$col$List(x) }
+      s_Param_typ(make_generic_s_loop_borrow$col$$col$List(x)) ==
+      s_loop_borrow$col$$col$List_type())
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_loop_borrow$col$$col$List {
+    (forall p: s_Param ::
+      { p.make_concrete_s_loop_borrow$col$$col$List, s_Param_typ(p) }
+      s_Param_typ(p) == s_loop_borrow$col$$col$List_type() ==>
+      make_generic_s_loop_borrow$col$$col$List(p.make_concrete_s_loop_borrow$col$$col$List) ==
+      p)
+  }
+}
+
+domain ParamTyp_make_generic_s_std$col$$col$boxed$col$$col$Box  {
+  
+  axiom s_Param_typ_def_make_generic_s_std$col$$col$boxed$col$$col$Box {
+    (forall x: s_std$col$$col$boxed$col$$col$Box, T$0: Type, A$1: Type ::
+      { make_generic_s_std$col$$col$boxed$col$$col$Box(x, T$0, A$1) }
+      s_Param_typ(make_generic_s_std$col$$col$boxed$col$$col$Box(x, T$0, A$1)) ==
+      s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1))
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_std$col$$col$boxed$col$$col$Box {
+    (forall p: s_Param ::
+      { p.make_concrete_s_std$col$$col$boxed$col$$col$Box, s_Param_typ(p) }
+      s_Param_typ(p) ==
+      s_std$col$$col$boxed$col$$col$Box_type(s_Param_typ(p).s_std$col$$col$boxed$col$$col$Box_typaram_T$0, s_Param_typ(p).s_std$col$$col$boxed$col$$col$Box_typaram_A$1) ==>
+      make_generic_s_std$col$$col$boxed$col$$col$Box(p.make_concrete_s_std$col$$col$boxed$col$$col$Box, s_Param_typ(p).s_std$col$$col$boxed$col$$col$Box_typaram_T$0, s_Param_typ(p).s_std$col$$col$boxed$col$$col$Box_typaram_A$1) ==
+      p)
+  }
+}
+
+domain ParamTyp_make_generic_s_UInt_usize  {
+  
+  axiom s_Param_typ_def_make_generic_s_UInt_usize {
+    (forall x: s_UInt_usize ::
+      { make_generic_s_UInt_usize(x) }
+      s_Param_typ(make_generic_s_UInt_usize(x)) == s_UInt_usize_type())
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_UInt_usize {
+    (forall p: s_Param ::
+      { p.make_concrete_s_UInt_usize, s_Param_typ(p) }
+      s_Param_typ(p) == s_UInt_usize_type() ==>
+      make_generic_s_UInt_usize(p.make_concrete_s_UInt_usize) == p)
+  }
+}
+
+domain ParamTyp_make_generic_s_Bool  {
+  
+  axiom s_Param_typ_def_make_generic_s_Bool {
+    (forall x: Bool ::
+      { make_generic_s_Bool(x) }
+      s_Param_typ(make_generic_s_Bool(x)) == s_Bool_type())
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_Bool {
+    (forall p: s_Param ::
+      { p.make_concrete_s_Bool, s_Param_typ(p) }
+      s_Param_typ(p) == s_Bool_type() ==>
+      make_generic_s_Bool(p.make_concrete_s_Bool) == p)
+  }
+}
+
+domain ParamTyp_make_generic_s_std$col$$col$alloc$col$$col$Global  {
+  
+  axiom s_Param_typ_def_make_generic_s_std$col$$col$alloc$col$$col$Global {
+    (forall x: s_std$col$$col$alloc$col$$col$Global ::
+      { make_generic_s_std$col$$col$alloc$col$$col$Global(x) }
+      s_Param_typ(make_generic_s_std$col$$col$alloc$col$$col$Global(x)) ==
+      s_std$col$$col$alloc$col$$col$Global_type())
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_std$col$$col$alloc$col$$col$Global {
+    (forall p: s_Param ::
+      { s_Param_has_typ(p, s_std$col$$col$alloc$col$$col$Global_type()) }
+      s_Param_typ(p) == s_std$col$$col$alloc$col$$col$Global_type() ==>
+      make_generic_s_std$col$$col$alloc$col$$col$Global(s_std$col$$col$alloc$col$$col$Global_cons()) ==
+      p)
+  }
+  
+  axiom make_generic_s_std$col$$col$alloc$col$$col$Global_unit {
+    (forall p: s_Param ::
+      { p.make_concrete_s_std$col$$col$alloc$col$$col$Global }
+      p.make_concrete_s_std$col$$col$alloc$col$$col$Global ==
+      s_std$col$$col$alloc$col$$col$Global_cons())
+  }
+}
+
+domain ParamTyp_make_generic_s_Str  {
+  
+  axiom s_Param_typ_def_make_generic_s_Str {
+    (forall x: s_Str ::
+      { make_generic_s_Str(x) }
+      s_Param_typ(make_generic_s_Str(x)) == s_Str_type())
+  }
+  
+  axiom s_Param_typ_variant_make_generic_s_Str {
+    (forall p: s_Param ::
+      { p.make_concrete_s_Str, s_Param_typ(p) }
+      s_Param_typ(p) == s_Str_type() ==>
+      make_generic_s_Str(p.make_concrete_s_Str) == p)
+  }
+}
+
+domain s_UInt_u32  {
+  
+  function s_UInt_u32_cons(arg0: Int): s_UInt_u32 
+  
+  function s_UInt_u32_value(arg0: s_UInt_u32): Int 
+  
+  axiom s_UInt_u32_ax_cons {
+    (forall s: s_UInt_u32 ::
+      { s_UInt_u32_value(s) }
+      s_UInt_u32_cons(s_UInt_u32_value(s)) == s)
+  }
+  
+  axiom s_UInt_u32_ax_bounds {
+    (forall s: s_UInt_u32 ::
+      { s_UInt_u32_value(s) }
+      0 <= s_UInt_u32_value(s) && s_UInt_u32_value(s) <= 4294967295)
+  }
+  
+  axiom s_UInt_u32_ax_value {
+    (forall value: Int ::
+      { s_UInt_u32_cons(value) }
+      0 <= value && value <= 4294967295 ==>
+      s_UInt_u32_value(s_UInt_u32_cons(value)) == value)
+  }
+}
+
+domain s_Int_isize  {
+  
+  function s_Int_isize_cons(arg0: Int): s_Int_isize 
+  
+  function s_Int_isize_value(arg0: s_Int_isize): Int 
+  
+  axiom s_Int_isize_ax_cons {
+    (forall s: s_Int_isize ::
+      { s_Int_isize_value(s) }
+      s_Int_isize_cons(s_Int_isize_value(s)) == s)
+  }
+  
+  axiom s_Int_isize_ax_bounds {
+    (forall s: s_Int_isize ::
+      { s_Int_isize_value(s) }
+      -9223372036854775808 <= s_Int_isize_value(s) &&
+      s_Int_isize_value(s) <= 9223372036854775807)
+  }
+  
+  axiom s_Int_isize_ax_value {
+    (forall value: Int ::
+      { s_Int_isize_cons(value) }
+      -9223372036854775808 <= value && value <= 9223372036854775807 ==>
+      s_Int_isize_value(s_Int_isize_cons(value)) == value)
+  }
+}
+
+domain s_UInt_usize  {
+  
+  function s_UInt_usize_cons(arg0: Int): s_UInt_usize 
+  
+  function s_UInt_usize_value(arg0: s_UInt_usize): Int 
+  
+  axiom s_UInt_usize_ax_cons {
+    (forall s: s_UInt_usize ::
+      { s_UInt_usize_value(s) }
+      s_UInt_usize_cons(s_UInt_usize_value(s)) == s)
+  }
+  
+  axiom s_UInt_usize_ax_bounds {
+    (forall s: s_UInt_usize ::
+      { s_UInt_usize_value(s) }
+      0 <= s_UInt_usize_value(s) &&
+      s_UInt_usize_value(s) <= 18446744073709551615)
+  }
+  
+  axiom s_UInt_usize_ax_value {
+    (forall value: Int ::
+      { s_UInt_usize_cons(value) }
+      0 <= value && value <= 18446744073709551615 ==>
+      s_UInt_usize_value(s_UInt_usize_cons(value)) == value)
+  }
+}
+
+domain s_Str  {
+  
+  
+}
+
+domain TypeRank  {
+  
+  function Type_rank(arg0: Type): Int 
+  
+  axiom rank_Ref_mutable {
+    (forall U$1: Type ::
+      { s_Ref_mutable_type(U$1) }
+      Type_rank(s_Ref_mutable_type(U$1)) > Type_rank(U$1))
+  }
+  
+  axiom rank_std$col$$col$option$col$$col$Option {
+    (forall T$0: Type ::
+      { s_std$col$$col$option$col$$col$Option_type(T$0) }
+      Type_rank(s_std$col$$col$option$col$$col$Option_type(T$0)) >
+      Type_rank(T$0))
+  }
+  
+  axiom rank_std$col$$col$boxed$col$$col$Box {
+    (forall T$0: Type, A$1: Type ::
+      { s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1) }
+      Type_rank(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) >
+      Type_rank(T$0) &&
+      Type_rank(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) >
+      Type_rank(A$1))
+  }
+  
+  axiom rank_std$col$$col$ptr$col$$col$Unique {
+    (forall T$0: Type ::
+      { s_std$col$$col$ptr$col$$col$Unique_type(T$0) }
+      Type_rank(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) >
+      Type_rank(T$0))
+  }
+  
+  axiom rank_std$col$$col$ptr$col$$col$NonNull {
+    (forall T$0: Type ::
+      { s_std$col$$col$ptr$col$$col$NonNull_type(T$0) }
+      Type_rank(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) >
+      Type_rank(T$0))
+  }
+  
+  axiom rank_RawPtr_immutable {
+    (forall T$0: Type ::
+      { s_RawPtr_immutable_type(T$0) }
+      Type_rank(s_RawPtr_immutable_type(T$0)) > Type_rank(T$0))
+  }
+  
+  axiom rank_std$col$$col$marker$col$$col$PhantomData {
+    (forall T$0: Type ::
+      { s_std$col$$col$marker$col$$col$PhantomData_type(T$0) }
+      Type_rank(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)) >
+      Type_rank(T$0))
+  }
+  
+  axiom rank_2_Tuple {
+    (forall T$0: Type, U$1: Type ::
+      { s_2_Tuple_type(T$0, U$1) }
+      Type_rank(s_2_Tuple_type(T$0, U$1)) > Type_rank(T$0) &&
+      Type_rank(s_2_Tuple_type(T$0, U$1)) > Type_rank(U$1))
+  }
+  
+  axiom rank_Ref_immutable {
+    (forall U$1: Type ::
+      { s_Ref_immutable_type(U$1) }
+      Type_rank(s_Ref_immutable_type(U$1)) > Type_rank(U$1))
+  }
+}
+
+domain Inhabited  {
+  
+  function inhabited(arg0: Type): Bool 
+  
+  axiom inhabited_Ref_mutable {
+    (forall U$1: Type ::
+      { inhabited(s_Ref_mutable_type(U$1)) }
+      inhabited(s_Ref_mutable_type(U$1)) == inhabited(U$1))
+  }
+  
+  axiom inhabited_UInt_u32 {
+    inhabited(s_UInt_u32_type())
+  }
+  
+  axiom inhabited_loop_borrow$col$$col$List {
+    inhabited(s_loop_borrow$col$$col$List_type()) ==
+    (inhabited(s_UInt_u32_type()) &&
+    inhabited(s_std$col$$col$option$col$$col$Option_type(s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))))
+  }
+  
+  axiom inhabited_std$col$$col$option$col$$col$Option {
+    (forall T$0: Type ::
+      { inhabited(s_std$col$$col$option$col$$col$Option_type(T$0)) }
+      inhabited(s_std$col$$col$option$col$$col$Option_type(T$0)))
+  }
+  
+  axiom inhabited_std$col$$col$boxed$col$$col$Box {
+    (forall T$0: Type, A$1: Type ::
+      { inhabited(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) }
+      inhabited(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) ==
+      (inhabited(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) &&
+      (inhabited(A$1) && inhabited(T$0))))
+  }
+  
+  axiom inhabited_std$col$$col$ptr$col$$col$Unique {
+    (forall T$0: Type ::
+      { inhabited(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) }
+      inhabited(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) ==
+      (inhabited(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) &&
+      inhabited(s_std$col$$col$marker$col$$col$PhantomData_type(T$0))))
+  }
+  
+  axiom inhabited_std$col$$col$ptr$col$$col$NonNull {
+    (forall T$0: Type ::
+      { inhabited(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) }
+      inhabited(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) ==
+      inhabited(s_RawPtr_immutable_type(T$0)))
+  }
+  
+  axiom inhabited_RawPtr_immutable {
+    (forall T$0: Type ::
+      { inhabited(s_RawPtr_immutable_type(T$0)) }
+      inhabited(s_RawPtr_immutable_type(T$0)))
+  }
+  
+  axiom inhabited_std$col$$col$marker$col$$col$PhantomData {
+    (forall T$0: Type ::
+      { inhabited(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)) }
+      inhabited(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)))
+  }
+  
+  axiom inhabited_std$col$$col$alloc$col$$col$Global {
+    inhabited(s_std$col$$col$alloc$col$$col$Global_type())
+  }
+  
+  axiom inhabited_Int_isize {
+    inhabited(s_Int_isize_type())
+  }
+  
+  axiom inhabited_UInt_usize {
+    inhabited(s_UInt_usize_type())
+  }
+  
+  axiom inhabited_0_Tuple {
+    inhabited(s_0_Tuple_type())
+  }
+  
+  axiom inhabited_Bool {
+    inhabited(s_Bool_type())
+  }
+  
+  axiom inhabited_Never {
+    !inhabited(s_Never_type())
+  }
+  
+  axiom inhabited_2_Tuple {
+    (forall T$0: Type, U$1: Type ::
+      { inhabited(s_2_Tuple_type(T$0, U$1)) }
+      inhabited(s_2_Tuple_type(T$0, U$1)) ==
+      (inhabited(T$0) && inhabited(U$1)))
+  }
+  
+  axiom inhabited_Ref_immutable {
+    (forall U$1: Type ::
+      { inhabited(s_Ref_immutable_type(U$1)) }
+      inhabited(s_Ref_immutable_type(U$1)) == inhabited(U$1))
+  }
+  
+  axiom inhabited_Str {
+    inhabited(s_Str_type())
+  }
+}
+
+domain ReadPerm  {
+  
+  function read(): Perm 
+  
+  axiom read_bounds {
+    none < read() && read() < write
+  }
+}
+
+domain trait_std$col$$col$ptr$col$$col$Pointee  {
+  
+  function std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(arg0: Type): Type 
+  
+  function std$col$$col$ptr$col$$col$Pointee_impl(arg0: Type): Bool 
+}
+
+domain trait_std$col$$col$marker$col$$col$Sized  {
+  
+  function std$col$$col$marker$col$$col$Sized_impl(arg0: Type): Bool 
+}
+
+domain trait_std$col$$col$marker$col$$col$MetaSized  {
+  
+  function std$col$$col$marker$col$$col$MetaSized_impl(arg0: Type): Bool 
+}
+
+domain trait_std$col$$col$marker$col$$col$Sized_builtin  {
+  
+  axiom s_Ref_mutable_Sized {
+    (forall U$1: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_Ref_mutable_type(U$1)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_Ref_mutable_type(U$1)))
+  }
+  
+  axiom s_UInt_u32_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_UInt_u32_type())
+  }
+  
+  axiom s_0_Tuple_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_0_Tuple_type())
+  }
+  
+  axiom s_loop_borrow$col$$col$List_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_loop_borrow$col$$col$List_type())
+  }
+  
+  axiom s_std$col$$col$option$col$$col$Option_Sized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$option$col$$col$Option_type(T$0)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$option$col$$col$Option_type(T$0)))
+  }
+  
+  axiom s_std$col$$col$boxed$col$$col$Box_Sized {
+    (forall T$0: Type, A$1: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)))
+  }
+  
+  axiom s_std$col$$col$alloc$col$$col$Global_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$alloc$col$$col$Global_type())
+  }
+  
+  axiom s_std$col$$col$ptr$col$$col$Unique_Sized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$ptr$col$$col$Unique_type(T$0)))
+  }
+  
+  axiom s_std$col$$col$ptr$col$$col$NonNull_Sized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)))
+  }
+  
+  axiom s_RawPtr_immutable_Sized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_RawPtr_immutable_type(T$0)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_RawPtr_immutable_type(T$0)))
+  }
+  
+  axiom s_std$col$$col$marker$col$$col$PhantomData_Sized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)))
+  }
+  
+  axiom s_Int_isize_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_Int_isize_type())
+  }
+  
+  axiom s_UInt_usize_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_UInt_usize_type())
+  }
+  
+  axiom s_Bool_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_Bool_type())
+  }
+  
+  axiom s_Never_Sized {
+    std$col$$col$marker$col$$col$Sized_impl(s_Never_type())
+  }
+  
+  axiom s_2_Tuple_Sized {
+    (forall T$0: Type, U$1: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_2_Tuple_type(T$0, U$1)) }
+      std$col$$col$marker$col$$col$Sized_impl(U$1) ==>
+      std$col$$col$marker$col$$col$Sized_impl(s_2_Tuple_type(T$0, U$1)))
+  }
+  
+  axiom s_Ref_immutable_Sized {
+    (forall U$1: Type ::
+      { std$col$$col$marker$col$$col$Sized_impl(s_Ref_immutable_type(U$1)) }
+      std$col$$col$marker$col$$col$Sized_impl(s_Ref_immutable_type(U$1)))
+  }
+}
+
+domain trait_std$col$$col$marker$col$$col$MetaSized_builtin  {
+  
+  axiom s_Ref_mutable_MetaSized {
+    (forall U$1: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_mutable_type(U$1)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_mutable_type(U$1)))
+  }
+  
+  axiom s_UInt_u32_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_UInt_u32_type())
+  }
+  
+  axiom s_0_Tuple_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_0_Tuple_type())
+  }
+  
+  axiom s_loop_borrow$col$$col$List_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_loop_borrow$col$$col$List_type())
+  }
+  
+  axiom s_std$col$$col$option$col$$col$Option_MetaSized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$option$col$$col$Option_type(T$0)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$option$col$$col$Option_type(T$0)))
+  }
+  
+  axiom s_std$col$$col$boxed$col$$col$Box_MetaSized {
+    (forall T$0: Type, A$1: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(A$1) ==>
+      std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)))
+  }
+  
+  axiom s_std$col$$col$alloc$col$$col$Global_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$alloc$col$$col$Global_type())
+  }
+  
+  axiom s_std$col$$col$ptr$col$$col$Unique_MetaSized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$ptr$col$$col$Unique_type(T$0)))
+  }
+  
+  axiom s_std$col$$col$ptr$col$$col$NonNull_MetaSized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)))
+  }
+  
+  axiom s_RawPtr_immutable_MetaSized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_RawPtr_immutable_type(T$0)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(s_RawPtr_immutable_type(T$0)))
+  }
+  
+  axiom s_std$col$$col$marker$col$$col$PhantomData_MetaSized {
+    (forall T$0: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)))
+  }
+  
+  axiom s_Int_isize_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_Int_isize_type())
+  }
+  
+  axiom s_UInt_usize_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_UInt_usize_type())
+  }
+  
+  axiom s_Bool_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_Bool_type())
+  }
+  
+  axiom s_Never_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_Never_type())
+  }
+  
+  axiom s_2_Tuple_MetaSized {
+    (forall T$0: Type, U$1: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_2_Tuple_type(T$0, U$1)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(U$1) ==>
+      std$col$$col$marker$col$$col$MetaSized_impl(s_2_Tuple_type(T$0, U$1)))
+  }
+  
+  axiom s_Ref_immutable_MetaSized {
+    (forall U$1: Type ::
+      { std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_immutable_type(U$1)) }
+      std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_immutable_type(U$1)))
+  }
+  
+  axiom s_Str_MetaSized {
+    std$col$$col$marker$col$$col$MetaSized_impl(s_Str_type())
+  }
+}
+
+domain trait_std$col$$col$ptr$col$$col$Pointee_builtin  {
+  
+  axiom pointee_metadata_sized {
+    (forall ty: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(ty) }
+      std$col$$col$marker$col$$col$Sized_impl(ty) ==>
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(ty) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_Ref_mutable_Metadata {
+    (forall U$1: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_mutable_type(U$1)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_mutable_type(U$1)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_UInt_u32_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_UInt_u32_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_0_Tuple_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_0_Tuple_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_loop_borrow$col$$col$List_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_loop_borrow$col$$col$List_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_std$col$$col$option$col$$col$Option_Metadata {
+    (forall T$0: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$option$col$$col$Option_type(T$0)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$option$col$$col$Option_type(T$0)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_std$col$$col$boxed$col$$col$Box_Metadata {
+    (forall T$0: Type, A$1: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_std$col$$col$alloc$col$$col$Global_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$alloc$col$$col$Global_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_std$col$$col$ptr$col$$col$Unique_Metadata {
+    (forall T$0: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_std$col$$col$ptr$col$$col$NonNull_Metadata {
+    (forall T$0: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_RawPtr_immutable_Metadata {
+    (forall T$0: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_RawPtr_immutable_type(T$0)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_RawPtr_immutable_type(T$0)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_std$col$$col$marker$col$$col$PhantomData_Metadata {
+    (forall T$0: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_Int_isize_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Int_isize_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_UInt_usize_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_UInt_usize_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_Bool_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Bool_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_Never_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Never_type()) ==
+    s_0_Tuple_type()
+  }
+  
+  axiom s_2_Tuple_Metadata {
+    (forall T$0: Type, U$1: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_2_Tuple_type(T$0, U$1)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_2_Tuple_type(T$0, U$1)) ==
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1))
+  }
+  
+  axiom s_Ref_immutable_Metadata {
+    (forall U$1: Type ::
+      { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_immutable_type(U$1)) }
+      std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_immutable_type(U$1)) ==
+      s_0_Tuple_type())
+  }
+  
+  axiom s_Str_Metadata {
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Str_type()) ==
+    s_UInt_usize_type()
+  }
+}
+
+field p_Ref_mutable_addr: Ref
+
+field p_Ref_mutable_metadata: s_Param
+
+field p_UInt_u32_val: s_UInt_u32
+
+field p_Int_isize_val: s_Int_isize
+
+field p_RawPtr_immutable_addr: Ref
+
+field p_RawPtr_immutable_metadata: s_Param
+
+field p_UInt_usize_val: s_UInt_usize
+
+field p_Bool_val: Bool
+
+field p_Ref_immutable_addr: Ref
+
+field p_Ref_immutable_metadata: s_Param
+
+function f_core$col$$col$panicking$col$$col$panic(_1s: s_Ref_immutable): s_Never
+  decreases *
+
+
+function mir_binop_Lt_UInt_usize_UInt_usize(arg1: s_UInt_usize, arg2: s_UInt_usize): Bool
+{
+  s_UInt_usize_value(arg1) < s_UInt_usize_value(arg2)
+}
+
+function mir_binop_AddWithOverflow_UInt_usize_UInt_usize(arg1: s_UInt_usize,
+  arg2: s_UInt_usize): s_2_Tuple
+{
+  (let val ==
+    (s_UInt_usize_value(arg1) + s_UInt_usize_value(arg2)) in
+    (let wrapped_val ==
+      (val % 18446744073709551616) in
+      s_2_Tuple_cons(make_generic_s_UInt_usize(s_UInt_usize_cons(wrapped_val)), make_generic_s_Bool(wrapped_val !=
+      val))))
+}
+
+function s_Ref_mutable_unreachable(U$1: Type): s_Ref_mutable
+  ensures false
+
+
+function s_Param_unreachable(T$0: Type): s_Param
+  ensures false
+
+
+function s_UInt_u32_unreachable(): s_UInt_u32
+  ensures false
+
+
+function s_0_Tuple_unreachable(): s_0_Tuple
+  ensures false
+
+
+function s_loop_borrow$col$$col$List_unreachable(): s_loop_borrow$col$$col$List
+  ensures false
+
+
+function s_loop_borrow$col$$col$List_field_0(self: Ref): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_loop_borrow$col$$col$List_field_1(self: Ref): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_std$col$$col$option$col$$col$Option_unreachable(T$0: Type): s_std$col$$col$option$col$$col$Option
+  ensures false
+
+
+function s_std$col$$col$option$col$$col$Option_1_field_0(self: Ref, T$0: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_std$col$$col$option$col$$col$Option_discr(self: s_std$col$$col$option$col$$col$Option): s_Int_isize
+{
+  s_Int_isize_cons((self.iss_std$col$$col$option$col$$col$Option_1_cons ?
+    1 :
+    0))
+}
+
+function s_Int_isize_unreachable(): s_Int_isize
+  ensures false
+
+
+function s_std$col$$col$boxed$col$$col$Box_unreachable(T$0: Type, A$1: Type): s_std$col$$col$boxed$col$$col$Box
+  ensures false
+
+
+function s_std$col$$col$boxed$col$$col$Box_address(ptr: s_std$col$$col$ptr$col$$col$Unique): Ref
+{
+  ptr.s_std$col$$col$ptr$col$$col$Unique_0.s_std$col$$col$ptr$col$$col$NonNull_0.s_RawPtr_immutable_0
+}
+
+function s_std$col$$col$boxed$col$$col$Box_metadata(ptr: s_std$col$$col$ptr$col$$col$Unique): s_Param
+{
+  ptr.s_std$col$$col$ptr$col$$col$Unique_0.s_std$col$$col$ptr$col$$col$NonNull_0.s_RawPtr_immutable_1
+}
+
+function s_std$col$$col$boxed$col$$col$Box_mk_unique(ptr: s_std$col$$col$ptr$col$$col$Unique,
+  address: Ref, metadata: s_Param): s_std$col$$col$ptr$col$$col$Unique
+{
+  s_std$col$$col$ptr$col$$col$Unique_cons(s_std$col$$col$ptr$col$$col$NonNull_cons(s_RawPtr_immutable_cons(address, metadata)), ptr.s_std$col$$col$ptr$col$$col$Unique_1)
+}
+
+function s_std$col$$col$boxed$col$$col$Box_field_0(self: Ref, T$0: Type, A$1: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_std$col$$col$boxed$col$$col$Box_field_1(self: Ref, T$0: Type, A$1: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_std$col$$col$ptr$col$$col$Unique_unreachable(T$0: Type): s_std$col$$col$ptr$col$$col$Unique
+  ensures false
+
+
+function s_std$col$$col$ptr$col$$col$Unique_field_0(self: Ref, T$0: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_std$col$$col$ptr$col$$col$Unique_field_1(self: Ref, T$0: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_std$col$$col$ptr$col$$col$NonNull_unreachable(T$0: Type): s_std$col$$col$ptr$col$$col$NonNull
+  ensures false
+
+
+function s_std$col$$col$ptr$col$$col$NonNull_field_0(self: Ref, T$0: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_RawPtr_immutable_unreachable(T$0: Type): s_RawPtr_immutable
+  ensures false
+
+
+function s_std$col$$col$marker$col$$col$PhantomData_unreachable(T$0: Type): s_std$col$$col$marker$col$$col$PhantomData
+  ensures false
+
+
+function s_UInt_usize_unreachable(): s_UInt_usize
+  ensures false
+
+
+function s_Bool_unreachable(): Bool
+  ensures false
+
+
+function s_Never_unreachable(): s_Never
+  ensures false
+
+
+function s_Never_discr(self: s_Never): s_Int_isize
+  ensures false
+
+
+function s_2_Tuple_unreachable(T$0: Type, U$1: Type): s_2_Tuple
+  ensures false
+
+
+function s_2_Tuple_field_0(self: Ref, T$0: Type, U$1: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_2_Tuple_field_1(self: Ref, T$0: Type, U$1: Type): Ref
+  ensures (self == null) == (result == null)
+
+
+function s_std$col$$col$alloc$col$$col$Global_unreachable(): s_std$col$$col$alloc$col$$col$Global
+  ensures false
+
+
+function s_Ref_immutable_unreachable(U$1: Type): s_Ref_immutable
+  ensures false
+
+
+function s_Str_unreachable(): s_Str
+  ensures false
+
+
+function p_Ref_mutable_arbitrary_value(r: Ref, metadata: s_Param, U$1: Type): s_Ref_mutable
+  ensures result.s_Ref_mutable_0 == r
+  ensures result.s_Ref_mutable_1 == metadata
+
+
+function p_Ref_mutable_snap(self: Ref, U$1: Type): s_Ref_mutable
+  requires acc(p_Ref_mutable(self, U$1), write)
+  ensures s_Param_typ(result.s_Ref_mutable_1) ==
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1)
+{
+  (unfolding acc(p_Ref_mutable(self, U$1), write) in
+    p_Ref_mutable_arbitrary_value(self.p_Ref_mutable_addr, self.p_Ref_mutable_metadata,
+    U$1))
+}
+
+function p_Param_snap(self: Ref, T$0: Type): s_Param
+  requires acc(p_Param(self, T$0), write)
+  ensures s_Param_typ(result) == T$0
+
+
+function p_UInt_u32_snap(self: Ref): s_UInt_u32
+  requires acc(p_UInt_u32(self), write)
+{
+  (unfolding acc(p_UInt_u32(self), write) in self.p_UInt_u32_val)
+}
+
+function p_loop_borrow$col$$col$List_snap(self: Ref): s_loop_borrow$col$$col$List
+  requires acc(p_loop_borrow$col$$col$List(self), write)
+{
+  (unfolding acc(p_loop_borrow$col$$col$List(self), write) in
+    s_loop_borrow$col$$col$List_cons(p_UInt_u32_snap(s_loop_borrow$col$$col$List_field_0(self)), p_std$col$$col$option$col$$col$Option_snap(s_loop_borrow$col$$col$List_field_1(self),
+    s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))))
+}
+
+function p_std$col$$col$option$col$$col$Option_field_discr(self: Ref): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_std$col$$col$option$col$$col$Option_snap(self: Ref, T$0: Type): s_std$col$$col$option$col$$col$Option
+  requires acc(p_std$col$$col$option$col$$col$Option(self, T$0), write)
+{
+  (unfolding acc(p_std$col$$col$option$col$$col$Option(self, T$0), write) in
+    (p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(self)) ==
+    s_Int_isize_cons(1) ?
+      (unfolding acc(p_std$col$$col$option$col$$col$Option_1_owned(self, T$0), write) in
+        s_std$col$$col$option$col$$col$Option_1_cons(p_Param_snap(s_std$col$$col$option$col$$col$Option_1_field_0(self,
+        T$0), T$0))) :
+      (p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(self)) ==
+      s_Int_isize_cons(0) ?
+        (unfolding acc(p_std$col$$col$option$col$$col$Option_0_owned(self, T$0), write) in
+          s_std$col$$col$option$col$$col$Option_0_cons()) :
+        s_std$col$$col$option$col$$col$Option_unreachable(T$0))))
+}
+
+function p_Int_isize_snap(self: Ref): s_Int_isize
+  requires acc(p_Int_isize(self), write)
+{
+  (unfolding acc(p_Int_isize(self), write) in self.p_Int_isize_val)
+}
+
+function p_std$col$$col$boxed$col$$col$Box_address(self: Ref, T$0: Type, A$1: Type): Ref
+  requires inhabited(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) &&
+    acc(p_std$col$$col$ptr$col$$col$Unique(s_std$col$$col$boxed$col$$col$Box_field_0(self,
+    T$0, A$1), T$0), write)
+{
+  s_std$col$$col$boxed$col$$col$Box_address(p_std$col$$col$ptr$col$$col$Unique_snap(s_std$col$$col$boxed$col$$col$Box_field_0(self,
+  T$0, A$1), T$0))
+}
+
+function p_std$col$$col$boxed$col$$col$Box_metadata(self: Ref, T$0: Type, A$1: Type): s_Param
+  requires inhabited(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) &&
+    acc(p_std$col$$col$ptr$col$$col$Unique(s_std$col$$col$boxed$col$$col$Box_field_0(self,
+    T$0, A$1), T$0), write)
+{
+  s_std$col$$col$boxed$col$$col$Box_metadata(p_std$col$$col$ptr$col$$col$Unique_snap(s_std$col$$col$boxed$col$$col$Box_field_0(self,
+  T$0, A$1), T$0))
+}
+
+function p_std$col$$col$boxed$col$$col$Box_snap(self: Ref, T$0: Type, A$1: Type): s_std$col$$col$boxed$col$$col$Box
+  requires acc(p_std$col$$col$boxed$col$$col$Box(self, T$0, A$1), write)
+{
+  (unfolding acc(p_std$col$$col$boxed$col$$col$Box(self, T$0, A$1), write) in
+    s_std$col$$col$boxed$col$$col$Box_cons(p_std$col$$col$ptr$col$$col$Unique_snap(s_std$col$$col$boxed$col$$col$Box_field_0(self,
+    T$0, A$1), T$0), p_Param_snap(s_std$col$$col$boxed$col$$col$Box_field_1(self,
+    T$0, A$1), A$1), p_Param_snap(p_std$col$$col$boxed$col$$col$Box_address(self,
+    T$0, A$1), T$0)))
+}
+
+function p_std$col$$col$ptr$col$$col$Unique_snap(self: Ref, T$0: Type): s_std$col$$col$ptr$col$$col$Unique
+  requires acc(p_std$col$$col$ptr$col$$col$Unique(self, T$0), write)
+{
+  (unfolding acc(p_std$col$$col$ptr$col$$col$Unique(self, T$0), write) in
+    s_std$col$$col$ptr$col$$col$Unique_cons(p_std$col$$col$ptr$col$$col$NonNull_snap(s_std$col$$col$ptr$col$$col$Unique_field_0(self,
+    T$0), T$0), p_std$col$$col$marker$col$$col$PhantomData_snap(s_std$col$$col$ptr$col$$col$Unique_field_1(self,
+    T$0), T$0)))
+}
+
+function p_std$col$$col$ptr$col$$col$NonNull_snap(self: Ref, T$0: Type): s_std$col$$col$ptr$col$$col$NonNull
+  requires acc(p_std$col$$col$ptr$col$$col$NonNull(self, T$0), write)
+{
+  (unfolding acc(p_std$col$$col$ptr$col$$col$NonNull(self, T$0), write) in
+    s_std$col$$col$ptr$col$$col$NonNull_cons(p_RawPtr_immutable_snap(s_std$col$$col$ptr$col$$col$NonNull_field_0(self,
+    T$0), T$0)))
+}
+
+function p_RawPtr_immutable_snap(self: Ref, T$0: Type): s_RawPtr_immutable
+  requires acc(p_RawPtr_immutable(self, T$0), write)
+  ensures s_Param_typ(result.s_RawPtr_immutable_1) ==
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(T$0)
+{
+  (unfolding acc(p_RawPtr_immutable(self, T$0), write) in
+    s_RawPtr_immutable_cons(self.p_RawPtr_immutable_addr, self.p_RawPtr_immutable_metadata))
+}
+
+function p_std$col$$col$marker$col$$col$PhantomData_snap(self: Ref, T$0: Type): s_std$col$$col$marker$col$$col$PhantomData
+  requires acc(p_std$col$$col$marker$col$$col$PhantomData(self, T$0), write)
+{
+  (unfolding acc(p_std$col$$col$marker$col$$col$PhantomData(self, T$0), write) in
+    s_std$col$$col$marker$col$$col$PhantomData_cons())
+}
+
+function p_UInt_usize_snap(self: Ref): s_UInt_usize
+  requires acc(p_UInt_usize(self), write)
+{
+  (unfolding acc(p_UInt_usize(self), write) in self.p_UInt_usize_val)
+}
+
+function p_0_Tuple_snap(self: Ref): s_0_Tuple
+  requires acc(p_0_Tuple(self), write)
+{
+  (unfolding acc(p_0_Tuple(self), write) in s_0_Tuple_cons())
+}
+
+function p_Bool_snap(self: Ref): Bool
+  requires acc(p_Bool(self), write)
+{
+  (unfolding acc(p_Bool(self), write) in self.p_Bool_val)
+}
+
+function p_Never_field_discr(self: Ref): Ref
+  ensures (self == null) == (result == null)
+
+
+function p_Never_snap(self: Ref): s_Never
+  requires acc(p_Never(self), write)
+{
+  (unfolding acc(p_Never(self), write) in s_Never_unreachable())
+}
+
+function p_2_Tuple_snap(self: Ref, T$0: Type, U$1: Type): s_2_Tuple
+  requires acc(p_2_Tuple(self, T$0, U$1), write)
+{
+  (unfolding acc(p_2_Tuple(self, T$0, U$1), write) in
+    s_2_Tuple_cons(p_Param_snap(s_2_Tuple_field_0(self, T$0, U$1), T$0), p_Param_snap(s_2_Tuple_field_1(self,
+    T$0, U$1), U$1)))
+}
+
+function p_std$col$$col$alloc$col$$col$Global_snap(self: Ref): s_std$col$$col$alloc$col$$col$Global
+  requires acc(p_std$col$$col$alloc$col$$col$Global(self), write)
+{
+  (unfolding acc(p_std$col$$col$alloc$col$$col$Global(self), write) in
+    s_std$col$$col$alloc$col$$col$Global_cons())
+}
+
+function p_Ref_immutable_snap(self: Ref, U$1: Type): s_Ref_immutable
+  requires acc(p_Ref_immutable(self, U$1), write)
+  ensures s_Param_typ(result.s_Ref_immutable_1) ==
+    std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1)
+  ensures s_Param_typ(result.s_Ref_immutable_2) == U$1
+{
+  (unfolding acc(p_Ref_immutable(self, U$1), write) in
+    s_Ref_immutable_cons(self.p_Ref_immutable_addr, self.p_Ref_immutable_metadata, p_Param_snap(self.p_Ref_immutable_addr,
+    U$1)))
+}
+
+function p_Str_snap(self: Ref): s_Str
+  requires acc(p_Str(self), write)
+
+
+function const_14_24_0(): s_Str
+
+
+function addr_to_ref(arg: Int): Ref
+
+
+predicate p_Ref_mutable(self: Ref, U$1: Type) {
+  acc(self.p_Ref_mutable_addr, write) &&
+  (acc(self.p_Ref_mutable_metadata, write) &&
+  s_Param_typ(self.p_Ref_mutable_metadata) ==
+  std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1))
+}
+
+predicate p_Param(self: Ref, T$0: Type) 
+
+predicate p_UInt_u32(self: Ref) {
+  acc(self.p_UInt_u32_val, write)
+}
+
+predicate p_loop_borrow$col$$col$List(self: Ref) {
+  inhabited(s_UInt_u32_type()) &&
+  acc(p_UInt_u32(s_loop_borrow$col$$col$List_field_0(self)), write) &&
+  (inhabited(s_std$col$$col$option$col$$col$Option_type(s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))) &&
+  acc(p_std$col$$col$option$col$$col$Option(s_loop_borrow$col$$col$List_field_1(self),
+  s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())), write))
+}
+
+predicate p_std$col$$col$option$col$$col$Option_0_owned(self: Ref, T$0: Type) {
+  true
+}
+
+predicate p_std$col$$col$option$col$$col$Option_1_owned(self: Ref, T$0: Type) {
+  inhabited(T$0) &&
+  acc(p_Param(s_std$col$$col$option$col$$col$Option_1_field_0(self, T$0), T$0), write)
+}
+
+predicate p_std$col$$col$option$col$$col$Option(self: Ref, T$0: Type) {
+  inhabited(s_Int_isize_type()) &&
+  acc(p_Int_isize(p_std$col$$col$option$col$$col$Option_field_discr(self)), write) &&
+  ((p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(self)) ==
+  s_Int_isize_cons(0) ||
+  p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(self)) ==
+  s_Int_isize_cons(1)) &&
+  ((p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(self)) ==
+  s_Int_isize_cons(0) ==>
+  acc(p_std$col$$col$option$col$$col$Option_0_owned(self, T$0), write)) &&
+  (p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(self)) ==
+  s_Int_isize_cons(1) ==>
+  inhabited(T$0) &&
+  acc(p_std$col$$col$option$col$$col$Option_1_owned(self, T$0), write))))
+}
+
+predicate p_Int_isize(self: Ref) {
+  acc(self.p_Int_isize_val, write)
+}
+
+predicate p_std$col$$col$boxed$col$$col$Box(self: Ref, T$0: Type, A$1: Type) {
+  inhabited(s_std$col$$col$ptr$col$$col$Unique_type(T$0)) &&
+  acc(p_std$col$$col$ptr$col$$col$Unique(s_std$col$$col$boxed$col$$col$Box_field_0(self,
+  T$0, A$1), T$0), write) &&
+  (inhabited(A$1) &&
+  acc(p_Param(s_std$col$$col$boxed$col$$col$Box_field_1(self, T$0, A$1), A$1), write) &&
+  (inhabited(T$0) &&
+  acc(p_Param(p_std$col$$col$boxed$col$$col$Box_address(self, T$0, A$1), T$0), write)))
+}
+
+predicate p_std$col$$col$ptr$col$$col$Unique(self: Ref, T$0: Type) {
+  inhabited(s_std$col$$col$ptr$col$$col$NonNull_type(T$0)) &&
+  acc(p_std$col$$col$ptr$col$$col$NonNull(s_std$col$$col$ptr$col$$col$Unique_field_0(self,
+  T$0), T$0), write) &&
+  (inhabited(s_std$col$$col$marker$col$$col$PhantomData_type(T$0)) &&
+  acc(p_std$col$$col$marker$col$$col$PhantomData(s_std$col$$col$ptr$col$$col$Unique_field_1(self,
+  T$0), T$0), write))
+}
+
+predicate p_std$col$$col$ptr$col$$col$NonNull(self: Ref, T$0: Type) {
+  inhabited(s_RawPtr_immutable_type(T$0)) &&
+  acc(p_RawPtr_immutable(s_std$col$$col$ptr$col$$col$NonNull_field_0(self, T$0),
+  T$0), write)
+}
+
+predicate p_RawPtr_immutable(self: Ref, T$0: Type) {
+  acc(self.p_RawPtr_immutable_addr, write) &&
+  (acc(self.p_RawPtr_immutable_metadata, write) &&
+  s_Param_typ(self.p_RawPtr_immutable_metadata) ==
+  std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(T$0))
+}
+
+predicate p_std$col$$col$marker$col$$col$PhantomData(self: Ref, T$0: Type) {
+  true
+}
+
+predicate p_UInt_usize(self: Ref) {
+  acc(self.p_UInt_usize_val, write)
+}
+
+predicate p_0_Tuple(self: Ref) {
+  true
+}
+
+predicate p_Bool(self: Ref) {
+  acc(self.p_Bool_val, write)
+}
+
+predicate p_Never(self: Ref) {
+  false
+}
+
+predicate p_2_Tuple(self: Ref, T$0: Type, U$1: Type) {
+  inhabited(T$0) &&
+  acc(p_Param(s_2_Tuple_field_0(self, T$0, U$1), T$0), write) &&
+  (inhabited(U$1) &&
+  acc(p_Param(s_2_Tuple_field_1(self, T$0, U$1), U$1), write))
+}
+
+predicate p_std$col$$col$alloc$col$$col$Global(self: Ref) {
+  true
+}
+
+predicate p_Ref_immutable(self: Ref, U$1: Type) {
+  acc(self.p_Ref_immutable_addr, write) &&
+  acc(self.p_Ref_immutable_metadata, write) &&
+  (s_Param_typ(self.p_Ref_immutable_metadata) ==
+  std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1) &&
+  acc(p_Param(self.p_Ref_immutable_addr, U$1), read()))
+}
+
+predicate p_Str(self: Ref) 
+
+method m_loop_borrow$col$$col$List$col$$col$get_nth_loop(_0p: Ref, _1p: Ref,
+  _2p: Ref)
+  requires inhabited(s_Ref_mutable_type(s_loop_borrow$col$$col$List_type())) &&
+    acc(p_Ref_mutable(_1p, s_loop_borrow$col$$col$List_type()), write)
+  requires inhabited(s_UInt_usize_type()) && acc(p_UInt_usize(_2p), write)
+  requires inhabited(s_loop_borrow$col$$col$List_type()) &&
+    acc(p_Param(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0,
+    s_loop_borrow$col$$col$List_type()), write)
+  ensures inhabited(s_Ref_mutable_type(s_UInt_u32_type())) &&
+    acc(p_Ref_mutable(_0p, s_UInt_u32_type()), write)
+  ensures inhabited(s_UInt_u32_type()) &&
+    acc(p_Param(p_Ref_mutable_snap(_0p, s_UInt_u32_type()).s_Ref_mutable_0,
+    s_UInt_u32_type()), write)
+  ensures (let wand_result ==
+      (p_Ref_mutable_snap(_0p, s_UInt_u32_type())) in
+      inhabited(s_UInt_u32_type()) &&
+      acc(p_Param(wand_result.s_Ref_mutable_0, s_UInt_u32_type()), write) --*
+      inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write))
+{
+  var _3p: Ref
+  var _4p: Ref
+  var _5p: Ref
+  var _6p: Ref
+  var _7p: Ref
+  var _8p: Ref
+  var _9p: Ref
+  var _10p: Ref
+  var _11p: Ref
+  var _12p: Ref
+  var _13p: Ref
+  var _14p: Ref
+  var _15p: Ref
+  var _16p: Ref
+  var _17p: Ref
+  var _18p: Ref
+  var _19p: Ref
+  var _20p: Ref
+  var _from_bb8_to_bb1: Bool
+  var _from_bb2_to_bb9: Bool
+  var _from_bb3_to_bb4: Bool
+  var _from_bb2_to_bb3: Bool
+  var _from_bb0_to_bb1: Bool
+  var _from_bb3_to_bb5: Bool
+  var _from_bb1_to_bb2: Bool
+  var _from_bb3_to_bb6: Bool
+  var _from_bb5_to_bb7: Bool
+  var _from_bb7_to_bb8: Bool
+  var _tmp0: s_Ref_mutable
+  var _tmp1: s_UInt_usize
+  var _tmp2: s_UInt_usize
+  var _tmp3: s_UInt_usize
+  var _tmp4: s_UInt_usize
+  var _tmp5: Bool
+  var _tmp6: Bool
+  var _tmp7: s_Int_isize
+  var _tmp8: Int
+  var _tmp9: s_Ref_mutable
+  var _tmp10: s_UInt_usize
+  var _tmp11: Bool
+  var _tmp12: s_UInt_usize
+  var _tmp13: Ref
+  label start
+  // var _3p
+  // var _4p
+  // var _5p
+  // var _6p
+  // var _7p
+  // var _8p
+  // var _9p
+  // var _10p
+  // var _11p
+  // var _12p
+  // var _13p
+  // var _14p
+  // var _15p
+  // var _16p
+  // var _17p
+  // var _18p
+  // var _19p
+  // var _20p
+  _from_bb8_to_bb1 := false
+  _from_bb2_to_bb9 := false
+  _from_bb3_to_bb4 := false
+  _from_bb2_to_bb3 := false
+  _from_bb0_to_bb1 := false
+  _from_bb3_to_bb5 := false
+  _from_bb1_to_bb2 := false
+  _from_bb3_to_bb6 := false
+  _from_bb5_to_bb7 := false
+  _from_bb7_to_bb8 := false
+  goto bb_0
+  label bb_0
+  label _before_0_0
+  // [MIR] bb0[0]: StorageLive(_3)
+  label _before_0_1
+  // [MIR] bb0[1]: StorageLive(_4)
+  label _before_0_2
+  // [MIR] bb0[2]: _4 = const 0_usize
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb0[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_UInt_usize_assign(_4p, s_UInt_usize_cons(0))
+  label _before_0_3
+  // [MIR] bb0[3]: FakeRead(ForLet(None), _4)
+  label _before_0_4
+  // [MIR] bb0[4]: StorageLive(_5)
+  label _before_0_5
+  // [MIR] bb0[5]: _5 = move _1
+  // var _tmp0
+  _tmp0 := p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())
+  exhale inhabited(s_Ref_mutable_type(s_loop_borrow$col$$col$List_type())) &&
+    acc(p_Ref_mutable(_1p, s_loop_borrow$col$$col$List_type()), write)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _1, location: Before(AnalysisLocation { location: bb0[5], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb0[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_5), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Ref_mutable_assign(_5p, s_loop_borrow$col$$col$List_type(), _tmp0)
+  // (ignoring) Add BorrowFlow(BorrowFlowEdge { source: LifetimeProjection { base: Place(Local(Labelled(LabelledPlace { place: _1, at: Before(AnalysisLocation { location: bb0[5], eval_stmt_phase: PostOperands }), _marker: PhantomData<&()> }))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, target: LifetimeProjection { base: Current(_5), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, kind: Assignment(AssignmentData { operand_type: Move, cast: None }) })
+  // (PCG) handled edge Add: self before bb0[5]:PostOperands↓'?11 -> current↓'?13
+  label _before_0_6
+  // [MIR] bb0[6]: FakeRead(ForLet(None), _5)
+  label _before_0_7
+  // [MIR] bb0[7]: StorageLive(_6)
+  label _before_0_8
+  // [MIR] bb0[8]: goto -> bb1
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // PCG (T) post_main
+  label _after_0
+  label outer_package0
+  package inhabited(s_loop_borrow$col$$col$List_type()) &&
+  acc(p_Param(old[outer_package0](p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+  s_loop_borrow$col$$col$List_type()), write) --*
+  inhabited(s_loop_borrow$col$$col$List_type()) &&
+  acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+  s_loop_borrow$col$$col$List_type()), write) {
+    // (ignoring) Remove BorrowFlow(BorrowFlowEdge { source: LifetimeProjection { base: Place(Local(Labelled(LabelledPlace { place: _1, at: Before(AnalysisLocation { location: bb0[5], eval_stmt_phase: PostOperands }), _marker: PhantomData<&()> }))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, target: LifetimeProjection { base: Current(_5), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, kind: Assignment(AssignmentData { operand_type: Move, cast: None }) })
+    // (PCG) handled edge Remove: self before bb0[5]:PostOperands↓'?11 -> current↓'?13
+    // (ignoring) Remove BorrowFlow(BorrowFlowEdge { source: LifetimeProjection { base: Place(Remote(RemotePlace { local: _1 })), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, target: LifetimeProjection { base: Labelled(LabelledPlace { place: _1, at: Before(AnalysisLocation { location: bb0[5], eval_stmt_phase: PostOperands }), _marker: PhantomData<&()> }), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, kind: InitialBorrows })
+    // (PCG) handled edge Remove: Remote(_1)↓'?11 -> self before bb0[5]:PostOperands↓'?11
+  }
+  // (PCG) handled edge Add: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+  _from_bb0_to_bb1 := true
+  goto bb_1
+  label bb_1
+    invariant inhabited(s_UInt_usize_type()) &&
+      acc(p_UInt_usize(_2p), write)
+    invariant inhabited(s_Ref_mutable_type(s_loop_borrow$col$$col$List_type())) &&
+      acc(p_Ref_mutable(_5p, s_loop_borrow$col$$col$List_type()), write)
+    invariant inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write)
+    invariant inhabited(s_UInt_usize_type()) &&
+      acc(p_UInt_usize(_4p), write)
+  label _before_1_0
+  // [MIR] bb1[0]: falseUnwind -> [real: bb2, unwind: bb10]
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // PCG (T) post_main
+  label _after_1
+  _from_bb1_to_bb2 := true
+  goto bb_2
+  label bb_2
+  label _before_2_0
+  // [MIR] bb2[0]: StorageLive(_8)
+  label _before_2_1
+  // [MIR] bb2[1]: StorageLive(_9)
+  label _before_2_2
+  // [MIR] bb2[2]: _9 = copy _4
+  // var _tmp1
+  _tmp1 := p_UInt_usize_snap(_4p)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb2[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_9), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_UInt_usize_assign(_9p, _tmp1)
+  label _before_2_3
+  // [MIR] bb2[3]: StorageLive(_10)
+  label _before_2_4
+  // [MIR] bb2[4]: _10 = copy _2
+  // var _tmp2
+  _tmp2 := p_UInt_usize_snap(_2p)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb2[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_10), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_UInt_usize_assign(_10p, _tmp2)
+  label _before_2_5
+  // [MIR] bb2[5]: _8 = Lt(move _9, move _10)
+  // var _tmp3
+  _tmp3 := p_UInt_usize_snap(_9p)
+  exhale inhabited(s_UInt_usize_type()) && acc(p_UInt_usize(_9p), write)
+  // var _tmp4
+  _tmp4 := p_UInt_usize_snap(_10p)
+  exhale inhabited(s_UInt_usize_type()) && acc(p_UInt_usize(_10p), write)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb2[5], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb2[5], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb2[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_8), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Bool_assign(_8p, mir_binop_Lt_UInt_usize_UInt_usize(_tmp3, _tmp4))
+  label _before_2_6
+  // [MIR] bb2[6]: switchInt(move _8) -> [0: bb9, otherwise: bb3]
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb2[6], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // PCG (T) pre_main
+  // var _tmp5
+  _tmp5 := p_Bool_snap(_8p)
+  exhale inhabited(s_Bool_type()) && acc(p_Bool(_8p), write)
+  // var _tmp6
+  _tmp6 := _tmp5
+  // PCG (T) post_main
+  label _after_2
+  if (_tmp6 == false) {
+    // (PCG) handled edge Add: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+    _from_bb2_to_bb9 := true
+    goto bb_9
+  } else {
+    // (PCG) handled edge Add: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+    _from_bb2_to_bb3 := true
+    goto bb_3
+  }
+  label bb_9
+  label _before_9_0
+  // [MIR] bb9[0]: StorageDead(_10)
+  // [PCG] RegainLoanedCapability(RegainedCapability { place: _2, capability: E })
+  // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _2, capability: E })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb9[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_10), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb9[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_1
+  // [MIR] bb9[1]: StorageDead(_9)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb9[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_9), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb9[1], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_2
+  // [MIR] bb9[2]: StorageLive(_18)
+  label _before_9_3
+  // [MIR] bb9[3]: _6 = const ()
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb9[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_6), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_0_Tuple_assign(_6p, s_0_Tuple_cons())
+  label _before_9_4
+  // [MIR] bb9[4]: StorageDead(_18)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _18, location: Before(AnalysisLocation { location: bb9[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_18), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _18, location: Before(AnalysisLocation { location: bb9[4], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_5
+  // [MIR] bb9[5]: StorageDead(_8)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb9[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_8), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb9[5], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_6
+  // [MIR] bb9[6]: StorageDead(_6)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb9[6], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_6), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // [PCG] Weaken(Weaken { place: _6, from: E, to: W, for_storage_dead: true, _marker: PhantomData<&()> })
+  // Weaken to Write for _6 (skipped exhale: StorageDead)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb9[6], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_7
+  // [MIR] bb9[7]: StorageLive(_20)
+  label _before_9_8
+  // [MIR] bb9[8]: _20 = &mut ((*_5).0: u32)
+  if (_from_bb2_to_bb9) {
+    make_concrete_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Add: {current} -> {*current}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_5))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: Some(Location(Before(AnalysisLocation { location: bb9[8], eval_stmt_phase: PreOperands }))) })
+  if (_from_bb2_to_bb9) {
+    unfold acc(p_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), write)
+    // (PCG) handled edge Add: {*current} -> {(*current).head, (*current).tail}
+  }
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _20, location: Before(AnalysisLocation { location: bb9[8], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_20), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Ref_mutable_assign(_20p, s_UInt_u32_type(), p_Ref_mutable_arbitrary_value(s_loop_borrow$col$$col$List_field_0(p_Ref_mutable_snap(_5p,
+    s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), make_generic_s_0_Tuple(s_0_Tuple_cons()),
+    s_UInt_u32_type()))
+  make_generic_UInt_u32(p_Ref_mutable_snap(_20p, s_UInt_u32_type()).s_Ref_mutable_0)
+  label _before_9_9
+  // [MIR] bb9[9]: _3 = &mut (*_20)
+  if (_from_bb2_to_bb9) {
+    make_concrete_UInt_u32(p_Ref_mutable_snap(_20p, s_UInt_u32_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Add: {_20} -> {(*_20)}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_20))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: Some(Location(Before(AnalysisLocation { location: bb9[9], eval_stmt_phase: PreOperands }))) })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb9[9], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_3), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Ref_mutable_assign(_3p, s_UInt_u32_type(), p_Ref_mutable_arbitrary_value(p_Ref_mutable_snap(_20p,
+    s_UInt_u32_type()).s_Ref_mutable_0, make_generic_s_0_Tuple(p_Ref_mutable_snap(_20p,
+    s_UInt_u32_type()).s_Ref_mutable_1.make_concrete_s_0_Tuple), s_UInt_u32_type()))
+  make_generic_UInt_u32(p_Ref_mutable_snap(_3p, s_UInt_u32_type()).s_Ref_mutable_0)
+  label _before_9_10
+  // [MIR] bb9[10]: StorageDead(_5)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb9[10], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_5), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // [PCG] Weaken(Weaken { place: _5, from: e, to: W, for_storage_dead: true, _marker: PhantomData<&()> })
+  // Weaken to Write for _5 (skipped exhale: StorageDead)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb9[10], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_11
+  // [MIR] bb9[11]: StorageDead(_4)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb9[11], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // [PCG] Weaken(Weaken { place: _4, from: E, to: W, for_storage_dead: true, _marker: PhantomData<&()> })
+  // Weaken to Write for _4 (skipped exhale: StorageDead)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb9[11], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_12
+  // [MIR] bb9[12]: _0 = &mut (*_3)
+  if (_from_bb2_to_bb9) {
+    make_concrete_UInt_u32(p_Ref_mutable_snap(_3p, s_UInt_u32_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Add: {_3} -> {(*_3)}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_3))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: Some(Location(Before(AnalysisLocation { location: bb9[12], eval_stmt_phase: PreOperands }))) })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _0, location: Before(AnalysisLocation { location: bb9[12], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_0), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Ref_mutable_assign(_0p, s_UInt_u32_type(), p_Ref_mutable_arbitrary_value(p_Ref_mutable_snap(_3p,
+    s_UInt_u32_type()).s_Ref_mutable_0, make_generic_s_0_Tuple(p_Ref_mutable_snap(_3p,
+    s_UInt_u32_type()).s_Ref_mutable_1.make_concrete_s_0_Tuple), s_UInt_u32_type()))
+  make_generic_UInt_u32(p_Ref_mutable_snap(_0p, s_UInt_u32_type()).s_Ref_mutable_0)
+  label _before_9_13
+  // [MIR] bb9[13]: StorageDead(_20)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _20, location: Before(AnalysisLocation { location: bb9[13], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_20), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // [PCG] Weaken(Weaken { place: _20, from: e, to: W, for_storage_dead: true, _marker: PhantomData<&()> })
+  // Weaken to Write for _20 (skipped exhale: StorageDead)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _20, location: Before(AnalysisLocation { location: bb9[13], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_14
+  // [MIR] bb9[14]: StorageDead(_3)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb9[14], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_3), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // [PCG] Weaken(Weaken { place: _3, from: e, to: W, for_storage_dead: true, _marker: PhantomData<&()> })
+  // Weaken to Write for _3 (skipped exhale: StorageDead)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb9[14], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_9_15
+  // [MIR] bb9[15]: return
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  label package_post1
+  package inhabited(s_UInt_u32_type()) &&
+  acc(p_Param(old[package_post1](p_Ref_mutable_snap(_0p, s_UInt_u32_type())).s_Ref_mutable_0,
+  s_UInt_u32_type()), write) --*
+  inhabited(s_loop_borrow$col$$col$List_type()) &&
+  acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+  s_loop_borrow$col$$col$List_type()), write) {
+    assert inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write)
+  }
+  goto end
+  label bb_3
+  label _before_3_0
+  // [MIR] bb3[0]: StorageDead(_10)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb3[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_10), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb3[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_3_1
+  // [MIR] bb3[1]: StorageDead(_9)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb3[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_9), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb3[1], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_3_2
+  // [MIR] bb3[2]: StorageLive(_11)
+  label _before_3_3
+  // [MIR] bb3[3]: StorageLive(_12)
+  label _before_3_4
+  // [MIR] bb3[4]: PlaceMention(((*_5).1: std::option::Option<std::boxed::Box<List>>))
+  label _before_3_5
+  // [MIR] bb3[5]: _13 = discriminant(((*_5).1: std::option::Option<std::boxed::Box<List>>))
+  if (_from_bb2_to_bb3) {
+    make_concrete_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Add: {current} -> {*current}
+  }
+  if (_from_bb2_to_bb3) {
+    unfold acc(p_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), write)
+    // (PCG) handled edge Add: {*current} -> {(*current).head, (*current).tail}
+  }
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb3[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_13), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Int_isize_assign(_13p, (unfolding acc(p_std$col$$col$option$col$$col$Option(s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())), wildcard) in
+      p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)))))
+  label _before_3_6
+  // [MIR] bb3[6]: switchInt(move _13) -> [0: bb6, 1: bb5, otherwise: bb4]
+  // PCG (T) pre_operands
+  if (_from_bb2_to_bb3) {
+    fold acc(p_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), write)
+    // (PCG) handled edge Remove: {*current} -> {(*current).head, (*current).tail}
+  }
+  if (_from_bb2_to_bb3) {
+    make_generic_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Remove: {current} -> {*current}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_5))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: (*_5), location: Before(AnalysisLocation { location: bb3[6], eval_stmt_phase: PreOperands }), reason: Collapse, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_5))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: Some(Future), phantom: PhantomData<&()> })), label: None })
+  // PCG (T) post_operands
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb3[6], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // PCG (T) pre_main
+  // var _tmp7
+  _tmp7 := p_Int_isize_snap(_13p)
+  exhale inhabited(s_Int_isize_type()) && acc(p_Int_isize(_13p), write)
+  // var _tmp8
+  _tmp8 := s_Int_isize_value(_tmp7)
+  // PCG (T) post_main
+  label _after_3
+  if (_tmp8 == 0) {
+    // (PCG) handled edge Add: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+    _from_bb3_to_bb6 := true
+    goto bb_6
+  } elseif (_tmp8 == 1) {
+    // (PCG) handled edge Add: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+    _from_bb3_to_bb5 := true
+    goto bb_5
+  } else {
+    // (PCG) handled edge Add: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+    _from_bb3_to_bb4 := true
+    goto bb_4
+  }
+  label bb_5
+  label _before_5_0
+  // [MIR] bb5[0]: falseEdge -> [real: bb7, imaginary: bb6]
+  // PCG (T) pre_operands
+  // [PCG] RegainLoanedCapability(RegainedCapability { place: _5, capability: E })
+  // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _5, capability: E })
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // PCG (T) post_main
+  label _after_5
+  _from_bb5_to_bb7 := true
+  goto bb_7
+  label bb_7
+  label _before_7_0
+  // [MIR] bb7[0]: StorageLive(_14)
+  label _before_7_1
+  // [MIR] bb7[1]: _14 = &mut ((((*_5).1: std::option::Option<std::boxed::Box<List>>) as Some).0: std::boxed::Box<List>)
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+    make_concrete_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Add: {current} -> {*current}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_5))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: Some(Location(Before(AnalysisLocation { location: bb7[1], eval_stmt_phase: PreOperands }))) })
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+    unfold acc(p_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), write)
+    // (PCG) handled edge Add: {*current} -> {(*current).head, (*current).tail}
+  }
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+    unfold acc(p_std$col$$col$option$col$$col$Option(s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())), write)
+    inhale true
+    inhale p_Int_isize_snap(p_std$col$$col$option$col$$col$Option_field_discr(s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0))) ==
+      s_Int_isize_cons(1) ==>
+      inhabited(s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))
+    // (PCG) handled edge Add: {(*current).tail} -> {(*current).tail@Some}
+  }
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+    unfold acc(p_std$col$$col$option$col$$col$Option_1_owned(s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())), write)
+    make_concrete_std$col$$col$boxed$col$$col$Box(s_std$col$$col$option$col$$col$Option_1_field_0(s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())),
+      s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())
+    // (PCG) handled edge Add: {(*current).tail@Some} -> {(*current).tail@Some.0}
+  }
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb7[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Ref_mutable_assign(_14p, s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()),
+    p_Ref_mutable_arbitrary_value(s_std$col$$col$option$col$$col$Option_1_field_0(s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+    s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())),
+    make_generic_s_0_Tuple(s_0_Tuple_cons()), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())))
+  make_generic_std$col$$col$boxed$col$$col$Box(p_Ref_mutable_snap(_14p, s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0,
+    s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())
+  label _before_7_2
+  // [MIR] bb7[2]: _12 = &mut (*(*_14))
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+    make_concrete_std$col$$col$boxed$col$$col$Box(p_Ref_mutable_snap(_14p, s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())
+    // (PCG) handled edge Add: {tail} -> {*tail}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_14))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: Some(Location(Before(AnalysisLocation { location: bb7[2], eval_stmt_phase: PreOperands }))) })
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+    unfold acc(p_std$col$$col$boxed$col$$col$Box(p_Ref_mutable_snap(_14p, s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()), write)
+    make_concrete_std$col$$col$alloc$col$$col$Global(s_std$col$$col$boxed$col$$col$Box_field_1(p_Ref_mutable_snap(_14p,
+      s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))
+    make_concrete_loop_borrow$col$$col$List(p_std$col$$col$boxed$col$$col$Box_address(p_Ref_mutable_snap(_14p,
+      s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))
+    // (PCG) handled edge Add: {*tail} -> {**tail}
+  }
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb7[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_12), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Ref_mutable_assign(_12p, s_loop_borrow$col$$col$List_type(), p_Ref_mutable_arbitrary_value(p_std$col$$col$boxed$col$$col$Box_address(p_Ref_mutable_snap(_14p,
+    s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0,
+    s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()),
+    make_generic_s_0_Tuple(p_std$col$$col$boxed$col$$col$Box_metadata(p_Ref_mutable_snap(_14p,
+    s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0,
+    s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()).make_concrete_s_0_Tuple),
+    s_loop_borrow$col$$col$List_type()))
+  make_generic_loop_borrow$col$$col$List(p_Ref_mutable_snap(_12p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+  label _before_7_3
+  // [MIR] bb7[3]: StorageDead(_14)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb7[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // [PCG] Weaken(Weaken { place: _14, from: e, to: W, for_storage_dead: true, _marker: PhantomData<&()> })
+  // Weaken to Write for _14 (skipped exhale: StorageDead)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb7[3], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_7_4
+  // [MIR] bb7[4]: _11 = &mut (*_12)
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+    make_concrete_loop_borrow$col$$col$List(p_Ref_mutable_snap(_12p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Add: {_12} -> {(*_12)}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_12))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: Some(Location(Before(AnalysisLocation { location: bb7[4], eval_stmt_phase: PreOperands }))) })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _11, location: Before(AnalysisLocation { location: bb7[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_11), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_Ref_mutable_assign(_11p, s_loop_borrow$col$$col$List_type(), p_Ref_mutable_arbitrary_value(p_Ref_mutable_snap(_12p,
+    s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0, make_generic_s_0_Tuple(p_Ref_mutable_snap(_12p,
+    s_loop_borrow$col$$col$List_type()).s_Ref_mutable_1.make_concrete_s_0_Tuple),
+    s_loop_borrow$col$$col$List_type()))
+  make_generic_loop_borrow$col$$col$List(p_Ref_mutable_snap(_11p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+  label _before_7_5
+  // [MIR] bb7[5]: _5 = move _11
+  // var _tmp9
+  _tmp9 := p_Ref_mutable_snap(_11p, s_loop_borrow$col$$col$List_type())
+  exhale inhabited(s_Ref_mutable_type(s_loop_borrow$col$$col$List_type())) &&
+    acc(p_Ref_mutable(_11p, s_loop_borrow$col$$col$List_type()), write)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _11, location: Before(AnalysisLocation { location: bb7[5], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb7[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_5), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // exhale due to weaken to Write
+  exhale inhabited(s_Ref_mutable_type(s_loop_borrow$col$$col$List_type())) &&
+    acc(p_Ref_mutable(_5p, s_loop_borrow$col$$col$List_type()), write)
+  p_Ref_mutable_assign(_5p, s_loop_borrow$col$$col$List_type(), _tmp9)
+  // (ignoring) Add BorrowFlow(BorrowFlowEdge { source: LifetimeProjection { base: Place(Local(Labelled(LabelledPlace { place: _11, at: Before(AnalysisLocation { location: bb7[5], eval_stmt_phase: PostOperands }), _marker: PhantomData<&()> }))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, target: LifetimeProjection { base: Current(_5), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, kind: Assignment(AssignmentData { operand_type: Move, cast: None }) })
+  // (PCG) handled edge Add: _11 before bb7[5]:PostOperands↓'?14 -> current↓'?13
+  label _before_7_6
+  // [MIR] bb7[6]: StorageDead(_11)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _11, location: Before(AnalysisLocation { location: bb7[6], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_11), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _11, location: Before(AnalysisLocation { location: bb7[6], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_7_7
+  // [MIR] bb7[7]: StorageDead(_12)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb7[7], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_12), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // [PCG] Weaken(Weaken { place: _12, from: e, to: W, for_storage_dead: true, _marker: PhantomData<&()> })
+  // Weaken to Write for _12 (skipped exhale: StorageDead)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb7[7], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_7_8
+  // [MIR] bb7[8]: _16 = AddWithOverflow(copy _4, const 1_usize)
+  // var _tmp10
+  _tmp10 := p_UInt_usize_snap(_4p)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _16, location: Before(AnalysisLocation { location: bb7[8], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_16), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_2_Tuple_assign(_16p, s_UInt_usize_type(), s_Bool_type(), mir_binop_AddWithOverflow_UInt_usize_UInt_usize(_tmp10,
+    s_UInt_usize_cons(1)))
+  label _before_7_9
+  // [MIR] bb7[9]: assert(!move (_16.1: bool), "attempt to compute `{} + {}`, which would overflow", copy _4, const 1_usize) -> [success: bb8, unwind: bb10]
+  // PCG (T) pre_operands
+  // [PCG] Expand(RepackExpand { from: _16, guide: None, capability: E, _marker: PhantomData<&()> })
+  unfold acc(p_2_Tuple(_16p, s_UInt_usize_type(), s_Bool_type()), write)
+  make_concrete_UInt_usize(s_2_Tuple_field_0(_16p, s_UInt_usize_type(), s_Bool_type()))
+  make_concrete_Bool(s_2_Tuple_field_1(_16p, s_UInt_usize_type(), s_Bool_type()))
+  // PCG (T) post_operands
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _16.1, location: Before(AnalysisLocation { location: bb7[9], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // PCG (T) pre_main
+  // var _tmp11
+  _tmp11 := p_Bool_snap(s_2_Tuple_field_1(_16p, s_UInt_usize_type(), s_Bool_type()))
+  exhale inhabited(s_Bool_type()) &&
+    acc(p_Bool(s_2_Tuple_field_1(_16p, s_UInt_usize_type(), s_Bool_type())), write)
+  inhale !_tmp11
+  // PCG (T) post_main
+  label _after_7
+  _from_bb7_to_bb8 := true
+  goto bb_8
+  label bb_8
+  label _before_8_0
+  // [MIR] bb8[0]: _4 = move (_16.0: usize)
+  // var _tmp12
+  _tmp12 := p_UInt_usize_snap(s_2_Tuple_field_0(_16p, s_UInt_usize_type(), s_Bool_type()))
+  exhale inhabited(s_UInt_usize_type()) &&
+    acc(p_UInt_usize(s_2_Tuple_field_0(_16p, s_UInt_usize_type(), s_Bool_type())), write)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _16.0, location: Before(AnalysisLocation { location: bb8[0], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData<&()> })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb8[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // exhale due to weaken to Write
+  exhale inhabited(s_UInt_usize_type()) && acc(p_UInt_usize(_4p), write)
+  p_UInt_usize_assign(_4p, _tmp12)
+  label _before_8_1
+  // [MIR] bb8[1]: _7 = const ()
+  // [PCG] Collapse(RepackCollapse { to: _16, capability: W, guide: None, _marker: PhantomData<&()> })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb8[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_7), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_0_Tuple_assign(_7p, s_0_Tuple_cons())
+  label _before_8_2
+  // [MIR] bb8[2]: StorageDead(_8)
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb8[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_8), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb8[2], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData<&()> })
+  label _before_8_3
+  // [MIR] bb8[3]: goto -> bb1
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // PCG (T) post_main
+  label _after_8
+  // [PCG] Weaken(Weaken { place: _7, from: E, to: W, for_storage_dead: false, _marker: PhantomData<&()> })
+  // exhale due to weaken to Write
+  exhale inhabited(s_0_Tuple_type()) && acc(p_0_Tuple(_7p), write)
+  label outer_package2
+  package inhabited(s_loop_borrow$col$$col$List_type()) &&
+  acc(p_Param(old[outer_package2](p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+  s_loop_borrow$col$$col$List_type()), write) --*
+  inhabited(s_loop_borrow$col$$col$List_type()) &&
+  acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+  s_loop_borrow$col$$col$List_type()), write) {
+    assert (!(_from_bb2_to_bb3 && _from_bb3_to_bb5) ==>
+      inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write)) &&
+      (_from_bb2_to_bb3 && _from_bb3_to_bb5 ==>
+      inhabited(s_std$col$$col$ptr$col$$col$Unique_type(s_loop_borrow$col$$col$List_type())) &&
+      acc(p_std$col$$col$ptr$col$$col$Unique(s_std$col$$col$boxed$col$$col$Box_field_0(old[_before_7_3](p_Ref_mutable_snap(_14p,
+      s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0),
+      s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()),
+      s_loop_borrow$col$$col$List_type()), write) &&
+      (inhabited(s_std$col$$col$alloc$col$$col$Global_type()) &&
+      acc(p_std$col$$col$alloc$col$$col$Global(s_std$col$$col$boxed$col$$col$Box_field_1(old[_before_7_3](p_Ref_mutable_snap(_14p,
+      s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0),
+      s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())), write))) &&
+      ((_from_bb2_to_bb3 && _from_bb3_to_bb5 ==>
+      inhabited(s_Int_isize_type()) &&
+      acc(p_Int_isize(p_std$col$$col$option$col$$col$Option_field_discr(old[_before_7_5](s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)))), write)) &&
+      ((_from_bb2_to_bb3 && _from_bb3_to_bb5 ==>
+      inhabited(s_UInt_u32_type()) &&
+      acc(p_UInt_u32(old[_before_7_5](s_loop_borrow$col$$col$List_field_0(p_Ref_mutable_snap(_5p,
+      s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0))), write)) &&
+      (_from_bb2_to_bb3 && _from_bb3_to_bb5 ==>
+      inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old[_before_7_5](p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write) --*
+      inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write))))
+    // (ignoring) Remove BorrowFlow(BorrowFlowEdge { source: LifetimeProjection { base: Place(Local(Labelled(LabelledPlace { place: _11, at: Before(AnalysisLocation { location: bb7[5], eval_stmt_phase: PostOperands }), _marker: PhantomData<&()> }))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, target: LifetimeProjection { base: Current(_5), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> }, kind: Assignment(AssignmentData { operand_type: Move, cast: None }) })
+    // (PCG) handled edge Remove: _11 before bb7[5]:PostOperands↓'?14 -> current↓'?13
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_concrete_loop_borrow$col$$col$List(old[_before_7_5](p_Ref_mutable_snap(old[_before_7_5](_11p),
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0))
+      // (PCG) handled edge Remove: borrow: _11 before bb7[5] = &mut  (*_12) before bb7[7]
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_generic_loop_borrow$col$$col$List(old[_before_7_7](p_Ref_mutable_snap(old[_before_7_7](_12p),
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0))
+      // (PCG) handled edge Remove: {_12 before bb7[7]} -> {(*_12) before bb7[7]}
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_concrete_loop_borrow$col$$col$List(old[_before_7_7](p_Ref_mutable_snap(old[_before_7_7](_12p),
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0))
+      // (PCG) handled edge Remove: borrow: _12 before bb7[7] <before bb7[4]> = &mut  **tail before bb7[3]
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_generic_std$col$$col$alloc$col$$col$Global(s_std$col$$col$boxed$col$$col$Box_field_1(old[_before_7_3](p_Ref_mutable_snap(_14p,
+        s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0),
+        s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))
+      make_generic_loop_borrow$col$$col$List(p_std$col$$col$boxed$col$$col$Box_address(old[_before_7_3](p_Ref_mutable_snap(_14p,
+        s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0),
+        s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()))
+      fold acc(p_std$col$$col$boxed$col$$col$Box(old[_before_7_3](p_Ref_mutable_snap(_14p,
+        s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0),
+        s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type()), write)
+      // (PCG) handled edge Remove: {*tail before bb7[3]:PreMain} -> {**tail before bb7[3]:PreMain}
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_generic_std$col$$col$boxed$col$$col$Box(old[_before_7_3](p_Ref_mutable_snap(old[_before_7_3](_14p),
+        s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0),
+        s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())
+      // (PCG) handled edge Remove: {tail before bb7[3]} -> {*tail before bb7[3]}
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_concrete_std$col$$col$boxed$col$$col$Box(old[_before_7_3](p_Ref_mutable_snap(old[_before_7_3](_14p),
+        s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())).s_Ref_mutable_0),
+        s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())
+      // (PCG) handled edge Remove: borrow: tail before bb7[3] <before bb7[2]> = &mut  (*current).tail@Some.0 before bb7[5]
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_generic_std$col$$col$boxed$col$$col$Box(s_std$col$$col$option$col$$col$Option_1_field_0(old[_before_7_5](s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())),
+        s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())
+      fold acc(p_std$col$$col$option$col$$col$Option_1_owned(old[_before_7_5](s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())), write)
+      // (PCG) handled edge Remove: {(*current).tail@Some before bb7[5]:PreMain} -> {(*current).tail@Some.0 before bb7[5]:PreMain}
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      fold acc(p_std$col$$col$option$col$$col$Option(old[_before_7_5](s_loop_borrow$col$$col$List_field_1(p_Ref_mutable_snap(_5p,
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)), s_std$col$$col$boxed$col$$col$Box_type(s_loop_borrow$col$$col$List_type(), s_std$col$$col$alloc$col$$col$Global_type())), write)
+      // (PCG) handled edge Remove: {(*current).tail before bb7[5]:PreMain} -> {(*current).tail@Some before bb7[5]:PreMain}
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      fold acc(p_loop_borrow$col$$col$List(old[_before_7_5](p_Ref_mutable_snap(_5p,
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)), write)
+      // (PCG) handled edge Remove: {*current before bb7[5]:PreMain} -> {(*current).head before bb7[5]:PreMain, (*current).tail before bb7[5]:PreMain}
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      make_generic_loop_borrow$col$$col$List(old[_before_7_5](p_Ref_mutable_snap(old[_before_7_5](_5p),
+        s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0))
+      // (PCG) handled edge Remove: {current before bb7[5]} -> {*current before bb7[5]}
+    }
+    if (_from_bb2_to_bb3 && _from_bb3_to_bb5) {
+      apply inhabited(s_loop_borrow$col$$col$List_type()) &&
+        acc(p_Param(old[_before_7_5](p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+        s_loop_borrow$col$$col$List_type()), write) --*
+        inhabited(s_loop_borrow$col$$col$List_type()) &&
+        acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+        s_loop_borrow$col$$col$List_type()), write)
+      // (PCG) handled edge Remove: Loop(bb1): Remote(_1)↓'?11 -> current before bb7[5]:PreMain↓'?13 before bb7[1]:PreOperands
+    }
+  }
+  // (PCG) handled edge Add: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+  _from_bb8_to_bb1 := true
+  goto bb_1
+  label bb_6
+  label _before_6_0
+  // [MIR] bb6[0]: StorageLive(_15)
+  // [PCG] RegainLoanedCapability(RegainedCapability { place: _2, capability: E })
+  // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _2, capability: E })
+  // [PCG] RegainLoanedCapability(RegainedCapability { place: _5, capability: E })
+  // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _5, capability: E })
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb6) {
+    label outer_package3
+    apply inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old[outer_package3](p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write) --*
+      inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write)
+    // (PCG) handled edge Remove: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+  }
+  // exhale due to weaken to Write
+  exhale inhabited(s_Ref_mutable_type(s_loop_borrow$col$$col$List_type())) &&
+    acc(p_Ref_mutable(_5p, s_loop_borrow$col$$col$List_type()), write)
+  label _before_6_1
+  // [MIR] bb6[1]: _15 = core::panicking::panic(const "internal error: entered unreachable code") -> bb10
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _15, location: Before(AnalysisLocation { location: bb6[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_15), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  goto bb_term_6
+  label bb_term_6
+  // var _tmp13
+  p_Ref_immutable_assign(_tmp13, s_Str_type(), s_Ref_immutable_cons(addr_to_ref(18446744073709551616), make_generic_s_UInt_usize(s_UInt_usize_cons(40)), make_generic_s_Str(const_14_24_0())))
+  label pre4
+  m_core$col$$col$panicking$col$$col$panic(_15p, _tmp13)
+  label post5
+  exhale false
+  inhale false
+  goto end
+  label bb_4
+  label _before_4_0
+  // [MIR] bb4[0]: FakeRead(ForMatchedPlace(None), ((*_5).1: std::option::Option<std::boxed::Box<List>>))
+  // [PCG] RegainLoanedCapability(RegainedCapability { place: _2, capability: E })
+  // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _2, capability: E })
+  // [PCG] RegainLoanedCapability(RegainedCapability { place: _5, capability: E })
+  // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _5, capability: E })
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb4) {
+    make_concrete_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Add: {current} -> {*current}
+  }
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb4) {
+    unfold acc(p_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), write)
+    // (PCG) handled edge Add: {*current} -> {(*current).head, (*current).tail}
+  }
+  label _before_4_1
+  // [MIR] bb4[1]: unreachable
+  // PCG (T) pre_operands
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb4) {
+    fold acc(p_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0), write)
+    // (PCG) handled edge Remove: {*current} -> {(*current).head, (*current).tail}
+  }
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb4) {
+    make_generic_loop_borrow$col$$col$List(p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type()).s_Ref_mutable_0)
+    // (PCG) handled edge Remove: {current} -> {*current}
+  }
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_5))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: None, phantom: PhantomData<&()> })), label: None })
+  // (ignoring) LabelPlace(LabelPlaceAction { place: (*_5), location: Before(AnalysisLocation { location: bb4[1], eval_stmt_phase: PreOperands }), reason: Collapse, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_5))), region_idx: LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>), label: Some(Future), phantom: PhantomData<&()> })), label: None })
+  if (_from_bb2_to_bb3 && _from_bb3_to_bb4) {
+    label outer_package6
+    apply inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old[outer_package6](p_Ref_mutable_snap(_5p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write) --*
+      inhabited(s_loop_borrow$col$$col$List_type()) &&
+      acc(p_Param(old(p_Ref_mutable_snap(_1p, s_loop_borrow$col$$col$List_type())).s_Ref_mutable_0,
+      s_loop_borrow$col$$col$List_type()), write)
+    // (PCG) handled edge Remove: Loop(bb1): Remote(_1)↓'?11 -> current↓'?13
+  }
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  exhale false
+  inhale false
+  goto end
+  label bb_10
+  // cleanup block
+  assert false
+  goto end
+  label end
+  // return
+}
+
+method m_core$col$$col$panicking$col$$col$panic(_0p: Ref, _1p: Ref)
+  requires inhabited(s_Ref_immutable_type(s_Str_type())) &&
+    acc(p_Ref_immutable(_1p, s_Str_type()), write)
+  requires false
+  ensures inhabited(s_Never_type()) && acc(p_Never(_0p), write)
+  ensures p_Never_snap(_0p) ==
+    f_core$col$$col$panicking$col$$col$panic(s_Ref_immutable_cons(null, old(p_Ref_immutable_snap(_1p,
+    s_Str_type())).s_Ref_immutable_1, old(p_Ref_immutable_snap(_1p, s_Str_type())).s_Ref_immutable_2))
+
+
+method m_loop_borrow$col$$col$main(_0p: Ref)
+  ensures inhabited(s_0_Tuple_type()) && acc(p_0_Tuple(_0p), write)
+{
+  label start
+  goto bb_0
+  label bb_0
+  label _before_0_0
+  // [MIR] bb0[0]: _0 = const ()
+  // (ignoring) LabelPlace(LabelPlaceAction { place: _0, location: Before(AnalysisLocation { location: bb0[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData<&()> })
+  // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_0), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })
+  p_0_Tuple_assign(_0p, s_0_Tuple_cons())
+  label _before_0_1
+  // [MIR] bb0[1]: return
+  // PCG (T) pre_operands
+  // PCG (T) post_operands
+  // PCG (T) pre_main
+  label package_post0
+  goto end
+  label end
+  // return
+}
+
+method make_generic_UInt_u32(self: Ref)
+  requires acc(p_UInt_u32(self), write)
+  ensures acc(p_Param(self, s_UInt_u32_type()), write)
+  ensures old(make_generic_s_UInt_u32(p_UInt_u32_snap(self))) ==
+    p_Param_snap(self, s_UInt_u32_type())
+
+
+method make_concrete_UInt_u32(self: Ref)
+  requires acc(p_Param(self, s_UInt_u32_type()), write)
+  ensures acc(p_UInt_u32(self), write)
+  ensures old(p_Param_snap(self, s_UInt_u32_type())) ==
+    make_generic_s_UInt_u32(p_UInt_u32_snap(self))
+
+
+method make_generic_loop_borrow$col$$col$List(self: Ref)
+  requires acc(p_loop_borrow$col$$col$List(self), write)
+  ensures acc(p_Param(self, s_loop_borrow$col$$col$List_type()), write)
+  ensures old(make_generic_s_loop_borrow$col$$col$List(p_loop_borrow$col$$col$List_snap(self))) ==
+    p_Param_snap(self, s_loop_borrow$col$$col$List_type())
+
+
+method make_concrete_loop_borrow$col$$col$List(self: Ref)
+  requires acc(p_Param(self, s_loop_borrow$col$$col$List_type()), write)
+  ensures acc(p_loop_borrow$col$$col$List(self), write)
+  ensures old(p_Param_snap(self, s_loop_borrow$col$$col$List_type())) ==
+    make_generic_s_loop_borrow$col$$col$List(p_loop_borrow$col$$col$List_snap(self))
+
+
+method make_generic_std$col$$col$boxed$col$$col$Box(self: Ref, T$0: Type, A$1: Type)
+  requires acc(p_std$col$$col$boxed$col$$col$Box(self, T$0, A$1), write)
+  ensures acc(p_Param(self, s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)), write)
+  ensures old(make_generic_s_std$col$$col$boxed$col$$col$Box(p_std$col$$col$boxed$col$$col$Box_snap(self,
+    T$0, A$1), T$0, A$1)) ==
+    p_Param_snap(self, s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1))
+
+
+method make_concrete_std$col$$col$boxed$col$$col$Box(self: Ref, T$0: Type, A$1: Type)
+  requires acc(p_Param(self, s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1)), write)
+  ensures acc(p_std$col$$col$boxed$col$$col$Box(self, T$0, A$1), write)
+  ensures old(p_Param_snap(self, s_std$col$$col$boxed$col$$col$Box_type(T$0, A$1))) ==
+    make_generic_s_std$col$$col$boxed$col$$col$Box(p_std$col$$col$boxed$col$$col$Box_snap(self,
+    T$0, A$1), T$0, A$1)
+
+
+method make_generic_UInt_usize(self: Ref)
+  requires acc(p_UInt_usize(self), write)
+  ensures acc(p_Param(self, s_UInt_usize_type()), write)
+  ensures old(make_generic_s_UInt_usize(p_UInt_usize_snap(self))) ==
+    p_Param_snap(self, s_UInt_usize_type())
+
+
+method make_concrete_UInt_usize(self: Ref)
+  requires acc(p_Param(self, s_UInt_usize_type()), write)
+  ensures acc(p_UInt_usize(self), write)
+  ensures old(p_Param_snap(self, s_UInt_usize_type())) ==
+    make_generic_s_UInt_usize(p_UInt_usize_snap(self))
+
+
+method make_generic_Bool(self: Ref)
+  requires acc(p_Bool(self), write)
+  ensures acc(p_Param(self, s_Bool_type()), write)
+  ensures old(make_generic_s_Bool(p_Bool_snap(self))) ==
+    p_Param_snap(self, s_Bool_type())
+
+
+method make_concrete_Bool(self: Ref)
+  requires acc(p_Param(self, s_Bool_type()), write)
+  ensures acc(p_Bool(self), write)
+  ensures old(p_Param_snap(self, s_Bool_type())) ==
+    make_generic_s_Bool(p_Bool_snap(self))
+
+
+method make_generic_std$col$$col$alloc$col$$col$Global(self: Ref)
+  requires acc(p_std$col$$col$alloc$col$$col$Global(self), write)
+  ensures acc(p_Param(self, s_std$col$$col$alloc$col$$col$Global_type()), write)
+  ensures old(make_generic_s_std$col$$col$alloc$col$$col$Global(p_std$col$$col$alloc$col$$col$Global_snap(self))) ==
+    p_Param_snap(self, s_std$col$$col$alloc$col$$col$Global_type())
+
+
+method make_concrete_std$col$$col$alloc$col$$col$Global(self: Ref)
+  requires acc(p_Param(self, s_std$col$$col$alloc$col$$col$Global_type()), write)
+  ensures acc(p_std$col$$col$alloc$col$$col$Global(self), write)
+  ensures old(p_Param_snap(self, s_std$col$$col$alloc$col$$col$Global_type())) ==
+    make_generic_s_std$col$$col$alloc$col$$col$Global(p_std$col$$col$alloc$col$$col$Global_snap(self))
+
+
+method make_generic_Str(self: Ref)
+  requires acc(p_Str(self), write)
+  ensures acc(p_Param(self, s_Str_type()), write)
+  ensures old(make_generic_s_Str(p_Str_snap(self))) ==
+    p_Param_snap(self, s_Str_type())
+
+
+method make_concrete_Str(self: Ref)
+  requires acc(p_Param(self, s_Str_type()), write)
+  ensures acc(p_Str(self), write)
+  ensures old(p_Param_snap(self, s_Str_type())) ==
+    make_generic_s_Str(p_Str_snap(self))
+
+
+method p_Ref_mutable_assign(self: Ref, U$1: Type, value: s_Ref_mutable)
+  ensures acc(p_Ref_mutable(self, U$1), write)
+  ensures p_Ref_mutable_snap(self, U$1) == value
+
+
+method p_Param_assign(self: Ref, T$0: Type, value: s_Param)
+  ensures acc(p_Param(self, T$0), write)
+  ensures p_Param_snap(self, T$0) == value
+
+
+method p_UInt_u32_assign(self: Ref, value: s_UInt_u32)
+  ensures acc(p_UInt_u32(self), write)
+  ensures p_UInt_u32_snap(self) == value
+
+
+method p_loop_borrow$col$$col$List_assign(self: Ref, value: s_loop_borrow$col$$col$List)
+  ensures acc(p_loop_borrow$col$$col$List(self), write)
+  ensures p_loop_borrow$col$$col$List_snap(self) == value
+
+
+method p_std$col$$col$option$col$$col$Option_assign(self: Ref, T$0: Type, value: s_std$col$$col$option$col$$col$Option)
+  ensures acc(p_std$col$$col$option$col$$col$Option(self, T$0), write)
+  ensures p_std$col$$col$option$col$$col$Option_snap(self, T$0) == value
+
+
+method p_Int_isize_assign(self: Ref, value: s_Int_isize)
+  ensures acc(p_Int_isize(self), write)
+  ensures p_Int_isize_snap(self) == value
+
+
+method p_std$col$$col$boxed$col$$col$Box_assign(self: Ref, T$0: Type, A$1: Type,
+  value: s_std$col$$col$boxed$col$$col$Box)
+  ensures acc(p_std$col$$col$boxed$col$$col$Box(self, T$0, A$1), write)
+  ensures p_std$col$$col$boxed$col$$col$Box_snap(self, T$0, A$1) == value
+
+
+method p_std$col$$col$ptr$col$$col$Unique_assign(self: Ref, T$0: Type, value: s_std$col$$col$ptr$col$$col$Unique)
+  ensures acc(p_std$col$$col$ptr$col$$col$Unique(self, T$0), write)
+  ensures p_std$col$$col$ptr$col$$col$Unique_snap(self, T$0) == value
+
+
+method p_std$col$$col$ptr$col$$col$NonNull_assign(self: Ref, T$0: Type, value: s_std$col$$col$ptr$col$$col$NonNull)
+  ensures acc(p_std$col$$col$ptr$col$$col$NonNull(self, T$0), write)
+  ensures p_std$col$$col$ptr$col$$col$NonNull_snap(self, T$0) == value
+
+
+method p_RawPtr_immutable_assign(self: Ref, T$0: Type, value: s_RawPtr_immutable)
+  ensures acc(p_RawPtr_immutable(self, T$0), write)
+  ensures p_RawPtr_immutable_snap(self, T$0) == value
+
+
+method p_std$col$$col$marker$col$$col$PhantomData_assign(self: Ref, T$0: Type,
+  value: s_std$col$$col$marker$col$$col$PhantomData)
+  ensures acc(p_std$col$$col$marker$col$$col$PhantomData(self, T$0), write)
+  ensures p_std$col$$col$marker$col$$col$PhantomData_snap(self, T$0) ==
+    value
+
+
+method p_UInt_usize_assign(self: Ref, value: s_UInt_usize)
+  ensures acc(p_UInt_usize(self), write)
+  ensures p_UInt_usize_snap(self) == value
+
+
+method p_0_Tuple_assign(self: Ref, value: s_0_Tuple)
+  ensures acc(p_0_Tuple(self), write)
+  ensures p_0_Tuple_snap(self) == value
+
+
+method p_Bool_assign(self: Ref, value: Bool)
+  ensures acc(p_Bool(self), write)
+  ensures p_Bool_snap(self) == value
+
+
+method p_Never_assign(self: Ref, value: s_Never)
+  ensures acc(p_Never(self), write)
+  ensures p_Never_snap(self) == value
+
+
+method p_2_Tuple_assign(self: Ref, T$0: Type, U$1: Type, value: s_2_Tuple)
+  ensures acc(p_2_Tuple(self, T$0, U$1), write)
+  ensures p_2_Tuple_snap(self, T$0, U$1) == value
+
+
+method p_std$col$$col$alloc$col$$col$Global_assign(self: Ref, value: s_std$col$$col$alloc$col$$col$Global)
+  ensures acc(p_std$col$$col$alloc$col$$col$Global(self), write)
+  ensures p_std$col$$col$alloc$col$$col$Global_snap(self) == value
+
+
+method p_Ref_immutable_assign(self: Ref, U$1: Type, value: s_Ref_immutable)
+  ensures acc(p_Ref_immutable(self, U$1), write)
+  ensures p_Ref_immutable_snap(self, U$1) == value
+
+
+method p_Str_assign(self: Ref, value: s_Str)
+  ensures acc(p_Str(self), write)
+  ensures p_Str_snap(self) == value
+
+
+adt s_Param {
+  make_generic_s_UInt_u32(make_concrete_s_UInt_u32: s_UInt_u32)
+  make_generic_s_0_Tuple(make_concrete_s_0_Tuple: s_0_Tuple)
+  make_generic_s_loop_borrow$col$$col$List(make_concrete_s_loop_borrow$col$$col$List: s_loop_borrow$col$$col$List)
+  make_generic_s_std$col$$col$boxed$col$$col$Box(make_concrete_s_std$col$$col$boxed$col$$col$Box: s_std$col$$col$boxed$col$$col$Box,
+  make_generic_s_std$col$$col$boxed$col$$col$Box_typaram_T$0: Type, make_generic_s_std$col$$col$boxed$col$$col$Box_typaram_A$1: Type)
+  make_generic_s_UInt_usize(make_concrete_s_UInt_usize: s_UInt_usize)
+  make_generic_s_Bool(make_concrete_s_Bool: Bool)
+  make_generic_s_std$col$$col$alloc$col$$col$Global(make_concrete_s_std$col$$col$alloc$col$$col$Global: s_std$col$$col$alloc$col$$col$Global)
+  make_generic_s_Str(make_concrete_s_Str: s_Str)
+  s_Param_Unknown(s_Param_Unknown_id: Int)
+}
+
+adt s_Ref_mutable {
+  s_Ref_mutable_cons(s_Ref_mutable_0: Ref, s_Ref_mutable_1: s_Param, s_Ref_mutable_2: s_Param)
+}
+
+adt s_0_Tuple {
+  s_0_Tuple_cons()
+}
+
+adt s_loop_borrow$col$$col$List {
+  s_loop_borrow$col$$col$List_cons(s_loop_borrow$col$$col$List_0: s_UInt_u32,
+  s_loop_borrow$col$$col$List_1: s_std$col$$col$option$col$$col$Option)
+}
+
+adt s_std$col$$col$option$col$$col$Option {
+  s_std$col$$col$option$col$$col$Option_0_cons()
+  s_std$col$$col$option$col$$col$Option_1_cons(s_std$col$$col$option$col$$col$Option_1_0: s_Param)
+}
+
+adt s_std$col$$col$boxed$col$$col$Box {
+  s_std$col$$col$boxed$col$$col$Box_cons(s_std$col$$col$boxed$col$$col$Box_0: s_std$col$$col$ptr$col$$col$Unique,
+  s_std$col$$col$boxed$col$$col$Box_1: s_Param, s_std$col$$col$boxed$col$$col$Box_2: s_Param)
+}
+
+adt s_std$col$$col$ptr$col$$col$Unique {
+  s_std$col$$col$ptr$col$$col$Unique_cons(s_std$col$$col$ptr$col$$col$Unique_0: s_std$col$$col$ptr$col$$col$NonNull,
+  s_std$col$$col$ptr$col$$col$Unique_1: s_std$col$$col$marker$col$$col$PhantomData)
+}
+
+adt s_std$col$$col$ptr$col$$col$NonNull {
+  s_std$col$$col$ptr$col$$col$NonNull_cons(s_std$col$$col$ptr$col$$col$NonNull_0: s_RawPtr_immutable)
+}
+
+adt s_RawPtr_immutable {
+  s_RawPtr_immutable_cons(s_RawPtr_immutable_0: Ref, s_RawPtr_immutable_1: s_Param)
+}
+
+adt s_std$col$$col$marker$col$$col$PhantomData {
+  s_std$col$$col$marker$col$$col$PhantomData_cons()
+}
+
+adt s_Never {
+  s_Never_DummyConstructor()
+}
+
+adt s_2_Tuple {
+  s_2_Tuple_cons(s_2_Tuple_0: s_Param, s_2_Tuple_1: s_Param)
+}
+
+adt s_std$col$$col$alloc$col$$col$Global {
+  s_std$col$$col$alloc$col$$col$Global_cons()
+}
+
+adt s_Ref_immutable {
+  s_Ref_immutable_cons(s_Ref_immutable_0: Ref, s_Ref_immutable_1: s_Param, s_Ref_immutable_2: s_Param)
+}
+
+adt Type {
+  s_Ref_mutable_type(s_Ref_mutable_typaram_U$1: Type)
+  s_UInt_u32_type()
+  s_0_Tuple_type()
+  s_loop_borrow$col$$col$List_type()
+  s_std$col$$col$option$col$$col$Option_type(s_std$col$$col$option$col$$col$Option_typaram_T$0: Type)
+  s_std$col$$col$boxed$col$$col$Box_type(s_std$col$$col$boxed$col$$col$Box_typaram_T$0: Type,
+  s_std$col$$col$boxed$col$$col$Box_typaram_A$1: Type)
+  s_std$col$$col$alloc$col$$col$Global_type()
+  s_std$col$$col$ptr$col$$col$Unique_type(s_std$col$$col$ptr$col$$col$Unique_typaram_T$0: Type)
+  s_std$col$$col$ptr$col$$col$NonNull_type(s_std$col$$col$ptr$col$$col$NonNull_typaram_T$0: Type)
+  s_RawPtr_immutable_type(s_RawPtr_immutable_typaram_T$0: Type)
+  s_std$col$$col$marker$col$$col$PhantomData_type(s_std$col$$col$marker$col$$col$PhantomData_typaram_T$0: Type)
+  s_Int_isize_type()
+  s_UInt_usize_type()
+  s_Bool_type()
+  s_Never_type()
+  s_2_Tuple_type(s_2_Tuple_typaram_T$0: Type, s_2_Tuple_typaram_U$1: Type)
+  s_Ref_immutable_type(s_Ref_immutable_typaram_U$1: Type)
+  s_Str_type()
+  Unknown_type(id: Int)
+}

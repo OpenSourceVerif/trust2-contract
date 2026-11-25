@@ -1,0 +1,42 @@
+{
+  "case": "mutable",
+  "function": "test1",
+  "block": "bb0",
+  "statement_index": 4,
+  "phase": "post_main",
+  "mir": {
+    "stmt": "x = &mut a",
+    "debug_stmt": "_2 = &mut _1",
+    "span": {
+      "low": {
+        "line": 20,
+        "column": 12
+      },
+      "high": {
+        "line": 20,
+        "column": 18
+      }
+    },
+    "loans_invalidated_start": [
+      "'?2"
+    ],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb2": {
+      "actions": []
+    },
+    "bb1": {
+      "actions": []
+    }
+  },
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "mutable/data/test1/bb0_stmt_4_post_main.dot"
+}

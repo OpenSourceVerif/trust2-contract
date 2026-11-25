@@ -1,0 +1,76 @@
+<!doctype html><meta charset="utf-8"><title>wand.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>wand.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use pcg::{borrow_pcg::state::BorrowsState, coupling::PcgCoupledEdgeKind, pcg::PcgNode};</span>
+<span id="L2"><a href="#L2">    2</a> use task_encoder::TaskEncoder;</span>
+<span id="L3"><a href="#L3">    3</a> </span>
+<span id="L4"><a href="#L4">    4</a> use crate::encoders::{EncodeResult, ImpureEncVisitor, mir_impure::Footprint};</span>
+<span id="L5"><a href="#L5">    5</a> </span>
+<span id="L6"><a href="#L6">    6</a> use super::r#loop::WandOldOuter;</span>
+<span id="L7"><a href="#L7">    7</a> </span>
+<span id="L8"><a href="#L8">    8</a> /// The inputs of a coupled edge with the resources each is given back as.</span>
+<span id="L9"><a href="#L9">    9</a> type Resources&lt;&#x27;a&gt; = Vec&lt;(PcgNode&lt;&#x27;a&gt;, Vec&lt;vir::ExprBool&lt;&#x27;a&gt;&gt;)&gt;;</span>
+<span id="L10"><a href="#L10">   10</a> </span>
+<span id="L11"><a href="#L11">   11</a> impl&lt;&#x27;vir, &#x27;enc, E: TaskEncoder&gt; ImpureEncVisitor&lt;&#x27;vir, &#x27;enc, E&gt; {</span>
+<span id="L12"><a href="#L12">   12</a>     pub(crate) fn pcs_handle_wand(</span>
+<span id="L13"><a href="#L13">   13</a>         &amp;mut self,</span>
+<span id="L14"><a href="#L14">   14</a>         borrows_state: &amp;BorrowsState&lt;&#x27;_, &#x27;vir&gt;,</span>
+<span id="L15"><a href="#L15">   15</a>         package: bool,</span>
+<span id="L16"><a href="#L16">   16</a>         edge: &amp;PcgCoupledEdgeKind&lt;&#x27;vir&gt;,</span>
+<span id="L17"><a href="#L17">   17</a>         label: Option&lt;&amp;&#x27;vir str&gt;,</span>
+<span id="L18"><a href="#L18">   18</a>         edge_to_loop: bool,</span>
+<span id="L19"><a href="#L19">   19</a>         footprint: Option&lt;&amp;mut Footprint&lt;&#x27;_, &#x27;vir&gt;&gt;,</span>
+<span id="L20"><a href="#L20">   20</a>     ) -&gt; EncodeResult&lt;&#x27;vir, (), E&gt; {</span>
+<span id="L21"><a href="#L21">   21</a>         // TODO: there is something in the pcs which emits spurious? opaque edge creation, skip these</span>
+<span id="L22"><a href="#L22">   22</a>         if package &amp;&amp; !edge_to_loop {</span>
+<span id="L23"><a href="#L23">   23</a>             return Ok(());</span>
+<span id="L24"><a href="#L24">   24</a>         }</span>
+<span id="L25"><a href="#L25">   25</a>         let mut old_outer = WandOldOuter::Label(label);</span>
+<span id="L26"><a href="#L26">   26</a>         let (wand, rhs) = self.coupled_wand(edge, &amp;mut old_outer)?;</span>
+<span id="L27"><a href="#L27">   27</a>         if !package {</span>
+<span id="L28"><a href="#L28">   28</a>             if let Some(footprint) = footprint {</span>
+<span id="L29"><a href="#L29">   29</a>                 footprint.parts.push(self.vcx.mk_wand_expr(wand));</span>
+<span id="L30"><a href="#L30">   30</a>             }</span>
+<span id="L31"><a href="#L31">   31</a>             self.stmt(self.vcx.mk_apply_stmt(wand));</span>
+<span id="L32"><a href="#L32">   32</a>             return Ok(());</span>
+<span id="L33"><a href="#L33">   33</a>         }</span>
+<span id="L34"><a href="#L34">   34</a>         let WandOldOuter::Label(label) = &amp;mut old_outer else {</span>
+<span id="L35"><a href="#L35">   35</a>             unreachable!()</span>
+<span id="L36"><a href="#L36">   36</a>         };</span>
+<span id="L37"><a href="#L37">   37</a>         let label = *label.get_or_insert_with(|| self.new_label(&quot;outer_package&quot;));</span>
+<span id="L38"><a href="#L38">   38</a>         let proof_block = self.pcs_package_script(borrows_state, rhs, label)?;</span>
+<span id="L39"><a href="#L39">   39</a>         let proof_block = self.vcx.alloc_slice(&amp;proof_block);</span>
+<span id="L40"><a href="#L40">   40</a>         self.stmt(self.vcx.mk_package_stmt(wand, proof_block));</span>
+<span id="L41"><a href="#L41">   41</a>         Ok(())</span>
+<span id="L42"><a href="#L42">   42</a>     }</span>
+<span id="L43"><a href="#L43">   43</a> </span>
+<span id="L44"><a href="#L44">   44</a>     /// The wand of a coupled edge, and the resources each input is given</span>
+<span id="L45"><a href="#L45">   45</a>     /// back as on its right-hand side.</span>
+<span id="L46"><a href="#L46">   46</a>     pub(super) fn coupled_wand(</span>
+<span id="L47"><a href="#L47">   47</a>         &amp;mut self,</span>
+<span id="L48"><a href="#L48">   48</a>         edge: &amp;PcgCoupledEdgeKind&lt;&#x27;vir&gt;,</span>
+<span id="L49"><a href="#L49">   49</a>         old_outer: &amp;mut WandOldOuter&lt;&#x27;vir&gt;,</span>
+<span id="L50"><a href="#L50">   50</a>     ) -&gt; EncodeResult&lt;&#x27;vir, (vir::Wand&lt;&#x27;vir&gt;, Resources&lt;&#x27;vir&gt;), E&gt; {</span>
+<span id="L51"><a href="#L51">   51</a>         let inputs = edge.inputs(self.pcg_ctxt());</span>
+<span id="L52"><a href="#L52">   52</a>         let outputs = edge.outputs();</span>
+<span id="L53"><a href="#L53">   53</a>         let mut rhs = Vec::new();</span>
+<span id="L54"><a href="#L54">   54</a>         for i in inputs {</span>
+<span id="L55"><a href="#L55">   55</a>             let mut resources = Vec::new();</span>
+<span id="L56"><a href="#L56">   56</a>             self.encode_pcg_node(&amp;*i, &amp;mut resources, old_outer)?;</span>
+<span id="L57"><a href="#L57">   57</a>             rhs.push((*i, resources));</span>
+<span id="L58"><a href="#L58">   58</a>         }</span>
+<span id="L59"><a href="#L59">   59</a>         let wand_rhs = rhs</span>
+<span id="L60"><a href="#L60">   60</a>             .iter()</span>
+<span id="L61"><a href="#L61">   61</a>             .flat_map(|(_, resources)| resources.iter().copied())</span>
+<span id="L62"><a href="#L62">   62</a>             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L63"><a href="#L63">   63</a>         let mut wand_lhs = Vec::new();</span>
+<span id="L64"><a href="#L64">   64</a>         for i in outputs {</span>
+<span id="L65"><a href="#L65">   65</a>             let i = i.expect_lifetime_projection();</span>
+<span id="L66"><a href="#L66">   66</a>             let exprs = self.encode_lifetime_projection(i, old_outer)?;</span>
+<span id="L67"><a href="#L67">   67</a>             wand_lhs.extend(exprs);</span>
+<span id="L68"><a href="#L68">   68</a>         }</span>
+<span id="L69"><a href="#L69">   69</a>         let wand = self.vcx.mk_wand(</span>
+<span id="L70"><a href="#L70">   70</a>             self.vcx.mk_conj(self.vcx.alloc_slice(&amp;wand_lhs)),</span>
+<span id="L71"><a href="#L71">   71</a>             self.vcx.mk_conj(self.vcx.alloc_slice(&amp;wand_rhs)),</span>
+<span id="L72"><a href="#L72">   72</a>         );</span>
+<span id="L73"><a href="#L73">   73</a>         Ok((wand, rhs))</span>
+<span id="L74"><a href="#L74">   74</a>     }</span>
+<span id="L75"><a href="#L75">   75</a> }</span>
+</pre>

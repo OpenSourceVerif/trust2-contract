@@ -1,0 +1,28 @@
+{
+  "case": "mutable",
+  "upstream_source": "prusti-tests/tests/verify/pass/quick/mut-borrows.rs",
+  "origin": "unchanged upstream",
+  "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+  "command": [
+    "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+    "--edition=2021",
+    "--crate-type=lib",
+    "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable/mutable.rs",
+    "--out-dir",
+    "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable"
+  ],
+  "exit_code": 0,
+  "seconds": 44.95,
+  "environment": {
+    "PCG_VISUALIZATION": "true",
+    "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable/data",
+    "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+    "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable/log",
+    "PRUSTI_CHECK_OVERFLOWS": "false",
+    "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+    "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+    "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+  },
+  "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+  "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+}

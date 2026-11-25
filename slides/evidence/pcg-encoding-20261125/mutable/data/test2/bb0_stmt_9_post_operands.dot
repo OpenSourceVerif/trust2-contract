@@ -1,0 +1,19 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">a</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="i32"]
+"p2" [label=<<FONT FACE="courier">x: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut i32"]
+"p3" [label=<<FONT FACE="courier">y: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 mut i32"]
+"r0" [label=<y↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut i32\
+"]
+"r1" [label=<x↓'?6 before bb0[7]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut i32\
+"]
+"p4" [label=<<FONT FACE="courier">*x</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+    "p1" -> "r1" [label="bw0: Default '?2", id="edge_0", color="orange", edgetooltip=""]
+    "r1" -> "p4" [label="", id="edge_1", color="green", edgetooltip=""]
+    "p4" -> "r0" [label="bw1: Default '?3", id="edge_2", color="orange", edgetooltip=""]
+    "p2" -> "p4" [label="", id="edge_3", color="green", edgetooltip=""]
+    "p1" -> "p4" [label="", id="edge_4", style="dashed", color="grey"]
+}
+

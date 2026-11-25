@@ -1,0 +1,128 @@
+{
+  "case": "mutable",
+  "function": "test1",
+  "block": "bb0",
+  "statement_index": 6,
+  "phase": "pre_main",
+  "mir": {
+    "stmt": "*x = const 4_i32",
+    "debug_stmt": "(*_2) = const 4_i32",
+    "span": {
+      "low": {
+        "line": 21,
+        "column": 4
+      },
+      "high": {
+        "line": 21,
+        "column": 10
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [
+      "bw0"
+    ],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelPlace",
+            "data": "Label place *x (Write)"
+          },
+          "debug_info": null
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Unlabel lifetime projection (exact *x && in_source_nodes && edge_type(BorrowFlow { future_edge_kind: Some(FromExpansion) }))"
+          },
+          "debug_info": "label place and update related capabilities"
+        }
+      },
+      "result": {
+        "changed": false,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {x} -> {*x}"
+          },
+          "debug_info": "expand_place_one_level: add deref edge"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Label lifetime projection x↓'?4 with label before bb0[6]"
+          },
+          "debug_info": "block deref"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "Weaken",
+            "data": "Weaken *x from E to W"
+          },
+          "debug_info": "pre_main"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb2": {
+      "actions": []
+    },
+    "bb1": {
+      "actions": []
+    }
+  },
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "mutable/data/test1/bb0_stmt_6_pre_main.dot"
+}

@@ -1,0 +1,27 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?6 i32"]
+"p1" [label=<<FONT FACE="courier">pt: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 Point"]
+"r0" [label=<pt↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 Point\
+"]
+"p2" [label=<<FONT FACE="courier">_2: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?8 i32"]
+"r1" [label=<_2↓'?8>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 i32\
+"]
+"p3" [label=<<FONT FACE="courier">*pt: R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="Point"]
+"r2" [label=<Remote(_1)↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 Point\
+"]
+"p4" [label=<<FONT FACE="courier">(*pt).x: R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p5" [label=<<FONT FACE="courier">(*_2): R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p6" [label=<<FONT FACE="courier">(*pt).y: R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+    "p1" -> "p3" [label="", id="edge_0", color="green", edgetooltip=""]
+    "p2" -> "p5" [label="", id="edge_1", color="green", edgetooltip=""]
+    "r0" -> "p3" [label="", id="edge_2", color="green", edgetooltip=""]
+    "p3" -> "p6" [label="", id="edge_3", color="green", edgetooltip=""]
+    "p4" -> "p5" [label="", id="edge_4", style="dashed", color="grey"]
+    "r2" -> "r0" [label="InitialBorrows", id="edge_5", color="purple"]
+    "p4" -> "r1" [label="shared '?4", id="edge_6", color="orange", edgetooltip=""]
+    "p3" -> "p4" [label="", id="edge_7", color="green", edgetooltip=""]
+    "r1" -> "p5" [label="", id="edge_8", color="green", edgetooltip=""]
+}
+

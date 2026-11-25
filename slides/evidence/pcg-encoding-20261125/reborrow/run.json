@@ -1,0 +1,28 @@
+{
+  "case": "reborrow",
+  "upstream_source": "prusti-tests/tests/verify/pass/borrows/reborrow_mut.rs",
+  "origin": "unchanged upstream",
+  "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+  "command": [
+    "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+    "--edition=2021",
+    "--crate-type=lib",
+    "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs",
+    "--out-dir",
+    "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow"
+  ],
+  "exit_code": 0,
+  "seconds": 51.22,
+  "environment": {
+    "PCG_VISUALIZATION": "true",
+    "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/data",
+    "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+    "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/log",
+    "PRUSTI_CHECK_OVERFLOWS": "false",
+    "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+    "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+    "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+  },
+  "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+  "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+}

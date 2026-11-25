@@ -1,0 +1,51 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?5 mut U/#0"]
+"r0" [label=<RETURN↓'?5>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?5 mut U/#0\
+"]
+"r1" [label=<RETURN↓RegionsIn(U)>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?5 mut U/#0\
+"]
+"p1" [label=<<FONT FACE="courier">x: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut U/#0"]
+"p2" [label=<<FONT FACE="courier">_2: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 mut U/#0"]
+"r2" [label=<(*_2)↓RegionsIn(U) before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="U/#0\
+"]
+"r3" [label=<*x↓RegionsIn(U) before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="U/#0\
+"]
+"r4" [label=<_2↓RegionsIn(U) before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut U/#0\
+"]
+"p3" [label=<<FONT FACE="courier">*x</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="U/#0"]
+"r5" [label=<_2↓'?7 before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut U/#0\
+"]
+"p4" [label=<<FONT FACE="courier">(*_2)</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="U/#0"]
+"r6" [label=<(*_2)↓RegionsIn(U) FUTURE>, fontcolor="blue", color="blue", shape="octagon", tooltip="U/#0\
+"]
+"r7" [label=<_2↓RegionsIn(U) FUTURE>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut U/#0\
+"]
+"r8" [label=<Remote(_1)↓RegionsIn(U)>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r9" [label=<x↓RegionsIn(U) before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r10" [label=<Remote(_1)↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r11" [label=<x↓'?6 before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+    "r2" -> "r1" [label="equals", id="edge_0", color="purple", penwidth="2"]
+    "r8" -> "r9" [label="InitialBorrows", id="edge_1", color="purple"]
+    "r1" -> "r6" [label="Future", id="edge_2", color="purple"]
+    "p3" -> "r5" [label="bw0: Default '?3", id="edge_3", color="orange", edgetooltip=""]
+    "p1" -> "p3" [label="", id="edge_4", color="green", edgetooltip=""]
+    "r5" -> "p4" [label="", id="edge_5", color="green", edgetooltip=""]
+    "p2" -> "p4" [label="", id="edge_6", color="green", edgetooltip=""]
+    "r9" -> "r3" [label="", id="edge_7", color="green", edgetooltip=""]
+    "r4" -> "r7" [label="Future", id="edge_8", color="purple"]
+    "p3" -> "p4" [label="", id="edge_9", style="dashed", color="grey"]
+    "p4" -> "r0" [label="bw1: Default '?4", id="edge_10", color="orange", edgetooltip=""]
+    "r3" -> "r4" [label="equals", id="edge_11", color="purple", penwidth="2"]
+    "r11" -> "p3" [label="", id="edge_12", color="green", edgetooltip=""]
+    "r4" -> "r2" [label="", id="edge_13", color="green", edgetooltip=""]
+    "r6" -> "r7" [label="Future", id="edge_14", color="purple"]
+    "r2" -> "r6" [label="Future", id="edge_15", color="purple"]
+    "r10" -> "r11" [label="InitialBorrows", id="edge_16", color="purple"]
+}
+

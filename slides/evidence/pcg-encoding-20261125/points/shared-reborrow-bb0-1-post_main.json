@@ -1,0 +1,138 @@
+{
+  "case": "shared",
+  "function": "reborrow",
+  "block": "bb0",
+  "statement_index": 1,
+  "phase": "post_main",
+  "mir": {
+    "stmt": "_2 = &mut *x",
+    "debug_stmt": "_2 = &mut (*_1)",
+    "span": {
+      "low": {
+        "line": 20,
+        "column": 4
+      },
+      "high": {
+        "line": 20,
+        "column": 5
+      }
+    },
+    "loans_invalidated_start": [
+      "'?3"
+    ],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Label lifetime projection (postfixes of *x && place_label(None) && region_idx(LifetimeProjectionIdx(0, PhantomData<pcg::borrow_pcg::region_projection::Generalized>)) && rp_label(None)) with label before bb0[1]"
+          },
+          "debug_info": "Label region projections of newly borrowed place"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge *x↓RegionsIn(U) before bb0[1]:PostMain -> _2↓RegionsIn(U)"
+          },
+          "debug_info": "assign_post_main"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge *x↓RegionsIn(U) before bb0[1]:PostMain -> *x↓RegionsIn(U) FUTURE"
+          },
+          "debug_info": "assign: placeholder bookkeeping"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge _2↓RegionsIn(U) -> *x↓RegionsIn(U) FUTURE"
+          },
+          "debug_info": "assign: placeholder bookkeeping"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "RemoveEdge",
+            "data": "Remove Edge *x↓RegionsIn(U) before bb0[1]:PostMain -> x↓RegionsIn(U) FUTURE"
+          },
+          "debug_info": "placeholder bookkeeping"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge *x↓RegionsIn(U) FUTURE -> x↓RegionsIn(U) FUTURE"
+          },
+          "debug_info": "placeholder bookkeeping"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {},
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "shared/data/reborrow/bb0_stmt_1_post_main.dot"
+}

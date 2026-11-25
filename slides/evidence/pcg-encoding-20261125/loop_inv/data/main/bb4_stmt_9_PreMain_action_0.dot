@@ -1,0 +1,39 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">i: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="i32"]
+"p2" [label=<<FONT FACE="courier">_2: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p3" [label=<<FONT FACE="courier">_3: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p4" [label=<<FONT FACE="courier">_4: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p5" [label=<<FONT FACE="courier">_6: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p6" [label=<<FONT FACE="courier">_7: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p7" [label=<<FONT FACE="courier">_8: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p8" [label=<<FONT FACE="courier">_9: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?8 Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?9 i32,)])"]
+"p9" [label=<<FONT FACE="courier">_10: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?10 Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?11 i32,)])"]
+"r0" [label=<_10↓'?10>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?10 Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?11 i32,)])\
+"]
+"r1" [label=<_10↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?10 Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?11 i32,)])\
+"]
+"p10" [label=<<FONT FACE="courier">_11: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?12 i32,)])"]
+"r2" [label=<_11↓'?12>, fontcolor="blue", color="blue", shape="octagon", tooltip="Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?12 i32,)])\
+"]
+"p11" [label=<<FONT FACE="courier">_13: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="(i32, bool)"]
+"p12" [label=<<FONT FACE="courier">_14: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p13" [label=<<FONT FACE="courier">_16: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"r3" [label=<_12 before bb4[6]↓'?13>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?13 i32\
+"]
+"p14" [label=<<FONT FACE="courier">(*_10): R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?11 i32,)])"]
+"r4" [label=<(*_10)↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="Closure(DefId(0:6 ~ loop_inv[17b2]::main::{closure#0}), [i8, Binder { value: extern \"RustCall\" fn(()) -> bool, bound_vars: [] }, (&'?11 i32,)])\
+"]
+    "r2" -> "r1" [label="equals", id="edge_0", color="purple", penwidth="2"]
+    "p10" -> "r0" [label="bw1: shared '?4", id="edge_1", color="orange", edgetooltip="bb2 -> bb3, bb3 -> bb4"]
+    "p1" -> "r3" [label="bw0: shared '?2", id="edge_2", color="orange", edgetooltip="bb2 -> bb3, bb3 -> bb4"]
+    "r0" -> "p14" [label="", id="edge_3", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb4"]
+    "r3" -> "r2" [label="Aggregate(0, 0)", id="edge_4", color="purple"]
+    "r2" -> "r0" [label="outlives", id="edge_5", style="dashed", color="purple"]
+    "p9" -> "p14" [label="", id="edge_6", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb4"]
+    "r1" -> "r4" [label="", id="edge_7", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb4"]
+    "p10" -> "p14" [label="", id="edge_8", style="dashed", color="grey"]
+}
+

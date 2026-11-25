@@ -1,0 +1,138 @@
+{
+  "case": "loop_borrow",
+  "function": "List::get_nth_loop",
+  "block": "bb1",
+  "statement_index": 0,
+  "phase": "pre_operands",
+  "mir": {
+    "stmt": "falseUnwind -> [real: bb2, unwind: bb10]",
+    "debug_stmt": "falseUnwind -> [real: bb2, unwind: bb10]",
+    "span": {
+      "low": {
+        "line": 10,
+        "column": 8
+      },
+      "high": {
+        "line": 17,
+        "column": 9
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": []
+  },
+  "phase_actions": [],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb2": {
+      "actions": []
+    }
+  },
+  "loop_data": {
+    "used_places": {
+      "usages": {
+        "**tail": "Exclusive",
+        "_10": "Exclusive",
+        "_13": "Exclusive",
+        "current": "Write",
+        "_8": "Exclusive",
+        "(*_12)": "Exclusive",
+        "_16": "Write",
+        "n": "Read",
+        "_12": "Write",
+        "(*current).tail": "Read",
+        "_11": "Exclusive",
+        "_9": "Exclusive",
+        "tail": "Write",
+        "i": "Exclusive",
+        "_7": "Write",
+        "_16.1": "Exclusive",
+        "_16.0": "Exclusive",
+        "(*current).tail@Some.0": "Exclusive"
+      }
+    },
+    "live_loop_places": {
+      "usages": {
+        "(*current).tail@Some.0": "Exclusive",
+        "(*current).tail": "Read",
+        "n": "Read",
+        "current": "Write",
+        "i": "Exclusive"
+      }
+    },
+    "dot_graphs": [
+      [
+        "Pre-Loop",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n\"r0\" [label=<Remote(_1)↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r1\" [label=<self before bb0[5]↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r2\" [label=<current↓'?13>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?13 mut List\\\n\"]\n    \"r0\" -> \"r1\" [label=\"InitialBorrows\", id=\"edge_0\", color=\"purple\"]\n    \"r1\" -> \"r2\" [label=\"Move\", id=\"edge_1\", color=\"purple\"]\n}\n\n"
+      ],
+      [
+        "Place-Label",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n\"r0\" [label=<Remote(_1)↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r1\" [label=<self before bb0[5]↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r2\" [label=<current↓'?13>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?13 mut List\\\n\"]\n    \"r1\" -> \"r2\" [label=\"Move\", id=\"edge_0\", color=\"purple\"]\n    \"r0\" -> \"r1\" [label=\"InitialBorrows\", id=\"edge_1\", color=\"purple\"]\n}\n\n"
+      ],
+      [
+        "Post-Expand",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n\"r0\" [label=<Remote(_1)↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r1\" [label=<self before bb0[5]↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r2\" [label=<current↓'?13>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?13 mut List\\\n\"]\n    \"r1\" -> \"r2\" [label=\"Move\", id=\"edge_0\", color=\"purple\"]\n    \"r0\" -> \"r1\" [label=\"InitialBorrows\", id=\"edge_1\", color=\"purple\"]\n}\n\n"
+      ],
+      [
+        "Abstraction",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n\"r0\" [label=<Remote(_1)↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r1\" [label=<current↓'?13>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?13 mut List\\\n\"]\n    \"r0\" -> \"r1\" [label=\"loop at bb1[0]\", id=\"edge_0\", penwidth=\"3\"]\n}\n\n"
+      ],
+      [
+        "To Cut",
+        "digraph \"graph\" {\nlayout=dot\nnode [shape=rect]\n\"r0\" [label=<Remote(_1)↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r1\" [label=<self before bb0[5]↓'?11>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?11 mut List\\\n\"]\n\"r2\" [label=<current↓'?13>, fontcolor=\"blue\", color=\"blue\", shape=\"octagon\", tooltip=\"&'?13 mut List\\\n\"]\n    \"r1\" -> \"r2\" [label=\"Move\", id=\"edge_0\", color=\"purple\"]\n    \"r0\" -> \"r1\" [label=\"InitialBorrows\", id=\"edge_1\", color=\"purple\"]\n}\n\n"
+      ]
+    ],
+    "loop_blocked_places": {
+      "usages": {}
+    },
+    "ancestors_of_live_places": [
+      [
+        "current: Write",
+        [
+          "Remote(_1)↓'?11",
+          "current↓'?13 loop bb1"
+        ]
+      ],
+      [
+        "(*current).tail: Read",
+        []
+      ],
+      [
+        "(*current).tail@Some.0: Exclusive",
+        []
+      ],
+      [
+        "i: Exclusive",
+        []
+      ],
+      [
+        "n: Read",
+        []
+      ]
+    ],
+    "root_places": [
+      [
+        "Remote(_1)",
+        []
+      ]
+    ],
+    "loop_blocker_places": {
+      "usages": {
+        "current": "Write"
+      }
+    },
+    "place_labels": []
+  },
+  "loop_invariant_capabilities": {
+    "bb1": {
+      "_13": "Write",
+      "_16": "Write",
+      "_7": "Write",
+      "current": "Exclusive",
+      "i": "Exclusive",
+      "n": "Read"
+    }
+  },
+  "dot": "loop_borrow/data/List::get_nth_loop/bb1_stmt_0_pre_operands.dot"
+}

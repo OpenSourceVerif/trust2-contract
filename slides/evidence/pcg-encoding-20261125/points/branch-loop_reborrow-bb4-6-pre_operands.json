@@ -1,0 +1,181 @@
+{
+  "case": "branch",
+  "function": "loop_reborrow",
+  "block": "bb4",
+  "statement_index": 6,
+  "phase": "pre_operands",
+  "mir": {
+    "stmt": "StorageLive(_12)",
+    "debug_stmt": "StorageLive(_12)",
+    "span": {
+      "low": {
+        "line": 19,
+        "column": 4
+      },
+      "high": {
+        "line": 19,
+        "column": 19
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": []
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "RemoveEdge",
+            "data": "Remove Edge {r} -> {*r}"
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: *r: Node is a place with a non-empty projection and is not blocked by an edge"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Unlabel lifetime projection r↓'?6 before bb4[5]"
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: *r: Node is a place with a non-empty projection and is not blocked by an edge: unlabel blocked_region_projections"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelPlace",
+            "data": "Label place *r (Collapse)"
+          },
+          "debug_info": null
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Owned",
+        "data": {
+          "kind": {
+            "type": "RegainLoanedCapability",
+            "data": {
+              "place": "r",
+              "capability": "Exclusive"
+            }
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: *r: Node is a place with a non-empty projection and is not blocked by an edge: remove_deref_edges_to: restore parent place"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Unlabel lifetime projection r↓'?6 FUTURE"
+          },
+          "debug_info": "Place r unblocked: remove placeholder label of rps of newly unblocked nodes"
+        }
+      },
+      "result": {
+        "changed": false,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "RemoveEdge",
+            "data": "Remove Edge Loop(bb1): x -> r↓'?6"
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: r↓'?6: Borrow-checker reports node as dead"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Owned",
+        "data": {
+          "kind": {
+            "type": "RegainLoanedCapability",
+            "data": {
+              "place": "x",
+              "capability": "Exclusive"
+            }
+          },
+          "debug_info": "update_unblocked_node_capabilities_and_remove_placeholder_projections"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "Weaken",
+            "data": "Weaken r from E to W"
+          },
+          "debug_info": "lifetime projection is dead"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb6": {
+      "actions": []
+    },
+    "bb5": {
+      "actions": []
+    }
+  },
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "branch/data/loop_reborrow/bb4_stmt_6_pre_operands.dot"
+}

@@ -1,0 +1,43 @@
+  __          __        __  ___             
+ |__)  _\/_  |__) |  | /__`  |   ____\/_  | 
+ |      /\   |  \ \__/ .__/  |       /\   | 
+
+Prusti version: 0.3.0, commit 45b27b461 2026-11-23 20:18:05 UTC, built on 2026-11-24 09:37:28 UTC
+warning: field `y` is never read
+ --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/shared.rs:5:5
+  |
+3 | struct Point {
+  |        ----- field in this struct
+4 |     x: i32,
+5 |     y: i32,
+  |     ^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `get_x` is never used
+ --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/shared.rs:9:4
+  |
+9 | fn get_x<'a, 'b: 'a>(pt: &'b Point) -> &'a i32 {
+  |    ^^^^^
+
+warning: function `main` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/shared.rs:13:4
+   |
+13 | fn main() {
+   |    ^^^^
+
+warning: function `reborrow` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/shared.rs:19:4
+   |
+19 | fn reborrow<U>(x: &mut U) -> &mut U {
+   |    ^^^^^^^^
+
+warning: function `caller` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/shared.rs:23:4
+   |
+23 | fn caller<T>(mut v: T) {
+   |    ^^^^^^
+
+Verification of 4 items...
+warning: 5 warnings emitted
+

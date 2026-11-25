@@ -1,0 +1,334 @@
+{
+  "errors": [],
+  "layouts": [
+    {
+      "id": "stage-input",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-facts",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-pcg",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-types",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-phases",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-edges",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-calls",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-casts",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-control",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-verification",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-export",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 1000
+    },
+    {
+      "id": "stage-input",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-facts",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-pcg",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-types",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-phases",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-edges",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-calls",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-casts",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-control",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-verification",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-export",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 800
+    },
+    {
+      "id": "stage-input",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-facts",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-pcg",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-types",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-phases",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-edges",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-calls",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-casts",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-control",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-verification",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    },
+    {
+      "id": "stage-export",
+      "width": 390,
+      "horizontalOverflow": false,
+      "ordered": true,
+      "selectedNodes": 1,
+      "caseCount": 1,
+      "panelHeight": 490
+    }
+  ],
+  "stages": 12,
+  "cases": 22,
+  "references": 40,
+  "navigation": "SVG, keyboard, selectors, rule deep links",
+  "browser": "Existing Windows Edge / Playwright"
+}

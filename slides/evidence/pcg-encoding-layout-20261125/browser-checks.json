@@ -1,0 +1,1771 @@
+{
+  "errors": [],
+  "layouts": [
+    {
+      "id": "overview",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "baseline",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "runs",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "pipeline",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "phases",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "capabilities",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-create",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-create-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -13,
+      "brokenImages": []
+    },
+    {
+      "id": "deref",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -3,
+      "brokenImages": []
+    },
+    {
+      "id": "deref-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "deref-contract",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "weaken",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "weaken-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-end",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-end-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -23,
+      "brokenImages": []
+    },
+    {
+      "id": "field-open",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "field-open-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-fields",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-ref",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-int",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "field-close",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "field-close-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "reborrow-chain",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    },
+    {
+      "id": "reborrow-chain-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -13,
+      "brokenImages": []
+    },
+    {
+      "id": "call-edge",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "call-edge-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "call-contract",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "expiry-spec",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "package",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "package-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -13,
+      "brokenImages": []
+    },
+    {
+      "id": "package-script",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "apply",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    },
+    {
+      "id": "apply-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "history",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    },
+    {
+      "id": "history-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "shared",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "shared-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "projection",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "projection-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -31,
+      "brokenImages": []
+    },
+    {
+      "id": "flow",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "flow-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-undo",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -4,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-undo-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "index",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "index-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale-path",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale-path-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -13,
+      "brokenImages": []
+    },
+    {
+      "id": "branch",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "branch-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-invariant",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-invariant-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -13,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-capabilities",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-wand",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-wand-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-package",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-failure",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "remote",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "remote-viper",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -27,
+      "brokenImages": []
+    },
+    {
+      "id": "node-map",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "matrix",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "limits",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "llbc",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-inputs",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": 75,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-borrow",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-deref",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-weaken",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -2,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-expand",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-dead",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-unblock",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-shape",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-call",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-history",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-shared",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": 40,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-projection",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-future",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-unsize",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-branch",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-loop-cap",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-loop-wand",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-nodes",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "evidence",
+      "width": 1440,
+      "horizontalOverflow": false,
+      "belowFooter": -34,
+      "brokenImages": []
+    },
+    {
+      "id": "overview",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "baseline",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "runs",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "pipeline",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "phases",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "capabilities",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-create",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-create-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 104,
+      "brokenImages": []
+    },
+    {
+      "id": "deref",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 89,
+      "brokenImages": []
+    },
+    {
+      "id": "deref-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "deref-contract",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "weaken",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "weaken-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-end",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -15,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-end-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 69,
+      "brokenImages": []
+    },
+    {
+      "id": "field-open",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -15,
+      "brokenImages": []
+    },
+    {
+      "id": "field-open-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 19,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-fields",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 11,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-ref",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-int",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "field-close",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 2,
+      "brokenImages": []
+    },
+    {
+      "id": "field-close-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 45,
+      "brokenImages": []
+    },
+    {
+      "id": "reborrow-chain",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 71,
+      "brokenImages": []
+    },
+    {
+      "id": "reborrow-chain-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 79,
+      "brokenImages": []
+    },
+    {
+      "id": "call-edge",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -15,
+      "brokenImages": []
+    },
+    {
+      "id": "call-edge-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "call-contract",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "expiry-spec",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 11,
+      "brokenImages": []
+    },
+    {
+      "id": "package",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "package-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 104,
+      "brokenImages": []
+    },
+    {
+      "id": "package-script",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "apply",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 89,
+      "brokenImages": []
+    },
+    {
+      "id": "apply-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 2,
+      "brokenImages": []
+    },
+    {
+      "id": "history",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 89,
+      "brokenImages": []
+    },
+    {
+      "id": "history-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 45,
+      "brokenImages": []
+    },
+    {
+      "id": "shared",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -15,
+      "brokenImages": []
+    },
+    {
+      "id": "shared-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "projection",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -15,
+      "brokenImages": []
+    },
+    {
+      "id": "projection-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 69,
+      "brokenImages": []
+    },
+    {
+      "id": "flow",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 92,
+      "brokenImages": []
+    },
+    {
+      "id": "flow-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 82,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -15,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 45,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-undo",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 123,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-undo-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "index",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -15,
+      "brokenImages": []
+    },
+    {
+      "id": "index-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 19,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale-path",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale-path-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 79,
+      "brokenImages": []
+    },
+    {
+      "id": "branch",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 54,
+      "brokenImages": []
+    },
+    {
+      "id": "branch-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 69,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-invariant",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -14,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-invariant-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 79,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-capabilities",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-wand",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -19,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-wand-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-package",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-failure",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "remote",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -12,
+      "brokenImages": []
+    },
+    {
+      "id": "remote-viper",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 65,
+      "brokenImages": []
+    },
+    {
+      "id": "node-map",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "matrix",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "limits",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 5,
+      "brokenImages": []
+    },
+    {
+      "id": "llbc",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-inputs",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 184,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-borrow",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -9,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-deref",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 63,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-weaken",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 150,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-expand",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-dead",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 81,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-unblock",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -9,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-shape",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -9,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-call",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 29,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-history",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-shared",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 167,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-projection",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -9,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-future",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -9,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-unsize",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": 29,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-branch",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -23,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-loop-cap",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -9,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-loop-wand",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -9,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-nodes",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "evidence",
+      "width": 1280,
+      "horizontalOverflow": false,
+      "belowFooter": -24,
+      "brokenImages": []
+    },
+    {
+      "id": "overview",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": -16,
+      "brokenImages": []
+    },
+    {
+      "id": "baseline",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    },
+    {
+      "id": "runs",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 119,
+      "brokenImages": []
+    },
+    {
+      "id": "pipeline",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 138,
+      "brokenImages": []
+    },
+    {
+      "id": "phases",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 186,
+      "brokenImages": []
+    },
+    {
+      "id": "capabilities",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 290,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-create",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 259,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-create-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 486,
+      "brokenImages": []
+    },
+    {
+      "id": "deref",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 355,
+      "brokenImages": []
+    },
+    {
+      "id": "deref-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 466,
+      "brokenImages": []
+    },
+    {
+      "id": "deref-contract",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 18,
+      "brokenImages": []
+    },
+    {
+      "id": "weaken",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 249,
+      "brokenImages": []
+    },
+    {
+      "id": "weaken-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 311,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-end",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 235,
+      "brokenImages": []
+    },
+    {
+      "id": "borrow-end-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 614,
+      "brokenImages": []
+    },
+    {
+      "id": "field-open",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 252,
+      "brokenImages": []
+    },
+    {
+      "id": "field-open-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 452,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-fields",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 423,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-ref",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 287,
+      "brokenImages": []
+    },
+    {
+      "id": "predicate-int",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 22,
+      "brokenImages": []
+    },
+    {
+      "id": "field-close",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 269,
+      "brokenImages": []
+    },
+    {
+      "id": "field-close-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 496,
+      "brokenImages": []
+    },
+    {
+      "id": "reborrow-chain",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 380,
+      "brokenImages": []
+    },
+    {
+      "id": "reborrow-chain-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 668,
+      "brokenImages": []
+    },
+    {
+      "id": "call-edge",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 313,
+      "brokenImages": []
+    },
+    {
+      "id": "call-edge-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 250,
+      "brokenImages": []
+    },
+    {
+      "id": "call-contract",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 253,
+      "brokenImages": []
+    },
+    {
+      "id": "expiry-spec",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 558,
+      "brokenImages": []
+    },
+    {
+      "id": "package",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 315,
+      "brokenImages": []
+    },
+    {
+      "id": "package-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 655,
+      "brokenImages": []
+    },
+    {
+      "id": "package-script",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 515,
+      "brokenImages": []
+    },
+    {
+      "id": "apply",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 439,
+      "brokenImages": []
+    },
+    {
+      "id": "apply-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 527,
+      "brokenImages": []
+    },
+    {
+      "id": "history",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 439,
+      "brokenImages": []
+    },
+    {
+      "id": "history-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 536,
+      "brokenImages": []
+    },
+    {
+      "id": "shared",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 249,
+      "brokenImages": []
+    },
+    {
+      "id": "shared-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 439,
+      "brokenImages": []
+    },
+    {
+      "id": "projection",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 332,
+      "brokenImages": []
+    },
+    {
+      "id": "projection-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 592,
+      "brokenImages": []
+    },
+    {
+      "id": "flow",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 342,
+      "brokenImages": []
+    },
+    {
+      "id": "flow-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 544,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 299,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 557,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-undo",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 389,
+      "brokenImages": []
+    },
+    {
+      "id": "unsize-undo-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 328,
+      "brokenImages": []
+    },
+    {
+      "id": "index",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 266,
+      "brokenImages": []
+    },
+    {
+      "id": "index-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 458,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale-path",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 281,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale-path-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 510,
+      "brokenImages": []
+    },
+    {
+      "id": "branch",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 415,
+      "brokenImages": []
+    },
+    {
+      "id": "branch-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 452,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-invariant",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 466,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-invariant-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 496,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-capabilities",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 126,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-wand",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 401,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-wand-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 455,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-package",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 317,
+      "brokenImages": []
+    },
+    {
+      "id": "loop-failure",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 351,
+      "brokenImages": []
+    },
+    {
+      "id": "remote",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 512,
+      "brokenImages": []
+    },
+    {
+      "id": "remote-viper",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 727,
+      "brokenImages": []
+    },
+    {
+      "id": "node-map",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 315,
+      "brokenImages": []
+    },
+    {
+      "id": "matrix",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    },
+    {
+      "id": "inhale",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    },
+    {
+      "id": "limits",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 603,
+      "brokenImages": []
+    },
+    {
+      "id": "llbc",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-inputs",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 568,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-borrow",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 462,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-deref",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 640,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-weaken",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 787,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-expand",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 367,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-dead",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 558,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-unblock",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 479,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-shape",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 619,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-call",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 588,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-history",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 323,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-shared",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 674,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-projection",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 570,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-future",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 281,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-unsize",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 536,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-branch",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 423,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-loop-cap",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 393,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-loop-wand",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 558,
+      "brokenImages": []
+    },
+    {
+      "id": "rule-nodes",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": 334,
+      "brokenImages": []
+    },
+    {
+      "id": "evidence",
+      "width": 390,
+      "horizontalOverflow": false,
+      "belowFooter": -21,
+      "brokenImages": []
+    }
+  ],
+  "slides": 84,
+  "browser": "Existing Edge with Playwright"
+}

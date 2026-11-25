@@ -1,0 +1,35 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">again: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p2" [label=<<FONT FACE="courier">x</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="i32"]
+"p3" [label=<<FONT FACE="courier">r: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut i32"]
+"r0" [label=<r↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut i32\
+"]
+"p4" [label=<<FONT FACE="courier">_4: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p5" [label=<<FONT FACE="courier">_5: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p6" [label=<<FONT FACE="courier">_6: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p7" [label=<<FONT FACE="courier">_9: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p8" [label=<<FONT FACE="courier">_11: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p9" [label=<<FONT FACE="courier">(*_8) before bb3[6]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"r1" [label=<_7 before bb3[4]↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut i32\
+"]
+"r2" [label=<r before bb3[4]↓'?6 before bb3[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut i32\
+"]
+"p10" [label=<<FONT FACE="courier">_8 before bb3[6]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?8 mut i32"]
+"r3" [label=<_8 before bb3[6]↓'?8 before bb3[3]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut i32\
+"]
+"p11" [label=<<FONT FACE="courier">*r before bb3[4]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p12" [label=<<FONT FACE="courier">r: E before bb3[4]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?6 mut i32"]
+    "p9" -> "r1" [label="bw2: Default '?4", id="edge_0", color="orange", edgetooltip="bb2 -> bb3"]
+    "p2" -> "r2" [label="loop at bb1[0]", id="edge_1", penwidth="3"]
+    "p12" -> "p11" [label="", id="edge_2", color="green", edgetooltip="bb2 -> bb3"]
+    "r1" -> "r0" [label="Move", id="edge_3", color="purple"]
+    "p11" -> "r3" [label="bw1: Default '?3", id="edge_4", color="orange", edgetooltip="bb2 -> bb3"]
+    "p11" -> "p9" [label="", id="edge_5", style="dashed", color="grey"]
+    "r2" -> "p11" [label="", id="edge_6", color="green", edgetooltip="bb2 -> bb3"]
+    "r3" -> "p9" [label="", id="edge_7", color="green", edgetooltip="bb2 -> bb3"]
+    "p10" -> "p9" [label="", id="edge_8", color="green", edgetooltip="bb2 -> bb3"]
+}
+

@@ -1,0 +1,274 @@
+[
+  {
+    "id": "borrow-create",
+    "title": "01 普通可变借用的建立",
+    "case": "mutable",
+    "function": "test1",
+    "point": "test1 · bb0[4] · post_main",
+    "pcg_point": "points/mutable-test1-bb0-4-post_main.json",
+    "status": 0,
+    "rules": [
+      "borrow"
+    ]
+  },
+  {
+    "id": "deref",
+    "title": "02 Deref 边：内部 unfold 是类型资源转换",
+    "case": "mutable",
+    "function": "test1",
+    "point": "test1 · bb0[6] · pre_main",
+    "pcg_point": "points/mutable-test1-bb0-6-pre_main.json",
+    "status": 0,
+    "rules": [
+      "deref"
+    ]
+  },
+  {
+    "id": "weaken",
+    "title": "03 Weaken E→W：忘掉旧内容，再执行赋值",
+    "case": "mutable",
+    "function": "test1",
+    "point": "test1 · bb0[6] · pre_main",
+    "pcg_point": "points/mutable-test1-bb0-6-pre_main.json",
+    "status": 0,
+    "rules": [
+      "weaken"
+    ]
+  },
+  {
+    "id": "borrow-end",
+    "title": "04 普通 Borrow 与 Deref 的移除",
+    "case": "mutable",
+    "function": "test1",
+    "point": "test1 · bb0[7] · pre_operands",
+    "pcg_point": "points/mutable-test1-bb0-7-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "dead",
+      "deref"
+    ]
+  },
+  {
+    "id": "field-open",
+    "title": "05 Place expansion：结构体字段展开",
+    "case": "mutable",
+    "function": "test3",
+    "point": "test3 · bb0[6] · pre_main",
+    "pcg_point": "points/mutable-test3-bb0-6-pre_main.json",
+    "status": 0,
+    "rules": [
+      "expand"
+    ]
+  },
+  {
+    "id": "field-close",
+    "title": "06 Collapse：重新折叠结构体",
+    "case": "mutable",
+    "function": "test3",
+    "point": "test3 · bb0[7] · pre_operands",
+    "pcg_point": "points/mutable-test3-bb0-7-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "expand",
+      "dead"
+    ]
+  },
+  {
+    "id": "reborrow-chain",
+    "title": "07 多层重借用：按依赖顺序解除阻塞",
+    "case": "mutable",
+    "function": "test2",
+    "point": "test2 · bb0[13] · pre_operands",
+    "pcg_point": "points/mutable-test2-bb0-13-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "dead",
+      "unblock"
+    ]
+  },
+  {
+    "id": "call-edge",
+    "title": "08 FunctionCall 边：调用后提供归还 wand",
+    "case": "reborrow",
+    "function": "reborrow_user",
+    "point": "reborrow_user · bb0[8] · post_main",
+    "pcg_point": "points/reborrow-reborrow_user-bb0-8-post_main.json",
+    "status": 0,
+    "rules": [
+      "shape",
+      "call"
+    ]
+  },
+  {
+    "id": "package",
+    "title": "09 被调用函数：用 UnblockGraph 证明 package",
+    "case": "reborrow",
+    "function": "get_mut_x",
+    "point": "get_mut_x · bb0[7] · initial",
+    "pcg_point": "points/reborrow-get_mut_x-bb0-7-initial.json",
+    "status": 0,
+    "rules": [
+      "shape",
+      "unblock"
+    ]
+  },
+  {
+    "id": "apply",
+    "title": "10 调用者：移除调用边触发 apply",
+    "case": "reborrow",
+    "function": "reborrow_user",
+    "point": "reborrow_user · bb1[4] · pre_operands",
+    "pcg_point": "points/reborrow-reborrow_user-bb1-4-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "call",
+      "unblock"
+    ]
+  },
+  {
+    "id": "history",
+    "title": "11 历史节点：恢复旧引用所指向的对象",
+    "case": "reborrow",
+    "function": "reborrow_user",
+    "point": "reborrow_user · bb1[4] · pre_operands",
+    "pcg_point": "points/reborrow-reborrow_user-bb1-4-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "history"
+    ]
+  },
+  {
+    "id": "shared",
+    "title": "12 Shared ref：通过 snapshot 读取目标值",
+    "case": "shared",
+    "function": "get_x",
+    "point": "get_x · bb0[1] · pre_operands",
+    "pcg_point": "points/shared-get_x-bb0-1-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "shared",
+      "deref"
+    ]
+  },
+  {
+    "id": "projection",
+    "title": "13 LifetimeProjection 展开：不必直接发语句",
+    "case": "reborrow",
+    "function": "use_container",
+    "point": "use_container · bb0[1] · pre_operands",
+    "pcg_point": "points/reborrow-use_container-bb0-1-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "projection"
+    ]
+  },
+  {
+    "id": "flow",
+    "title": "14 BorrowFlow / FUTURE：记录引用中嵌套生命周期的流动",
+    "case": "shared",
+    "function": "reborrow",
+    "point": "reborrow · bb0[1] · post_main",
+    "pcg_point": "points/shared-reborrow-bb0-1-post_main.json",
+    "status": 0,
+    "rules": [
+      "future"
+    ]
+  },
+  {
+    "id": "unsize",
+    "title": "15 Unsize：数组引用转换为切片引用",
+    "case": "arrays",
+    "function": "test5",
+    "point": "test5 · bb0[8] · post_main",
+    "pcg_point": "points/arrays-test5-bb0-8-post_main.json",
+    "status": 0,
+    "rules": [
+      "unsize"
+    ]
+  },
+  {
+    "id": "unsize-undo",
+    "title": "16 Unsize 借用结束：恢复数组的资源表示",
+    "case": "arrays",
+    "function": "test5",
+    "point": "test5 · bb1[1] · pre_operands",
+    "pcg_point": "points/arrays-test5-bb1-1-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "unsize"
+    ]
+  },
+  {
+    "id": "index",
+    "title": "17 索引展开：额外需要 index、metadata 和边界条件",
+    "case": "arrays",
+    "function": "test5",
+    "point": "test5 · bb1[0] · pre_main",
+    "pcg_point": "points/arrays-test5-bb1-0-pre_main.json",
+    "status": 0,
+    "rules": [
+      "expand"
+    ]
+  },
+  {
+    "id": "inhale-path",
+    "title": "18a 显式 inhale：这里用于结束不可达路径",
+    "case": "mutable",
+    "function": "test1",
+    "point": "test1 · bb2[2] · post_main",
+    "pcg_point": "points/mutable-test1-bb2-2-post_main.json",
+    "status": 0,
+    "rules": [
+      "inputs"
+    ]
+  },
+  {
+    "id": "branch",
+    "title": "18 分支相关边：恢复操作必须带路径条件",
+    "case": "branch_only",
+    "function": "branch",
+    "point": "branch · bb3[3] · pre_operands",
+    "pcg_point": "points/branch_only-branch-bb3-3-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "branch"
+    ]
+  },
+  {
+    "id": "loop-invariant",
+    "title": "19 循环资源与用户不变式分别生成",
+    "case": "loop_inv",
+    "function": "main",
+    "point": "main · bb1[0] · pre_operands",
+    "pcg_point": "points/loop_inv-main-bb1-0-pre_operands.json",
+    "status": 0,
+    "rules": [
+      "loop-cap"
+    ]
+  },
+  {
+    "id": "loop-wand",
+    "title": "20 循环抽象边：真实 package/apply，但本例失败",
+    "case": "branch",
+    "function": "loop_reborrow",
+    "point": "loop_reborrow · bb4[6] · pre_operands",
+    "pcg_point": "points/branch-loop_reborrow-bb4-6-pre_operands.json",
+    "status": 1,
+    "rules": [
+      "loop-wand"
+    ]
+  },
+  {
+    "id": "remote",
+    "title": "21 Remote / LifetimeProjection 节点如何形成资源",
+    "case": "loop_borrow",
+    "function": "List::get_nth_loop",
+    "point": "List::get_nth_loop · bb1[0] · pre_operands",
+    "pcg_point": "points/loop_borrow-List--get_nth_loop-bb1-0-pre_operands.json",
+    "status": 1,
+    "rules": [
+      "nodes",
+      "loop-wand"
+    ]
+  }
+]

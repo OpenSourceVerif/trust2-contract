@@ -1,0 +1,242 @@
+{
+  "layout": "workflow-detail",
+  "reference": "/home/shenghao/GitHub/documents-for-trust2er/figure/pcuic-flow.html",
+  "stages": [
+    {
+      "id": "stage-input",
+      "title": "Rust 程序与 Prusti 规约",
+      "subtitle": "程序、类型、requires / ensures / after_expiry",
+      "summary": "Prusti 同时读取 Rust 程序与用户规约。程序决定计算，类型决定资源结构，规约补充需要证明的值关系；PCG 负责推导借用依赖。",
+      "cases": [
+        "call-edge",
+        "borrow-create",
+        "shared"
+      ],
+      "refs": [
+        "overview",
+        "baseline",
+        "call-contract",
+        "expiry-spec"
+      ],
+      "default": "call-edge"
+    },
+    {
+      "id": "stage-facts",
+      "title": "rustc MIR 与 NLL 借用信息",
+      "subtitle": "BodyWithBorrowckFacts → new_nll_ctxt",
+      "summary": "Prusti 用带 borrow-checker facts 的 MIR 创建 PCG 的 NLL context。本版本的活性判断包含 local 的活性分析，不能等同于读取 Polonius 的逐点结果。",
+      "cases": [
+        "borrow-end",
+        "history"
+      ],
+      "refs": [
+        "pipeline",
+        "rule-inputs"
+      ],
+      "default": "borrow-end"
+    },
+    {
+      "id": "stage-pcg",
+      "title": "PCG 数据流分析",
+      "subtitle": "节点、边、能力、历史标签与路径条件",
+      "summary": "PCG 在程序点记录 place、lifetime projection 和依赖边，并产生有序动作。图描述谁被谁阻塞；E/e/W/R 描述访问能力。动作、phase 和后继边信息要一起读取。",
+      "cases": [
+        "borrow-create",
+        "projection",
+        "flow",
+        "history",
+        "remote"
+      ],
+      "refs": [
+        "capabilities",
+        "node-map"
+      ],
+      "default": "borrow-create"
+    },
+    {
+      "id": "stage-types",
+      "title": "类型 → 资源谓词与 snapshot",
+      "subtitle": "字段资源、p_Param、make_generic / make_concrete",
+      "summary": "谓词的结构来自类型编码：整数拥有值字段，结构体组合字段资源，可变引用拥有自身的地址和 metadata。目标内容通过独立资源表示，PCG 决定何时转换这些表示。",
+      "cases": [
+        "deref",
+        "field-open",
+        "field-close",
+        "shared",
+        "index"
+      ],
+      "refs": [
+        "predicate-fields",
+        "predicate-ref",
+        "predicate-int",
+        "deref-contract"
+      ],
+      "default": "field-open"
+    },
+    {
+      "id": "stage-phases",
+      "title": "按 MIR phase 安排编码",
+      "subtitle": "PreOperands → PostOperands → PreMain → PostMain",
+      "summary": "先捕获操作数的快照，再消耗被覆盖位置的旧资源，执行 MIR effect，最后处理 PostMain。这个顺序保证别名情况下不会在读旧值之前 exhale 掉它。",
+      "cases": [
+        "weaken",
+        "borrow-create",
+        "history"
+      ],
+      "refs": [
+        "phases"
+      ],
+      "default": "weaken"
+    },
+    {
+      "id": "stage-edges",
+      "title": "资源操作与边分派",
+      "subtitle": "Borrow / Deref / expansion / Weaken",
+      "summary": "Prusti 按边种类、Add/Remove、能力变化及类型选择操作。Deref 与展开边可以触发内部 fold/unfold，Weaken 可以触发 exhale；不存在通用的 AddEdge→inhale 规则。",
+      "cases": [
+        "borrow-create",
+        "deref",
+        "weaken",
+        "borrow-end",
+        "field-open",
+        "field-close",
+        "reborrow-chain",
+        "shared",
+        "projection",
+        "flow",
+        "index"
+      ],
+      "refs": [
+        "matrix",
+        "inhale"
+      ],
+      "default": "weaken"
+    },
+    {
+      "id": "stage-calls",
+      "title": "函数调用与借用归还",
+      "subtitle": "FunctionShape → coupled edge → package / apply",
+      "summary": "函数签名的 outlives 关系形成借用输入/输出形状。被调函数把未来的恢复过程 package 成 wand；调用者从后置条件持有 wand，在调用边移除时 apply，用户 after_expiry 约束随之生效。",
+      "cases": [
+        "call-edge",
+        "package",
+        "apply",
+        "history"
+      ],
+      "refs": [
+        "call-contract",
+        "expiry-spec",
+        "package-script"
+      ],
+      "default": "apply"
+    },
+    {
+      "id": "stage-casts",
+      "title": "转换与索引资源",
+      "subtitle": "BorrowFlow(Unsize) / slice / undo",
+      "summary": "MIR cast 建立数组到切片的转换，PCG 的 BorrowFlow 保存源、目标与 cast 元数据。可变切片借用结束时，Prusti 据此执行 undo；索引展开还需要 MIR 的下标和边界条件。",
+      "cases": [
+        "unsize",
+        "unsize-undo",
+        "index"
+      ],
+      "refs": [],
+      "default": "unsize-undo"
+    },
+    {
+      "id": "stage-control",
+      "title": "分支与循环",
+      "subtitle": "edge.conditions / invariant / Loop abstraction",
+      "summary": "路径条件约束恢复操作在哪个分支执行。循环需要资源不变式和用户数值不变式，循环入口及回边还可能生成 package。本次两个循环借用运行失败，保留输出用于分析。",
+      "cases": [
+        "branch",
+        "loop-invariant",
+        "loop-wand",
+        "remote"
+      ],
+      "refs": [
+        "loop-capabilities",
+        "loop-package",
+        "loop-failure"
+      ],
+      "default": "branch"
+    },
+    {
+      "id": "stage-viper",
+      "title": "生成 Viper 程序",
+      "subtitle": "predicate / method contract / resource operations",
+      "summary": "MIR 计算、类型资源、PCG 动作与用户规约共同组成 Viper 程序。fold/unfold 改变资源包装，exhale 消耗资源或检查事实；显式 inhale 也可能来自不可达路径等控制流编码。",
+      "cases": [
+        "inhale-path",
+        "field-open",
+        "apply"
+      ],
+      "refs": [
+        "matrix",
+        "inhale",
+        "limits"
+      ],
+      "default": "inhale-path"
+    },
+    {
+      "id": "stage-verification",
+      "title": "后端验证与真实结果",
+      "subtitle": "8 次执行：6 次通过，2 次失败",
+      "summary": "所有展示的 Rust、PCG 图与 Viper 摘录来自保留的真实执行产物。生成 Viper 不代表验证成功；本次关闭算术溢出检查，两项循环失败的日志和错误位置均保留。",
+      "cases": [
+        "loop-wand",
+        "remote",
+        "branch"
+      ],
+      "refs": [
+        "runs",
+        "baseline",
+        "loop-failure",
+        "evidence"
+      ],
+      "default": "loop-wand"
+    },
+    {
+      "id": "stage-export",
+      "title": "LLBC / VST 信息复用",
+      "subtitle": "后续接口建议 · 尚未实现的转换",
+      "summary": "可以导出类型化节点、region projection、phase、有序动作、路径条件和 old 标签，并关联类型与用户规约。后端仍需证明相应资源转换；这里的 LLBC/VST 集成为建议，不是本次已执行的转换。",
+      "cases": [
+        "apply",
+        "weaken"
+      ],
+      "refs": [
+        "llbc",
+        "evidence"
+      ],
+      "default": "apply"
+    }
+  ],
+  "canonical_cases": {
+    "borrow-create": "stage-pcg",
+    "projection": "stage-pcg",
+    "flow": "stage-pcg",
+    "history": "stage-pcg",
+    "deref": "stage-types",
+    "field-open": "stage-types",
+    "field-close": "stage-types",
+    "shared": "stage-types",
+    "weaken": "stage-phases",
+    "borrow-end": "stage-edges",
+    "reborrow-chain": "stage-edges",
+    "call-edge": "stage-calls",
+    "package": "stage-calls",
+    "apply": "stage-calls",
+    "unsize": "stage-casts",
+    "unsize-undo": "stage-casts",
+    "index": "stage-casts",
+    "branch": "stage-control",
+    "loop-invariant": "stage-control",
+    "loop-wand": "stage-control",
+    "remote": "stage-control",
+    "inhale-path": "stage-viper"
+  },
+  "cases": 22,
+  "source_sections": 40,
+  "sha256": "0b1d83b5b61cb8009751a9f916b57d273dd4f6a16df5f9510002fd02871c611d"
+}

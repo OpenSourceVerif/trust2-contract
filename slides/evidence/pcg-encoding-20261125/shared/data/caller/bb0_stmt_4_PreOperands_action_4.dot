@@ -1,0 +1,33 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">v</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="T/#0"]
+"p2" [label=<<FONT FACE="courier">_2: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?4 mut T/#0"]
+"p3" [label=<<FONT FACE="courier">_3: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?5 mut T/#0"]
+"p4" [label=<<FONT FACE="courier">_4: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut T/#0"]
+"r0" [label=<_4↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut T/#0\
+"]
+"r1" [label=<_4↓RegionsIn(T)>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut T/#0\
+"]
+"r2" [label=<_4↓RegionsIn(T) before bb0[4]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut T/#0\
+"]
+"r3" [label=<(*_4)↓RegionsIn(T)>, fontcolor="blue", color="blue", shape="octagon", tooltip="T/#0\
+"]
+"r4" [label=<v↓RegionsIn(T) before bb0[3]>, fontcolor="blue", color="blue", shape="octagon", tooltip="T/#0\
+"]
+"r5" [label=<_4↓'?6 before bb0[4]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut T/#0\
+"]
+"p5" [label=<<FONT FACE="courier">(*_4): R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="T/#0"]
+"r6" [label=<Remote(_1)↓RegionsIn(T)>, fontcolor="blue", color="blue", shape="octagon", tooltip="T/#0\
+"]
+    "p4" -> "p5" [label="", id="edge_0", color="green", edgetooltip=""]
+    "r5" -> "p5" [label="", id="edge_1", color="green", edgetooltip=""]
+    "r4" -> "r1" [label="equals", id="edge_2", color="purple", penwidth="2"]
+    "r4" -> "r5" [label="outlives", id="edge_3", style="dashed", color="purple"]
+    "r2" -> "r3" [label="", id="edge_4", color="green", edgetooltip=""]
+    "p1" -> "p5" [label="", id="edge_5", style="dashed", color="grey"]
+    "p1" -> "r5" [label="bw0: Default '?2", id="edge_6", color="orange", edgetooltip=""]
+    "r6" -> "r4" [label="InitialBorrows", id="edge_7", color="purple"]
+}
+

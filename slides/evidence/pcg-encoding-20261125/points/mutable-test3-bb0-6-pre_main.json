@@ -1,0 +1,145 @@
+{
+  "case": "mutable",
+  "function": "test3",
+  "block": "bb0",
+  "statement_index": 6,
+  "phase": "pre_main",
+  "mir": {
+    "stmt": "(*x).f = const 4_u32",
+    "debug_stmt": "((*_2).0: u32) = const 4_u32",
+    "span": {
+      "low": {
+        "line": 37,
+        "column": 4
+      },
+      "high": {
+        "line": 37,
+        "column": 11
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [
+      "bw0"
+    ],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelPlace",
+            "data": "Label place (*x).f (Write)"
+          },
+          "debug_info": null
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Unlabel lifetime projection (exact (*x).f && in_source_nodes && edge_type(BorrowFlow { future_edge_kind: Some(FromExpansion) }))"
+          },
+          "debug_info": "label place and update related capabilities"
+        }
+      },
+      "result": {
+        "changed": false,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {x} -> {*x}"
+          },
+          "debug_info": "expand_place_one_level: add deref edge"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Label lifetime projection x↓'?4 with label before bb0[6]"
+          },
+          "debug_info": "block deref"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {*x} -> {(*x).f}"
+          },
+          "debug_info": "add_borrow_pcg_expansion"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "Weaken",
+            "data": "Weaken (*x).f from E to W"
+          },
+          "debug_info": "pre_main"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb2": {
+      "actions": []
+    },
+    "bb1": {
+      "actions": []
+    }
+  },
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "mutable/data/test3/bb0_stmt_6_pre_main.dot"
+}

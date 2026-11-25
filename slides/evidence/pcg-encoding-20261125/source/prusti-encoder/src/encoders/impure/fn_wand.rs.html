@@ -1,0 +1,615 @@
+<!doctype html><meta charset="utf-8"><title>fn_wand.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>fn_wand.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use crate::encoders::{</span>
+<span id="L2"><a href="#L2">    2</a>     EncodeResult, ImpureEncVisitor, MirLocalDefEncOutput, MirSpecEnc,</span>
+<span id="L3"><a href="#L3">    3</a>     mir_fn::report_dep_error,</span>
+<span id="L4"><a href="#L4">    4</a>     pure::spec::{EncodedPledge, MirSpecEncMode, PledgeArgs, PledgeExpr},</span>
+<span id="L5"><a href="#L5">    5</a>     ty::{</span>
+<span id="L6"><a href="#L6">    6</a>         RustTyDecomposition,</span>
+<span id="L7"><a href="#L7">    7</a>         generics::{GArgs, GArgsTyEnc, GParams, GenericParamsEnc},</span>
+<span id="L8"><a href="#L8">    8</a>         indirect::{IndirectPredicatesEnc, projection_for_generalized_idx},</span>
+<span id="L9"><a href="#L9">    9</a>     },</span>
+<span id="L10"><a href="#L10">   10</a> };</span>
+<span id="L11"><a href="#L11">   11</a> use pcg::borrow_pcg::{</span>
+<span id="L12"><a href="#L12">   12</a>     FunctionData, FunctionShape, FunctionShapeInput, FunctionShapeNode, FunctionShapeOutput,</span>
+<span id="L13"><a href="#L13">   13</a>     MakeFunctionShapeError, region_projection::Generalized, state::BorrowsState,</span>
+<span id="L14"><a href="#L14">   14</a> };</span>
+<span id="L15"><a href="#L15">   15</a> use prusti_interface::PrustiError;</span>
+<span id="L16"><a href="#L16">   16</a> use prusti_rustc_interface::{</span>
+<span id="L17"><a href="#L17">   17</a>     data_structures::fx::{FxHashMap, FxHashSet},</span>
+<span id="L18"><a href="#L18">   18</a>     middle::{mir, ty},</span>
+<span id="L19"><a href="#L19">   19</a>     span::def_id::DefId,</span>
+<span id="L20"><a href="#L20">   20</a> };</span>
+<span id="L21"><a href="#L21">   21</a> use task_encoder::{EncodeFullError, EncodeFullResult, TaskEncoder, TaskEncoderDependencies};</span>
+<span id="L22"><a href="#L22">   22</a> use vir::{CastType, HasType};</span>
+<span id="L23"><a href="#L23">   23</a> </span>
+<span id="L24"><a href="#L24">   24</a> /// Encodes the magic wands given a function signature.</span>
+<span id="L25"><a href="#L25">   25</a> pub struct WandEnc;</span>
+<span id="L26"><a href="#L26">   26</a> </span>
+<span id="L27"><a href="#L27">   27</a> impl WandEnc {</span>
+<span id="L28"><a href="#L28">   28</a>     /// Reports the failure `err` to generate the wands of the function</span>
+<span id="L29"><a href="#L29">   29</a>     /// `def_id` at the function, and returns the proof that it was reported.</span>
+<span id="L30"><a href="#L30">   30</a>     pub(crate) fn report_failure&lt;&#x27;vir, E: TaskEncoder + ?Sized&gt;(</span>
+<span id="L31"><a href="#L31">   31</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L32"><a href="#L32">   32</a>         def_id: DefId,</span>
+<span id="L33"><a href="#L33">   33</a>         err: &amp;EncodeFullError&lt;&#x27;vir, E&gt;,</span>
+<span id="L34"><a href="#L34">   34</a>     ) -&gt; vir::Reported {</span>
+<span id="L35"><a href="#L35">   35</a>         let name = vcx.tcx().def_path_str(def_id);</span>
+<span id="L36"><a href="#L36">   36</a>         report_dep_error(vcx, err, |err| {</span>
+<span id="L37"><a href="#L37">   37</a>             err.report(format!(&quot;method `{name}`&quot;), vcx.tcx().def_span(def_id))</span>
+<span id="L38"><a href="#L38">   38</a>         })</span>
+<span id="L39"><a href="#L39">   39</a>     }</span>
+<span id="L40"><a href="#L40">   40</a> }</span>
+<span id="L41"><a href="#L41">   41</a> </span>
+<span id="L42"><a href="#L42">   42</a> impl&lt;&#x27;vir, E: TaskEncoder&gt; ImpureEncVisitor&lt;&#x27;vir, &#x27;_, E&gt; {</span>
+<span id="L43"><a href="#L43">   43</a>     pub fn package_wands(</span>
+<span id="L44"><a href="#L44">   44</a>         &amp;mut self,</span>
+<span id="L45"><a href="#L45">   45</a>         final_borrow_state: &amp;BorrowsState&lt;&#x27;_, &#x27;vir&gt;,</span>
+<span id="L46"><a href="#L46">   46</a>     ) -&gt; EncodeResult&lt;&#x27;vir, Vec&lt;vir::Stmt&lt;&#x27;vir&gt;&gt;, E&gt; {</span>
+<span id="L47"><a href="#L47">   47</a>         let mut wand_packages = Vec::new();</span>
+<span id="L48"><a href="#L48">   48</a>         let label = self.new_label(&quot;package_post&quot;);</span>
+<span id="L49"><a href="#L49">   49</a>         let result = self.local_defs[mir::RETURN_PLACE].impure_snap;</span>
+<span id="L50"><a href="#L50">   50</a>         let result = self.vcx.mk_local_labelled_old_expr(result, label);</span>
+<span id="L51"><a href="#L51">   51</a>         let args = self</span>
+<span id="L52"><a href="#L52">   52</a>             .local_defs</span>
+<span id="L53"><a href="#L53">   53</a>             .args()</span>
+<span id="L54"><a href="#L54">   54</a>             .map(|a| self.vcx.mk_old_expr(a.impure_snap));</span>
+<span id="L55"><a href="#L55">   55</a>         let args = PledgeExpr::pledge_args(result, args);</span>
+<span id="L56"><a href="#L56">   56</a> </span>
+<span id="L57"><a href="#L57">   57</a>         for wand_data in self.wands.viper_wands() {</span>
+<span id="L58"><a href="#L58">   58</a>             let Some(wand) = self</span>
+<span id="L59"><a href="#L59">   59</a>                 .wands</span>
+<span id="L60"><a href="#L60">   60</a>                 .mk_wand(&amp;wand_data, args, None, None, self.vcx, self.deps)</span>
+<span id="L61"><a href="#L61">   61</a>             else {</span>
+<span id="L62"><a href="#L62">   62</a>                 continue;</span>
+<span id="L63"><a href="#L63">   63</a>             };</span>
+<span id="L64"><a href="#L64">   64</a>             let rhs = wand_data</span>
+<span id="L65"><a href="#L65">   65</a>                 .rhs</span>
+<span id="L66"><a href="#L66">   66</a>                 .iter()</span>
+<span id="L67"><a href="#L67">   67</a>                 .map(|g| {</span>
+<span id="L68"><a href="#L68">   68</a>                     let resources = self.wands.encode_predicates_for_function_shape_node(</span>
+<span id="L69"><a href="#L69">   69</a>                         self.vcx,</span>
+<span id="L70"><a href="#L70">   70</a>                         self.deps,</span>
+<span id="L71"><a href="#L71">   71</a>                         *g,</span>
+<span id="L72"><a href="#L72">   72</a>                         None,</span>
+<span id="L73"><a href="#L73">   73</a>                         |i| args[i],</span>
+<span id="L74"><a href="#L74">   74</a>                     );</span>
+<span id="L75"><a href="#L75">   75</a>                     (</span>
+<span id="L76"><a href="#L76">   76</a>                         mir::Place::from(g.mir_local()),</span>
+<span id="L77"><a href="#L77">   77</a>                         resources.into_iter().collect(),</span>
+<span id="L78"><a href="#L78">   78</a>                     )</span>
+<span id="L79"><a href="#L79">   79</a>                 })</span>
+<span id="L80"><a href="#L80">   80</a>                 .collect();</span>
+<span id="L81"><a href="#L81">   81</a>             let mut package_script = self.pcs_package_script(final_borrow_state, rhs, label)?;</span>
+<span id="L82"><a href="#L82">   82</a> </span>
+<span id="L83"><a href="#L83">   83</a>             for EncodedPledge {</span>
+<span id="L84"><a href="#L84">   84</a>                 expiry_postcondition,</span>
+<span id="L85"><a href="#L85">   85</a>                 ..</span>
+<span id="L86"><a href="#L86">   86</a>             } in &amp;wand_data.pledges</span>
+<span id="L87"><a href="#L87">   87</a>             {</span>
+<span id="L88"><a href="#L88">   88</a>                 let span = expiry_postcondition.span();</span>
+<span id="L89"><a href="#L89">   89</a>                 self.vcx.with_span(span, |vcx| {</span>
+<span id="L90"><a href="#L90">   90</a>                     vcx.handle_error(&quot;exhale.failed:assertion.false&quot;, move |_| {</span>
+<span id="L91"><a href="#L91">   91</a>                         Some(vec![PrustiError::verification(</span>
+<span id="L92"><a href="#L92">   92</a>                             &quot;pledge in the postcondition might not hold.&quot;,</span>
+<span id="L93"><a href="#L93">   93</a>                             span.into(),</span>
+<span id="L94"><a href="#L94">   94</a>                         )])</span>
+<span id="L95"><a href="#L95">   95</a>                     });</span>
+<span id="L96"><a href="#L96">   96</a>                     package_script.push(vcx.mk_exhale_stmt(expiry_postcondition.expr(args)));</span>
+<span id="L97"><a href="#L97">   97</a>                 });</span>
+<span id="L98"><a href="#L98">   98</a>             }</span>
+<span id="L99"><a href="#L99">   99</a>             wand_packages.push(</span>
+<span id="L100"><a href="#L100">  100</a>                 self.vcx</span>
+<span id="L101"><a href="#L101">  101</a>                     .mk_package_stmt(wand, self.vcx.alloc_slice(&amp;package_script)),</span>
+<span id="L102"><a href="#L102">  102</a>             );</span>
+<span id="L103"><a href="#L103">  103</a>         }</span>
+<span id="L104"><a href="#L104">  104</a>         Ok(wand_packages)</span>
+<span id="L105"><a href="#L105">  105</a>     }</span>
+<span id="L106"><a href="#L106">  106</a> }</span>
+<span id="L107"><a href="#L107">  107</a> </span>
+<span id="L108"><a href="#L108">  108</a> type EncodedPledges&lt;&#x27;vir&gt; = Vec&lt;EncodedPledge&lt;&#x27;vir&gt;&gt;;</span>
+<span id="L109"><a href="#L109">  109</a> </span>
+<span id="L110"><a href="#L110">  110</a> /// Not tied to a caller or callee context. `indirect_pres`, `indirect_posts`,</span>
+<span id="L111"><a href="#L111">  111</a> /// `wand_posts`, and `package_wands` are identity-substituted and intended for</span>
+<span id="L112"><a href="#L112">  112</a> /// use in the callee&#x27;s own contract; `call_wands` is for caller use and</span>
+<span id="L113"><a href="#L113">  113</a> /// re-substitutes via a [`WandCallContext`].</span>
+<span id="L114"><a href="#L114">  114</a> #[derive(Clone)]</span>
+<span id="L115"><a href="#L115">  115</a> pub struct WandEncOutput&lt;&#x27;vir&gt; {</span>
+<span id="L116"><a href="#L116">  116</a>     /// Information about the corresponding function.</span>
+<span id="L117"><a href="#L117">  117</a>     function_data: FunctionData&lt;&#x27;vir&gt;,</span>
+<span id="L118"><a href="#L118">  118</a> </span>
+<span id="L119"><a href="#L119">  119</a>     /// The lifetime projections of all arguments to the function.</span>
+<span id="L120"><a href="#L120">  120</a>     inputs: Vec&lt;FunctionShapeInput&lt;Generalized&gt;&gt;,</span>
+<span id="L121"><a href="#L121">  121</a> </span>
+<span id="L122"><a href="#L122">  122</a>     /// The lifetime projections of all function outputs (according to the</span>
+<span id="L123"><a href="#L123">  123</a>     /// corresponding [`FunctionShape`]). This *includes* lifetime projections</span>
+<span id="L124"><a href="#L124">  124</a>     /// of nested lifetimes in the function arguments.</span>
+<span id="L125"><a href="#L125">  125</a>     outputs: Vec&lt;FunctionShapeOutput&lt;Generalized&gt;&gt;,</span>
+<span id="L126"><a href="#L126">  126</a> </span>
+<span id="L127"><a href="#L127">  127</a>     /// Encoded VIR expressions for the magic wands.</span>
+<span id="L128"><a href="#L128">  128</a>     wands: Vec&lt;WandData&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L129"><a href="#L129">  129</a> }</span>
+<span id="L130"><a href="#L130">  130</a> </span>
+<span id="L131"><a href="#L131">  131</a> /// Substitution context for instantiating a wand at a call site. When `None`,</span>
+<span id="L132"><a href="#L132">  132</a> /// the wand is encoded using the callee&#x27;s identity substitution (appropriate</span>
+<span id="L133"><a href="#L133">  133</a> /// when emitting wands inside the function being defined). When `Some`, the</span>
+<span id="L134"><a href="#L134">  134</a> /// wand is re-encoded with the call-site substitutions and the caller&#x27;s</span>
+<span id="L135"><a href="#L135">  135</a> /// generic parameters, so that placeholders like `Self` or other callee</span>
+<span id="L136"><a href="#L136">  136</a> /// generics are replaced by concrete types from the caller&#x27;s perspective.</span>
+<span id="L137"><a href="#L137">  137</a> pub type WandCallContext&lt;&#x27;vir&gt; = Option&lt;GArgs&lt;&#x27;vir&gt;&gt;;</span>
+<span id="L138"><a href="#L138">  138</a> </span>
+<span id="L139"><a href="#L139">  139</a> impl&lt;&#x27;vir&gt; WandEncOutput&lt;&#x27;vir&gt; {</span>
+<span id="L140"><a href="#L140">  140</a>     pub(crate) fn fn_sig(</span>
+<span id="L141"><a href="#L141">  141</a>         &amp;self,</span>
+<span id="L142"><a href="#L142">  142</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L143"><a href="#L143">  143</a>         call_ctx: WandCallContext&lt;&#x27;vir&gt;,</span>
+<span id="L144"><a href="#L144">  144</a>     ) -&gt; ty::FnSig&lt;&#x27;vir&gt; {</span>
+<span id="L145"><a href="#L145">  145</a>         match call_ctx {</span>
+<span id="L146"><a href="#L146">  146</a>             // TODO: change pcg&#x27;s `fn_sig` to take `&amp;[GenericArg]` instead of `GenericArgsRef`</span>
+<span id="L147"><a href="#L147">  147</a>             Some(ctx) =&gt; self</span>
+<span id="L148"><a href="#L148">  148</a>                 .function_data</span>
+<span id="L149"><a href="#L149">  149</a>                 .fn_sig(vcx.tcx(), vcx.tcx().mk_args(ctx.args())),</span>
+<span id="L150"><a href="#L150">  150</a>             None =&gt; self.function_data.identity_fn_sig(vcx.tcx()),</span>
+<span id="L151"><a href="#L151">  151</a>         }</span>
+<span id="L152"><a href="#L152">  152</a>     }</span>
+<span id="L153"><a href="#L153">  153</a> </span>
+<span id="L154"><a href="#L154">  154</a>     pub(crate) fn g_params(</span>
+<span id="L155"><a href="#L155">  155</a>         &amp;self,</span>
+<span id="L156"><a href="#L156">  156</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L157"><a href="#L157">  157</a>         call_ctx: WandCallContext&lt;&#x27;vir&gt;,</span>
+<span id="L158"><a href="#L158">  158</a>     ) -&gt; GParams&lt;&#x27;vir&gt; {</span>
+<span id="L159"><a href="#L159">  159</a>         match call_ctx {</span>
+<span id="L160"><a href="#L160">  160</a>             Some(ctx) =&gt; ctx.context(),</span>
+<span id="L161"><a href="#L161">  161</a>             None =&gt; GParams::new(</span>
+<span id="L162"><a href="#L162">  162</a>                 self.function_data.identity_substs(vcx.tcx()),</span>
+<span id="L163"><a href="#L163">  163</a>                 self.function_data.param_env(vcx.tcx()),</span>
+<span id="L164"><a href="#L164">  164</a>             ),</span>
+<span id="L165"><a href="#L165">  165</a>         }</span>
+<span id="L166"><a href="#L166">  166</a>     }</span>
+<span id="L167"><a href="#L167">  167</a> </span>
+<span id="L168"><a href="#L168">  168</a>     /// The (unreified) predicates associated with the given node, or `None` if</span>
+<span id="L169"><a href="#L169">  169</a>     /// there are no resources associated with it.</span>
+<span id="L170"><a href="#L170">  170</a>     #[allow(clippy::type_complexity)]</span>
+<span id="L171"><a href="#L171">  171</a>     fn predicates_for_function_shape_node(</span>
+<span id="L172"><a href="#L172">  172</a>         &amp;self,</span>
+<span id="L173"><a href="#L173">  173</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L174"><a href="#L174">  174</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, impl TaskEncoder&gt;,</span>
+<span id="L175"><a href="#L175">  175</a>         g: FunctionShapeNode&lt;Generalized&gt;,</span>
+<span id="L176"><a href="#L176">  176</a>         call_ctx: WandCallContext&lt;&#x27;vir&gt;,</span>
+<span id="L177"><a href="#L177">  177</a>     ) -&gt; Option&lt;Vec&lt;vir::ExprGenBool&lt;&#x27;vir, vir::ExprSnap&lt;&#x27;vir&gt;, vir::ExprKind&lt;&#x27;vir&gt;&gt;&gt;&gt; {</span>
+<span id="L178"><a href="#L178">  178</a>         let arg_ty = g.ty(self.fn_sig(vcx, call_ctx));</span>
+<span id="L179"><a href="#L179">  179</a>         let decomp = RustTyDecomposition::from_ty(arg_ty, self.g_params(vcx, call_ctx));</span>
+<span id="L180"><a href="#L180">  180</a>         let region_proj =</span>
+<span id="L181"><a href="#L181">  181</a>             projection_for_generalized_idx(arg_ty, g.region_idx(), decomp, vcx.tcx())?;</span>
+<span id="L182"><a href="#L182">  182</a>         let predicates = deps</span>
+<span id="L183"><a href="#L183">  183</a>             .require_dep::&lt;IndirectPredicatesEnc&gt;(region_proj)</span>
+<span id="L184"><a href="#L184">  184</a>             .unwrap()</span>
+<span id="L185"><a href="#L185">  185</a>             .predicate_applications;</span>
+<span id="L186"><a href="#L186">  186</a>         (!predicates.is_empty()).then_some(predicates)</span>
+<span id="L187"><a href="#L187">  187</a>     }</span>
+<span id="L188"><a href="#L188">  188</a> </span>
+<span id="L189"><a href="#L189">  189</a>     fn encode_predicates_for_function_shape_node(</span>
+<span id="L190"><a href="#L190">  190</a>         &amp;self,</span>
+<span id="L191"><a href="#L191">  191</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L192"><a href="#L192">  192</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, impl TaskEncoder&gt;,</span>
+<span id="L193"><a href="#L193">  193</a>         g: impl Into&lt;FunctionShapeNode&lt;Generalized&gt;&gt;,</span>
+<span id="L194"><a href="#L194">  194</a>         call_ctx: WandCallContext&lt;&#x27;vir&gt;,</span>
+<span id="L195"><a href="#L195">  195</a>         mut snap: impl FnMut(mir::Local) -&gt; vir::ExprSnap&lt;&#x27;vir&gt;,</span>
+<span id="L196"><a href="#L196">  196</a>     ) -&gt; Option&lt;vir::ExprBool&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L197"><a href="#L197">  197</a>         use vir::Reify;</span>
+<span id="L198"><a href="#L198">  198</a>         let g = g.into();</span>
+<span id="L199"><a href="#L199">  199</a>         let predicates = self.predicates_for_function_shape_node(vcx, deps, g, call_ctx)?;</span>
+<span id="L200"><a href="#L200">  200</a> </span>
+<span id="L201"><a href="#L201">  201</a>         let local = g.mir_local();</span>
+<span id="L202"><a href="#L202">  202</a>         let local_snap = snap(local);</span>
+<span id="L203"><a href="#L203">  203</a>         Some(</span>
+<span id="L204"><a href="#L204">  204</a>             vcx.mk_conj(</span>
+<span id="L205"><a href="#L205">  205</a>                 &amp;predicates</span>
+<span id="L206"><a href="#L206">  206</a>                     .iter()</span>
+<span id="L207"><a href="#L207">  207</a>                     .map(|p| p.reify(vcx, local_snap))</span>
+<span id="L208"><a href="#L208">  208</a>                     .collect::&lt;Vec&lt;_&gt;&gt;(),</span>
+<span id="L209"><a href="#L209">  209</a>             ),</span>
+<span id="L210"><a href="#L210">  210</a>         )</span>
+<span id="L211"><a href="#L211">  211</a>     }</span>
+<span id="L212"><a href="#L212">  212</a> </span>
+<span id="L213"><a href="#L213">  213</a>     pub fn indirect_pres&lt;&#x27;a, E: TaskEncoder&gt;(</span>
+<span id="L214"><a href="#L214">  214</a>         &amp;&#x27;a self,</span>
+<span id="L215"><a href="#L215">  215</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L216"><a href="#L216">  216</a>         local_defs: &amp;&#x27;a MirLocalDefEncOutput&lt;&#x27;vir&gt;,</span>
+<span id="L217"><a href="#L217">  217</a>         deps: &amp;&#x27;a mut TaskEncoderDependencies&lt;&#x27;vir, E&gt;,</span>
+<span id="L218"><a href="#L218">  218</a>     ) -&gt; impl Iterator&lt;Item = vir::ExprBool&lt;&#x27;vir&gt;&gt; + &#x27;a {</span>
+<span id="L219"><a href="#L219">  219</a>         self.inputs().filter_map(|g| {</span>
+<span id="L220"><a href="#L220">  220</a>             self.encode_predicates_for_function_shape_node(vcx, deps, g, None, |i| {</span>
+<span id="L221"><a href="#L221">  221</a>                 local_defs[i].impure_snap</span>
+<span id="L222"><a href="#L222">  222</a>             })</span>
+<span id="L223"><a href="#L223">  223</a>         })</span>
+<span id="L224"><a href="#L224">  224</a>     }</span>
+<span id="L225"><a href="#L225">  225</a> </span>
+<span id="L226"><a href="#L226">  226</a>     pub fn indirect_posts&lt;&#x27;a, E: TaskEncoder&gt;(</span>
+<span id="L227"><a href="#L227">  227</a>         &amp;&#x27;a self,</span>
+<span id="L228"><a href="#L228">  228</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L229"><a href="#L229">  229</a>         local_defs: &amp;&#x27;a MirLocalDefEncOutput&lt;&#x27;vir&gt;,</span>
+<span id="L230"><a href="#L230">  230</a>         deps: &amp;&#x27;a mut TaskEncoderDependencies&lt;&#x27;vir, E&gt;,</span>
+<span id="L231"><a href="#L231">  231</a>     ) -&gt; impl Iterator&lt;Item = vir::ExprBool&lt;&#x27;vir&gt;&gt; + &#x27;a {</span>
+<span id="L232"><a href="#L232">  232</a>         // The encoded predicates for the input lifetime projections that are</span>
+<span id="L233"><a href="#L233">  233</a>         // not blocked by any of the result lifetime projections. These will be</span>
+<span id="L234"><a href="#L234">  234</a>         // encoded as part of the postcondition of the function (in contrast,</span>
+<span id="L235"><a href="#L235">  235</a>         // the predicates for the blocked inputs will appear on the right-hand</span>
+<span id="L236"><a href="#L236">  236</a>         // side of a magic wand in the postcondition).</span>
+<span id="L237"><a href="#L237">  237</a>         let unblocked_input_posts = self</span>
+<span id="L238"><a href="#L238">  238</a>             .inputs()</span>
+<span id="L239"><a href="#L239">  239</a>             .filter(|i| !self.blocked_inputs().contains(i))</span>
+<span id="L240"><a href="#L240">  240</a>             .filter_map(|lp| {</span>
+<span id="L241"><a href="#L241">  241</a>                 self.encode_predicates_for_function_shape_node(vcx, deps, lp, None, |i| {</span>
+<span id="L242"><a href="#L242">  242</a>                     vcx.mk_old_expr(local_defs[i].impure_snap)</span>
+<span id="L243"><a href="#L243">  243</a>                 })</span>
+<span id="L244"><a href="#L244">  244</a>             })</span>
+<span id="L245"><a href="#L245">  245</a>             .collect::&lt;Vec&lt;_&gt;&gt;()</span>
+<span id="L246"><a href="#L246">  246</a>             .into_iter();</span>
+<span id="L247"><a href="#L247">  247</a> </span>
+<span id="L248"><a href="#L248">  248</a>         let output_posts = self.outputs().filter_map(|g| {</span>
+<span id="L249"><a href="#L249">  249</a>             self.encode_predicates_for_function_shape_node(vcx, deps, g, None, |i| {</span>
+<span id="L250"><a href="#L250">  250</a>                 local_defs[i].impure_snap</span>
+<span id="L251"><a href="#L251">  251</a>             })</span>
+<span id="L252"><a href="#L252">  252</a>         });</span>
+<span id="L253"><a href="#L253">  253</a>         unblocked_input_posts.chain(output_posts)</span>
+<span id="L254"><a href="#L254">  254</a>     }</span>
+<span id="L255"><a href="#L255">  255</a> </span>
+<span id="L256"><a href="#L256">  256</a>     pub fn wand_posts&lt;&#x27;a, E: TaskEncoder&gt;(</span>
+<span id="L257"><a href="#L257">  257</a>         &amp;&#x27;a self,</span>
+<span id="L258"><a href="#L258">  258</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L259"><a href="#L259">  259</a>         local_defs: &amp;&#x27;a MirLocalDefEncOutput&lt;&#x27;vir&gt;,</span>
+<span id="L260"><a href="#L260">  260</a>         deps: &amp;&#x27;a mut TaskEncoderDependencies&lt;&#x27;vir, E&gt;,</span>
+<span id="L261"><a href="#L261">  261</a>     ) -&gt; impl Iterator&lt;Item = vir::ExprBool&lt;&#x27;vir&gt;&gt; + &#x27;a {</span>
+<span id="L262"><a href="#L262">  262</a>         let wand_result =</span>
+<span id="L263"><a href="#L263">  263</a>             vcx.mk_local_decl(&quot;wand_result&quot;, local_defs[mir::RETURN_PLACE].local_snap.ty());</span>
+<span id="L264"><a href="#L264">  264</a>         let wand_result_expr = vcx.mk_local_ex(wand_result);</span>
+<span id="L265"><a href="#L265">  265</a>         let args = local_defs</span>
+<span id="L266"><a href="#L266">  266</a>             .args()</span>
+<span id="L267"><a href="#L267">  267</a>             .map(|arg| vcx.mk_old_expr(arg.impure_snap));</span>
+<span id="L268"><a href="#L268">  268</a>         let args = PledgeExpr::pledge_args(wand_result_expr, args);</span>
+<span id="L269"><a href="#L269">  269</a> </span>
+<span id="L270"><a href="#L270">  270</a>         // TODO: wands for late-bound regions</span>
+<span id="L271"><a href="#L271">  271</a>         self.viper_wands().into_iter().filter_map(move |wand_data| {</span>
+<span id="L272"><a href="#L272">  272</a>             let wand = self.mk_wand(&amp;wand_data, args, None, None, vcx, deps)?;</span>
+<span id="L273"><a href="#L273">  273</a>             Some(vcx.mk_let_expr(</span>
+<span id="L274"><a href="#L274">  274</a>                 wand_result,</span>
+<span id="L275"><a href="#L275">  275</a>                 local_defs[mir::RETURN_PLACE].impure_snap,</span>
+<span id="L276"><a href="#L276">  276</a>                 vcx.mk_wand_expr(wand),</span>
+<span id="L277"><a href="#L277">  277</a>             ))</span>
+<span id="L278"><a href="#L278">  278</a>         })</span>
+<span id="L279"><a href="#L279">  279</a>     }</span>
+<span id="L280"><a href="#L280">  280</a> </span>
+<span id="L281"><a href="#L281">  281</a>     pub fn call_wands&lt;E: TaskEncoder&gt;(</span>
+<span id="L282"><a href="#L282">  282</a>         &amp;self,</span>
+<span id="L283"><a href="#L283">  283</a>         arguments: &amp;[vir::ExprSnap&lt;&#x27;vir&gt;],</span>
+<span id="L284"><a href="#L284">  284</a>         label_pre: &amp;&#x27;vir str,</span>
+<span id="L285"><a href="#L285">  285</a>         label_post: &amp;&#x27;vir str,</span>
+<span id="L286"><a href="#L286">  286</a>         call_ctx: GArgs&lt;&#x27;vir&gt;,</span>
+<span id="L287"><a href="#L287">  287</a>         visitor: &amp;mut ImpureEncVisitor&lt;&#x27;vir, &#x27;_, E&gt;,</span>
+<span id="L288"><a href="#L288">  288</a>     ) -&gt; Vec&lt;vir::Wand&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L289"><a href="#L289">  289</a>         let result = visitor</span>
+<span id="L290"><a href="#L290">  290</a>             .vcx</span>
+<span id="L291"><a href="#L291">  291</a>             .mk_local_labelled_old_expr(arguments[mir::RETURN_PLACE.as_usize()], label_post);</span>
+<span id="L292"><a href="#L292">  292</a>         let args = (1..arguments.len()).map(|l| {</span>
+<span id="L293"><a href="#L293">  293</a>             visitor</span>
+<span id="L294"><a href="#L294">  294</a>                 .vcx</span>
+<span id="L295"><a href="#L295">  295</a>                 .mk_local_labelled_old_expr(arguments[l], label_pre)</span>
+<span id="L296"><a href="#L296">  296</a>         });</span>
+<span id="L297"><a href="#L297">  297</a>         let args = PledgeExpr::pledge_args(result, args);</span>
+<span id="L298"><a href="#L298">  298</a>         let mut wands = Vec::new();</span>
+<span id="L299"><a href="#L299">  299</a>         for wand_data in self.viper_wands() {</span>
+<span id="L300"><a href="#L300">  300</a>             let Some(wand) = self.mk_wand(</span>
+<span id="L301"><a href="#L301">  301</a>                 &amp;wand_data,</span>
+<span id="L302"><a href="#L302">  302</a>                 args,</span>
+<span id="L303"><a href="#L303">  303</a>                 Some(label_pre),</span>
+<span id="L304"><a href="#L304">  304</a>                 Some(call_ctx),</span>
+<span id="L305"><a href="#L305">  305</a>                 visitor.vcx,</span>
+<span id="L306"><a href="#L306">  306</a>                 visitor.deps,</span>
+<span id="L307"><a href="#L307">  307</a>             ) else {</span>
+<span id="L308"><a href="#L308">  308</a>                 continue;</span>
+<span id="L309"><a href="#L309">  309</a>             };</span>
+<span id="L310"><a href="#L310">  310</a>             wands.push(wand);</span>
+<span id="L311"><a href="#L311">  311</a>         }</span>
+<span id="L312"><a href="#L312">  312</a>         wands</span>
+<span id="L313"><a href="#L313">  313</a>     }</span>
+<span id="L314"><a href="#L314">  314</a> </span>
+<span id="L315"><a href="#L315">  315</a>     fn mk_wand&lt;E: TaskEncoder&gt;(</span>
+<span id="L316"><a href="#L316">  316</a>         &amp;self,</span>
+<span id="L317"><a href="#L317">  317</a>         wand_data: &amp;WandData&lt;&#x27;vir&gt;,</span>
+<span id="L318"><a href="#L318">  318</a>         pledge_args: PledgeArgs&lt;&#x27;vir&gt;,</span>
+<span id="L319"><a href="#L319">  319</a>         pledge_old_label: Option&lt;&amp;&#x27;vir str&gt;,</span>
+<span id="L320"><a href="#L320">  320</a>         call_ctx: WandCallContext&lt;&#x27;vir&gt;,</span>
+<span id="L321"><a href="#L321">  321</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L322"><a href="#L322">  322</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, E&gt;,</span>
+<span id="L323"><a href="#L323">  323</a>     ) -&gt; Option&lt;vir::Wand&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L324"><a href="#L324">  324</a>         debug_assert!(!wand_data.lhs.is_empty());</span>
+<span id="L325"><a href="#L325">  325</a>         let generics = self.generics_subst(call_ctx, vcx, deps);</span>
+<span id="L326"><a href="#L326">  326</a>         let pledge_expr = |pledge: &amp;PledgeExpr&lt;&#x27;vir&gt;| match pledge_old_label {</span>
+<span id="L327"><a href="#L327">  327</a>             Some(label) =&gt; {</span>
+<span id="L328"><a href="#L328">  328</a>                 vcx.with_local_subst(generics, || pledge.expr_at_label(pledge_args, label))</span>
+<span id="L329"><a href="#L329">  329</a>             }</span>
+<span id="L330"><a href="#L330">  330</a>             None =&gt; pledge.expr(pledge_args),</span>
+<span id="L331"><a href="#L331">  331</a>         };</span>
+<span id="L332"><a href="#L332">  332</a>         let rhs = wand_data.rhs.iter().filter_map(|g| {</span>
+<span id="L333"><a href="#L333">  333</a>             self.encode_predicates_for_function_shape_node(vcx, deps, *g, call_ctx, |i| {</span>
+<span id="L334"><a href="#L334">  334</a>                 pledge_args[i]</span>
+<span id="L335"><a href="#L335">  335</a>             })</span>
+<span id="L336"><a href="#L336">  336</a>         });</span>
+<span id="L337"><a href="#L337">  337</a>         let rhs = rhs</span>
+<span id="L338"><a href="#L338">  338</a>             .chain(</span>
+<span id="L339"><a href="#L339">  339</a>                 wand_data</span>
+<span id="L340"><a href="#L340">  340</a>                     .pledges</span>
+<span id="L341"><a href="#L341">  341</a>                     .iter()</span>
+<span id="L342"><a href="#L342">  342</a>                     .map(|pledge| pledge_expr(&amp;pledge.expiry_postcondition)),</span>
+<span id="L343"><a href="#L343">  343</a>             )</span>
+<span id="L344"><a href="#L344">  344</a>             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L345"><a href="#L345">  345</a>         if rhs.is_empty() {</span>
+<span id="L346"><a href="#L346">  346</a>             // We skip emitting the wand when there is nothing on the RHS, i.e.,</span>
+<span id="L347"><a href="#L347">  347</a>             // nothing would be unblocked by applying this wand, nor are there</span>
+<span id="L348"><a href="#L348">  348</a>             // any pledge postconditions.</span>
+<span id="L349"><a href="#L349">  349</a>             return None;</span>
+<span id="L350"><a href="#L350">  350</a>         }</span>
+<span id="L351"><a href="#L351">  351</a>         let rhs = vcx.mk_conj(&amp;rhs);</span>
+<span id="L352"><a href="#L352">  352</a>         let lhs = wand_data.lhs.iter().filter_map(|g| {</span>
+<span id="L353"><a href="#L353">  353</a>             self.encode_predicates_for_function_shape_node(vcx, deps, *g, call_ctx, |i| {</span>
+<span id="L354"><a href="#L354">  354</a>                 pledge_args[i]</span>
+<span id="L355"><a href="#L355">  355</a>             })</span>
+<span id="L356"><a href="#L356">  356</a>         });</span>
+<span id="L357"><a href="#L357">  357</a>         let lhs = lhs</span>
+<span id="L358"><a href="#L358">  358</a>             .chain(</span>
+<span id="L359"><a href="#L359">  359</a>                 wand_data</span>
+<span id="L360"><a href="#L360">  360</a>                     .pledges</span>
+<span id="L361"><a href="#L361">  361</a>                     .iter()</span>
+<span id="L362"><a href="#L362">  362</a>                     .filter_map(|pledge| pledge.expiry_obligation.as_ref().map(pledge_expr)),</span>
+<span id="L363"><a href="#L363">  363</a>             )</span>
+<span id="L364"><a href="#L364">  364</a>             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L365"><a href="#L365">  365</a>         let lhs = vcx.mk_conj(&amp;lhs);</span>
+<span id="L366"><a href="#L366">  366</a>         Some(vcx.mk_wand(lhs, rhs))</span>
+<span id="L367"><a href="#L367">  367</a>     }</span>
+<span id="L368"><a href="#L368">  368</a> </span>
+<span id="L369"><a href="#L369">  369</a>     /// The pledges are encoded once, at the callee&#x27;s identity substitution,</span>
+<span id="L370"><a href="#L370">  370</a>     /// so they refer to the callee&#x27;s generic parameters. At a call site, these</span>
+<span id="L371"><a href="#L371">  371</a>     /// are replaced by the call&#x27;s generic arguments, as Viper does for the</span>
+<span id="L372"><a href="#L372">  372</a>     /// callee&#x27;s postcondition (from which the caller holds the wand).</span>
+<span id="L373"><a href="#L373">  373</a>     fn generics_subst&lt;E: TaskEncoder&gt;(</span>
+<span id="L374"><a href="#L374">  374</a>         &amp;self,</span>
+<span id="L375"><a href="#L375">  375</a>         call_ctx: WandCallContext&lt;&#x27;vir&gt;,</span>
+<span id="L376"><a href="#L376">  376</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L377"><a href="#L377">  377</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, E&gt;,</span>
+<span id="L378"><a href="#L378">  378</a>     ) -&gt; &amp;&#x27;vir FxHashMap&lt;&amp;&#x27;vir str, vir::ExprDyn&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L379"><a href="#L379">  379</a>         let Some(call_args) = call_ctx else {</span>
+<span id="L380"><a href="#L380">  380</a>             return vcx.alloc(FxHashMap::default());</span>
+<span id="L381"><a href="#L381">  381</a>         };</span>
+<span id="L382"><a href="#L382">  382</a>         let params = deps</span>
+<span id="L383"><a href="#L383">  383</a>             .require_dep::&lt;GenericParamsEnc&gt;(self.g_params(vcx, None))</span>
+<span id="L384"><a href="#L384">  384</a>             .unwrap();</span>
+<span id="L385"><a href="#L385">  385</a>         let args = deps.require_dep::&lt;GArgsTyEnc&gt;(call_args).unwrap();</span>
+<span id="L386"><a href="#L386">  386</a>         let tys = params</span>
+<span id="L387"><a href="#L387">  387</a>             .ty_decls()</span>
+<span id="L388"><a href="#L388">  388</a>             .iter()</span>
+<span id="L389"><a href="#L389">  389</a>             .zip(args.get_ty::&lt;(), !&gt;())</span>
+<span id="L390"><a href="#L390">  390</a>             .map(|(decl, arg)| (decl.name, arg.as_dyn()));</span>
+<span id="L391"><a href="#L391">  391</a>         let consts = params</span>
+<span id="L392"><a href="#L392">  392</a>             .const_decls()</span>
+<span id="L393"><a href="#L393">  393</a>             .iter()</span>
+<span id="L394"><a href="#L394">  394</a>             .zip(args.get_const::&lt;(), !&gt;())</span>
+<span id="L395"><a href="#L395">  395</a>             .map(|(decl, arg)| (decl.name, arg.as_dyn()));</span>
+<span id="L396"><a href="#L396">  396</a>         vcx.alloc(tys.chain(consts).collect())</span>
+<span id="L397"><a href="#L397">  397</a>     }</span>
+<span id="L398"><a href="#L398">  398</a> }</span>
+<span id="L399"><a href="#L399">  399</a> </span>
+<span id="L400"><a href="#L400">  400</a> #[derive(Clone, Debug, PartialEq, Eq, Hash)]</span>
+<span id="L401"><a href="#L401">  401</a> pub struct WandEncTask&lt;&#x27;tcx&gt; {</span>
+<span id="L402"><a href="#L402">  402</a>     pub data: FunctionData&lt;&#x27;tcx&gt;,</span>
+<span id="L403"><a href="#L403">  403</a> }</span>
+<span id="L404"><a href="#L404">  404</a> </span>
+<span id="L405"><a href="#L405">  405</a> impl&lt;&#x27;tcx&gt; WandEncTask&lt;&#x27;tcx&gt; {</span>
+<span id="L406"><a href="#L406">  406</a>     pub fn def_id(&amp;self) -&gt; DefId {</span>
+<span id="L407"><a href="#L407">  407</a>         self.data.def_id()</span>
+<span id="L408"><a href="#L408">  408</a>     }</span>
+<span id="L409"><a href="#L409">  409</a> </span>
+<span id="L410"><a href="#L410">  410</a>     pub fn function_shape(</span>
+<span id="L411"><a href="#L411">  411</a>         &amp;self,</span>
+<span id="L412"><a href="#L412">  412</a>         vcx: &amp;vir::VirCtxt&lt;&#x27;tcx&gt;,</span>
+<span id="L413"><a href="#L413">  413</a>     ) -&gt; Result&lt;FunctionShape&lt;Generalized&gt;, MakeFunctionShapeError&gt; {</span>
+<span id="L414"><a href="#L414">  414</a>         self.data.shape(vcx.tcx())</span>
+<span id="L415"><a href="#L415">  415</a>     }</span>
+<span id="L416"><a href="#L416">  416</a> }</span>
+<span id="L417"><a href="#L417">  417</a> </span>
+<span id="L418"><a href="#L418">  418</a> pub type WandRhsKey = FunctionShapeInput&lt;Generalized&gt;;</span>
+<span id="L419"><a href="#L419">  419</a> pub type WandLhsKey = FunctionShapeNode&lt;Generalized&gt;;</span>
+<span id="L420"><a href="#L420">  420</a> </span>
+<span id="L421"><a href="#L421">  421</a> #[derive(Clone, Debug)]</span>
+<span id="L422"><a href="#L422">  422</a> pub struct WandData&lt;&#x27;vir&gt; {</span>
+<span id="L423"><a href="#L423">  423</a>     /// Lifetime projections on the right-hand side of the wand. Guaranteed to be</span>
+<span id="L424"><a href="#L424">  424</a>     /// non-empty.</span>
+<span id="L425"><a href="#L425">  425</a>     rhs: Vec&lt;WandRhsKey&gt;,</span>
+<span id="L426"><a href="#L426">  426</a>     /// Lifetime projections on the left-hand side of the wand. Guaranteed to be</span>
+<span id="L427"><a href="#L427">  427</a>     /// non-empty.</span>
+<span id="L428"><a href="#L428">  428</a>     lhs: Vec&lt;WandLhsKey&gt;,</span>
+<span id="L429"><a href="#L429">  429</a>     pledges: EncodedPledges&lt;&#x27;vir&gt;,</span>
+<span id="L430"><a href="#L430">  430</a> }</span>
+<span id="L431"><a href="#L431">  431</a> </span>
+<span id="L432"><a href="#L432">  432</a> impl&lt;&#x27;vir&gt; WandData&lt;&#x27;vir&gt; {</span>
+<span id="L433"><a href="#L433">  433</a>     pub fn new(lhs: Vec&lt;WandLhsKey&gt;, rhs: Vec&lt;WandRhsKey&gt;, pledges: EncodedPledges&lt;&#x27;vir&gt;) -&gt; Self {</span>
+<span id="L434"><a href="#L434">  434</a>         debug_assert!(!lhs.is_empty());</span>
+<span id="L435"><a href="#L435">  435</a>         debug_assert!(!rhs.is_empty());</span>
+<span id="L436"><a href="#L436">  436</a>         Self { rhs, lhs, pledges }</span>
+<span id="L437"><a href="#L437">  437</a>     }</span>
+<span id="L438"><a href="#L438">  438</a> }</span>
+<span id="L439"><a href="#L439">  439</a> </span>
+<span id="L440"><a href="#L440">  440</a> impl TaskEncoder for WandEnc {</span>
+<span id="L441"><a href="#L441">  441</a>     task_encoder::encoder_cache!(WandEnc);</span>
+<span id="L442"><a href="#L442">  442</a> </span>
+<span id="L443"><a href="#L443">  443</a>     type TaskDescription&lt;&#x27;vir&gt; = WandEncTask&lt;&#x27;vir&gt;;</span>
+<span id="L444"><a href="#L444">  444</a> </span>
+<span id="L445"><a href="#L445">  445</a>     type TaskKey&lt;&#x27;vir&gt; = WandEncTask&lt;&#x27;vir&gt;;</span>
+<span id="L446"><a href="#L446">  446</a> </span>
+<span id="L447"><a href="#L447">  447</a>     type OutputFullDependency&lt;&#x27;vir&gt; = WandEncOutput&lt;&#x27;vir&gt;;</span>
+<span id="L448"><a href="#L448">  448</a> </span>
+<span id="L449"><a href="#L449">  449</a>     const ENCODER_NAME: &amp;&#x27;static str = &quot;wand encoder&quot;;</span>
+<span id="L450"><a href="#L450">  450</a> </span>
+<span id="L451"><a href="#L451">  451</a>     fn task_to_key&lt;&#x27;vir&gt;(task: &amp;Self::TaskDescription&lt;&#x27;vir&gt;) -&gt; Self::TaskKey&lt;&#x27;vir&gt; {</span>
+<span id="L452"><a href="#L452">  452</a>         task.clone()</span>
+<span id="L453"><a href="#L453">  453</a>     }</span>
+<span id="L454"><a href="#L454">  454</a> </span>
+<span id="L455"><a href="#L455">  455</a>     fn do_encode_full&lt;&#x27;vir&gt;(</span>
+<span id="L456"><a href="#L456">  456</a>         task_key: &amp;Self::TaskKey&lt;&#x27;vir&gt;,</span>
+<span id="L457"><a href="#L457">  457</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, Self&gt;,</span>
+<span id="L458"><a href="#L458">  458</a>     ) -&gt; EncodeFullResult&lt;&#x27;vir, Self&gt; {</span>
+<span id="L459"><a href="#L459">  459</a>         deps.emit_output_ref(task_key.clone(), ())?;</span>
+<span id="L460"><a href="#L460">  460</a>         vir::with_vcx(|vcx| {</span>
+<span id="L461"><a href="#L461">  461</a>             let def_id = task_key.def_id();</span>
+<span id="L462"><a href="#L462">  462</a> </span>
+<span id="L463"><a href="#L463">  463</a>             let shape = task_key.function_shape(vcx).map_err(|e| {</span>
+<span id="L464"><a href="#L464">  464</a>                 EncodeFullError::unsupported(format!(&quot;function shape: {e:?}&quot;), Vec::new())</span>
+<span id="L465"><a href="#L465">  465</a>             })?;</span>
+<span id="L466"><a href="#L466">  466</a> </span>
+<span id="L467"><a href="#L467">  467</a>             let coupled_edges = shape.coupled_edges();</span>
+<span id="L468"><a href="#L468">  468</a>             let edges: FxHashSet&lt;_&gt; = shape.edges().map(|e| (e.input(), e.output())).collect();</span>
+<span id="L469"><a href="#L469">  469</a> </span>
+<span id="L470"><a href="#L470">  470</a>             let (inputs, outputs) = shape.take_inputs_and_outputs();</span>
+<span id="L471"><a href="#L471">  471</a>             let spec = deps.require_dep::&lt;MirSpecEnc&gt;((def_id, def_id, MirSpecEncMode::Impure))?;</span>
+<span id="L472"><a href="#L472">  472</a>             if coupled_edges.is_empty() {</span>
+<span id="L473"><a href="#L473">  473</a>                 assert!(spec.pledges.is_empty());</span>
+<span id="L474"><a href="#L474">  474</a>                 return Ok((</span>
+<span id="L475"><a href="#L475">  475</a>                     (),</span>
+<span id="L476"><a href="#L476">  476</a>                     WandEncOutput {</span>
+<span id="L477"><a href="#L477">  477</a>                         function_data: task_key.data,</span>
+<span id="L478"><a href="#L478">  478</a>                         inputs,</span>
+<span id="L479"><a href="#L479">  479</a>                         outputs,</span>
+<span id="L480"><a href="#L480">  480</a>                         wands: vec![],</span>
+<span id="L481"><a href="#L481">  481</a>                     },</span>
+<span id="L482"><a href="#L482">  482</a>                 ));</span>
+<span id="L483"><a href="#L483">  483</a>             }</span>
+<span id="L484"><a href="#L484">  484</a>             let pledges = spec.pledges;</span>
+<span id="L485"><a href="#L485">  485</a>             let wands: Vec&lt;WandData&lt;&#x27;vir&gt;&gt; = coupled_edges</span>
+<span id="L486"><a href="#L486">  486</a>                 .into_iter()</span>
+<span id="L487"><a href="#L487">  487</a>                 .filter_map(|hyper_edge| {</span>
+<span id="L488"><a href="#L488">  488</a>                     let (sources, mut targets) = hyper_edge.into_tuple();</span>
+<span id="L489"><a href="#L489">  489</a>                     // We don&#x27;t want to emit an identity wand, like P --* P. This can happen when</span>
+<span id="L490"><a href="#L490">  490</a>                     // PCG returns self-edges, like for fn(x: &amp;&#x27;a mut &amp;&#x27;b i32) where &#x27;b is in</span>
+<span id="L491"><a href="#L491">  491</a>                     // invariant position and we therefore have an edge x|&#x27;b -&gt; x|&#x27;b.</span>
+<span id="L492"><a href="#L492">  492</a>                     // Currently, these edges also prevent us from emitting indirect postconditions.</span>
+<span id="L493"><a href="#L493">  493</a>                     // TODO: we might want to emit these identity wands in the future to attach functional</span>
+<span id="L494"><a href="#L494">  494</a>                     // specifications to them. We still need to emit the resources on the wand&#x27;s LHS.</span>
+<span id="L495"><a href="#L495">  495</a>                     let mut sources_as_nodes = sources</span>
+<span id="L496"><a href="#L496">  496</a>                         .iter()</span>
+<span id="L497"><a href="#L497">  497</a>                         .map(|&amp;s| s.to_function_shape_node())</span>
+<span id="L498"><a href="#L498">  498</a>                         .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L499"><a href="#L499">  499</a>                     sources_as_nodes.sort();</span>
+<span id="L500"><a href="#L500">  500</a>                     targets.sort();</span>
+<span id="L501"><a href="#L501">  501</a>                     if sources_as_nodes == targets {</span>
+<span id="L502"><a href="#L502">  502</a>                         return None;</span>
+<span id="L503"><a href="#L503">  503</a>                     }</span>
+<span id="L504"><a href="#L504">  504</a>                     Some(WandData::new(targets, sources, pledges.clone()))</span>
+<span id="L505"><a href="#L505">  505</a>                 })</span>
+<span id="L506"><a href="#L506">  506</a>                 .collect();</span>
+<span id="L507"><a href="#L507">  507</a>             let mut output: WandEncOutput&lt;&#x27;vir&gt; = WandEncOutput {</span>
+<span id="L508"><a href="#L508">  508</a>                 function_data: task_key.data,</span>
+<span id="L509"><a href="#L509">  509</a>                 inputs,</span>
+<span id="L510"><a href="#L510">  510</a>                 outputs,</span>
+<span id="L511"><a href="#L511">  511</a>                 wands: Vec::new(),</span>
+<span id="L512"><a href="#L512">  512</a>             };</span>
+<span id="L513"><a href="#L513">  513</a>             output.wands = output</span>
+<span id="L514"><a href="#L514">  514</a>                 .select_wands(wands, !pledges.is_empty(), &amp;edges, vcx, deps)</span>
+<span id="L515"><a href="#L515">  515</a>                 .map_err(|message| EncodeFullError::unsupported(message, Vec::new()))?;</span>
+<span id="L516"><a href="#L516">  516</a>             Ok(((), output))</span>
+<span id="L517"><a href="#L517">  517</a>         })</span>
+<span id="L518"><a href="#L518">  518</a>     }</span>
+<span id="L519"><a href="#L519">  519</a> }</span>
+<span id="L520"><a href="#L520">  520</a> </span>
+<span id="L521"><a href="#L521">  521</a> impl&lt;&#x27;vir&gt; WandEncOutput&lt;&#x27;vir&gt; {</span>
+<span id="L522"><a href="#L522">  522</a>     /// Selects the wands to emit among those of the coupled edges, rejecting</span>
+<span id="L523"><a href="#L523">  523</a>     /// the shapes that cannot be encoded precisely. Pledges that cannot be</span>
+<span id="L524"><a href="#L524">  524</a>     /// attached to one wand are reported and left out.</span>
+<span id="L525"><a href="#L525">  525</a>     fn select_wands&lt;E: TaskEncoder&gt;(</span>
+<span id="L526"><a href="#L526">  526</a>         &amp;self,</span>
+<span id="L527"><a href="#L527">  527</a>         wands: Vec&lt;WandData&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L528"><a href="#L528">  528</a>         has_pledges: bool,</span>
+<span id="L529"><a href="#L529">  529</a>         edges: &amp;FxHashSet&lt;(WandRhsKey, WandLhsKey)&gt;,</span>
+<span id="L530"><a href="#L530">  530</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;,</span>
+<span id="L531"><a href="#L531">  531</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, E&gt;,</span>
+<span id="L532"><a href="#L532">  532</a>     ) -&gt; Result&lt;Vec&lt;WandData&lt;&#x27;vir&gt;&gt;, String&gt; {</span>
+<span id="L533"><a href="#L533">  533</a>         let mut has_resources = |g: FunctionShapeNode&lt;Generalized&gt;| {</span>
+<span id="L534"><a href="#L534">  534</a>             self.predicates_for_function_shape_node(vcx, deps, g, None)</span>
+<span id="L535"><a href="#L535">  535</a>                 .is_some()</span>
+<span id="L536"><a href="#L536">  536</a>         };</span>
+<span id="L537"><a href="#L537">  537</a>         // A wand is only needed if it gives back a resource, or to carry the</span>
+<span id="L538"><a href="#L538">  538</a>         // pledges if none does (e.g. for shared references).</span>
+<span id="L539"><a href="#L539">  539</a>         let (mut wands, resourceless): (Vec&lt;_&gt;, Vec&lt;_&gt;) = wands</span>
+<span id="L540"><a href="#L540">  540</a>             .into_iter()</span>
+<span id="L541"><a href="#L541">  541</a>             .partition(|wand_data| wand_data.rhs.iter().any(|g| has_resources((*g).into())));</span>
+<span id="L542"><a href="#L542">  542</a>         // A wand gives back its sources only once all of its targets have</span>
+<span id="L543"><a href="#L543">  543</a>         // expired. That matches the signature only if each source with</span>
+<span id="L544"><a href="#L544">  544</a>         // resources flows into each target with resources.</span>
+<span id="L545"><a href="#L545">  545</a>         for wand_data in &amp;wands {</span>
+<span id="L546"><a href="#L546">  546</a>             let sources = wand_data</span>
+<span id="L547"><a href="#L547">  547</a>                 .rhs</span>
+<span id="L548"><a href="#L548">  548</a>                 .iter()</span>
+<span id="L549"><a href="#L549">  549</a>                 .filter(|g| has_resources((**g).into()))</span>
+<span id="L550"><a href="#L550">  550</a>                 .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L551"><a href="#L551">  551</a>             let targets = wand_data</span>
+<span id="L552"><a href="#L552">  552</a>                 .lhs</span>
+<span id="L553"><a href="#L553">  553</a>                 .iter()</span>
+<span id="L554"><a href="#L554">  554</a>                 .filter(|g| has_resources(**g))</span>
+<span id="L555"><a href="#L555">  555</a>                 .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L556"><a href="#L556">  556</a>             let precise = sources.iter().all(|source| {</span>
+<span id="L557"><a href="#L557">  557</a>                 let mut targets = targets.iter();</span>
+<span id="L558"><a href="#L558">  558</a>                 targets.all(|target| edges.contains(&amp;(**source, **target)))</span>
+<span id="L559"><a href="#L559">  559</a>             });</span>
+<span id="L560"><a href="#L560">  560</a>             if !precise {</span>
+<span id="L561"><a href="#L561">  561</a>                 return Err(</span>
+<span id="L562"><a href="#L562">  562</a>                     &quot;borrows in the result that expire separately but depend on a common \</span>
+<span id="L563"><a href="#L563">  563</a>                      argument are not supported&quot;</span>
+<span id="L564"><a href="#L564">  564</a>                         .to_string(),</span>
+<span id="L565"><a href="#L565">  565</a>                 );</span>
+<span id="L566"><a href="#L566">  566</a>             }</span>
+<span id="L567"><a href="#L567">  567</a>         }</span>
+<span id="L568"><a href="#L568">  568</a>         if has_pledges {</span>
+<span id="L569"><a href="#L569">  569</a>             if wands.is_empty() {</span>
+<span id="L570"><a href="#L570">  570</a>                 wands.extend(resourceless.into_iter().take(1));</span>
+<span id="L571"><a href="#L571">  571</a>             } else if wands.len() &gt; 1 {</span>
+<span id="L572"><a href="#L572">  572</a>                 // It is unclear which expiry the pledges refer to. They are</span>
+<span id="L573"><a href="#L573">  573</a>                 // left out, each with its expiry obligation: then neither the</span>
+<span id="L574"><a href="#L574">  574</a>                 // function nor its callers rely on any of them, so both are</span>
+<span id="L575"><a href="#L575">  575</a>                 // still encoded. The encoding goes on, so the proof that the</span>
+<span id="L576"><a href="#L576">  576</a>                 // error was reported is not needed.</span>
+<span id="L577"><a href="#L577">  577</a>                 let span = wands[0].pledges[0].expiry_postcondition.span();</span>
+<span id="L578"><a href="#L578">  578</a>                 let _ = vcx.emit_early_error(</span>
+<span id="L579"><a href="#L579">  579</a>                     PrustiError::unsupported(</span>
+<span id="L580"><a href="#L580">  580</a>                         &quot;pledges on a function whose result contains borrows that expire \</span>
+<span id="L581"><a href="#L581">  581</a>                          separately are not supported&quot;,</span>
+<span id="L582"><a href="#L582">  582</a>                         span.into(),</span>
+<span id="L583"><a href="#L583">  583</a>                     )</span>
+<span id="L584"><a href="#L584">  584</a>                     .add_note(&quot;the pledges of the function are skipped&quot;, None),</span>
+<span id="L585"><a href="#L585">  585</a>                 );</span>
+<span id="L586"><a href="#L586">  586</a>                 for wand in &amp;mut wands {</span>
+<span id="L587"><a href="#L587">  587</a>                     wand.pledges.clear();</span>
+<span id="L588"><a href="#L588">  588</a>                 }</span>
+<span id="L589"><a href="#L589">  589</a>             }</span>
+<span id="L590"><a href="#L590">  590</a>         }</span>
+<span id="L591"><a href="#L591">  591</a>         Ok(wands)</span>
+<span id="L592"><a href="#L592">  592</a>     }</span>
+<span id="L593"><a href="#L593">  593</a> </span>
+<span id="L594"><a href="#L594">  594</a>     pub fn viper_wands(&amp;self) -&gt; Vec&lt;WandData&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L595"><a href="#L595">  595</a>         self.wands.clone()</span>
+<span id="L596"><a href="#L596">  596</a>     }</span>
+<span id="L597"><a href="#L597">  597</a> </span>
+<span id="L598"><a href="#L598">  598</a>     /// All lifetime projections in the arguments that are blocked by any of the</span>
+<span id="L599"><a href="#L599">  599</a>     /// lifetime projections in the function&#x27;s result.</span>
+<span id="L600"><a href="#L600">  600</a>     pub fn blocked_inputs(&amp;self) -&gt; FxHashSet&lt;FunctionShapeInput&lt;Generalized&gt;&gt; {</span>
+<span id="L601"><a href="#L601">  601</a>         self.wands</span>
+<span id="L602"><a href="#L602">  602</a>             .iter()</span>
+<span id="L603"><a href="#L603">  603</a>             .flat_map(|wand| wand.rhs.iter().copied())</span>
+<span id="L604"><a href="#L604">  604</a>             .collect()</span>
+<span id="L605"><a href="#L605">  605</a>     }</span>
+<span id="L606"><a href="#L606">  606</a> </span>
+<span id="L607"><a href="#L607">  607</a>     pub fn inputs(&amp;self) -&gt; impl Iterator&lt;Item = FunctionShapeInput&lt;Generalized&gt;&gt; + &#x27;_ {</span>
+<span id="L608"><a href="#L608">  608</a>         self.inputs.iter().copied()</span>
+<span id="L609"><a href="#L609">  609</a>     }</span>
+<span id="L610"><a href="#L610">  610</a> </span>
+<span id="L611"><a href="#L611">  611</a>     pub fn outputs(&amp;self) -&gt; impl Iterator&lt;Item = FunctionShapeOutput&lt;Generalized&gt;&gt; + &#x27;_ {</span>
+<span id="L612"><a href="#L612">  612</a>         self.outputs.iter().copied()</span>
+<span id="L613"><a href="#L613">  613</a>     }</span>
+<span id="L614"><a href="#L614">  614</a> }</span>
+</pre>

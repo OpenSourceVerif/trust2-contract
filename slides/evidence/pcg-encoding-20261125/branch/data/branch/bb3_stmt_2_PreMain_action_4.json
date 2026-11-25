@@ -1,0 +1,58 @@
+{
+  "edge_6": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb2"
+        ]
+      }
+    ]
+  },
+  "edge_9": {
+    "branch_choices": []
+  },
+  "edge_7": {
+    "branch_choices": []
+  },
+  "edge_5": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb2"
+        ]
+      }
+    ]
+  },
+  "edge_1": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb1"
+        ]
+      }
+    ]
+  },
+  "edge_2": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb2"
+        ]
+      }
+    ]
+  },
+  "edge_3": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb2"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>loop_inv.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>loop_inv.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use prusti_contracts::*;</span>
+<span id="L2"><a href="#L2">    2</a> </span>
+<span id="L3"><a href="#L3">    3</a> fn main() {</span>
+<span id="L4"><a href="#L4">    4</a>     let mut i = 1000;</span>
+<span id="L5"><a href="#L5">    5</a> </span>
+<span id="L6"><a href="#L6">    6</a>     while i &gt; 2 {</span>
+<span id="L7"><a href="#L7">    7</a>         // Note: the invariant is evaluated in the body, after the loop guard.</span>
+<span id="L8"><a href="#L8">    8</a>         // So, it is not `i &gt;= 2` because inside the loop `i` is never `2`.</span>
+<span id="L9"><a href="#L9">    9</a>         // This design choice works well with complex loop guards, which can have side effects and can</span>
+<span id="L10"><a href="#L10">   10</a>         // even contain `return` statements.</span>
+<span id="L11"><a href="#L11">   11</a>         body_invariant!(i &gt; 2);</span>
+<span id="L12"><a href="#L12">   12</a>         i -= 1;</span>
+<span id="L13"><a href="#L13">   13</a>     }</span>
+<span id="L14"><a href="#L14">   14</a> </span>
+<span id="L15"><a href="#L15">   15</a>     assert!(i == 2);</span>
+<span id="L16"><a href="#L16">   16</a> }</span>
+</pre>

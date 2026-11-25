@@ -1,0 +1,26 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">x</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="[i32; 3_usize]"]
+"p2" [label=<<FONT FACE="courier">y: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?5 mut [i32]"]
+"r0" [label=<y↓'?5>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?5 mut [i32]\
+"]
+"p3" [label=<<FONT FACE="courier">_5: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p4" [label=<<FONT FACE="courier">_6: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="*const [i32]"]
+"p5" [label=<<FONT FACE="courier">_7: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p6" [label=<<FONT FACE="courier">_8: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"r1" [label=<_4 before bb0[12]↓'?7 before bb0[7]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut [i32; 3_usize]\
+"]
+"p7" [label=<<FONT FACE="courier">(*_4) before bb0[12]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="[i32; 3_usize]"]
+"r2" [label=<_3 before bb0[8]↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut [i32; 3_usize]\
+"]
+"p8" [label=<<FONT FACE="courier">_4 before bb0[12]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?7 mut [i32; 3_usize]"]
+    "p8" -> "p7" [label="", id="edge_0", color="green", edgetooltip=""]
+    "p1" -> "r1" [label="bw0: Default '?2", id="edge_1", color="orange", edgetooltip=""]
+    "r1" -> "p7" [label="", id="edge_2", color="green", edgetooltip=""]
+    "r2" -> "r0" [label="Move with cast PointerCoercion(Unsize, Implicit)", id="edge_3", color="purple"]
+    "p7" -> "r2" [label="bw1: Default '?3", id="edge_4", color="orange", edgetooltip=""]
+    "p1" -> "p7" [label="", id="edge_5", style="dashed", color="grey"]
+}
+

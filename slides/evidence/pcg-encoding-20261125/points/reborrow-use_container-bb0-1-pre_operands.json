@@ -1,0 +1,125 @@
+{
+  "case": "reborrow",
+  "function": "use_container",
+  "block": "bb0",
+  "statement_index": 1,
+  "phase": "pre_operands",
+  "mir": {
+    "stmt": "_2 = &mut *c.x",
+    "debug_stmt": "_2 = &mut (*(_1.0: &mut i32))",
+    "span": {
+      "low": {
+        "line": 22,
+        "column": 4
+      },
+      "high": {
+        "line": 22,
+        "column": 7
+      }
+    },
+    "loans_invalidated_start": [
+      "'?4"
+    ],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Owned",
+        "data": {
+          "kind": {
+            "type": "Expand",
+            "data": {
+              "from": "c",
+              "guide": null,
+              "capability": "Exclusive"
+            }
+          },
+          "debug_info": "Expand owned place one level (Capability(E))"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {c↓'?8 before bb0[1]:PreOperands} -> {c.x↓'?8}"
+          },
+          "debug_info": "expand_region_projections_one_level"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Label lifetime projection c↓'?8 with label before bb0[1]"
+          },
+          "debug_info": "expand_region_projections_one_level: create new RP label"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {c.x} -> {*c.x}"
+          },
+          "debug_info": "expand_place_one_level: add deref edge"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Label lifetime projection c.x↓'?8 with label before bb0[1]"
+          },
+          "debug_info": "block deref"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {},
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "reborrow/data/use_container/bb0_stmt_1_pre_operands.dot"
+}

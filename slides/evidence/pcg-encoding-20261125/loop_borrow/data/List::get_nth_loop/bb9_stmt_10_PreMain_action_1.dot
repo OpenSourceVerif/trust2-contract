@@ -1,0 +1,40 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?10 mut u32"]
+"p1" [label=<<FONT FACE="courier">self: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?11 mut List"]
+"p2" [label=<<FONT FACE="courier">n: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p3" [label=<<FONT FACE="courier">_3: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?12 mut u32"]
+"r0" [label=<_3↓'?12>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?12 mut u32\
+"]
+"p4" [label=<<FONT FACE="courier">i: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p5" [label=<<FONT FACE="courier">current: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?13 mut List"]
+"p6" [label=<<FONT FACE="courier">_7: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p7" [label=<<FONT FACE="courier">_13: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="isize"]
+"p8" [label=<<FONT FACE="courier">_16: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="(usize, bool)"]
+"p9" [label=<<FONT FACE="courier">_17: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p10" [label=<<FONT FACE="courier">_19: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p11" [label=<<FONT FACE="courier">_20: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?17 mut u32"]
+"r1" [label=<Remote(_1)↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?11 mut List\
+"]
+"r2" [label=<current before bb9[10]↓'?13 before bb9[8]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?13 mut List\
+"]
+"p12" [label=<<FONT FACE="courier">(*current).head before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"r3" [label=<_20↓'?17 before bb9[9]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?17 mut u32\
+"]
+"p13" [label=<<FONT FACE="courier">(*_20)</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"p14" [label=<<FONT FACE="courier">*current before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="List"]
+"p15" [label=<<FONT FACE="courier">(*current).tail before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="std::option::Option<std::boxed::Box<List, std::alloc::Global>>"]
+"p16" [label=<<FONT FACE="courier">current: e before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?13 mut List"]
+    "p12" -> "p13" [label="", id="edge_0", style="dashed", color="grey"]
+    "r1" -> "r2" [label="loop at bb1[0]", id="edge_1", penwidth="3"]
+    "r2" -> "p14" [label="", id="edge_2", color="green", edgetooltip="bb2 -> bb9"]
+    "p12" -> "r3" [label="bw3: Default '?7", id="edge_3", color="orange", edgetooltip="bb2 -> bb9"]
+    "p11" -> "p13" [label="", id="edge_4", color="green", edgetooltip="bb2 -> bb9"]
+    "p14" -> "p12" [label="", id="edge_5", color="green", edgetooltip="bb2 -> bb9"]
+    "r3" -> "p13" [label="", id="edge_6", color="green", edgetooltip="bb2 -> bb9"]
+    "p14" -> "p15" [label="", id="edge_7", color="green", edgetooltip="bb2 -> bb9"]
+    "p16" -> "p14" [label="", id="edge_8", color="green", edgetooltip="bb2 -> bb9"]
+    "p13" -> "r0" [label="bw4: Default '?8", id="edge_9", color="orange", edgetooltip="bb2 -> bb9"]
+}
+

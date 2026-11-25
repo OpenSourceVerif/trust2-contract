@@ -1,0 +1,215 @@
+{
+  "case": "mutable",
+  "function": "test3",
+  "block": "bb0",
+  "statement_index": 7,
+  "phase": "pre_operands",
+  "mir": {
+    "stmt": "StorageLive(_3)",
+    "debug_stmt": "StorageLive(_3)",
+    "span": {
+      "low": {
+        "line": 38,
+        "column": 4
+      },
+      "high": {
+        "line": 38,
+        "column": 21
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": []
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "RemoveEdge",
+            "data": "Remove Edge {*x} -> {(*x).f}"
+          },
+          "debug_info": "Expansion is old or dead"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "Restore",
+            "data": "Restore *x to E"
+          },
+          "debug_info": "update_unblocked_node_capabilities_and_remove_placeholder_projections"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "RemoveEdge",
+            "data": "Remove Edge {x} -> {*x}"
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: *x: Node is a place with a non-empty projection and is not blocked by an edge"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Unlabel lifetime projection x↓'?4 before bb0[6]"
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: *x: Node is a place with a non-empty projection and is not blocked by an edge: unlabel blocked_region_projections"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelPlace",
+            "data": "Label place *x (Collapse)"
+          },
+          "debug_info": null
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Owned",
+        "data": {
+          "kind": {
+            "type": "RegainLoanedCapability",
+            "data": {
+              "place": "x",
+              "capability": "Exclusive"
+            }
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: *x: Node is a place with a non-empty projection and is not blocked by an edge: remove_deref_edges_to: restore parent place"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Unlabel lifetime projection x↓'?4 FUTURE"
+          },
+          "debug_info": "Place x unblocked: remove placeholder label of rps of newly unblocked nodes"
+        }
+      },
+      "result": {
+        "changed": false,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "RemoveEdge",
+            "data": "Remove Edge borrow: x = &mut  a"
+          },
+          "debug_info": "Edge is blocked by nodes that should be killed: x↓'?4: Borrow-checker reports node as dead"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Owned",
+        "data": {
+          "kind": {
+            "type": "RegainLoanedCapability",
+            "data": {
+              "place": "a",
+              "capability": "Exclusive"
+            }
+          },
+          "debug_info": "update_unblocked_node_capabilities_and_remove_placeholder_projections"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "Weaken",
+            "data": "Weaken x from E to W"
+          },
+          "debug_info": "lifetime projection is dead"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb2": {
+      "actions": []
+    },
+    "bb1": {
+      "actions": []
+    }
+  },
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "mutable/data/test3/bb0_stmt_7_pre_operands.dot"
+}

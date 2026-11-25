@@ -1,0 +1,344 @@
+<!doctype html><meta charset="utf-8"><title>assign.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>assign.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use super::PcgVisitor;</span>
+<span id="L2"><a href="#L2">    2</a> use crate::{</span>
+<span id="L3"><a href="#L3">    3</a>     action::BorrowPcgAction,</span>
+<span id="L4"><a href="#L4">    4</a>     borrow_pcg::{</span>
+<span id="L5"><a href="#L5">    5</a>         GeneralizedLifetime,</span>
+<span id="L6"><a href="#L6">    6</a>         borrow_pcg_edge::BorrowPcgEdge,</span>
+<span id="L7"><a href="#L7">    7</a>         edge::{</span>
+<span id="L8"><a href="#L8">    8</a>             borrow_flow::{</span>
+<span id="L9"><a href="#L9">    9</a>                 AssignmentData, BorrowFlowEdge, BorrowFlowEdgeKind, CastData, OperandType,</span>
+<span id="L10"><a href="#L10">   10</a>             },</span>
+<span id="L11"><a href="#L11">   11</a>             delegation::DelegationEdge,</span>
+<span id="L12"><a href="#L12">   12</a>             kind::BorrowPcgEdgeKind,</span>
+<span id="L13"><a href="#L13">   13</a>         },</span>
+<span id="L14"><a href="#L14">   14</a>         edge_data::LabelNodePredicate,</span>
+<span id="L15"><a href="#L15">   15</a>         region_projection::{HasTy, PlaceOrConst},</span>
+<span id="L16"><a href="#L16">   16</a>     },</span>
+<span id="L17"><a href="#L17">   17</a>     pcg::{</span>
+<span id="L18"><a href="#L18">   18</a>         CapabilityKind, EvalStmtPhase, PcgNode, PcgRefLike,</span>
+<span id="L19"><a href="#L19">   19</a>         obtain::{ActionApplier, HasSnapshotLocation, expand::PlaceExpander},</span>
+<span id="L20"><a href="#L20">   20</a>         place_capabilities::PlaceCapabilitiesInterface,</span>
+<span id="L21"><a href="#L21">   21</a>     },</span>
+<span id="L22"><a href="#L22">   22</a>     rustc_interface::middle::mir::{self, CastKind, Operand, Rvalue},</span>
+<span id="L23"><a href="#L23">   23</a>     utils::Place,</span>
+<span id="L24"><a href="#L24">   24</a> };</span>
+<span id="L25"><a href="#L25">   25</a> </span>
+<span id="L26"><a href="#L26">   26</a> use crate::utils::{</span>
+<span id="L27"><a href="#L27">   27</a>     AnalysisLocation, DataflowCtxt, SnapshotLocation, maybe_old::MaybeLabelledPlace,</span>
+<span id="L28"><a href="#L28">   28</a> };</span>
+<span id="L29"><a href="#L29">   29</a> </span>
+<span id="L30"><a href="#L30">   30</a> use super::{PcgError, PcgUnsupportedError};</span>
+<span id="L31"><a href="#L31">   31</a> </span>
+<span id="L32"><a href="#L32">   32</a> impl&lt;&#x27;a, &#x27;tcx: &#x27;a, Ctxt: DataflowCtxt&lt;&#x27;a, &#x27;tcx&gt;&gt; PcgVisitor&lt;&#x27;_, &#x27;a, &#x27;tcx, Ctxt&gt; {</span>
+<span id="L33"><a href="#L33">   33</a>     /// The label that should be used when referencing (after `PostOperands`), the</span>
+<span id="L34"><a href="#L34">   34</a>     /// value at the place before the move.</span>
+<span id="L35"><a href="#L35">   35</a>     pub(crate) fn pre_operand_move_label(&amp;self) -&gt; SnapshotLocation {</span>
+<span id="L36"><a href="#L36">   36</a>         SnapshotLocation::Before(AnalysisLocation::new(</span>
+<span id="L37"><a href="#L37">   37</a>             self.location(),</span>
+<span id="L38"><a href="#L38">   38</a>             EvalStmtPhase::PostOperands,</span>
+<span id="L39"><a href="#L39">   39</a>         ))</span>
+<span id="L40"><a href="#L40">   40</a>     }</span>
+<span id="L41"><a href="#L41">   41</a> </span>
+<span id="L42"><a href="#L42">   42</a>     /// The maybe-labelled place to use to reference the value of an operand after</span>
+<span id="L43"><a href="#L43">   43</a>     /// the `PostOperands` phase. If the operand was copied, the place is returned</span>
+<span id="L44"><a href="#L44">   44</a>     /// as-is. If the operand was moved, the place is returned with the label of</span>
+<span id="L45"><a href="#L45">   45</a>     /// the value before the move.</span>
+<span id="L46"><a href="#L46">   46</a>     pub(crate) fn maybe_labelled_operand(</span>
+<span id="L47"><a href="#L47">   47</a>         &amp;self,</span>
+<span id="L48"><a href="#L48">   48</a>         operand: &amp;Operand&lt;&#x27;tcx&gt;,</span>
+<span id="L49"><a href="#L49">   49</a>     ) -&gt; PlaceOrConst&lt;&#x27;tcx, MaybeLabelledPlace&lt;&#x27;tcx&gt;&gt; {</span>
+<span id="L50"><a href="#L50">   50</a>         match operand {</span>
+<span id="L51"><a href="#L51">   51</a>             Operand::Copy(place) =&gt; PlaceOrConst::Place((*place).into()),</span>
+<span id="L52"><a href="#L52">   52</a>             Operand::Move(place) =&gt; PlaceOrConst::Place(MaybeLabelledPlace::new(</span>
+<span id="L53"><a href="#L53">   53</a>                 (*place).into(),</span>
+<span id="L54"><a href="#L54">   54</a>                 Some(self.pre_operand_move_label()),</span>
+<span id="L55"><a href="#L55">   55</a>             )),</span>
+<span id="L56"><a href="#L56">   56</a>             Operand::Constant(const_) =&gt; PlaceOrConst::Const(const_.const_),</span>
+<span id="L57"><a href="#L57">   57</a>             #[allow(unreachable_patterns)]</span>
+<span id="L58"><a href="#L58">   58</a>             _ =&gt; todo!(),</span>
+<span id="L59"><a href="#L59">   59</a>         }</span>
+<span id="L60"><a href="#L60">   60</a>     }</span>
+<span id="L61"><a href="#L61">   61</a> </span>
+<span id="L62"><a href="#L62">   62</a>     pub(crate) fn assign_post_main(</span>
+<span id="L63"><a href="#L63">   63</a>         &amp;mut self,</span>
+<span id="L64"><a href="#L64">   64</a>         target: Place&lt;&#x27;tcx&gt;,</span>
+<span id="L65"><a href="#L65">   65</a>         rvalue: &amp;Rvalue&lt;&#x27;tcx&gt;,</span>
+<span id="L66"><a href="#L66">   66</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L67"><a href="#L67">   67</a>         let ctxt = self.ctxt;</span>
+<span id="L68"><a href="#L68">   68</a> </span>
+<span id="L69"><a href="#L69">   69</a>         // If `target` is a reference, then the dereferenced place technically</span>
+<span id="L70"><a href="#L70">   70</a>         // still retains its capabilities. However, because we currently only</span>
+<span id="L71"><a href="#L71">   71</a>         // keep capabilities for non-labelled places, we remove all the capabilities</span>
+<span id="L72"><a href="#L72">   72</a>         // to everything postfix of `target`.</span>
+<span id="L73"><a href="#L73">   73</a>         //</span>
+<span id="L74"><a href="#L74">   74</a>         // We should change this logic once we start keeping capabilities for</span>
+<span id="L75"><a href="#L75">   75</a>         // labelled places.</span>
+<span id="L76"><a href="#L76">   76</a>         if target.is_ref(ctxt) {</span>
+<span id="L77"><a href="#L77">   77</a>             self.pcg</span>
+<span id="L78"><a href="#L78">   78</a>                 .place_capabilities</span>
+<span id="L79"><a href="#L79">   79</a>                 .remove_all_postfixes(target, ctxt);</span>
+<span id="L80"><a href="#L80">   80</a>         }</span>
+<span id="L81"><a href="#L81">   81</a> </span>
+<span id="L82"><a href="#L82">   82</a>         self.pcg</span>
+<span id="L83"><a href="#L83">   83</a>             .place_capabilities</span>
+<span id="L84"><a href="#L84">   84</a>             .insert(target, CapabilityKind::Exclusive, self.ctxt);</span>
+<span id="L85"><a href="#L85">   85</a>         match rvalue {</span>
+<span id="L86"><a href="#L86">   86</a>             Rvalue::Aggregate(</span>
+<span id="L87"><a href="#L87">   87</a>                 box (mir::AggregateKind::Adt(..)</span>
+<span id="L88"><a href="#L88">   88</a>                 | mir::AggregateKind::Tuple</span>
+<span id="L89"><a href="#L89">   89</a>                 | mir::AggregateKind::Array(..)</span>
+<span id="L90"><a href="#L90">   90</a>                 | mir::AggregateKind::Closure(..)),</span>
+<span id="L91"><a href="#L91">   91</a>                 fields,</span>
+<span id="L92"><a href="#L92">   92</a>             ) =&gt; {</span>
+<span id="L93"><a href="#L93">   93</a>                 let target: Place&lt;&#x27;tcx&gt; = (*target).into();</span>
+<span id="L94"><a href="#L94">   94</a>                 for (field_idx, field) in fields.iter().enumerate() {</span>
+<span id="L95"><a href="#L95">   95</a>                     let operand_place: Place&lt;&#x27;tcx&gt; = if let Some(place) = field.place() {</span>
+<span id="L96"><a href="#L96">   96</a>                         place.into()</span>
+<span id="L97"><a href="#L97">   97</a>                     } else {</span>
+<span id="L98"><a href="#L98">   98</a>                         continue;</span>
+<span id="L99"><a href="#L99">   99</a>                     };</span>
+<span id="L100"><a href="#L100">  100</a>                     for (source_rp_idx, source_proj) in operand_place</span>
+<span id="L101"><a href="#L101">  101</a>                         .lifetime_projections(self.ctxt)</span>
+<span id="L102"><a href="#L102">  102</a>                         .iter()</span>
+<span id="L103"><a href="#L103">  103</a>                         .enumerate()</span>
+<span id="L104"><a href="#L104">  104</a>                     {</span>
+<span id="L105"><a href="#L105">  105</a>                         let maybe_labelled = self.maybe_labelled_operand(field);</span>
+<span id="L106"><a href="#L106">  106</a>                         let source_proj = source_proj.with_base(maybe_labelled);</span>
+<span id="L107"><a href="#L107">  107</a>                         self.connect_outliving_projections(source_proj, target, |_| {</span>
+<span id="L108"><a href="#L108">  108</a>                             BorrowFlowEdgeKind::Aggregate {</span>
+<span id="L109"><a href="#L109">  109</a>                                 field_idx,</span>
+<span id="L110"><a href="#L110">  110</a>                                 target_rp_index: source_rp_idx,</span>
+<span id="L111"><a href="#L111">  111</a>                             }</span>
+<span id="L112"><a href="#L112">  112</a>                         })?;</span>
+<span id="L113"><a href="#L113">  113</a>                     }</span>
+<span id="L114"><a href="#L114">  114</a>                 }</span>
+<span id="L115"><a href="#L115">  115</a>             }</span>
+<span id="L116"><a href="#L116">  116</a>             Rvalue::Use(operand, ..) =&gt; {</span>
+<span id="L117"><a href="#L117">  117</a>                 let p = operand.place();</span>
+<span id="L118"><a href="#L118">  118</a>                 if let Some(p) = p {</span>
+<span id="L119"><a href="#L119">  119</a>                     let p: Place = p.into();</span>
+<span id="L120"><a href="#L120">  120</a>                     if p.ty(self.ctxt).ty.is_raw_ptr() {</span>
+<span id="L121"><a href="#L121">  121</a>                         let p = p.with_inherent_region(self.ctxt).project_deref(self.ctxt);</span>
+<span id="L122"><a href="#L122">  122</a>                         let node = PcgNode::from(p);</span>
+<span id="L123"><a href="#L123">  123</a>                         let edges = self</span>
+<span id="L124"><a href="#L124">  124</a>                             .pcg</span>
+<span id="L125"><a href="#L125">  125</a>                             .borrows_graph()</span>
+<span id="L126"><a href="#L126">  126</a>                             .edges_blocked_by(node, self.ctxt.bc_ctxt());</span>
+<span id="L127"><a href="#L127">  127</a>                         let alias_edges = edges</span>
+<span id="L128"><a href="#L128">  128</a>                             .into_iter()</span>
+<span id="L129"><a href="#L129">  129</a>                             .filter_map(|e| match e.kind {</span>
+<span id="L130"><a href="#L130">  130</a>                                 BorrowPcgEdgeKind::Delegation(de) =&gt; Some(de),</span>
+<span id="L131"><a href="#L131">  131</a>                                 _ =&gt; None,</span>
+<span id="L132"><a href="#L132">  132</a>                             })</span>
+<span id="L133"><a href="#L133">  133</a>                             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L134"><a href="#L134">  134</a>                         if !alias_edges.is_empty() {</span>
+<span id="L135"><a href="#L135">  135</a>                             self.record_and_apply_action(</span>
+<span id="L136"><a href="#L136">  136</a>                                 BorrowPcgAction::add_edge(</span>
+<span id="L137"><a href="#L137">  137</a>                                     BorrowPcgEdge::new(</span>
+<span id="L138"><a href="#L138">  138</a>                                         DelegationEdge {</span>
+<span id="L139"><a href="#L139">  139</a>                                             rawptr_place: target.project_deref(ctxt).into(),</span>
+<span id="L140"><a href="#L140">  140</a>                                             aliased_place: alias_edges[0].aliased_place,</span>
+<span id="L141"><a href="#L141">  141</a>                                         }</span>
+<span id="L142"><a href="#L142">  142</a>                                         .into(),</span>
+<span id="L143"><a href="#L143">  143</a>                                         self.pcg.borrow.validity_conditions.clone(),</span>
+<span id="L144"><a href="#L144">  144</a>                                     ),</span>
+<span id="L145"><a href="#L145">  145</a>                                     &quot;assign_post_main&quot;,</span>
+<span id="L146"><a href="#L146">  146</a>                                 )</span>
+<span id="L147"><a href="#L147">  147</a>                                 .into(),</span>
+<span id="L148"><a href="#L148">  148</a>                             )?;</span>
+<span id="L149"><a href="#L149">  149</a>                             return Ok(());</span>
+<span id="L150"><a href="#L150">  150</a>                         }</span>
+<span id="L151"><a href="#L151">  151</a>                     }</span>
+<span id="L152"><a href="#L152">  152</a>                 }</span>
+<span id="L153"><a href="#L153">  153</a>                 self.assignment_projections(operand, target, None)?;</span>
+<span id="L154"><a href="#L154">  154</a>             }</span>
+<span id="L155"><a href="#L155">  155</a>             Rvalue::Cast(kind, operand, ty) =&gt; {</span>
+<span id="L156"><a href="#L156">  156</a>                 if let CastKind::PtrToPtr = kind {</span>
+<span id="L157"><a href="#L157">  157</a>                     let p = operand.place().unwrap();</span>
+<span id="L158"><a href="#L158">  158</a>                     let p: Place = p.into();</span>
+<span id="L159"><a href="#L159">  159</a>                     let p = p.with_inherent_region(self.ctxt).project_deref(self.ctxt);</span>
+<span id="L160"><a href="#L160">  160</a>                     let edges = self.pcg.borrows_graph().edges_blocked_by(p.into(), ctxt);</span>
+<span id="L161"><a href="#L161">  161</a>                     let alies_edges = edges</span>
+<span id="L162"><a href="#L162">  162</a>                         .into_iter()</span>
+<span id="L163"><a href="#L163">  163</a>                         .filter_map(|e| match e.kind {</span>
+<span id="L164"><a href="#L164">  164</a>                             BorrowPcgEdgeKind::Delegation(de) =&gt; Some(de),</span>
+<span id="L165"><a href="#L165">  165</a>                             _ =&gt; None,</span>
+<span id="L166"><a href="#L166">  166</a>                         })</span>
+<span id="L167"><a href="#L167">  167</a>                         .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L168"><a href="#L168">  168</a>                     if !alies_edges.is_empty() {</span>
+<span id="L169"><a href="#L169">  169</a>                         assert_eq!(alies_edges.len(), 1);</span>
+<span id="L170"><a href="#L170">  170</a>                         self.record_and_apply_action(</span>
+<span id="L171"><a href="#L171">  171</a>                             BorrowPcgAction::add_edge(</span>
+<span id="L172"><a href="#L172">  172</a>                                 BorrowPcgEdge::new(</span>
+<span id="L173"><a href="#L173">  173</a>                                     DelegationEdge {</span>
+<span id="L174"><a href="#L174">  174</a>                                         rawptr_place: target.project_deref(ctxt).into(),</span>
+<span id="L175"><a href="#L175">  175</a>                                         aliased_place: alies_edges[0].aliased_place,</span>
+<span id="L176"><a href="#L176">  176</a>                                     }</span>
+<span id="L177"><a href="#L177">  177</a>                                     .into(),</span>
+<span id="L178"><a href="#L178">  178</a>                                     self.pcg.borrow.validity_conditions.clone(),</span>
+<span id="L179"><a href="#L179">  179</a>                                 ),</span>
+<span id="L180"><a href="#L180">  180</a>                                 &quot;assign_post_main&quot;,</span>
+<span id="L181"><a href="#L181">  181</a>                             )</span>
+<span id="L182"><a href="#L182">  182</a>                             .into(),</span>
+<span id="L183"><a href="#L183">  183</a>                         )?;</span>
+<span id="L184"><a href="#L184">  184</a>                     }</span>
+<span id="L185"><a href="#L185">  185</a>                 } else {</span>
+<span id="L186"><a href="#L186">  186</a>                     self.assignment_projections(operand, target, Some(CastData::new(*kind, *ty)))?;</span>
+<span id="L187"><a href="#L187">  187</a>                 }</span>
+<span id="L188"><a href="#L188">  188</a>             }</span>
+<span id="L189"><a href="#L189">  189</a>             Rvalue::Ref(borrow_region, kind, blocked_place) =&gt; {</span>
+<span id="L190"><a href="#L190">  190</a>                 let blocked_place: Place&lt;&#x27;tcx&gt; = (*blocked_place).into();</span>
+<span id="L191"><a href="#L191">  191</a>                 let blocked_place = blocked_place.with_inherent_region(self.ctxt);</span>
+<span id="L192"><a href="#L192">  192</a>                 if !target.ty(self.ctxt).ty.is_ref() {</span>
+<span id="L193"><a href="#L193">  193</a>                     return Err(PcgError::unsupported(</span>
+<span id="L194"><a href="#L194">  194</a>                         PcgUnsupportedError::AssignBorrowToNonReferenceType,</span>
+<span id="L195"><a href="#L195">  195</a>                     ));</span>
+<span id="L196"><a href="#L196">  196</a>                 }</span>
+<span id="L197"><a href="#L197">  197</a>                 if matches!(kind, mir::BorrowKind::Fake(_)) {</span>
+<span id="L198"><a href="#L198">  198</a>                     return Ok(());</span>
+<span id="L199"><a href="#L199">  199</a>                 }</span>
+<span id="L200"><a href="#L200">  200</a>                 self.pcg.borrow.add_borrow(</span>
+<span id="L201"><a href="#L201">  201</a>                     blocked_place,</span>
+<span id="L202"><a href="#L202">  202</a>                     target,</span>
+<span id="L203"><a href="#L203">  203</a>                     *kind,</span>
+<span id="L204"><a href="#L204">  204</a>                     self.location(),</span>
+<span id="L205"><a href="#L205">  205</a>                     *borrow_region,</span>
+<span id="L206"><a href="#L206">  206</a>                     &amp;mut self.pcg.place_capabilities,</span>
+<span id="L207"><a href="#L207">  207</a>                     self.ctxt,</span>
+<span id="L208"><a href="#L208">  208</a>                 );</span>
+<span id="L209"><a href="#L209">  209</a>                 self.label_lifetime_projections_for_borrow(blocked_place, target, *kind)?;</span>
+<span id="L210"><a href="#L210">  210</a>             }</span>
+<span id="L211"><a href="#L211">  211</a>             Rvalue::RawPtr(kind, p) if !kind.is_fake() =&gt; {</span>
+<span id="L212"><a href="#L212">  212</a>                 let p: Place&lt;&#x27;tcx&gt; = (*p).into();</span>
+<span id="L213"><a href="#L213">  213</a>                 let p = p.with_inherent_region(self.ctxt);</span>
+<span id="L214"><a href="#L214">  214</a>                 self.record_and_apply_action(</span>
+<span id="L215"><a href="#L215">  215</a>                     BorrowPcgAction::add_edge(</span>
+<span id="L216"><a href="#L216">  216</a>                         BorrowPcgEdge::new(</span>
+<span id="L217"><a href="#L217">  217</a>                             DelegationEdge {</span>
+<span id="L218"><a href="#L218">  218</a>                                 rawptr_place: target.project_deref(ctxt).into(),</span>
+<span id="L219"><a href="#L219">  219</a>                                 aliased_place: p.into(),</span>
+<span id="L220"><a href="#L220">  220</a>                             }</span>
+<span id="L221"><a href="#L221">  221</a>                             .into(),</span>
+<span id="L222"><a href="#L222">  222</a>                             self.pcg.borrow.validity_conditions.clone(),</span>
+<span id="L223"><a href="#L223">  223</a>                         ),</span>
+<span id="L224"><a href="#L224">  224</a>                         &quot;assign_post_main&quot;,</span>
+<span id="L225"><a href="#L225">  225</a>                     )</span>
+<span id="L226"><a href="#L226">  226</a>                     .into(),</span>
+<span id="L227"><a href="#L227">  227</a>                 )?;</span>
+<span id="L228"><a href="#L228">  228</a>             }</span>
+<span id="L229"><a href="#L229">  229</a>             _ =&gt; {}</span>
+<span id="L230"><a href="#L230">  230</a>         }</span>
+<span id="L231"><a href="#L231">  231</a>         Ok(())</span>
+<span id="L232"><a href="#L232">  232</a>     }</span>
+<span id="L233"><a href="#L233">  233</a> </span>
+<span id="L234"><a href="#L234">  234</a>     fn assignment_projections(</span>
+<span id="L235"><a href="#L235">  235</a>         &amp;mut self,</span>
+<span id="L236"><a href="#L236">  236</a>         operand: &amp;Operand&lt;&#x27;tcx&gt;,</span>
+<span id="L237"><a href="#L237">  237</a>         target_place: Place&lt;&#x27;tcx&gt;,</span>
+<span id="L238"><a href="#L238">  238</a>         cast_data: Option&lt;CastData&lt;&#x27;tcx&gt;&gt;,</span>
+<span id="L239"><a href="#L239">  239</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L240"><a href="#L240">  240</a>         let (source_projections, operand_type) = match operand {</span>
+<span id="L241"><a href="#L241">  241</a>             Operand::Move(place) | Operand::Copy(place) =&gt; {</span>
+<span id="L242"><a href="#L242">  242</a>                 let operand_type = if matches!(operand, Operand::Move(_)) {</span>
+<span id="L243"><a href="#L243">  243</a>                     OperandType::Move</span>
+<span id="L244"><a href="#L244">  244</a>                 } else {</span>
+<span id="L245"><a href="#L245">  245</a>                     OperandType::Copy</span>
+<span id="L246"><a href="#L246">  246</a>                 };</span>
+<span id="L247"><a href="#L247">  247</a>                 let place_label = matches!(operand_type, OperandType::Move)</span>
+<span id="L248"><a href="#L248">  248</a>                     .then(|| self.pre_operand_move_label());</span>
+<span id="L249"><a href="#L249">  249</a>                 let place: Place&lt;&#x27;tcx&gt; = (*place).into();</span>
+<span id="L250"><a href="#L250">  250</a>                 let place = place.with_inherent_region(self.ctxt);</span>
+<span id="L251"><a href="#L251">  251</a>                 (</span>
+<span id="L252"><a href="#L252">  252</a>                     PlaceOrConst::Place(MaybeLabelledPlace::new(place, place_label))</span>
+<span id="L253"><a href="#L253">  253</a>                         .generalized_lifetime_projections(self.ctxt),</span>
+<span id="L254"><a href="#L254">  254</a>                     operand_type,</span>
+<span id="L255"><a href="#L255">  255</a>                 )</span>
+<span id="L256"><a href="#L256">  256</a>             }</span>
+<span id="L257"><a href="#L257">  257</a>             Operand::Constant(const_) =&gt; (</span>
+<span id="L258"><a href="#L258">  258</a>                 PlaceOrConst::Const(const_.const_).generalized_lifetime_projections(self.ctxt),</span>
+<span id="L259"><a href="#L259">  259</a>                 OperandType::Const,</span>
+<span id="L260"><a href="#L260">  260</a>             ),</span>
+<span id="L261"><a href="#L261">  261</a>             #[allow(unreachable_patterns)]</span>
+<span id="L262"><a href="#L262">  262</a>             _ =&gt; return Ok(()),</span>
+<span id="L263"><a href="#L263">  263</a>         };</span>
+<span id="L264"><a href="#L264">  264</a>         for source_proj in source_projections {</span>
+<span id="L265"><a href="#L265">  265</a>             self.connect_outliving_projections(source_proj, target_place, |_| {</span>
+<span id="L266"><a href="#L266">  266</a>                 BorrowFlowEdgeKind::Assignment(AssignmentData::new(operand_type, cast_data))</span>
+<span id="L267"><a href="#L267">  267</a>             })?;</span>
+<span id="L268"><a href="#L268">  268</a>         }</span>
+<span id="L269"><a href="#L269">  269</a>         Ok(())</span>
+<span id="L270"><a href="#L270">  270</a>     }</span>
+<span id="L271"><a href="#L271">  271</a> </span>
+<span id="L272"><a href="#L272">  272</a>     fn label_lifetime_projections_for_borrow(</span>
+<span id="L273"><a href="#L273">  273</a>         &amp;mut self,</span>
+<span id="L274"><a href="#L274">  274</a>         blocked_place: Place&lt;&#x27;tcx&gt;,</span>
+<span id="L275"><a href="#L275">  275</a>         target: Place&lt;&#x27;tcx&gt;,</span>
+<span id="L276"><a href="#L276">  276</a>         kind: mir::BorrowKind,</span>
+<span id="L277"><a href="#L277">  277</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L278"><a href="#L278">  278</a>         let ctxt = self.ctxt;</span>
+<span id="L279"><a href="#L279">  279</a>         for source_proj in blocked_place.lifetime_projections(self.ctxt) {</span>
+<span id="L280"><a href="#L280">  280</a>             let mut obtainer = self.place_obtainer();</span>
+<span id="L281"><a href="#L281">  281</a>             let source_proj = if kind.mutability().is_mut() {</span>
+<span id="L282"><a href="#L282">  282</a>                 let label = obtainer.prev_snapshot_location();</span>
+<span id="L283"><a href="#L283">  283</a>                 obtainer.apply_action(</span>
+<span id="L284"><a href="#L284">  284</a>                     BorrowPcgAction::label_lifetime_projection(</span>
+<span id="L285"><a href="#L285">  285</a>                         LabelNodePredicate::postfix_lifetime_projection(source_proj.into()),</span>
+<span id="L286"><a href="#L286">  286</a>                         Some(label.into()),</span>
+<span id="L287"><a href="#L287">  287</a>                         &quot;Label region projections of newly borrowed place&quot;,</span>
+<span id="L288"><a href="#L288">  288</a>                     )</span>
+<span id="L289"><a href="#L289">  289</a>                     .into(),</span>
+<span id="L290"><a href="#L290">  290</a>                 )?;</span>
+<span id="L291"><a href="#L291">  291</a>                 source_proj.with_label(Some(label.into()), self.ctxt)</span>
+<span id="L292"><a href="#L292">  292</a>             } else {</span>
+<span id="L293"><a href="#L293">  293</a>                 source_proj.with_label(</span>
+<span id="L294"><a href="#L294">  294</a>                     obtainer</span>
+<span id="L295"><a href="#L295">  295</a>                         .label_for_shared_expansion_of_rp(source_proj, obtainer.ctxt)</span>
+<span id="L296"><a href="#L296">  296</a>                         .map(Into::into),</span>
+<span id="L297"><a href="#L297">  297</a>                     self.ctxt,</span>
+<span id="L298"><a href="#L298">  298</a>                 )</span>
+<span id="L299"><a href="#L299">  299</a>             };</span>
+<span id="L300"><a href="#L300">  300</a>             let source_region: GeneralizedLifetime&lt;&#x27;tcx&gt; = source_proj.region(self.ctxt.ctxt());</span>
+<span id="L301"><a href="#L301">  301</a>             let mut nested_ref_mut_targets = vec![];</span>
+<span id="L302"><a href="#L302">  302</a>             for target_proj in target.lifetime_projections(self.ctxt) {</span>
+<span id="L303"><a href="#L303">  303</a>                 let target_region: GeneralizedLifetime&lt;&#x27;tcx&gt; = target_proj.region(self.ctxt.ctxt());</span>
+<span id="L304"><a href="#L304">  304</a>                 if self.ctxt.bc().outlives_generalized(</span>
+<span id="L305"><a href="#L305">  305</a>                     source_region,</span>
+<span id="L306"><a href="#L306">  306</a>                     target_region,</span>
+<span id="L307"><a href="#L307">  307</a>                     self.location(),</span>
+<span id="L308"><a href="#L308">  308</a>                 ) {</span>
+<span id="L309"><a href="#L309">  309</a>                     let regions_equal = self.ctxt.bc().same_region_generalized(</span>
+<span id="L310"><a href="#L310">  310</a>                         source_region,</span>
+<span id="L311"><a href="#L311">  311</a>                         target_region,</span>
+<span id="L312"><a href="#L312">  312</a>                         self.location(),</span>
+<span id="L313"><a href="#L313">  313</a>                     );</span>
+<span id="L314"><a href="#L314">  314</a>                     self.record_and_apply_action(</span>
+<span id="L315"><a href="#L315">  315</a>                         BorrowPcgAction::add_edge(</span>
+<span id="L316"><a href="#L316">  316</a>                             BorrowPcgEdge::new(</span>
+<span id="L317"><a href="#L317">  317</a>                                 BorrowFlowEdge::new(</span>
+<span id="L318"><a href="#L318">  318</a>                                     source_proj.into(),</span>
+<span id="L319"><a href="#L319">  319</a>                                     target_proj.into(),</span>
+<span id="L320"><a href="#L320">  320</a>                                     BorrowFlowEdgeKind::BorrowOutlives { regions_equal },</span>
+<span id="L321"><a href="#L321">  321</a>                                 )</span>
+<span id="L322"><a href="#L322">  322</a>                                 .into(),</span>
+<span id="L323"><a href="#L323">  323</a>                                 self.pcg.borrow.validity_conditions.clone(),</span>
+<span id="L324"><a href="#L324">  324</a>                             ),</span>
+<span id="L325"><a href="#L325">  325</a>                             &quot;assign_post_main&quot;,</span>
+<span id="L326"><a href="#L326">  326</a>                         )</span>
+<span id="L327"><a href="#L327">  327</a>                         .into(),</span>
+<span id="L328"><a href="#L328">  328</a>                     )?;</span>
+<span id="L329"><a href="#L329">  329</a>                     if regions_equal &amp;&amp; kind.mutability().is_mut() {</span>
+<span id="L330"><a href="#L330">  330</a>                         nested_ref_mut_targets.push(target_proj.into());</span>
+<span id="L331"><a href="#L331">  331</a>                     }</span>
+<span id="L332"><a href="#L332">  332</a>                 }</span>
+<span id="L333"><a href="#L333">  333</a>             }</span>
+<span id="L334"><a href="#L334">  334</a>             self.place_obtainer().add_and_update_placeholder_edges(</span>
+<span id="L335"><a href="#L335">  335</a>                 source_proj.into(),</span>
+<span id="L336"><a href="#L336">  336</a>                 &amp;nested_ref_mut_targets,</span>
+<span id="L337"><a href="#L337">  337</a>                 &quot;assign&quot;,</span>
+<span id="L338"><a href="#L338">  338</a>                 ctxt,</span>
+<span id="L339"><a href="#L339">  339</a>             )?;</span>
+<span id="L340"><a href="#L340">  340</a>         }</span>
+<span id="L341"><a href="#L341">  341</a>         Ok(())</span>
+<span id="L342"><a href="#L342">  342</a>     }</span>
+<span id="L343"><a href="#L343">  343</a> }</span>
+</pre>

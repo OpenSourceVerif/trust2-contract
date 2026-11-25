@@ -1,0 +1,30 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 i32"]
+"r0" [label=<RETURN↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 i32\
+"]
+"p1" [label=<<FONT FACE="courier">pt: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 Point"]
+"r1" [label=<pt↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 Point\
+"]
+"p2" [label=<<FONT FACE="courier">*pt: R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="Point"]
+"p3" [label=<<FONT FACE="courier">(*_2) before bb0[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p4" [label=<<FONT FACE="courier">(*pt).x: R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"r2" [label=<_2 before bb0[3]↓'?8>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 i32\
+"]
+"r3" [label=<Remote(_1)↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 Point\
+"]
+"p5" [label=<<FONT FACE="courier">_2 before bb0[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?8 i32"]
+"p6" [label=<<FONT FACE="courier">(*pt).y: R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+    "p3" -> "r0" [label="shared '?5", id="edge_0", color="orange", edgetooltip=""]
+    "r1" -> "p2" [label="", id="edge_1", color="green", edgetooltip=""]
+    "p4" -> "r2" [label="shared '?4", id="edge_2", color="orange", edgetooltip=""]
+    "r3" -> "r1" [label="InitialBorrows", id="edge_3", color="purple"]
+    "p2" -> "p6" [label="", id="edge_4", color="green", edgetooltip=""]
+    "r2" -> "p3" [label="", id="edge_5", color="green", edgetooltip=""]
+    "p1" -> "p2" [label="", id="edge_6", color="green", edgetooltip=""]
+    "p2" -> "p4" [label="", id="edge_7", color="green", edgetooltip=""]
+    "p4" -> "p3" [label="", id="edge_8", style="dashed", color="grey"]
+    "p5" -> "p3" [label="", id="edge_9", color="green", edgetooltip=""]
+}
+

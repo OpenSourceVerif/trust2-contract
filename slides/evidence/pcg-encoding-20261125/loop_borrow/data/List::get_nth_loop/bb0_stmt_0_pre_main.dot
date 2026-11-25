@@ -1,0 +1,18 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?10 mut u32"]
+"p1" [label=<<FONT FACE="courier">self: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?11 mut List"]
+"r0" [label=<self↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?11 mut List\
+"]
+"p2" [label=<<FONT FACE="courier">n: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p3" [label=<<FONT FACE="courier">_7: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p4" [label=<<FONT FACE="courier">_13: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="isize"]
+"p5" [label=<<FONT FACE="courier">_16: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="(usize, bool)"]
+"p6" [label=<<FONT FACE="courier">_17: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p7" [label=<<FONT FACE="courier">_19: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"r1" [label=<Remote(_1)↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?11 mut List\
+"]
+    "r1" -> "r0" [label="InitialBorrows", id="edge_0", color="purple"]
+}
+

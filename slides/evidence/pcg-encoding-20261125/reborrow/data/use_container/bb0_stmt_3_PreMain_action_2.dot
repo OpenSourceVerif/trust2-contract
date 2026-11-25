@@ -1,0 +1,32 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 mut i32"]
+"r0" [label=<RETURN↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut i32\
+"]
+"p1" [label=<<FONT FACE="courier">c</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="Container<'?8>"]
+"p2" [label=<<FONT FACE="courier">c.x: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?8 mut i32"]
+"p3" [label=<<FONT FACE="courier">_2: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?9 mut i32"]
+"r1" [label=<Remote(_1)↓'?8>, fontcolor="blue", color="blue", shape="octagon", tooltip="Container<'?8>\
+"]
+"r2" [label=<c↓'?8 before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="Container<'?8>\
+"]
+"p4" [label=<<FONT FACE="courier">(*_2) before bb0[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p5" [label=<<FONT FACE="courier">_2: W before bb0[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?9 mut i32"]
+"r3" [label=<_2 before bb0[3]↓'?9 before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?9 mut i32\
+"]
+"p6" [label=<<FONT FACE="courier">*c.x</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"r4" [label=<c.x↓'?8 before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut i32\
+"]
+    "p6" -> "r3" [label="bw0: Default '?4", id="edge_0", color="orange", edgetooltip=""]
+    "p6" -> "p4" [label="", id="edge_1", style="dashed", color="grey"]
+    "r2" -> "r4" [label="", id="edge_2", color="green", edgetooltip=""]
+    "r4" -> "p6" [label="", id="edge_3", color="green", edgetooltip=""]
+    "p1" -> "p2" [label="", id="edge_4"]
+    "p2" -> "p6" [label="", id="edge_5", color="green", edgetooltip=""]
+    "r1" -> "r2" [label="InitialBorrows", id="edge_6", color="purple"]
+    "p5" -> "p4" [label="", id="edge_7", color="green", edgetooltip=""]
+    "r3" -> "p4" [label="", id="edge_8", color="green", edgetooltip=""]
+    "p4" -> "r0" [label="bw1: Default '?6", id="edge_9", color="orange", edgetooltip=""]
+}
+

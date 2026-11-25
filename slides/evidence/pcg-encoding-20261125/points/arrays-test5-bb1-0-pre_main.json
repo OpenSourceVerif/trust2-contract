@@ -1,0 +1,142 @@
+{
+  "case": "arrays",
+  "function": "test5",
+  "block": "bb1",
+  "statement_index": 0,
+  "phase": "pre_main",
+  "mir": {
+    "stmt": "(*y)[_5] = const 3_i32",
+    "debug_stmt": "(*_2)[_5] = const 3_i32",
+    "span": {
+      "low": {
+        "line": 34,
+        "column": 4
+      },
+      "high": {
+        "line": 34,
+        "column": 12
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [
+      "bw0"
+    ],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelPlace",
+            "data": "Label place (*y)[_5] (Write)"
+          },
+          "debug_info": null
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Unlabel lifetime projection (exact (*y)[_5] && in_source_nodes && edge_type(BorrowFlow { future_edge_kind: Some(FromExpansion) }))"
+          },
+          "debug_info": "label place and update related capabilities"
+        }
+      },
+      "result": {
+        "changed": false,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {y} -> {*y}"
+          },
+          "debug_info": "expand_place_one_level: add deref edge"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "LabelLifetimeProjection",
+            "data": "Label lifetime projection y↓'?5 with label before bb1[0]"
+          },
+          "debug_info": "block deref"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {*y} -> {(*y)[_5]}"
+          },
+          "debug_info": "add_borrow_pcg_expansion"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "Weaken",
+            "data": "Weaken (*y)[_5] from E to W"
+          },
+          "debug_info": "pre_main"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb2": {
+      "actions": []
+    }
+  },
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "arrays/data/test5/bb1_stmt_0_pre_main.dot"
+}

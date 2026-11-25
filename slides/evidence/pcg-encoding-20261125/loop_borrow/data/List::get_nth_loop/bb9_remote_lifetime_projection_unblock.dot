@@ -1,0 +1,37 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"r0" [label=<Remote(_1)↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?11 mut List\
+"]
+"r1" [label=<current before bb9[10]↓'?13 before bb9[8]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?13 mut List\
+"]
+"p0" [label=<<FONT FACE="courier">(*_20) before bb9[13]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"r2" [label=<_3 before bb9[14]↓'?12 before bb9[12]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?12 mut u32\
+"]
+"p1" [label=<<FONT FACE="courier">(*_3) before bb9[14]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"p2" [label=<<FONT FACE="courier">_20 before bb9[13]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?17 mut u32"]
+"r3" [label=<_20 before bb9[13]↓'?17 before bb9[9]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?17 mut u32\
+"]
+"p3" [label=<<FONT FACE="courier">*current before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="List"]
+"p4" [label=<<FONT FACE="courier">(*current).head before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"p5" [label=<<FONT FACE="courier">(*current).tail before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="std::option::Option<std::boxed::Box<List, std::alloc::Global>>"]
+"r4" [label=<RETURN↓'?10>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?10 mut u32\
+"]
+"p6" [label=<<FONT FACE="courier">_3 before bb9[14]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?12 mut u32"]
+"p7" [label=<<FONT FACE="courier">current before bb9[10]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?13 mut List"]
+    "p7" -> "p3" [label="", id="edge_0", color="green", edgetooltip="bb2 -> bb9"]
+    "p3" -> "p5" [label="", id="edge_1", color="green", edgetooltip="bb2 -> bb9"]
+    "r0" -> "r1" [label="loop at bb1[0]", id="edge_2", penwidth="3"]
+    "p2" -> "p0" [label="", id="edge_3", color="green", edgetooltip="bb2 -> bb9"]
+    "r3" -> "p0" [label="", id="edge_4", color="green", edgetooltip="bb2 -> bb9"]
+    "p0" -> "p1" [label="", id="edge_5", style="dashed", color="grey"]
+    "p3" -> "p4" [label="", id="edge_6", color="green", edgetooltip="bb2 -> bb9"]
+    "p1" -> "r4" [label="bw5: Default '?9", id="edge_7", color="orange", edgetooltip="bb2 -> bb9"]
+    "p4" -> "r3" [label="bw3: Default '?7", id="edge_8", color="orange", edgetooltip="bb2 -> bb9"]
+    "p4" -> "p0" [label="", id="edge_9", style="dashed", color="grey"]
+    "p0" -> "r2" [label="bw4: Default '?8", id="edge_10", color="orange", edgetooltip="bb2 -> bb9"]
+    "p6" -> "p1" [label="", id="edge_11", color="green", edgetooltip="bb2 -> bb9"]
+    "r2" -> "p1" [label="", id="edge_12", color="green", edgetooltip="bb2 -> bb9"]
+    "r1" -> "p3" [label="", id="edge_13", color="green", edgetooltip="bb2 -> bb9"]
+}
+

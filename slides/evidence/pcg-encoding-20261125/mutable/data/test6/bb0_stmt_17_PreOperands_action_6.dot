@@ -1,0 +1,34 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">a</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="U"]
+"p2" [label=<<FONT FACE="courier">a.g</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="u32"]
+"p3" [label=<<FONT FACE="courier">a.f</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="u32"]
+"p4" [label=<<FONT FACE="courier">y: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?8 mut u32"]
+"p5" [label=<<FONT FACE="courier">z: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?9 mut u32"]
+"p6" [label=<<FONT FACE="courier">y2: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?10 mut u32"]
+"r0" [label=<y2↓'?10>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?10 mut u32\
+"]
+"p7" [label=<<FONT FACE="courier">z2: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?11 mut u32"]
+"r1" [label=<z2↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?11 mut u32\
+"]
+"p8" [label=<<FONT FACE="courier">*z</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"r2" [label=<y↓'?8 before bb0[11]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut u32\
+"]
+"p9" [label=<<FONT FACE="courier">*y: E</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"r3" [label=<z↓'?9 before bb0[14]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?9 mut u32\
+"]
+    "p3" -> "p9" [label="", id="edge_0", style="dashed", color="grey"]
+    "p2" -> "r3" [label="bw1: Default '?3", id="edge_1", color="orange", edgetooltip=""]
+    "p2" -> "p8" [label="", id="edge_2", style="dashed", color="grey"]
+    "p1" -> "p2" [label="", id="edge_3"]
+    "r2" -> "p9" [label="", id="edge_4", color="green", edgetooltip=""]
+    "p3" -> "r2" [label="bw0: Default '?2", id="edge_5", color="orange", edgetooltip=""]
+    "p5" -> "p8" [label="", id="edge_6", color="green", edgetooltip=""]
+    "p4" -> "p9" [label="", id="edge_7", color="green", edgetooltip=""]
+    "r3" -> "p8" [label="", id="edge_8", color="green", edgetooltip=""]
+    "p1" -> "p3" [label="", id="edge_9"]
+    "p8" -> "r1" [label="bw3: Default '?5", id="edge_10", color="orange", edgetooltip=""]
+}
+

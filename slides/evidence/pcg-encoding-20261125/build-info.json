@@ -1,0 +1,15 @@
+{
+  "date": "2026-11-25",
+  "slides": 84,
+  "cases": 22,
+  "binary_sha256": {
+    "prusti-rustc": "e16264d7d1bc116c0c67c35681d9572471ea1c9b814b8497dd85e4ae0a64f806",
+    "prusti-driver": "f16454903d529305b7cdc1d8a0ff2711ef22dab27e285361bba4f2d75ca7b0c3"
+  },
+  "generator_sha256": {
+    "build_pcg_encoding.py": "4b5b3d9d4e2a83e749d6a8c47adc60b9e7f1fa5b371b4b19d1ca33988f96d6d6",
+    "pcg_rule_sources.py": "2b4c378d9bc35bad196e959dcaf0e368fc8b6e653ae0f00dda778a3e088d664f"
+  },
+  "prusti_status": "",
+  "pcg_status": ""
+}

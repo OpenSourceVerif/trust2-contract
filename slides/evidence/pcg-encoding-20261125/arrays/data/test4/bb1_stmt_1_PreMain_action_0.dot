@@ -1,0 +1,16 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">x: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="[i32; 3_usize]"]
+"p2" [label=<<FONT FACE="courier">y: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 [i32]"]
+"r0" [label=<y↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 [i32]\
+"]
+"p3" [label=<<FONT FACE="courier">_5: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p4" [label=<<FONT FACE="courier">_6: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p5" [label=<<FONT FACE="courier">_7: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="i32"]
+"p6" [label=<<FONT FACE="courier">_8: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p7" [label=<<FONT FACE="courier">_9: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p8" [label=<<FONT FACE="courier">_10: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+}
+

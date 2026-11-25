@@ -1,0 +1,769 @@
+<!doctype html><meta charset="utf-8"><title>use_impure.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>use_impure.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use prusti_rustc_interface::abi;</span>
+<span id="L2"><a href="#L2">    2</a> use task_encoder::{EncodeFullError, EncodeFullResult, TaskEncoder, TaskEncoderDependencies};</span>
+<span id="L3"><a href="#L3">    3</a> use vir::{CastType, PredicateIdn};</span>
+<span id="L4"><a href="#L4">    4</a> </span>
+<span id="L5"><a href="#L5">    5</a> use crate::encoders::{</span>
+<span id="L6"><a href="#L6">    6</a>     Impure,</span>
+<span id="L7"><a href="#L7">    7</a>     ty::{</span>
+<span id="L8"><a href="#L8">    8</a>         LazyRustTy, RustTyDatas, RustTyDecomposition,</span>
+<span id="L9"><a href="#L9">    9</a>         generics::{GArgs, GArgsCastEnc, GArgsTyEnc, GParams},</span>
+<span id="L10"><a href="#L10">   10</a>         pure::TyPureEnc,</span>
+<span id="L11"><a href="#L11">   11</a>         use_inhabited::{TyUseInhabitedEnc, TyUseInhabitedRef},</span>
+<span id="L12"><a href="#L12">   12</a>     },</span>
+<span id="L13"><a href="#L13">   13</a> };</span>
+<span id="L14"><a href="#L14">   14</a> </span>
+<span id="L15"><a href="#L15">   15</a> use super::{</span>
+<span id="L16"><a href="#L16">   16</a>     TyUseEnc, UseTyDatas,</span>
+<span id="L17"><a href="#L17">   17</a>     data::*,</span>
+<span id="L18"><a href="#L18">   18</a>     generics::{GArgCaster, GArgsTy},</span>
+<span id="L19"><a href="#L19">   19</a>     impure::{ImpureTyDatas, TyImpureEnc},</span>
+<span id="L20"><a href="#L20">   20</a>     rust_ty::RustTySpecial,</span>
+<span id="L21"><a href="#L21">   21</a> };</span>
+<span id="L22"><a href="#L22">   22</a> </span>
+<span id="L23"><a href="#L23">   23</a> pub(super) type UseImpureTyDatas = UseTyDatas&lt;Impure&gt;;</span>
+<span id="L24"><a href="#L24">   24</a> </span>
+<span id="L25"><a href="#L25">   25</a> type FieldCaster&lt;&#x27;vir&gt; = GArgCaster&lt;&#x27;vir, Impure&gt;;</span>
+<span id="L26"><a href="#L26">   26</a> </span>
+<span id="L27"><a href="#L27">   27</a> impl&lt;&#x27;vir&gt; TyDatas&lt;&#x27;vir&gt; for UseImpureTyDatas {</span>
+<span id="L28"><a href="#L28">   28</a>     type TyData = TyUseImpureData&lt;&#x27;vir&gt;;</span>
+<span id="L29"><a href="#L29">   29</a>     type PrimitiveData = ();</span>
+<span id="L30"><a href="#L30">   30</a>     type ArrayData = TyUseImpureArrayData&lt;&#x27;vir&gt;;</span>
+<span id="L31"><a href="#L31">   31</a>     type ImmRefData = TyUseImpureImmRef&lt;&#x27;vir&gt;;</span>
+<span id="L32"><a href="#L32">   32</a>     type MutRefData = TyUseImpureMutRef&lt;&#x27;vir&gt;;</span>
+<span id="L33"><a href="#L33">   33</a>     type RawData = TyUseImpureRaw&lt;&#x27;vir&gt;;</span>
+<span id="L34"><a href="#L34">   34</a>     type FieldData = TyUseImpureField&lt;&#x27;vir&gt;;</span>
+<span id="L35"><a href="#L35">   35</a>     type StructData = TyUseImpureStructData&lt;&#x27;vir&gt;;</span>
+<span id="L36"><a href="#L36">   36</a>     type VariantData = ();</span>
+<span id="L37"><a href="#L37">   37</a>     type EnumData = TyUseImpureEnumData&lt;&#x27;vir&gt;;</span>
+<span id="L38"><a href="#L38">   38</a> }</span>
+<span id="L39"><a href="#L39">   39</a> </span>
+<span id="L40"><a href="#L40">   40</a> pub type TyUseImpure&lt;&#x27;vir&gt; = Ty&lt;&#x27;vir, UseImpureTyDatas&gt;;</span>
+<span id="L41"><a href="#L41">   41</a> </span>
+<span id="L42"><a href="#L42">   42</a> pub type TyUseImpureArray&lt;&#x27;vir&gt; = ArrayData&lt;&#x27;vir, UseImpureTyDatas&gt;;</span>
+<span id="L43"><a href="#L43">   43</a> pub type TyUseImpureStruct&lt;&#x27;vir&gt; = StructData&lt;&#x27;vir, UseImpureTyDatas&gt;;</span>
+<span id="L44"><a href="#L44">   44</a> pub type TyUseImpureEnum&lt;&#x27;vir&gt; = EnumData&lt;&#x27;vir, UseImpureTyDatas&gt;;</span>
+<span id="L45"><a href="#L45">   45</a> </span>
+<span id="L46"><a href="#L46">   46</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L47"><a href="#L47">   47</a> pub struct TyUseImpureData&lt;&#x27;vir&gt; {</span>
+<span id="L48"><a href="#L48">   48</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L49"><a href="#L49">   49</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::TyData,</span>
+<span id="L50"><a href="#L50">   50</a>     inhabited: TyUseInhabitedRef&lt;&#x27;vir&gt;,</span>
+<span id="L51"><a href="#L51">   51</a> }</span>
+<span id="L52"><a href="#L52">   52</a> </span>
+<span id="L53"><a href="#L53">   53</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L54"><a href="#L54">   54</a> pub struct TyUseImpureImmRef&lt;&#x27;vir&gt; {</span>
+<span id="L55"><a href="#L55">   55</a>     #[allow(dead_code)]</span>
+<span id="L56"><a href="#L56">   56</a>     referent_caster: FieldCaster&lt;&#x27;vir&gt;,</span>
+<span id="L57"><a href="#L57">   57</a>     #[allow(dead_code)]</span>
+<span id="L58"><a href="#L58">   58</a>     metadata_caster: GArgCaster&lt;&#x27;vir, crate::encoders::Pure&gt;,</span>
+<span id="L59"><a href="#L59">   59</a>     #[allow(dead_code)]</span>
+<span id="L60"><a href="#L60">   60</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L61"><a href="#L61">   61</a>     #[allow(dead_code)]</span>
+<span id="L62"><a href="#L62">   62</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::ImmRefData,</span>
+<span id="L63"><a href="#L63">   63</a> }</span>
+<span id="L64"><a href="#L64">   64</a> </span>
+<span id="L65"><a href="#L65">   65</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L66"><a href="#L66">   66</a> pub struct TyUseImpureMutRef&lt;&#x27;vir&gt; {</span>
+<span id="L67"><a href="#L67">   67</a>     #[allow(dead_code)]</span>
+<span id="L68"><a href="#L68">   68</a>     referent_caster: FieldCaster&lt;&#x27;vir&gt;,</span>
+<span id="L69"><a href="#L69">   69</a>     #[allow(dead_code)]</span>
+<span id="L70"><a href="#L70">   70</a>     metadata_caster: GArgCaster&lt;&#x27;vir, crate::encoders::Pure&gt;,</span>
+<span id="L71"><a href="#L71">   71</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L72"><a href="#L72">   72</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::MutRefData,</span>
+<span id="L73"><a href="#L73">   73</a>     ref_to_snap: vir::FunctionIdn&lt;&#x27;vir, (vir::Ref, vir::ManyTyVal, vir::ManyCSnap), vir::Snap&gt;,</span>
+<span id="L74"><a href="#L74">   74</a> }</span>
+<span id="L75"><a href="#L75">   75</a> </span>
+<span id="L76"><a href="#L76">   76</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L77"><a href="#L77">   77</a> pub struct TyUseImpureRaw&lt;&#x27;vir&gt; {</span>
+<span id="L78"><a href="#L78">   78</a>     #[allow(dead_code)]</span>
+<span id="L79"><a href="#L79">   79</a>     metadata_caster: GArgCaster&lt;&#x27;vir, crate::encoders::Pure&gt;,</span>
+<span id="L80"><a href="#L80">   80</a>     #[allow(dead_code)]</span>
+<span id="L81"><a href="#L81">   81</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L82"><a href="#L82">   82</a>     #[allow(dead_code)]</span>
+<span id="L83"><a href="#L83">   83</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::RawData,</span>
+<span id="L84"><a href="#L84">   84</a> }</span>
+<span id="L85"><a href="#L85">   85</a> </span>
+<span id="L86"><a href="#L86">   86</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L87"><a href="#L87">   87</a> pub struct TyUseImpureArrayData&lt;&#x27;vir&gt; {</span>
+<span id="L88"><a href="#L88">   88</a>     #[allow(dead_code)]</span>
+<span id="L89"><a href="#L89">   89</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L90"><a href="#L90">   90</a>     #[allow(dead_code)]</span>
+<span id="L91"><a href="#L91">   91</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::ArrayData,</span>
+<span id="L92"><a href="#L92">   92</a>     element_caster: FieldCaster&lt;&#x27;vir&gt;,</span>
+<span id="L93"><a href="#L93">   93</a> }</span>
+<span id="L94"><a href="#L94">   94</a> </span>
+<span id="L95"><a href="#L95">   95</a> /// Use-side data for the hardcoded extras of a `Box`.</span>
+<span id="L96"><a href="#L96">   96</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L97"><a href="#L97">   97</a> pub struct TyUseImpureBoxData&lt;&#x27;vir&gt; {</span>
+<span id="L98"><a href="#L98">   98</a>     metadata_caster: GArgCaster&lt;&#x27;vir, crate::encoders::Pure&gt;,</span>
+<span id="L99"><a href="#L99">   99</a>     /// The types of the `Unique` pointer and of the allocator.</span>
+<span id="L100"><a href="#L100">  100</a>     unique: TyUseImpure&lt;&#x27;vir&gt;,</span>
+<span id="L101"><a href="#L101">  101</a>     alloc: TyUseImpure&lt;&#x27;vir&gt;,</span>
+<span id="L102"><a href="#L102">  102</a> }</span>
+<span id="L103"><a href="#L103">  103</a> </span>
+<span id="L104"><a href="#L104">  104</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L105"><a href="#L105">  105</a> pub struct TyUseImpureStructData&lt;&#x27;vir&gt; {</span>
+<span id="L106"><a href="#L106">  106</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L107"><a href="#L107">  107</a>     ref_to_pred: PredicateIdn&lt;&#x27;vir, (vir::Ref, vir::ManyTyVal, vir::ManyCSnap)&gt;,</span>
+<span id="L108"><a href="#L108">  108</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::StructData,</span>
+<span id="L109"><a href="#L109">  109</a>     box_data: Option&lt;TyUseImpureBoxData&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L110"><a href="#L110">  110</a> }</span>
+<span id="L111"><a href="#L111">  111</a> </span>
+<span id="L112"><a href="#L112">  112</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L113"><a href="#L113">  113</a> pub struct TyUseImpureField&lt;&#x27;vir&gt; {</span>
+<span id="L114"><a href="#L114">  114</a>     caster: FieldCaster&lt;&#x27;vir&gt;,</span>
+<span id="L115"><a href="#L115">  115</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L116"><a href="#L116">  116</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::FieldData,</span>
+<span id="L117"><a href="#L117">  117</a> }</span>
+<span id="L118"><a href="#L118">  118</a> </span>
+<span id="L119"><a href="#L119">  119</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L120"><a href="#L120">  120</a> pub struct TyUseImpureEnumData&lt;&#x27;vir&gt; {</span>
+<span id="L121"><a href="#L121">  121</a>     #[allow(dead_code)]</span>
+<span id="L122"><a href="#L122">  122</a>     args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L123"><a href="#L123">  123</a>     impure: &lt;ImpureTyDatas as TyDatas&lt;&#x27;vir&gt;&gt;::EnumData,</span>
+<span id="L124"><a href="#L124">  124</a>     /// The inhabitedness of each variant&#x27;s fields after normalization in this</span>
+<span id="L125"><a href="#L125">  125</a>     /// use site&#x27;s generic context, paired with that variant&#x27;s discriminant.</span>
+<span id="L126"><a href="#L126">  126</a>     variant_inhabited: &amp;&#x27;vir [(vir::ExprCSnap&lt;&#x27;vir&gt;, vir::ExprBool&lt;&#x27;vir&gt;)],</span>
+<span id="L127"><a href="#L127">  127</a> }</span>
+<span id="L128"><a href="#L128">  128</a> </span>
+<span id="L129"><a href="#L129">  129</a> /// Encodes a type into the predicate representation. Takes an arbitrary Rust</span>
+<span id="L130"><a href="#L130">  130</a> /// `Ty` and provides a wrapper around the results of the `TyImpureEnc` encoder.</span>
+<span id="L131"><a href="#L131">  131</a> /// This wrapper handles all the generic casts required (e.g. when fold/unfolding).</span>
+<span id="L132"><a href="#L132">  132</a> pub type TyUseImpureEnc = TyUseEnc&lt;Impure&gt;;</span>
+<span id="L133"><a href="#L133">  133</a> </span>
+<span id="L134"><a href="#L134">  134</a> type EncResult&lt;&#x27;vir, T&gt; = Result&lt;T, EncodeFullError&lt;&#x27;vir, TyUseImpureEnc&gt;&gt;;</span>
+<span id="L135"><a href="#L135">  135</a> </span>
+<span id="L136"><a href="#L136">  136</a> impl TaskEncoder for TyUseImpureEnc {</span>
+<span id="L137"><a href="#L137">  137</a>     task_encoder::encoder_cache!(TyUseImpureEnc);</span>
+<span id="L138"><a href="#L138">  138</a>     const ENCODER_NAME: &amp;&#x27;static str = &quot;impure type use encoder&quot;;</span>
+<span id="L139"><a href="#L139">  139</a> </span>
+<span id="L140"><a href="#L140">  140</a>     type TaskDescription&lt;&#x27;vir&gt; = super::RustTyDecomposition&lt;&#x27;vir&gt;;</span>
+<span id="L141"><a href="#L141">  141</a> </span>
+<span id="L142"><a href="#L142">  142</a>     type OutputFullDependency&lt;&#x27;vir&gt; = TyUseImpure&lt;&#x27;vir&gt;;</span>
+<span id="L143"><a href="#L143">  143</a> </span>
+<span id="L144"><a href="#L144">  144</a>     fn task_to_key&lt;&#x27;vir&gt;(task: &amp;Self::TaskDescription&lt;&#x27;vir&gt;) -&gt; Self::TaskKey&lt;&#x27;vir&gt; {</span>
+<span id="L145"><a href="#L145">  145</a>         *task</span>
+<span id="L146"><a href="#L146">  146</a>     }</span>
+<span id="L147"><a href="#L147">  147</a> </span>
+<span id="L148"><a href="#L148">  148</a>     fn do_encode_full&lt;&#x27;vir&gt;(</span>
+<span id="L149"><a href="#L149">  149</a>         task_key: &amp;Self::TaskKey&lt;&#x27;vir&gt;,</span>
+<span id="L150"><a href="#L150">  150</a>         deps: &amp;mut task_encoder::TaskEncoderDependencies&lt;&#x27;vir, Self&gt;,</span>
+<span id="L151"><a href="#L151">  151</a>     ) -&gt; EncodeFullResult&lt;&#x27;vir, Self&gt; {</span>
+<span id="L152"><a href="#L152">  152</a>         deps.emit_output_ref(*task_key, ())?;</span>
+<span id="L153"><a href="#L153">  153</a> </span>
+<span id="L154"><a href="#L154">  154</a>         let ty_impure = deps.require_dep::&lt;TyImpureEnc&gt;(task_key.ty)?;</span>
+<span id="L155"><a href="#L155">  155</a>         let inhabited = deps.require_ref::&lt;TyUseInhabitedEnc&gt;(*task_key)?;</span>
+<span id="L156"><a href="#L156">  156</a>         let mut walker = TyUseImpureWalker::new(deps, task_key.args, inhabited)?;</span>
+<span id="L157"><a href="#L157">  157</a>         let ty_use_impure = walker.encode_ty(task_key.ty.zip(ty_impure))?;</span>
+<span id="L158"><a href="#L158">  158</a>         Ok(((), ty_use_impure.alloc()))</span>
+<span id="L159"><a href="#L159">  159</a>     }</span>
+<span id="L160"><a href="#L160">  160</a> </span>
+<span id="L161"><a href="#L161">  161</a>     fn emit_outputs&lt;&#x27;vir&gt;(program: &amp;mut task_encoder::Program&lt;&#x27;vir&gt;) {</span>
+<span id="L162"><a href="#L162">  162</a>         TyImpureEnc::emit_outputs(program)</span>
+<span id="L163"><a href="#L163">  163</a>     }</span>
+<span id="L164"><a href="#L164">  164</a> }</span>
+<span id="L165"><a href="#L165">  165</a> </span>
+<span id="L166"><a href="#L166">  166</a> struct TyUseImpureWalker&lt;&#x27;a, &#x27;vir&gt; {</span>
+<span id="L167"><a href="#L167">  167</a>     deps: &amp;&#x27;a mut TaskEncoderDependencies&lt;&#x27;vir, TyUseImpureEnc&gt;,</span>
+<span id="L168"><a href="#L168">  168</a>     args_t: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L169"><a href="#L169">  169</a>     args: GArgs&lt;&#x27;vir&gt;,</span>
+<span id="L170"><a href="#L170">  170</a>     inhabited: TyUseInhabitedRef&lt;&#x27;vir&gt;,</span>
+<span id="L171"><a href="#L171">  171</a> }</span>
+<span id="L172"><a href="#L172">  172</a> </span>
+<span id="L173"><a href="#L173">  173</a> impl&lt;&#x27;a, &#x27;vir&gt; TyUseImpureWalker&lt;&#x27;a, &#x27;vir&gt; {</span>
+<span id="L174"><a href="#L174">  174</a>     fn new(</span>
+<span id="L175"><a href="#L175">  175</a>         deps: &amp;&#x27;a mut TaskEncoderDependencies&lt;&#x27;vir, TyUseImpureEnc&gt;,</span>
+<span id="L176"><a href="#L176">  176</a>         args: GArgs&lt;&#x27;vir&gt;,</span>
+<span id="L177"><a href="#L177">  177</a>         inhabited: TyUseInhabitedRef&lt;&#x27;vir&gt;,</span>
+<span id="L178"><a href="#L178">  178</a>     ) -&gt; EncResult&lt;&#x27;vir, Self&gt; {</span>
+<span id="L179"><a href="#L179">  179</a>         let args_t = deps.require_dep::&lt;GArgsTyEnc&gt;(args)?;</span>
+<span id="L180"><a href="#L180">  180</a>         Ok(Self {</span>
+<span id="L181"><a href="#L181">  181</a>             deps,</span>
+<span id="L182"><a href="#L182">  182</a>             args_t,</span>
+<span id="L183"><a href="#L183">  183</a>             args,</span>
+<span id="L184"><a href="#L184">  184</a>             inhabited,</span>
+<span id="L185"><a href="#L185">  185</a>         })</span>
+<span id="L186"><a href="#L186">  186</a>     }</span>
+<span id="L187"><a href="#L187">  187</a> </span>
+<span id="L188"><a href="#L188">  188</a>     fn encode_ty(</span>
+<span id="L189"><a href="#L189">  189</a>         &amp;mut self,</span>
+<span id="L190"><a href="#L190">  190</a>         ty: TyData&lt;&#x27;vir, (RustTyDatas, ImpureTyDatas)&gt;,</span>
+<span id="L191"><a href="#L191">  191</a>     ) -&gt; EncResult&lt;&#x27;vir, TyData&lt;&#x27;vir, UseImpureTyDatas&gt;&gt; {</span>
+<span id="L192"><a href="#L192">  192</a>         let specifics = match &amp;ty.specifics {</span>
+<span id="L193"><a href="#L193">  193</a>             TySpecifics::Param(..) =&gt; TySpecifics::mk_param(()),</span>
+<span id="L194"><a href="#L194">  194</a>             TySpecifics::Opaque(..) =&gt; TySpecifics::mk_opaque(()),</span>
+<span id="L195"><a href="#L195">  195</a>             TySpecifics::Primitive(..) =&gt; TySpecifics::mk_primitive(()),</span>
+<span id="L196"><a href="#L196">  196</a>             TySpecifics::ImmRef(data) =&gt; {</span>
+<span id="L197"><a href="#L197">  197</a>                 let referent_caster = self.encode_normalized(data.0.referent, ty.0.params)?;</span>
+<span id="L198"><a href="#L198">  198</a>                 let metadata_caster = self.encode_normalized_pure(data.0.metadata, ty.0.params)?;</span>
+<span id="L199"><a href="#L199">  199</a>                 TySpecifics::mk_immref(TyUseImpureImmRef {</span>
+<span id="L200"><a href="#L200">  200</a>                     referent_caster,</span>
+<span id="L201"><a href="#L201">  201</a>                     metadata_caster,</span>
+<span id="L202"><a href="#L202">  202</a>                     args: self.args_t,</span>
+<span id="L203"><a href="#L203">  203</a>                     impure: *data.1,</span>
+<span id="L204"><a href="#L204">  204</a>                 })</span>
+<span id="L205"><a href="#L205">  205</a>             }</span>
+<span id="L206"><a href="#L206">  206</a>             TySpecifics::MutRef(data) =&gt; {</span>
+<span id="L207"><a href="#L207">  207</a>                 let referent_caster = self.encode_normalized(data.0.referent, ty.0.params)?;</span>
+<span id="L208"><a href="#L208">  208</a>                 let metadata_caster = self.encode_normalized_pure(data.0.metadata, ty.0.params)?;</span>
+<span id="L209"><a href="#L209">  209</a>                 TySpecifics::mk_mutref(TyUseImpureMutRef {</span>
+<span id="L210"><a href="#L210">  210</a>                     referent_caster,</span>
+<span id="L211"><a href="#L211">  211</a>                     metadata_caster,</span>
+<span id="L212"><a href="#L212">  212</a>                     args: self.args_t,</span>
+<span id="L213"><a href="#L213">  213</a>                     impure: *data.1,</span>
+<span id="L214"><a href="#L214">  214</a>                     ref_to_snap: ty.1.ref_to_snap,</span>
+<span id="L215"><a href="#L215">  215</a>                 })</span>
+<span id="L216"><a href="#L216">  216</a>             }</span>
+<span id="L217"><a href="#L217">  217</a>             TySpecifics::Raw(data) =&gt; {</span>
+<span id="L218"><a href="#L218">  218</a>                 let metadata_caster = self.encode_normalized_pure(data.0.metadata, ty.0.params)?;</span>
+<span id="L219"><a href="#L219">  219</a>                 TySpecifics::mk_raw(TyUseImpureRaw {</span>
+<span id="L220"><a href="#L220">  220</a>                     metadata_caster,</span>
+<span id="L221"><a href="#L221">  221</a>                     args: self.args_t,</span>
+<span id="L222"><a href="#L222">  222</a>                     impure: *data.1,</span>
+<span id="L223"><a href="#L223">  223</a>                 })</span>
+<span id="L224"><a href="#L224">  224</a>             }</span>
+<span id="L225"><a href="#L225">  225</a>             TySpecifics::ArrayLike(data) =&gt; {</span>
+<span id="L226"><a href="#L226">  226</a>                 TySpecifics::ArrayLike(self.encode_array(data, ty.1.ref_to_pred, ty.0.params)?)</span>
+<span id="L227"><a href="#L227">  227</a>             }</span>
+<span id="L228"><a href="#L228">  228</a>             TySpecifics::StructLike(data) =&gt; {</span>
+<span id="L229"><a href="#L229">  229</a>                 let box_data = match ty.0.special {</span>
+<span id="L230"><a href="#L230">  230</a>                     RustTySpecial::Box =&gt; Some(TyUseImpureBoxData {</span>
+<span id="L231"><a href="#L231">  231</a>                         metadata_caster: self</span>
+<span id="L232"><a href="#L232">  232</a>                             .encode_normalized_pure(ty.box_metadata_ty(), ty.0.params)?,</span>
+<span id="L233"><a href="#L233">  233</a>                         unique: self.deps.require_dep::&lt;TyUseImpureEnc&gt;(</span>
+<span id="L234"><a href="#L234">  234</a>                             ty.box_unique_ty().decompose_normalize(self.args),</span>
+<span id="L235"><a href="#L235">  235</a>                         )?,</span>
+<span id="L236"><a href="#L236">  236</a>                         alloc: self.deps.require_dep::&lt;TyUseImpureEnc&gt;(</span>
+<span id="L237"><a href="#L237">  237</a>                             ty.box_alloc_ty().decompose_normalize(self.args),</span>
+<span id="L238"><a href="#L238">  238</a>                         )?,</span>
+<span id="L239"><a href="#L239">  239</a>                     }),</span>
+<span id="L240"><a href="#L240">  240</a>                     RustTySpecial::None =&gt; None,</span>
+<span id="L241"><a href="#L241">  241</a>                 };</span>
+<span id="L242"><a href="#L242">  242</a>                 TySpecifics::StructLike(self.encode_structlike(</span>
+<span id="L243"><a href="#L243">  243</a>                     data,</span>
+<span id="L244"><a href="#L244">  244</a>                     ty.1.ref_to_pred,</span>
+<span id="L245"><a href="#L245">  245</a>                     ty.0.params,</span>
+<span id="L246"><a href="#L246">  246</a>                     box_data,</span>
+<span id="L247"><a href="#L247">  247</a>                 )?)</span>
+<span id="L248"><a href="#L248">  248</a>             }</span>
+<span id="L249"><a href="#L249">  249</a>             TySpecifics::EnumLike(data) =&gt; {</span>
+<span id="L250"><a href="#L250">  250</a>                 TySpecifics::EnumLike(self.encode_enumlike(data, ty.0.params)?)</span>
+<span id="L251"><a href="#L251">  251</a>             }</span>
+<span id="L252"><a href="#L252">  252</a>             TySpecifics::Builtin(..) =&gt; TySpecifics::mk_builtin(()),</span>
+<span id="L253"><a href="#L253">  253</a>         };</span>
+<span id="L254"><a href="#L254">  254</a>         let data = TyUseImpureData {</span>
+<span id="L255"><a href="#L255">  255</a>             args: self.args_t,</span>
+<span id="L256"><a href="#L256">  256</a>             impure: *ty.1,</span>
+<span id="L257"><a href="#L257">  257</a>             inhabited: self.inhabited,</span>
+<span id="L258"><a href="#L258">  258</a>         };</span>
+<span id="L259"><a href="#L259">  259</a>         Ok(TyData::new(data, specifics))</span>
+<span id="L260"><a href="#L260">  260</a>     }</span>
+<span id="L261"><a href="#L261">  261</a> </span>
+<span id="L262"><a href="#L262">  262</a>     fn encode_normalized(</span>
+<span id="L263"><a href="#L263">  263</a>         &amp;mut self,</span>
+<span id="L264"><a href="#L264">  264</a>         inner: LazyRustTy&lt;&#x27;vir&gt;,</span>
+<span id="L265"><a href="#L265">  265</a>         params: GParams&lt;&#x27;vir&gt;,</span>
+<span id="L266"><a href="#L266">  266</a>     ) -&gt; EncResult&lt;&#x27;vir, FieldCaster&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L267"><a href="#L267">  267</a>         let normalized = inner.decompose_compare_normalize(params, self.args);</span>
+<span id="L268"><a href="#L268">  268</a>         self.deps.require_dep::&lt;GArgsCastEnc&lt;Impure&gt;&gt;(normalized)</span>
+<span id="L269"><a href="#L269">  269</a>     }</span>
+<span id="L270"><a href="#L270">  270</a> </span>
+<span id="L271"><a href="#L271">  271</a>     fn encode_normalized_pure(</span>
+<span id="L272"><a href="#L272">  272</a>         &amp;mut self,</span>
+<span id="L273"><a href="#L273">  273</a>         inner: LazyRustTy&lt;&#x27;vir&gt;,</span>
+<span id="L274"><a href="#L274">  274</a>         params: GParams&lt;&#x27;vir&gt;,</span>
+<span id="L275"><a href="#L275">  275</a>     ) -&gt; EncResult&lt;&#x27;vir, GArgCaster&lt;&#x27;vir, crate::encoders::Pure&gt;&gt; {</span>
+<span id="L276"><a href="#L276">  276</a>         let normalized = inner.decompose_compare_normalize(params, self.args);</span>
+<span id="L277"><a href="#L277">  277</a>         self.deps</span>
+<span id="L278"><a href="#L278">  278</a>             .require_dep::&lt;GArgsCastEnc&lt;crate::encoders::Pure&gt;&gt;(normalized)</span>
+<span id="L279"><a href="#L279">  279</a>     }</span>
+<span id="L280"><a href="#L280">  280</a> </span>
+<span id="L281"><a href="#L281">  281</a>     fn encode_array(</span>
+<span id="L282"><a href="#L282">  282</a>         &amp;mut self,</span>
+<span id="L283"><a href="#L283">  283</a>         data: &amp;ArrayData&lt;&#x27;vir, (RustTyDatas, ImpureTyDatas)&gt;,</span>
+<span id="L284"><a href="#L284">  284</a>         _ref_to_pred: PredicateIdn&lt;&#x27;vir, (vir::Ref, vir::ManyTyVal, vir::ManyCSnap)&gt;,</span>
+<span id="L285"><a href="#L285">  285</a>         params: GParams&lt;&#x27;vir&gt;,</span>
+<span id="L286"><a href="#L286">  286</a>     ) -&gt; EncResult&lt;&#x27;vir, ArrayData&lt;&#x27;vir, UseImpureTyDatas&gt;&gt; {</span>
+<span id="L287"><a href="#L287">  287</a>         let caster = self.encode_normalized(*data.0, params)?;</span>
+<span id="L288"><a href="#L288">  288</a>         let slice = data.slice;</span>
+<span id="L289"><a href="#L289">  289</a>         let data = TyUseImpureArrayData {</span>
+<span id="L290"><a href="#L290">  290</a>             args: self.args_t,</span>
+<span id="L291"><a href="#L291">  291</a>             impure: *data.data.1,</span>
+<span id="L292"><a href="#L292">  292</a>             element_caster: caster,</span>
+<span id="L293"><a href="#L293">  293</a>         };</span>
+<span id="L294"><a href="#L294">  294</a>         Ok(ArrayData::new(data, slice))</span>
+<span id="L295"><a href="#L295">  295</a>     }</span>
+<span id="L296"><a href="#L296">  296</a> </span>
+<span id="L297"><a href="#L297">  297</a>     fn encode_structlike(</span>
+<span id="L298"><a href="#L298">  298</a>         &amp;mut self,</span>
+<span id="L299"><a href="#L299">  299</a>         data: &amp;StructData&lt;&#x27;vir, (RustTyDatas, ImpureTyDatas)&gt;,</span>
+<span id="L300"><a href="#L300">  300</a>         ref_to_pred: PredicateIdn&lt;&#x27;vir, (vir::Ref, vir::ManyTyVal, vir::ManyCSnap)&gt;,</span>
+<span id="L301"><a href="#L301">  301</a>         params: GParams&lt;&#x27;vir&gt;,</span>
+<span id="L302"><a href="#L302">  302</a>         box_data: Option&lt;TyUseImpureBoxData&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L303"><a href="#L303">  303</a>     ) -&gt; EncResult&lt;&#x27;vir, StructData&lt;&#x27;vir, UseImpureTyDatas&gt;&gt; {</span>
+<span id="L304"><a href="#L304">  304</a>         let fields = data</span>
+<span id="L305"><a href="#L305">  305</a>             .fields</span>
+<span id="L306"><a href="#L306">  306</a>             .iter()</span>
+<span id="L307"><a href="#L307">  307</a>             .map(|field| {</span>
+<span id="L308"><a href="#L308">  308</a>                 let caster = self.encode_normalized(field.0.ty(), params)?;</span>
+<span id="L309"><a href="#L309">  309</a>                 Ok(TyUseImpureField {</span>
+<span id="L310"><a href="#L310">  310</a>                     caster,</span>
+<span id="L311"><a href="#L311">  311</a>                     args: self.args_t,</span>
+<span id="L312"><a href="#L312">  312</a>                     impure: *field.1,</span>
+<span id="L313"><a href="#L313">  313</a>                 })</span>
+<span id="L314"><a href="#L314">  314</a>             })</span>
+<span id="L315"><a href="#L315">  315</a>             .collect::&lt;EncResult&lt;&#x27;vir, Vec&lt;_&gt;&gt;&gt;()?;</span>
+<span id="L316"><a href="#L316">  316</a>         let data = TyUseImpureStructData {</span>
+<span id="L317"><a href="#L317">  317</a>             args: self.args_t,</span>
+<span id="L318"><a href="#L318">  318</a>             ref_to_pred,</span>
+<span id="L319"><a href="#L319">  319</a>             impure: *data.1,</span>
+<span id="L320"><a href="#L320">  320</a>             box_data,</span>
+<span id="L321"><a href="#L321">  321</a>         };</span>
+<span id="L322"><a href="#L322">  322</a>         Ok(StructData::new(data, fields))</span>
+<span id="L323"><a href="#L323">  323</a>     }</span>
+<span id="L324"><a href="#L324">  324</a> </span>
+<span id="L325"><a href="#L325">  325</a>     fn encode_enumlike(</span>
+<span id="L326"><a href="#L326">  326</a>         &amp;mut self,</span>
+<span id="L327"><a href="#L327">  327</a>         data: &amp;EnumData&lt;&#x27;vir, (RustTyDatas, ImpureTyDatas)&gt;,</span>
+<span id="L328"><a href="#L328">  328</a>         params: GParams&lt;&#x27;vir&gt;,</span>
+<span id="L329"><a href="#L329">  329</a>     ) -&gt; EncResult&lt;&#x27;vir, EnumData&lt;&#x27;vir, UseImpureTyDatas&gt;&gt; {</span>
+<span id="L330"><a href="#L330">  330</a>         let discr_ty = self</span>
+<span id="L331"><a href="#L331">  331</a>             .deps</span>
+<span id="L332"><a href="#L332">  332</a>             .require_dep::&lt;TyPureEnc&gt;(RustTyDecomposition::from_prim_ty(data.0.discr).ty)?;</span>
+<span id="L333"><a href="#L333">  333</a>         let discr_prim = *discr_ty.expect_primitive();</span>
+<span id="L334"><a href="#L334">  334</a>         let variant_inhabited = data</span>
+<span id="L335"><a href="#L335">  335</a>             .variants</span>
+<span id="L336"><a href="#L336">  336</a>             .iter()</span>
+<span id="L337"><a href="#L337">  337</a>             .map(|variant| {</span>
+<span id="L338"><a href="#L338">  338</a>                 let fields = variant</span>
+<span id="L339"><a href="#L339">  339</a>                     .inner</span>
+<span id="L340"><a href="#L340">  340</a>                     .fields</span>
+<span id="L341"><a href="#L341">  341</a>                     .iter()</span>
+<span id="L342"><a href="#L342">  342</a>                     .map(|field| {</span>
+<span id="L343"><a href="#L343">  343</a>                         let field = field.0.ty().decompose_normalize(self.args);</span>
+<span id="L344"><a href="#L344">  344</a>                         Ok(self</span>
+<span id="L345"><a href="#L345">  345</a>                             .deps</span>
+<span id="L346"><a href="#L346">  346</a>                             .require_ref::&lt;TyUseInhabitedEnc&gt;(field)?</span>
+<span id="L347"><a href="#L347">  347</a>                             .inhabited())</span>
+<span id="L348"><a href="#L348">  348</a>                     })</span>
+<span id="L349"><a href="#L349">  349</a>                     .collect::&lt;EncResult&lt;&#x27;vir, Vec&lt;_&gt;&gt;&gt;()?;</span>
+<span id="L350"><a href="#L350">  350</a>                 let inhabited = vir::with_vcx(|vcx| vcx.mk_conj(&amp;fields));</span>
+<span id="L351"><a href="#L351">  351</a>                 let discr = discr_prim</span>
+<span id="L352"><a href="#L352">  352</a>                     .prim_to_snap(discr_prim.expr_from_bits(data.0.discr, variant.0.discr_val));</span>
+<span id="L353"><a href="#L353">  353</a>                 Ok((discr, inhabited))</span>
+<span id="L354"><a href="#L354">  354</a>             })</span>
+<span id="L355"><a href="#L355">  355</a>             .collect::&lt;EncResult&lt;&#x27;vir, Vec&lt;_&gt;&gt;&gt;()?;</span>
+<span id="L356"><a href="#L356">  356</a>         let variant_inhabited = vir::with_vcx(|vcx| vcx.alloc_slice(&amp;variant_inhabited));</span>
+<span id="L357"><a href="#L357">  357</a> </span>
+<span id="L358"><a href="#L358">  358</a>         let variants = data</span>
+<span id="L359"><a href="#L359">  359</a>             .variants</span>
+<span id="L360"><a href="#L360">  360</a>             .iter()</span>
+<span id="L361"><a href="#L361">  361</a>             .map(|variant| {</span>
+<span id="L362"><a href="#L362">  362</a>                 let structlike =</span>
+<span id="L363"><a href="#L363">  363</a>                     self.encode_structlike(&amp;variant.inner, variant.1.predicate, params, None)?;</span>
+<span id="L364"><a href="#L364">  364</a>                 Ok(VariantData::new((), structlike))</span>
+<span id="L365"><a href="#L365">  365</a>             })</span>
+<span id="L366"><a href="#L366">  366</a>             .collect::&lt;EncResult&lt;&#x27;vir, Vec&lt;_&gt;&gt;&gt;()?;</span>
+<span id="L367"><a href="#L367">  367</a>         let data = TyUseImpureEnumData {</span>
+<span id="L368"><a href="#L368">  368</a>             args: self.args_t,</span>
+<span id="L369"><a href="#L369">  369</a>             impure: *data.1,</span>
+<span id="L370"><a href="#L370">  370</a>             variant_inhabited,</span>
+<span id="L371"><a href="#L371">  371</a>         };</span>
+<span id="L372"><a href="#L372">  372</a>         Ok(EnumData::new(data, variants))</span>
+<span id="L373"><a href="#L373">  373</a>     }</span>
+<span id="L374"><a href="#L374">  374</a> }</span>
+<span id="L375"><a href="#L375">  375</a> </span>
+<span id="L376"><a href="#L376">  376</a> impl&lt;&#x27;vir&gt; TyUseImpureData&lt;&#x27;vir&gt; {</span>
+<span id="L377"><a href="#L377">  377</a>     /// Generates a call to `method_assign`, which asserts that the snapshot of</span>
+<span id="L378"><a href="#L378">  378</a>     /// `self_ref` is `self_new_snap`. Appropriate type arguments are used.</span>
+<span id="L379"><a href="#L379">  379</a>     pub fn apply_method_assign&lt;&#x27;tcx&gt;(</span>
+<span id="L380"><a href="#L380">  380</a>         &amp;self,</span>
+<span id="L381"><a href="#L381">  381</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;tcx&gt;,</span>
+<span id="L382"><a href="#L382">  382</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L383"><a href="#L383">  383</a>         self_new_snap: vir::ExprSnap&lt;&#x27;vir&gt;,</span>
+<span id="L384"><a href="#L384">  384</a>     ) -&gt; vir::Stmt&lt;&#x27;vir&gt; {</span>
+<span id="L385"><a href="#L385">  385</a>         vcx.alloc(vir::StmtData::new(vcx.alloc((self.impure.method_assign)(</span>
+<span id="L386"><a href="#L386">  386</a>             self_ref,</span>
+<span id="L387"><a href="#L387">  387</a>             self.args.get_ty(),</span>
+<span id="L388"><a href="#L388">  388</a>             self.args.get_const(),</span>
+<span id="L389"><a href="#L389">  389</a>             self_new_snap,</span>
+<span id="L390"><a href="#L390">  390</a>         ))))</span>
+<span id="L391"><a href="#L391">  391</a>     }</span>
+<span id="L392"><a href="#L392">  392</a> </span>
+<span id="L393"><a href="#L393">  393</a>     /// Constructs the Viper predicate application expression.</span>
+<span id="L394"><a href="#L394">  394</a>     pub fn ref_to_pred&lt;&#x27;tcx&gt;(</span>
+<span id="L395"><a href="#L395">  395</a>         &amp;self,</span>
+<span id="L396"><a href="#L396">  396</a>         vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;tcx&gt;,</span>
+<span id="L397"><a href="#L397">  397</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L398"><a href="#L398">  398</a>         perm: Option&lt;vir::ExprPerm&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L399"><a href="#L399">  399</a>     ) -&gt; vir::ExprBool&lt;&#x27;vir&gt; {</span>
+<span id="L400"><a href="#L400">  400</a>         let inhabited = self.inhabited.inhabited();</span>
+<span id="L401"><a href="#L401">  401</a>         let predicate = vcx.mk_predicate_app_expr(self.ref_to_pred_app(self_ref, perm));</span>
+<span id="L402"><a href="#L402">  402</a>         vcx.mk_conj(&amp;[inhabited, predicate])</span>
+<span id="L403"><a href="#L403">  403</a>     }</span>
+<span id="L404"><a href="#L404">  404</a> </span>
+<span id="L405"><a href="#L405">  405</a>     /// Constructs the Viper predicate application.</span>
+<span id="L406"><a href="#L406">  406</a>     pub fn ref_to_pred_app(</span>
+<span id="L407"><a href="#L407">  407</a>         &amp;self,</span>
+<span id="L408"><a href="#L408">  408</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L409"><a href="#L409">  409</a>         perm: Option&lt;vir::ExprPerm&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L410"><a href="#L410">  410</a>     ) -&gt; vir::PredicateApp&lt;&#x27;vir&gt; {</span>
+<span id="L411"><a href="#L411">  411</a>         (self.impure.ref_to_pred)(self_ref, self.args.get_ty(), self.args.get_const())(perm)</span>
+<span id="L412"><a href="#L412">  412</a>     }</span>
+<span id="L413"><a href="#L413">  413</a> </span>
+<span id="L414"><a href="#L414">  414</a>     /// Calls the predicate (heap) dependent snapshot construction function.</span>
+<span id="L415"><a href="#L415">  415</a>     pub fn ref_to_snap&lt;Curr, Next&gt;(</span>
+<span id="L416"><a href="#L416">  416</a>         &amp;self,</span>
+<span id="L417"><a href="#L417">  417</a>         self_ref: vir::ExprGenRef&lt;&#x27;vir, Curr, Next&gt;,</span>
+<span id="L418"><a href="#L418">  418</a>     ) -&gt; vir::ExprGenSnap&lt;&#x27;vir, Curr, Next&gt; {</span>
+<span id="L419"><a href="#L419">  419</a>         self.impure.ref_to_snap.call()(self_ref, self.args.get_ty(), self.args.get_const())</span>
+<span id="L420"><a href="#L420">  420</a>     }</span>
+<span id="L421"><a href="#L421">  421</a> </span>
+<span id="L422"><a href="#L422">  422</a>     pub fn snapshot(&amp;self) -&gt; vir::TypeSnap&lt;&#x27;vir&gt; {</span>
+<span id="L423"><a href="#L423">  423</a>         self.impure.ref_to_snap.result()</span>
+<span id="L424"><a href="#L424">  424</a>     }</span>
+<span id="L425"><a href="#L425">  425</a> }</span>
+<span id="L426"><a href="#L426">  426</a> </span>
+<span id="L427"><a href="#L427">  427</a> impl&lt;&#x27;vir&gt; TyData&lt;&#x27;vir, UseImpureTyDatas&gt; {</span>
+<span id="L428"><a href="#L428">  428</a>     pub fn inhabited&lt;Curr, Next&gt;(&amp;self) -&gt; vir::ExprGenBool&lt;&#x27;vir, Curr, Next&gt; {</span>
+<span id="L429"><a href="#L429">  429</a>         self.data.inhabited.inhabited()</span>
+<span id="L430"><a href="#L430">  430</a>     }</span>
+<span id="L431"><a href="#L431">  431</a> </span>
+<span id="L432"><a href="#L432">  432</a>     /// The predicates that `fold` consumes besides those of the places the</span>
+<span id="L433"><a href="#L433">  433</a>     /// predicate is expanded into (its fields, variant, element, or the value</span>
+<span id="L434"><a href="#L434">  434</a>     /// of a `Box`): the discriminant of an enum, the rest of an array whose</span>
+<span id="L435"><a href="#L435">  435</a>     /// element is folded back, and the other fields of a `Box`.</span>
+<span id="L436"><a href="#L436">  436</a>     pub fn fold_frame(</span>
+<span id="L437"><a href="#L437">  437</a>         &amp;self,</span>
+<span id="L438"><a href="#L438">  438</a>         variant: Option&lt;abi::VariantIdx&gt;,</span>
+<span id="L439"><a href="#L439">  439</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L440"><a href="#L440">  440</a>         index: Option&lt;vir::ExprCSnap&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L441"><a href="#L441">  441</a>     ) -&gt; Vec&lt;vir::ExprBool&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L442"><a href="#L442">  442</a>         if variant.is_some() {</span>
+<span id="L443"><a href="#L443">  443</a>             return Vec::new();</span>
+<span id="L444"><a href="#L444">  444</a>         }</span>
+<span id="L445"><a href="#L445">  445</a>         vir::with_vcx(|vcx| match &amp;self.specifics {</span>
+<span id="L446"><a href="#L446">  446</a>             TySpecifics::EnumLike(data) =&gt; {</span>
+<span id="L447"><a href="#L447">  447</a>                 let discr = data.discr(self_ref);</span>
+<span id="L448"><a href="#L448">  448</a>                 vec![data.discr_ty().ref_to_pred(vcx, discr, None)]</span>
+<span id="L449"><a href="#L449">  449</a>             }</span>
+<span id="L450"><a href="#L450">  450</a>             TySpecifics::ArrayLike(array) =&gt; {</span>
+<span id="L451"><a href="#L451">  451</a>                 let index = index.expect(&quot;cannot fold array type without index&quot;);</span>
+<span id="L452"><a href="#L452">  452</a>                 vec![array.ref_to_index_frame_pred(self_ref, index)]</span>
+<span id="L453"><a href="#L453">  453</a>             }</span>
+<span id="L454"><a href="#L454">  454</a>             TySpecifics::StructLike(data) =&gt; match data.data.box_data {</span>
+<span id="L455"><a href="#L455">  455</a>                 Some(box_data) =&gt; vec![</span>
+<span id="L456"><a href="#L456">  456</a>                     box_data</span>
+<span id="L457"><a href="#L457">  457</a>                         .unique</span>
+<span id="L458"><a href="#L458">  458</a>                         .ref_to_pred(vcx, data.fields[0].field_ref(self_ref), None),</span>
+<span id="L459"><a href="#L459">  459</a>                     box_data</span>
+<span id="L460"><a href="#L460">  460</a>                         .alloc</span>
+<span id="L461"><a href="#L461">  461</a>                         .ref_to_pred(vcx, data.fields[1].field_ref(self_ref), None),</span>
+<span id="L462"><a href="#L462">  462</a>                 ],</span>
+<span id="L463"><a href="#L463">  463</a>                 None =&gt; Vec::new(),</span>
+<span id="L464"><a href="#L464">  464</a>             },</span>
+<span id="L465"><a href="#L465">  465</a>             _ =&gt; Vec::new(),</span>
+<span id="L466"><a href="#L466">  466</a>         })</span>
+<span id="L467"><a href="#L467">  467</a>     }</span>
+<span id="L468"><a href="#L468">  468</a> </span>
+<span id="L469"><a href="#L469">  469</a>     /// Fold the predicate (including generic casts).</span>
+<span id="L470"><a href="#L470">  470</a>     pub fn fold(</span>
+<span id="L471"><a href="#L471">  471</a>         &amp;self,</span>
+<span id="L472"><a href="#L472">  472</a>         variant: Option&lt;abi::VariantIdx&gt;,</span>
+<span id="L473"><a href="#L473">  473</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L474"><a href="#L474">  474</a>         index: Option&lt;vir::ExprCSnap&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L475"><a href="#L475">  475</a>         perm: Option&lt;vir::ExprPerm&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L476"><a href="#L476">  476</a>         label: Option&lt;vir::OldLabel&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L477"><a href="#L477">  477</a>     ) -&gt; Vec&lt;vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L478"><a href="#L478">  478</a>         if let Some(variant) = variant {</span>
+<span id="L479"><a href="#L479">  479</a>             return self</span>
+<span id="L480"><a href="#L480">  480</a>                 .expect_variant(variant)</span>
+<span id="L481"><a href="#L481">  481</a>                 .inner</span>
+<span id="L482"><a href="#L482">  482</a>                 .fold(self_ref, perm)</span>
+<span id="L483"><a href="#L483">  483</a>                 .collect();</span>
+<span id="L484"><a href="#L484">  484</a>         };</span>
+<span id="L485"><a href="#L485">  485</a>         match &amp;self.specifics {</span>
+<span id="L486"><a href="#L486">  486</a>             TySpecifics::Param(_) | TySpecifics::Primitive(_) | TySpecifics::Builtin(_) =&gt; {</span>
+<span id="L487"><a href="#L487">  487</a>                 unreachable!()</span>
+<span id="L488"><a href="#L488">  488</a>             }</span>
+<span id="L489"><a href="#L489">  489</a>             TySpecifics::Opaque(_) =&gt; panic!(&quot;cannot fold opaque type&quot;),</span>
+<span id="L490"><a href="#L490">  490</a>             TySpecifics::ArrayLike(array) =&gt; {</span>
+<span id="L491"><a href="#L491">  491</a>                 let index = index.expect(&quot;cannot fold array type without index&quot;);</span>
+<span id="L492"><a href="#L492">  492</a>                 array</span>
+<span id="L493"><a href="#L493">  493</a>                     .element_caster</span>
+<span id="L494"><a href="#L494">  494</a>                     .cast_to_callee_ctx(array.ref_to_index_ref(self_ref, index))</span>
+<span id="L495"><a href="#L495">  495</a>                     .into_iter()</span>
+<span id="L496"><a href="#L496">  496</a>                     .chain([vir::with_vcx(|vcx| {</span>
+<span id="L497"><a href="#L497">  497</a>                         vcx.alloc(vir::StmtData::new(vcx.alloc(</span>
+<span id="L498"><a href="#L498">  498</a>                             (array.data.impure.method_fold)(</span>
+<span id="L499"><a href="#L499">  499</a>                                 index,</span>
+<span id="L500"><a href="#L500">  500</a>                                 self_ref,</span>
+<span id="L501"><a href="#L501">  501</a>                                 self.args.get_ty(),</span>
+<span id="L502"><a href="#L502">  502</a>                                 self.args.get_const(),</span>
+<span id="L503"><a href="#L503">  503</a>                             ),</span>
+<span id="L504"><a href="#L504">  504</a>                         )))</span>
+<span id="L505"><a href="#L505">  505</a>                     })])</span>
+<span id="L506"><a href="#L506">  506</a>                     .collect()</span>
+<span id="L507"><a href="#L507">  507</a>             }</span>
+<span id="L508"><a href="#L508">  508</a>             TySpecifics::ImmRef(..) | TySpecifics::Raw(..) =&gt; Vec::new(),</span>
+<span id="L509"><a href="#L509">  509</a>             TySpecifics::MutRef(data) =&gt; data.fold(self_ref, label).into_iter().collect(),</span>
+<span id="L510"><a href="#L510">  510</a>             TySpecifics::StructLike(data) =&gt; data.fold(self_ref, perm).collect(),</span>
+<span id="L511"><a href="#L511">  511</a>             TySpecifics::EnumLike(..) =&gt; {</span>
+<span id="L512"><a href="#L512">  512</a>                 let pred_app = self.ref_to_pred_app(self_ref, perm);</span>
+<span id="L513"><a href="#L513">  513</a>                 vec![vir::with_vcx(|vcx| vcx.mk_fold_stmt(pred_app))]</span>
+<span id="L514"><a href="#L514">  514</a>             }</span>
+<span id="L515"><a href="#L515">  515</a>         }</span>
+<span id="L516"><a href="#L516">  516</a>     }</span>
+<span id="L517"><a href="#L517">  517</a> </span>
+<span id="L518"><a href="#L518">  518</a>     /// Unfold the predicate (including generic casts).</span>
+<span id="L519"><a href="#L519">  519</a>     pub fn unfold(</span>
+<span id="L520"><a href="#L520">  520</a>         &amp;self,</span>
+<span id="L521"><a href="#L521">  521</a>         variant: Option&lt;abi::VariantIdx&gt;,</span>
+<span id="L522"><a href="#L522">  522</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L523"><a href="#L523">  523</a>         index: Option&lt;vir::ExprCSnap&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L524"><a href="#L524">  524</a>         perm: Option&lt;vir::ExprPerm&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L525"><a href="#L525">  525</a>         old: Option&lt;vir::OldLabel&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L526"><a href="#L526">  526</a>     ) -&gt; Vec&lt;vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L527"><a href="#L527">  527</a>         if let Some(variant) = variant {</span>
+<span id="L528"><a href="#L528">  528</a>             return self</span>
+<span id="L529"><a href="#L529">  529</a>                 .expect_variant(variant)</span>
+<span id="L530"><a href="#L530">  530</a>                 .inner</span>
+<span id="L531"><a href="#L531">  531</a>                 .unfold(self_ref, perm)</span>
+<span id="L532"><a href="#L532">  532</a>                 .collect();</span>
+<span id="L533"><a href="#L533">  533</a>         };</span>
+<span id="L534"><a href="#L534">  534</a>         match &amp;self.specifics {</span>
+<span id="L535"><a href="#L535">  535</a>             TySpecifics::Param(_) | TySpecifics::Primitive(_) | TySpecifics::Builtin(_) =&gt; {</span>
+<span id="L536"><a href="#L536">  536</a>                 unreachable!()</span>
+<span id="L537"><a href="#L537">  537</a>             }</span>
+<span id="L538"><a href="#L538">  538</a>             TySpecifics::Opaque(_) =&gt; panic!(&quot;cannot unfold opaque type&quot;),</span>
+<span id="L539"><a href="#L539">  539</a>             TySpecifics::ArrayLike(array) =&gt; {</span>
+<span id="L540"><a href="#L540">  540</a>                 let index = index.expect(&quot;cannot unfold array type without index&quot;);</span>
+<span id="L541"><a href="#L541">  541</a>                 [vir::with_vcx(|vcx| {</span>
+<span id="L542"><a href="#L542">  542</a>                     vcx.alloc(vir::StmtData::new(vcx.alloc(</span>
+<span id="L543"><a href="#L543">  543</a>                         (array.data.impure.method_unfold)(</span>
+<span id="L544"><a href="#L544">  544</a>                             index,</span>
+<span id="L545"><a href="#L545">  545</a>                             self_ref,</span>
+<span id="L546"><a href="#L546">  546</a>                             self.args.get_ty(),</span>
+<span id="L547"><a href="#L547">  547</a>                             self.args.get_const(),</span>
+<span id="L548"><a href="#L548">  548</a>                         ),</span>
+<span id="L549"><a href="#L549">  549</a>                     )))</span>
+<span id="L550"><a href="#L550">  550</a>                 })]</span>
+<span id="L551"><a href="#L551">  551</a>                 .into_iter()</span>
+<span id="L552"><a href="#L552">  552</a>                 .chain(</span>
+<span id="L553"><a href="#L553">  553</a>                     array</span>
+<span id="L554"><a href="#L554">  554</a>                         .element_caster</span>
+<span id="L555"><a href="#L555">  555</a>                         .cast_to_caller_ctx(array.ref_to_index_ref(self_ref, index)),</span>
+<span id="L556"><a href="#L556">  556</a>                 )</span>
+<span id="L557"><a href="#L557">  557</a>                 .collect()</span>
+<span id="L558"><a href="#L558">  558</a>             }</span>
+<span id="L559"><a href="#L559">  559</a>             TySpecifics::ImmRef(..) | TySpecifics::Raw(..) =&gt; Vec::new(),</span>
+<span id="L560"><a href="#L560">  560</a>             TySpecifics::MutRef(data) =&gt; data.unfold(self_ref, old).into_iter().collect(),</span>
+<span id="L561"><a href="#L561">  561</a>             TySpecifics::StructLike(data) =&gt; data.unfold(self_ref, perm).collect(),</span>
+<span id="L562"><a href="#L562">  562</a>             TySpecifics::EnumLike(data) =&gt; {</span>
+<span id="L563"><a href="#L563">  563</a>                 let pred_app = self.ref_to_pred_app(self_ref, perm);</span>
+<span id="L564"><a href="#L564">  564</a>                 vir::with_vcx(|vcx| {</span>
+<span id="L565"><a href="#L565">  565</a>                     let discr = data</span>
+<span id="L566"><a href="#L566">  566</a>                         .discr_ty()</span>
+<span id="L567"><a href="#L567">  567</a>                         .ref_to_snap(data.discr(self_ref))</span>
+<span id="L568"><a href="#L568">  568</a>                         .downcast_ty::&lt;vir::CSnap&gt;();</span>
+<span id="L569"><a href="#L569">  569</a>                     std::iter::once(vcx.mk_unfold_stmt(pred_app))</span>
+<span id="L570"><a href="#L570">  570</a>                         .chain(data.variant_inhabited.iter().map(</span>
+<span id="L571"><a href="#L571">  571</a>                             |(variant_discr, variant_inhabited)| {</span>
+<span id="L572"><a href="#L572">  572</a>                                 let is_variant = vcx.mk_eq_expr(discr, *variant_discr);</span>
+<span id="L573"><a href="#L573">  573</a>                                 let implication = vcx</span>
+<span id="L574"><a href="#L574">  574</a>                                     .mk_bin_op_expr(</span>
+<span id="L575"><a href="#L575">  575</a>                                         vir::BinOpKind::Implies,</span>
+<span id="L576"><a href="#L576">  576</a>                                         is_variant,</span>
+<span id="L577"><a href="#L577">  577</a>                                         *variant_inhabited,</span>
+<span id="L578"><a href="#L578">  578</a>                                     )</span>
+<span id="L579"><a href="#L579">  579</a>                                     .downcast_ty();</span>
+<span id="L580"><a href="#L580">  580</a>                                 vcx.mk_inhale_stmt(implication)</span>
+<span id="L581"><a href="#L581">  581</a>                             },</span>
+<span id="L582"><a href="#L582">  582</a>                         ))</span>
+<span id="L583"><a href="#L583">  583</a>                         .collect()</span>
+<span id="L584"><a href="#L584">  584</a>                 })</span>
+<span id="L585"><a href="#L585">  585</a>             }</span>
+<span id="L586"><a href="#L586">  586</a>         }</span>
+<span id="L587"><a href="#L587">  587</a>     }</span>
+<span id="L588"><a href="#L588">  588</a> }</span>
+<span id="L589"><a href="#L589">  589</a> </span>
+<span id="L590"><a href="#L590">  590</a> impl&lt;&#x27;vir&gt; TyUseImpureArray&lt;&#x27;vir&gt; {</span>
+<span id="L591"><a href="#L591">  591</a>     /// Get the (Ref) address of an index. Identical to the function one would</span>
+<span id="L592"><a href="#L592">  592</a>     /// call in `use_pure`.</span>
+<span id="L593"><a href="#L593">  593</a>     pub fn ref_to_index_ref&lt;Curr, Next&gt;(</span>
+<span id="L594"><a href="#L594">  594</a>         &amp;self,</span>
+<span id="L595"><a href="#L595">  595</a>         self_ref: vir::ExprGenRef&lt;&#x27;vir, Curr, Next&gt;,</span>
+<span id="L596"><a href="#L596">  596</a>         index: vir::ExprGenCSnap&lt;&#x27;vir, Curr, Next&gt;,</span>
+<span id="L597"><a href="#L597">  597</a>     ) -&gt; vir::ExprGenRef&lt;&#x27;vir, Curr, Next&gt; {</span>
+<span id="L598"><a href="#L598">  598</a>         self.data.impure.ref_to_index_ref.call()(self_ref, index, self.args.get_ty())</span>
+<span id="L599"><a href="#L599">  599</a>     }</span>
+<span id="L600"><a href="#L600">  600</a> </span>
+<span id="L601"><a href="#L601">  601</a>     /// The predicate of the array without its element at `index`.</span>
+<span id="L602"><a href="#L602">  602</a>     fn ref_to_index_frame_pred(</span>
+<span id="L603"><a href="#L603">  603</a>         &amp;self,</span>
+<span id="L604"><a href="#L604">  604</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L605"><a href="#L605">  605</a>         index: vir::ExprCSnap&lt;&#x27;vir&gt;,</span>
+<span id="L606"><a href="#L606">  606</a>     ) -&gt; vir::ExprBool&lt;&#x27;vir&gt; {</span>
+<span id="L607"><a href="#L607">  607</a>         let pred_app = (self.data.impure.index_predicate)(</span>
+<span id="L608"><a href="#L608">  608</a>             self_ref,</span>
+<span id="L609"><a href="#L609">  609</a>             index,</span>
+<span id="L610"><a href="#L610">  610</a>             self.args.get_ty(),</span>
+<span id="L611"><a href="#L611">  611</a>             self.args.get_const(),</span>
+<span id="L612"><a href="#L612">  612</a>         )(None);</span>
+<span id="L613"><a href="#L613">  613</a>         vir::with_vcx(|vcx| vcx.mk_predicate_app_expr(pred_app))</span>
+<span id="L614"><a href="#L614">  614</a>     }</span>
+<span id="L615"><a href="#L615">  615</a> }</span>
+<span id="L616"><a href="#L616">  616</a> </span>
+<span id="L617"><a href="#L617">  617</a> impl&lt;&#x27;vir&gt; TyUseImpureStruct&lt;&#x27;vir&gt; {</span>
+<span id="L618"><a href="#L618">  618</a>     /// The pointer metadata of a `Box`, read out of the (folded) `Unique`</span>
+<span id="L619"><a href="#L619">  619</a>     /// field&#x27;s predicate.</span>
+<span id="L620"><a href="#L620">  620</a>     #[track_caller]</span>
+<span id="L621"><a href="#L621">  621</a>     pub fn box_metadata(&amp;self, self_ref: vir::ExprRef&lt;&#x27;vir&gt;) -&gt; vir::ExprSnap&lt;&#x27;vir&gt; {</span>
+<span id="L622"><a href="#L622">  622</a>         let box_data = self.data.impure.box_data.expect(&quot;expected box&quot;);</span>
+<span id="L623"><a href="#L623">  623</a>         let metadata = box_data.metadata.call()(</span>
+<span id="L624"><a href="#L624">  624</a>             self_ref,</span>
+<span id="L625"><a href="#L625">  625</a>             self.data.args.get_ty(),</span>
+<span id="L626"><a href="#L626">  626</a>             self.data.args.get_const(),</span>
+<span id="L627"><a href="#L627">  627</a>         );</span>
+<span id="L628"><a href="#L628">  628</a>         self.data</span>
+<span id="L629"><a href="#L629">  629</a>             .box_data</span>
+<span id="L630"><a href="#L630">  630</a>             .expect(&quot;expected box&quot;)</span>
+<span id="L631"><a href="#L631">  631</a>             .metadata_caster</span>
+<span id="L632"><a href="#L632">  632</a>             .cast_to_caller_ctx(metadata.upcast_ty())</span>
+<span id="L633"><a href="#L633">  633</a>     }</span>
+<span id="L634"><a href="#L634">  634</a> </span>
+<span id="L635"><a href="#L635">  635</a>     /// The (Ref) address of the boxed `T` (the box&#x27;s last field), read out of</span>
+<span id="L636"><a href="#L636">  636</a>     /// the (folded) `Unique` field&#x27;s predicate.</span>
+<span id="L637"><a href="#L637">  637</a>     #[track_caller]</span>
+<span id="L638"><a href="#L638">  638</a>     pub fn box_address(&amp;self, self_ref: vir::ExprRef&lt;&#x27;vir&gt;) -&gt; vir::ExprRef&lt;&#x27;vir&gt; {</span>
+<span id="L639"><a href="#L639">  639</a>         assert!(self.data.impure.box_data.is_some(), &quot;expected box&quot;);</span>
+<span id="L640"><a href="#L640">  640</a>         self.fields.last().unwrap().field_ref(self_ref)</span>
+<span id="L641"><a href="#L641">  641</a>     }</span>
+<span id="L642"><a href="#L642">  642</a> </span>
+<span id="L643"><a href="#L643">  643</a>     fn ref_to_pred_app(</span>
+<span id="L644"><a href="#L644">  644</a>         &amp;self,</span>
+<span id="L645"><a href="#L645">  645</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L646"><a href="#L646">  646</a>         perm: Option&lt;vir::ExprPerm&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L647"><a href="#L647">  647</a>     ) -&gt; vir::PredicateApp&lt;&#x27;vir&gt; {</span>
+<span id="L648"><a href="#L648">  648</a>         (self.ref_to_pred)(self_ref, self.args.get_ty(), self.args.get_const())(perm)</span>
+<span id="L649"><a href="#L649">  649</a>     }</span>
+<span id="L650"><a href="#L650">  650</a> </span>
+<span id="L651"><a href="#L651">  651</a>     /// Fold the predicate (including generic casts).</span>
+<span id="L652"><a href="#L652">  652</a>     fn fold(</span>
+<span id="L653"><a href="#L653">  653</a>         &amp;self,</span>
+<span id="L654"><a href="#L654">  654</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L655"><a href="#L655">  655</a>         perm: Option&lt;vir::ExprPerm&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L656"><a href="#L656">  656</a>     ) -&gt; impl Iterator&lt;Item = vir::Stmt&lt;&#x27;vir&gt;&gt; + &#x27;_ {</span>
+<span id="L657"><a href="#L657">  657</a>         let pred_app = self.ref_to_pred_app(self_ref, perm);</span>
+<span id="L658"><a href="#L658">  658</a>         let fold = vir::with_vcx(|vcx| vcx.mk_fold_stmt(pred_app));</span>
+<span id="L659"><a href="#L659">  659</a>         self.cast_to_callee_ctx(self_ref).chain([fold])</span>
+<span id="L660"><a href="#L660">  660</a>     }</span>
+<span id="L661"><a href="#L661">  661</a> </span>
+<span id="L662"><a href="#L662">  662</a>     /// Unfold the predicate (including generic casts).</span>
+<span id="L663"><a href="#L663">  663</a>     fn unfold(</span>
+<span id="L664"><a href="#L664">  664</a>         &amp;self,</span>
+<span id="L665"><a href="#L665">  665</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L666"><a href="#L666">  666</a>         perm: Option&lt;vir::ExprPerm&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L667"><a href="#L667">  667</a>     ) -&gt; impl Iterator&lt;Item = vir::Stmt&lt;&#x27;vir&gt;&gt; + &#x27;_ {</span>
+<span id="L668"><a href="#L668">  668</a>         let pred_app = self.ref_to_pred_app(self_ref, perm);</span>
+<span id="L669"><a href="#L669">  669</a>         let unfold = vir::with_vcx(|vcx| vcx.mk_unfold_stmt(pred_app));</span>
+<span id="L670"><a href="#L670">  670</a>         [unfold]</span>
+<span id="L671"><a href="#L671">  671</a>             .into_iter()</span>
+<span id="L672"><a href="#L672">  672</a>             .chain(self.cast_to_caller_ctx(self_ref))</span>
+<span id="L673"><a href="#L673">  673</a>     }</span>
+<span id="L674"><a href="#L674">  674</a> </span>
+<span id="L675"><a href="#L675">  675</a>     fn cast_to_caller_ctx(</span>
+<span id="L676"><a href="#L676">  676</a>         &amp;self,</span>
+<span id="L677"><a href="#L677">  677</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L678"><a href="#L678">  678</a>     ) -&gt; impl Iterator&lt;Item = vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L679"><a href="#L679">  679</a>         self.fields</span>
+<span id="L680"><a href="#L680">  680</a>             .iter()</span>
+<span id="L681"><a href="#L681">  681</a>             .filter_map(|f| f.cast_to_caller_ctx(self_ref))</span>
+<span id="L682"><a href="#L682">  682</a>     }</span>
+<span id="L683"><a href="#L683">  683</a> </span>
+<span id="L684"><a href="#L684">  684</a>     fn cast_to_callee_ctx(</span>
+<span id="L685"><a href="#L685">  685</a>         &amp;self,</span>
+<span id="L686"><a href="#L686">  686</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L687"><a href="#L687">  687</a>     ) -&gt; impl Iterator&lt;Item = vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L688"><a href="#L688">  688</a>         self.fields</span>
+<span id="L689"><a href="#L689">  689</a>             .iter()</span>
+<span id="L690"><a href="#L690">  690</a>             .filter_map(|f| f.cast_to_callee_ctx(self_ref))</span>
+<span id="L691"><a href="#L691">  691</a>     }</span>
+<span id="L692"><a href="#L692">  692</a> }</span>
+<span id="L693"><a href="#L693">  693</a> </span>
+<span id="L694"><a href="#L694">  694</a> impl&lt;&#x27;vir&gt; TyUseImpureField&lt;&#x27;vir&gt; {</span>
+<span id="L695"><a href="#L695">  695</a>     /// Get the (Ref) address of a field. Identical to the function one would</span>
+<span id="L696"><a href="#L696">  696</a>     /// call in `use_pure`.</span>
+<span id="L697"><a href="#L697">  697</a>     pub fn field_ref&lt;Curr, Next&gt;(</span>
+<span id="L698"><a href="#L698">  698</a>         &amp;self,</span>
+<span id="L699"><a href="#L699">  699</a>         self_ref: vir::ExprGenRef&lt;&#x27;vir, Curr, Next&gt;,</span>
+<span id="L700"><a href="#L700">  700</a>     ) -&gt; vir::ExprGenRef&lt;&#x27;vir, Curr, Next&gt; {</span>
+<span id="L701"><a href="#L701">  701</a>         self.impure.ref_to_field_ref.call()(self_ref, self.args.get_ty(), self.args.get_const())</span>
+<span id="L702"><a href="#L702">  702</a>     }</span>
+<span id="L703"><a href="#L703">  703</a> </span>
+<span id="L704"><a href="#L704">  704</a>     fn cast_to_caller_ctx(&amp;self, self_ref: vir::ExprRef&lt;&#x27;vir&gt;) -&gt; Option&lt;vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L705"><a href="#L705">  705</a>         self.caster.cast_to_caller_ctx(self.field_ref(self_ref))</span>
+<span id="L706"><a href="#L706">  706</a>     }</span>
+<span id="L707"><a href="#L707">  707</a> </span>
+<span id="L708"><a href="#L708">  708</a>     fn cast_to_callee_ctx(&amp;self, self_ref: vir::ExprRef&lt;&#x27;vir&gt;) -&gt; Option&lt;vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L709"><a href="#L709">  709</a>         self.caster.cast_to_callee_ctx(self.field_ref(self_ref))</span>
+<span id="L710"><a href="#L710">  710</a>     }</span>
+<span id="L711"><a href="#L711">  711</a> }</span>
+<span id="L712"><a href="#L712">  712</a> </span>
+<span id="L713"><a href="#L713">  713</a> impl&lt;&#x27;vir&gt; TyUseImpureEnum&lt;&#x27;vir&gt; {</span>
+<span id="L714"><a href="#L714">  714</a>     pub fn discr(&amp;self, self_ref: vir::ExprRef&lt;&#x27;vir&gt;) -&gt; vir::ExprRef&lt;&#x27;vir&gt; {</span>
+<span id="L715"><a href="#L715">  715</a>         (self.impure.discr)(self_ref)</span>
+<span id="L716"><a href="#L716">  716</a>     }</span>
+<span id="L717"><a href="#L717">  717</a> </span>
+<span id="L718"><a href="#L718">  718</a>     pub fn discr_ty(&amp;self) -&gt; TyUseImpure&lt;&#x27;vir&gt; {</span>
+<span id="L719"><a href="#L719">  719</a>         self.impure.discr_ty</span>
+<span id="L720"><a href="#L720">  720</a>     }</span>
+<span id="L721"><a href="#L721">  721</a> }</span>
+<span id="L722"><a href="#L722">  722</a> </span>
+<span id="L723"><a href="#L723">  723</a> impl&lt;&#x27;vir&gt; TyUseImpureImmRef&lt;&#x27;vir&gt; {}</span>
+<span id="L724"><a href="#L724">  724</a> </span>
+<span id="L725"><a href="#L725">  725</a> impl&lt;&#x27;vir&gt; TyUseImpureMutRef&lt;&#x27;vir&gt; {</span>
+<span id="L726"><a href="#L726">  726</a>     pub fn deref(</span>
+<span id="L727"><a href="#L727">  727</a>         &amp;self,</span>
+<span id="L728"><a href="#L728">  728</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L729"><a href="#L729">  729</a>         label: Option&lt;vir::OldLabel&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L730"><a href="#L730">  730</a>     ) -&gt; vir::ExprRef&lt;&#x27;vir&gt; {</span>
+<span id="L731"><a href="#L731">  731</a>         let snap = self.ref_to_snap.call()(self_ref, self.args.get_ty(), self.args.get_const())</span>
+<span id="L732"><a href="#L732">  732</a>             .downcast_ty();</span>
+<span id="L733"><a href="#L733">  733</a>         let deref = self.impure.pure.deref_access.call()(snap);</span>
+<span id="L734"><a href="#L734">  734</a>         vir::with_vcx(|vcx| vcx.maybe_apply_label(deref, label))</span>
+<span id="L735"><a href="#L735">  735</a>     }</span>
+<span id="L736"><a href="#L736">  736</a> </span>
+<span id="L737"><a href="#L737">  737</a>     pub fn prim_to_snap_assign(</span>
+<span id="L738"><a href="#L738">  738</a>         &amp;self,</span>
+<span id="L739"><a href="#L739">  739</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L740"><a href="#L740">  740</a>         metadata: vir::ExprSnap&lt;&#x27;vir&gt;,</span>
+<span id="L741"><a href="#L741">  741</a>     ) -&gt; vir::ExprCSnap&lt;&#x27;vir&gt; {</span>
+<span id="L742"><a href="#L742">  742</a>         let metadata = self.metadata_caster.cast_to_callee_ctx(metadata);</span>
+<span id="L743"><a href="#L743">  743</a>         (self.impure.arbitrary_value)(</span>
+<span id="L744"><a href="#L744">  744</a>             self_ref,</span>
+<span id="L745"><a href="#L745">  745</a>             metadata.downcast_ty(),</span>
+<span id="L746"><a href="#L746">  746</a>             self.args.get_ty(),</span>
+<span id="L747"><a href="#L747">  747</a>             self.args.get_const(),</span>
+<span id="L748"><a href="#L748">  748</a>         )</span>
+<span id="L749"><a href="#L749">  749</a>     }</span>
+<span id="L750"><a href="#L750">  750</a> </span>
+<span id="L751"><a href="#L751">  751</a>     fn fold(</span>
+<span id="L752"><a href="#L752">  752</a>         &amp;self,</span>
+<span id="L753"><a href="#L753">  753</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L754"><a href="#L754">  754</a>         label: Option&lt;vir::OldLabel&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L755"><a href="#L755">  755</a>     ) -&gt; Option&lt;vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L756"><a href="#L756">  756</a>         self.referent_caster</span>
+<span id="L757"><a href="#L757">  757</a>             .cast_to_callee_ctx(self.deref(self_ref, label))</span>
+<span id="L758"><a href="#L758">  758</a>     }</span>
+<span id="L759"><a href="#L759">  759</a> </span>
+<span id="L760"><a href="#L760">  760</a>     fn unfold(</span>
+<span id="L761"><a href="#L761">  761</a>         &amp;self,</span>
+<span id="L762"><a href="#L762">  762</a>         self_ref: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L763"><a href="#L763">  763</a>         label: Option&lt;vir::OldLabel&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L764"><a href="#L764">  764</a>     ) -&gt; Option&lt;vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L765"><a href="#L765">  765</a>         self.referent_caster</span>
+<span id="L766"><a href="#L766">  766</a>             .cast_to_caller_ctx(self.deref(self_ref, label))</span>
+<span id="L767"><a href="#L767">  767</a>     }</span>
+<span id="L768"><a href="#L768">  768</a> }</span>
+</pre>

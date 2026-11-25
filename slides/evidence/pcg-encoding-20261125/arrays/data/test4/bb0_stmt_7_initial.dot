@@ -1,0 +1,24 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">x: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="[i32; 3_usize]"]
+"p2" [label=<<FONT FACE="courier">y: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 [i32]"]
+"r0" [label=<y↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 [i32]\
+"]
+"p3" [label=<<FONT FACE="courier">_4: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?8 [i32; 3_usize]"]
+"r1" [label=<_4↓'?8>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 [i32; 3_usize]\
+"]
+"p4" [label=<<FONT FACE="courier">_9: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="usize"]
+"p5" [label=<<FONT FACE="courier">_10: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p6" [label=<<FONT FACE="courier">(*_4): R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="[i32; 3_usize]"]
+"r2" [label=<_3 before bb0[5]↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 [i32; 3_usize]\
+"]
+    "p3" -> "p6" [label="", id="edge_0", color="green", edgetooltip=""]
+    "p1" -> "r1" [label="bw0: shared '?2", id="edge_1", color="orange", edgetooltip=""]
+    "r1" -> "p6" [label="", id="edge_2", color="green", edgetooltip=""]
+    "p6" -> "r2" [label="shared '?3", id="edge_3", color="orange", edgetooltip=""]
+    "p1" -> "p6" [label="", id="edge_4", style="dashed", color="grey"]
+    "r2" -> "r0" [label="Move with cast PointerCoercion(Unsize, Implicit)", id="edge_5", color="purple"]
+}
+

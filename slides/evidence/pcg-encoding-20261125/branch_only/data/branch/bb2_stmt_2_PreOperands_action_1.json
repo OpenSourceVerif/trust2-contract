@@ -1,0 +1,32 @@
+{
+  "edge_0": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb2"
+        ]
+      }
+    ]
+  },
+  "edge_2": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb2"
+        ]
+      }
+    ]
+  },
+  "edge_1": {
+    "branch_choices": [
+      {
+        "from": "bb0",
+        "chosen": [
+          "bb2"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,20 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">a</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="U"]
+"p2" [label=<<FONT FACE="courier">x: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?9 mut U"]
+"p3" [label=<<FONT FACE="courier">y: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?10 mut u32"]
+"r0" [label=<x↓'?9 before bb0[7]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?9 mut U\
+"]
+"p4" [label=<<FONT FACE="courier">*x</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="U"]
+"p5" [label=<<FONT FACE="courier">(*x).f: E</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+"p6" [label=<<FONT FACE="courier">(*x).g: E</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+    "r0" -> "p4" [label="", id="edge_0", color="green", edgetooltip=""]
+    "p1" -> "p4" [label="", id="edge_1", style="dashed", color="grey"]
+    "p1" -> "r0" [label="bw0: Default '?2", id="edge_2", color="orange", edgetooltip=""]
+    "p4" -> "p6" [label="", id="edge_3", color="green", edgetooltip=""]
+    "p4" -> "p5" [label="", id="edge_4", color="green", edgetooltip=""]
+    "p2" -> "p4" [label="", id="edge_5", color="green", edgetooltip=""]
+}
+

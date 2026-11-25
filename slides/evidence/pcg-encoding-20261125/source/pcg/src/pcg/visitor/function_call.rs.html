@@ -1,0 +1,224 @@
+<!doctype html><meta charset="utf-8"><title>function_call.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>function_call.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use super::PcgVisitor;</span>
+<span id="L2"><a href="#L2">    2</a> use crate::{</span>
+<span id="L3"><a href="#L3">    3</a>     action::BorrowPcgAction,</span>
+<span id="L4"><a href="#L4">    4</a>     borrow_pcg::{</span>
+<span id="L5"><a href="#L5">    5</a>         FunctionData,</span>
+<span id="L6"><a href="#L6">    6</a>         abstraction::{ArgIdx, ArgIdxOrResult, FunctionCall, FunctionShape},</span>
+<span id="L7"><a href="#L7">    7</a>         borrow_pcg_edge::BorrowPcgEdge,</span>
+<span id="L8"><a href="#L8">    8</a>         domain::{FunctionCallAbstractionInput, FunctionCallAbstractionOutput},</span>
+<span id="L9"><a href="#L9">    9</a>         edge::abstraction::{</span>
+<span id="L10"><a href="#L10">   10</a>             AbstractionBlockEdge, AbstractionEdge,</span>
+<span id="L11"><a href="#L11">   11</a>             function::{</span>
+<span id="L12"><a href="#L12">   12</a>                 DefinedFnCall, FunctionCallAbstraction, FunctionCallAbstractionEdgeMetadata,</span>
+<span id="L13"><a href="#L13">   13</a>             },</span>
+<span id="L14"><a href="#L14">   14</a>         },</span>
+<span id="L15"><a href="#L15">   15</a>         edge_data::LabelNodePredicate,</span>
+<span id="L16"><a href="#L16">   16</a>         region_projection::{HasTy, LifetimeProjection, PlaceOrConst},</span>
+<span id="L17"><a href="#L17">   17</a>     },</span>
+<span id="L18"><a href="#L18">   18</a>     coupling::{CoupledEdgesData, FunctionCallCoupledEdgeKind, PcgCoupledEdgeKind},</span>
+<span id="L19"><a href="#L19">   19</a>     pcg::obtain::{HasSnapshotLocation, expand::PlaceExpander},</span>
+<span id="L20"><a href="#L20">   20</a>     rustc_interface::{</span>
+<span id="L21"><a href="#L21">   21</a>         fn_def_args,</span>
+<span id="L22"><a href="#L22">   22</a>         middle::mir::{Location, Operand},</span>
+<span id="L23"><a href="#L23">   23</a>         span::Span,</span>
+<span id="L24"><a href="#L24">   24</a>     },</span>
+<span id="L25"><a href="#L25">   25</a>     utils::{PcgSettings, data_structures::HashSet, display::DisplayWithCompilerCtxt},</span>
+<span id="L26"><a href="#L26">   26</a> };</span>
+<span id="L27"><a href="#L27">   27</a> </span>
+<span id="L28"><a href="#L28">   28</a> use super::PcgError;</span>
+<span id="L29"><a href="#L29">   29</a> use crate::{</span>
+<span id="L30"><a href="#L30">   30</a>     rustc_interface::middle::ty::{self},</span>
+<span id="L31"><a href="#L31">   31</a>     utils::{self, DataflowCtxt, SnapshotLocation},</span>
+<span id="L32"><a href="#L32">   32</a> };</span>
+<span id="L33"><a href="#L33">   33</a> </span>
+<span id="L34"><a href="#L34">   34</a> impl&lt;&#x27;a, &#x27;tcx: &#x27;a, Ctxt: DataflowCtxt&lt;&#x27;a, &#x27;tcx&gt;&gt; PcgVisitor&lt;&#x27;_, &#x27;a, &#x27;tcx, Ctxt&gt; {</span>
+<span id="L35"><a href="#L35">   35</a>     pub(crate) fn settings(&amp;self) -&gt; &amp;&#x27;a PcgSettings {</span>
+<span id="L36"><a href="#L36">   36</a>         self.ctxt.settings()</span>
+<span id="L37"><a href="#L37">   37</a>     }</span>
+<span id="L38"><a href="#L38">   38</a> </span>
+<span id="L39"><a href="#L39">   39</a>     fn node_for_input(</span>
+<span id="L40"><a href="#L40">   40</a>         &amp;self,</span>
+<span id="L41"><a href="#L41">   41</a>         call: &amp;FunctionCall&lt;&#x27;_, &#x27;tcx&gt;,</span>
+<span id="L42"><a href="#L42">   42</a>         input: LifetimeProjection&lt;&#x27;tcx, ArgIdx&gt;,</span>
+<span id="L43"><a href="#L43">   43</a>     ) -&gt; FunctionCallAbstractionInput&lt;&#x27;tcx&gt; {</span>
+<span id="L44"><a href="#L44">   44</a>         let operand = call.inputs[*input.base];</span>
+<span id="L45"><a href="#L45">   45</a>         let operand = self.maybe_labelled_operand(operand);</span>
+<span id="L46"><a href="#L46">   46</a>         FunctionCallAbstractionInput(</span>
+<span id="L47"><a href="#L47">   47</a>             LifetimeProjection::from_index(operand, input.region_idx)</span>
+<span id="L48"><a href="#L48">   48</a>                 .with_label(Some(self.prev_snapshot_location().into()), self.ctxt),</span>
+<span id="L49"><a href="#L49">   49</a>         )</span>
+<span id="L50"><a href="#L50">   50</a>     }</span>
+<span id="L51"><a href="#L51">   51</a> </span>
+<span id="L52"><a href="#L52">   52</a>     fn node_for_output(</span>
+<span id="L53"><a href="#L53">   53</a>         &amp;self,</span>
+<span id="L54"><a href="#L54">   54</a>         call: &amp;FunctionCall&lt;&#x27;_, &#x27;tcx&gt;,</span>
+<span id="L55"><a href="#L55">   55</a>         output: LifetimeProjection&lt;&#x27;tcx, ArgIdxOrResult&gt;,</span>
+<span id="L56"><a href="#L56">   56</a>     ) -&gt; Option&lt;FunctionCallAbstractionOutput&lt;&#x27;tcx&gt;&gt; {</span>
+<span id="L57"><a href="#L57">   57</a>         match output.base {</span>
+<span id="L58"><a href="#L58">   58</a>             ArgIdxOrResult::Argument(arg_idx) =&gt; {</span>
+<span id="L59"><a href="#L59">   59</a>                 let operand = call.inputs[*arg_idx];</span>
+<span id="L60"><a href="#L60">   60</a>                 // Constants are never targets of borrow flow (they have no place)</span>
+<span id="L61"><a href="#L61">   61</a>                 if let PlaceOrConst::Place(place) = self.maybe_labelled_operand(operand) {</span>
+<span id="L62"><a href="#L62">   62</a>                     Some(</span>
+<span id="L63"><a href="#L63">   63</a>                         LifetimeProjection::from_index(place, output.region_idx)</span>
+<span id="L64"><a href="#L64">   64</a>                             .with_label(</span>
+<span id="L65"><a href="#L65">   65</a>                                 Some(SnapshotLocation::After(self.location().block).into()),</span>
+<span id="L66"><a href="#L66">   66</a>                                 self.ctxt,</span>
+<span id="L67"><a href="#L67">   67</a>                             )</span>
+<span id="L68"><a href="#L68">   68</a>                             .into(),</span>
+<span id="L69"><a href="#L69">   69</a>                     )</span>
+<span id="L70"><a href="#L70">   70</a>                 } else {</span>
+<span id="L71"><a href="#L71">   71</a>                     None</span>
+<span id="L72"><a href="#L72">   72</a>                 }</span>
+<span id="L73"><a href="#L73">   73</a>             }</span>
+<span id="L74"><a href="#L74">   74</a>             ArgIdxOrResult::Result =&gt; {</span>
+<span id="L75"><a href="#L75">   75</a>                 Some(LifetimeProjection::from_index(call.output, output.region_idx).into())</span>
+<span id="L76"><a href="#L76">   76</a>             }</span>
+<span id="L77"><a href="#L77">   77</a>         }</span>
+<span id="L78"><a href="#L78">   78</a>     }</span>
+<span id="L79"><a href="#L79">   79</a> </span>
+<span id="L80"><a href="#L80">   80</a>     fn create_edges_for_shape(</span>
+<span id="L81"><a href="#L81">   81</a>         &amp;mut self,</span>
+<span id="L82"><a href="#L82">   82</a>         shape: &amp;FunctionShape,</span>
+<span id="L83"><a href="#L83">   83</a>         call: &amp;FunctionCall&lt;&#x27;_, &#x27;tcx&gt;,</span>
+<span id="L84"><a href="#L84">   84</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L85"><a href="#L85">   85</a>         let metadata = FunctionCallAbstractionEdgeMetadata {</span>
+<span id="L86"><a href="#L86">   86</a>             location: call.location,</span>
+<span id="L87"><a href="#L87">   87</a>             defined_fn_call: call.defined,</span>
+<span id="L88"><a href="#L88">   88</a>         };</span>
+<span id="L89"><a href="#L89">   89</a>         let abstraction_edges: HashSet&lt;AbstractionBlockEdge&lt;&#x27;_, _, _&gt;&gt; = shape</span>
+<span id="L90"><a href="#L90">   90</a>             .edges()</span>
+<span id="L91"><a href="#L91">   91</a>             .filter_map(|AbstractionBlockEdge { input, output, .. }| {</span>
+<span id="L92"><a href="#L92">   92</a>                 Some(AbstractionBlockEdge::new_checked(</span>
+<span id="L93"><a href="#L93">   93</a>                     self.node_for_input(call, input),</span>
+<span id="L94"><a href="#L94">   94</a>                     self.node_for_output(call, output)?,</span>
+<span id="L95"><a href="#L95">   95</a>                     self.ctxt,</span>
+<span id="L96"><a href="#L96">   96</a>                 ))</span>
+<span id="L97"><a href="#L97">   97</a>             })</span>
+<span id="L98"><a href="#L98">   98</a>             .collect();</span>
+<span id="L99"><a href="#L99">   99</a>         if self.settings().coupling {</span>
+<span id="L100"><a href="#L100">  100</a>             let coupled_edges = CoupledEdgesData::new(abstraction_edges.iter().copied());</span>
+<span id="L101"><a href="#L101">  101</a>             if !coupled_edges.is_empty() {</span>
+<span id="L102"><a href="#L102">  102</a>                 tracing::debug!(&quot;Coupled edges: {coupled_edges:?}&quot;);</span>
+<span id="L103"><a href="#L103">  103</a>             }</span>
+<span id="L104"><a href="#L104">  104</a>             for edge in coupled_edges {</span>
+<span id="L105"><a href="#L105">  105</a>                 let pcg_coupled_edge = PcgCoupledEdgeKind::function_call(</span>
+<span id="L106"><a href="#L106">  106</a>                     FunctionCallCoupledEdgeKind::new(metadata, edge),</span>
+<span id="L107"><a href="#L107">  107</a>                 );</span>
+<span id="L108"><a href="#L108">  108</a>                 self.record_and_apply_action(</span>
+<span id="L109"><a href="#L109">  109</a>                     BorrowPcgAction::add_edge(</span>
+<span id="L110"><a href="#L110">  110</a>                         BorrowPcgEdge::new(</span>
+<span id="L111"><a href="#L111">  111</a>                             pcg_coupled_edge.into(),</span>
+<span id="L112"><a href="#L112">  112</a>                             self.pcg.borrow.validity_conditions.clone(),</span>
+<span id="L113"><a href="#L113">  113</a>                         ),</span>
+<span id="L114"><a href="#L114">  114</a>                         &quot;Function call&quot;,</span>
+<span id="L115"><a href="#L115">  115</a>                     )</span>
+<span id="L116"><a href="#L116">  116</a>                     .into(),</span>
+<span id="L117"><a href="#L117">  117</a>                 )?;</span>
+<span id="L118"><a href="#L118">  118</a>             }</span>
+<span id="L119"><a href="#L119">  119</a>         } else {</span>
+<span id="L120"><a href="#L120">  120</a>             for edge in abstraction_edges {</span>
+<span id="L121"><a href="#L121">  121</a>                 self.record_and_apply_action(</span>
+<span id="L122"><a href="#L122">  122</a>                     BorrowPcgAction::add_edge(</span>
+<span id="L123"><a href="#L123">  123</a>                         BorrowPcgEdge::new(</span>
+<span id="L124"><a href="#L124">  124</a>                             AbstractionEdge::FunctionCall(FunctionCallAbstraction::new(</span>
+<span id="L125"><a href="#L125">  125</a>                                 metadata, edge,</span>
+<span id="L126"><a href="#L126">  126</a>                             ))</span>
+<span id="L127"><a href="#L127">  127</a>                             .into(),</span>
+<span id="L128"><a href="#L128">  128</a>                             self.pcg.borrow.validity_conditions.clone(),</span>
+<span id="L129"><a href="#L129">  129</a>                         ),</span>
+<span id="L130"><a href="#L130">  130</a>                         &quot;Function call&quot;,</span>
+<span id="L131"><a href="#L131">  131</a>                     )</span>
+<span id="L132"><a href="#L132">  132</a>                     .into(),</span>
+<span id="L133"><a href="#L133">  133</a>                 )?;</span>
+<span id="L134"><a href="#L134">  134</a>             }</span>
+<span id="L135"><a href="#L135">  135</a>         }</span>
+<span id="L136"><a href="#L136">  136</a>         Ok(())</span>
+<span id="L137"><a href="#L137">  137</a>     }</span>
+<span id="L138"><a href="#L138">  138</a>     #[tracing::instrument(skip(self, func, args, destination))]</span>
+<span id="L139"><a href="#L139">  139</a>     pub(super) fn make_function_call_abstraction(</span>
+<span id="L140"><a href="#L140">  140</a>         &amp;mut self,</span>
+<span id="L141"><a href="#L141">  141</a>         func: &amp;Operand&lt;&#x27;tcx&gt;,</span>
+<span id="L142"><a href="#L142">  142</a>         call_span: Span,</span>
+<span id="L143"><a href="#L143">  143</a>         args: &amp;[&amp;Operand&lt;&#x27;tcx&gt;],</span>
+<span id="L144"><a href="#L144">  144</a>         destination: utils::Place&lt;&#x27;tcx&gt;,</span>
+<span id="L145"><a href="#L145">  145</a>         location: Location,</span>
+<span id="L146"><a href="#L146">  146</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L147"><a href="#L147">  147</a>         let call = FunctionCall::new(</span>
+<span id="L148"><a href="#L148">  148</a>             location,</span>
+<span id="L149"><a href="#L149">  149</a>             args,</span>
+<span id="L150"><a href="#L150">  150</a>             destination,</span>
+<span id="L151"><a href="#L151">  151</a>             match func.ty(self.ctxt.body(), self.ctxt.tcx()).kind() {</span>
+<span id="L152"><a href="#L152">  152</a>                 ty::TyKind::FnDef(def_id, substs) =&gt; Some(DefinedFnCall::new(</span>
+<span id="L153"><a href="#L153">  153</a>                     FunctionData::new(*def_id),</span>
+<span id="L154"><a href="#L154">  154</a>                     fn_def_args(substs),</span>
+<span id="L155"><a href="#L155">  155</a>                     self.ctxt.ctxt().def_id(),</span>
+<span id="L156"><a href="#L156">  156</a>                     call_span,</span>
+<span id="L157"><a href="#L157">  157</a>                 )),</span>
+<span id="L158"><a href="#L158">  158</a>                 _ =&gt; None,</span>
+<span id="L159"><a href="#L159">  159</a>             },</span>
+<span id="L160"><a href="#L160">  160</a>         );</span>
+<span id="L161"><a href="#L161">  161</a> </span>
+<span id="L162"><a href="#L162">  162</a>         let ctxt = self.ctxt;</span>
+<span id="L163"><a href="#L163">  163</a> </span>
+<span id="L164"><a href="#L164">  164</a>         // The versions of the region projections for the function inputs just</span>
+<span id="L165"><a href="#L165">  165</a>         // before they were moved out, labelled with their last modification</span>
+<span id="L166"><a href="#L166">  166</a>         // time</span>
+<span id="L167"><a href="#L167">  167</a>         let arg_region_projections = args</span>
+<span id="L168"><a href="#L168">  168</a>             .iter()</span>
+<span id="L169"><a href="#L169">  169</a>             .map(|arg| self.maybe_labelled_operand(arg))</span>
+<span id="L170"><a href="#L170">  170</a>             .flat_map(|input_place| input_place.generalized_lifetime_projections(self.ctxt))</span>
+<span id="L171"><a href="#L171">  171</a>             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L172"><a href="#L172">  172</a> </span>
+<span id="L173"><a href="#L173">  173</a>         let pre_rps = arg_region_projections</span>
+<span id="L174"><a href="#L174">  174</a>             .iter()</span>
+<span id="L175"><a href="#L175">  175</a>             .map(|rp| {</span>
+<span id="L176"><a href="#L176">  176</a>                 rp.with_label(</span>
+<span id="L177"><a href="#L177">  177</a>                     Some(self.place_obtainer().prev_snapshot_location().into()),</span>
+<span id="L178"><a href="#L178">  178</a>                     self.ctxt,</span>
+<span id="L179"><a href="#L179">  179</a>                 )</span>
+<span id="L180"><a href="#L180">  180</a>             })</span>
+<span id="L181"><a href="#L181">  181</a>             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L182"><a href="#L182">  182</a> </span>
+<span id="L183"><a href="#L183">  183</a>         let post_rps = arg_region_projections</span>
+<span id="L184"><a href="#L184">  184</a>             .iter()</span>
+<span id="L185"><a href="#L185">  185</a>             .map(|rp| {</span>
+<span id="L186"><a href="#L186">  186</a>                 rp.with_label(</span>
+<span id="L187"><a href="#L187">  187</a>                     Some(SnapshotLocation::After(self.location().block).into()),</span>
+<span id="L188"><a href="#L188">  188</a>                     self.ctxt,</span>
+<span id="L189"><a href="#L189">  189</a>                 )</span>
+<span id="L190"><a href="#L190">  190</a>             })</span>
+<span id="L191"><a href="#L191">  191</a>             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L192"><a href="#L192">  192</a> </span>
+<span id="L193"><a href="#L193">  193</a>         for (rp, post_rp) in arg_region_projections.iter().zip(post_rps.iter()) {</span>
+<span id="L194"><a href="#L194">  194</a>             if let (Some(rp), Some(post_rp)) = (</span>
+<span id="L195"><a href="#L195">  195</a>                 rp.try_to_local_lifetime_projection(),</span>
+<span id="L196"><a href="#L196">  196</a>                 post_rp.try_to_local_lifetime_projection(),</span>
+<span id="L197"><a href="#L197">  197</a>             ) {</span>
+<span id="L198"><a href="#L198">  198</a>                 self.place_obtainer()</span>
+<span id="L199"><a href="#L199">  199</a>                     .redirect_source_of_future_edges(rp, post_rp, ctxt)?;</span>
+<span id="L200"><a href="#L200">  200</a>             }</span>
+<span id="L201"><a href="#L201">  201</a>         }</span>
+<span id="L202"><a href="#L202">  202</a> </span>
+<span id="L203"><a href="#L203">  203</a>         for (rp, pre_rp) in arg_region_projections.iter().zip(pre_rps.iter()) {</span>
+<span id="L204"><a href="#L204">  204</a>             if let Some(rp) = rp.try_to_local_lifetime_projection() {</span>
+<span id="L205"><a href="#L205">  205</a>                 self.record_and_apply_action(</span>
+<span id="L206"><a href="#L206">  206</a>                     BorrowPcgAction::label_lifetime_projection(</span>
+<span id="L207"><a href="#L207">  207</a>                         LabelNodePredicate::equals_lifetime_projection(rp),</span>
+<span id="L208"><a href="#L208">  208</a>                         pre_rp.label(),</span>
+<span id="L209"><a href="#L209">  209</a>                         format!(</span>
+<span id="L210"><a href="#L210">  210</a>                             &quot;Function call:Label Pre version of {}&quot;,</span>
+<span id="L211"><a href="#L211">  211</a>                             rp.display_string(self.ctxt),</span>
+<span id="L212"><a href="#L212">  212</a>                         ),</span>
+<span id="L213"><a href="#L213">  213</a>                     )</span>
+<span id="L214"><a href="#L214">  214</a>                     .into(),</span>
+<span id="L215"><a href="#L215">  215</a>                 )?;</span>
+<span id="L216"><a href="#L216">  216</a>             }</span>
+<span id="L217"><a href="#L217">  217</a>         }</span>
+<span id="L218"><a href="#L218">  218</a>         let shape = call.shape(self.ctxt);</span>
+<span id="L219"><a href="#L219">  219</a>         self.create_edges_for_shape(&amp;shape, &amp;call)?;</span>
+<span id="L220"><a href="#L220">  220</a> </span>
+<span id="L221"><a href="#L221">  221</a>         Ok(())</span>
+<span id="L222"><a href="#L222">  222</a>     }</span>
+<span id="L223"><a href="#L223">  223</a> }</span>
+</pre>

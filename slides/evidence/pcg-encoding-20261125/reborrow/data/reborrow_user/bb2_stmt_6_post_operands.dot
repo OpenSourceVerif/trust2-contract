@@ -1,0 +1,8 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">pt: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="Point"]
+"p2" [label=<<FONT FACE="courier">y: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?7 mut i32"]
+}
+

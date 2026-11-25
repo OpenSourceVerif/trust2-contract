@@ -1,0 +1,1041 @@
+[
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_fn/method.rs",
+    "start": 296,
+    "end": 300,
+    "sha256": "a701aa1385be811d2d4547f0a60350f52819ff48631c508d8270cd08cfb8e51c",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_fn/method.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_fn/method.rs#L296"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 2113,
+    "end": 2128,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L2113"
+  },
+  {
+    "file": "source/pcg/src/pcg/capabilities.rs",
+    "start": 65,
+    "end": 82,
+    "sha256": "640db05312a32d737ba14da9a1cc01c6a973158d8db768d4fbf3e381c25c255f",
+    "label": "PCG · pcg/src/pcg/capabilities.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/capabilities.rs#L65"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 393,
+    "end": 409,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L393"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 892,
+    "end": 895,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 18,
+    "end": 23,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/ty/use_impure.rs",
+    "start": 760,
+    "end": 767,
+    "sha256": "e1dc405fde27eeea2e1d402bc8ee1e608852a391959ad4d4039331786e925459",
+    "label": "Prusti · prusti-encoder/src/encoders/ty/use_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/ty/use_impure.rs#L760"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 901,
+    "end": 903,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 18,
+    "end": 23,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 2924,
+    "end": 2929,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 2931,
+    "end": 2936,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 1161,
+    "end": 1167,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L1161"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 904,
+    "end": 908,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 18,
+    "end": 23,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 670,
+    "end": 676,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L670"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 910,
+    "end": 919,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 18,
+    "end": 23,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 757,
+    "end": 769,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L757"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 1381,
+    "end": 1383,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 34,
+    "end": 40,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/ty/kinds/structlike.rs",
+    "start": 161,
+    "end": 181,
+    "sha256": "f6f75b0d724da51f6d0aec45982a0791a1c1fbe8a56bf4f92fbc2275eaf390e2",
+    "label": "Prusti · prusti-encoder/src/encoders/ty/kinds/structlike.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/ty/kinds/structlike.rs#L161"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 752,
+    "end": 758,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/ty/kinds/mutref.rs",
+    "start": 100,
+    "end": 108,
+    "sha256": "9c5cfe4865e4daff3597ba981341d54e747b33f150a1aa5f9dcbeed64e1a2584",
+    "label": "Prusti · prusti-encoder/src/encoders/ty/kinds/mutref.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/ty/kinds/mutref.rs#L100"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 763,
+    "end": 770,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/ty/kinds/primitive.rs",
+    "start": 113,
+    "end": 117,
+    "sha256": "ebc350d7d02433d0c2b67c163302a79694f5d842bdb985a592dd0fa228f30d5a",
+    "label": "Prusti · prusti-encoder/src/encoders/ty/kinds/primitive.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/ty/kinds/primitive.rs#L113"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 759,
+    "end": 761,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 572,
+    "end": 576,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L572"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 1390,
+    "end": 1396,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 34,
+    "end": 40,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 852,
+    "end": 869,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L852"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 1149,
+    "end": 1165,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 25,
+    "end": 32,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 776,
+    "end": 780,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L776"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1768,
+    "end": 1771,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "reborrow/reborrow.rs",
+    "start": 50,
+    "end": 55,
+    "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "reborrow/reborrow.rs",
+    "start": 45,
+    "end": 48,
+    "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1502,
+    "end": 1544,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/fn_wand.rs",
+    "start": 332,
+    "end": 348,
+    "sha256": "1b1fceb50c9fc95e1c5638ff36c396c2cbf89d1eb7f3b84a517394fb9752af69",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/fn_wand.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/fn_wand.rs#L332"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1533,
+    "end": 1542,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/fn_wand.rs",
+    "start": 81,
+    "end": 98,
+    "sha256": "1b1fceb50c9fc95e1c5638ff36c396c2cbf89d1eb7f3b84a517394fb9752af69",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/fn_wand.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/fn_wand.rs#L81"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1612,
+    "end": 1620,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "reborrow/reborrow.rs",
+    "start": 45,
+    "end": 48,
+    "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 889,
+    "end": 902,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L889"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1648,
+    "end": 1662,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 822,
+    "end": 827,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L822"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1812,
+    "end": 1822,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "reborrow/reborrow.rs",
+    "start": 50,
+    "end": 55,
+    "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 199,
+    "end": 205,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L199"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1849,
+    "end": 1858,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "reborrow/reborrow.rs",
+    "start": 50,
+    "end": 55,
+    "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 547,
+    "end": 550,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L547"
+  },
+  {
+    "file": "shared/log/viper_program/program-check.vpr",
+    "start": 659,
+    "end": 662,
+    "sha256": "4db0edb0701b76932b6f1d46ce3a1444508caf4939e717e18f74d822dddc4b47",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "shared/shared.rs",
+    "start": 8,
+    "end": 11,
+    "sha256": "728d21c0b96d03554be420530be3187f293c524fcfed1ca876bfe3278accbe4e",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 756,
+    "end": 760,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L756"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 1109,
+    "end": 1111,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "reborrow/reborrow.rs",
+    "start": 20,
+    "end": 23,
+    "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 161,
+    "end": 167,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L161"
+  },
+  {
+    "file": "shared/log/viper_program/program-check.vpr",
+    "start": 976,
+    "end": 981,
+    "sha256": "4db0edb0701b76932b6f1d46ce3a1444508caf4939e717e18f74d822dddc4b47",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "shared/shared.rs",
+    "start": 19,
+    "end": 21,
+    "sha256": "728d21c0b96d03554be420530be3187f293c524fcfed1ca876bfe3278accbe4e",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/builtin/cast.rs",
+    "start": 431,
+    "end": 438,
+    "sha256": "90a0e97d7694d78d40c64d32210f2543f422e20554048dfd05829938f3b0da4e",
+    "label": "Prusti · prusti-encoder/src/encoders/builtin/cast.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/builtin/cast.rs#L431"
+  },
+  {
+    "file": "arrays/log/viper_program/program-check.vpr",
+    "start": 2128,
+    "end": 2134,
+    "sha256": "b851c5efec29c140c0430132049ac482186f7e25f303c9e4c92c9ad092a9bbf7",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "arrays/arrays.rs",
+    "start": 31,
+    "end": 36,
+    "sha256": "90372244aff09378a4573c2d4d44bdb936141f4f3c1e03b2e26e5277525e90b4",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 739,
+    "end": 741,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L739"
+  },
+  {
+    "file": "arrays/log/viper_program/program-check.vpr",
+    "start": 2244,
+    "end": 2249,
+    "sha256": "b851c5efec29c140c0430132049ac482186f7e25f303c9e4c92c9ad092a9bbf7",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "arrays/arrays.rs",
+    "start": 31,
+    "end": 36,
+    "sha256": "90372244aff09378a4573c2d4d44bdb936141f4f3c1e03b2e26e5277525e90b4",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 563,
+    "end": 566,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L563"
+  },
+  {
+    "file": "arrays/log/viper_program/program-check.vpr",
+    "start": 2217,
+    "end": 2226,
+    "sha256": "b851c5efec29c140c0430132049ac482186f7e25f303c9e4c92c9ad092a9bbf7",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "arrays/arrays.rs",
+    "start": 31,
+    "end": 36,
+    "sha256": "90372244aff09378a4573c2d4d44bdb936141f4f3c1e03b2e26e5277525e90b4",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 2398,
+    "end": 2415,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L2398"
+  },
+  {
+    "file": "mutable/log/viper_program/program-check.vpr",
+    "start": 985,
+    "end": 990,
+    "sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "mutable/mutable.rs",
+    "start": 18,
+    "end": 23,
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 652,
+    "end": 654,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L652"
+  },
+  {
+    "file": "branch_only/log/viper_program/program-check.vpr",
+    "start": 788,
+    "end": 800,
+    "sha256": "28ad8bcffdc946dd343a14b1d1c60b0e938d65b84b4c1193c51c5a1894efa253",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "branch_only/branch_only.rs",
+    "start": 3,
+    "end": 9,
+    "sha256": "ca98a74871998c0535531b65336f4f836f68b551bd08763c9f63934d5695f7f1",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 63,
+    "end": 75,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L63"
+  },
+  {
+    "file": "loop_inv/log/viper_program/program-check.vpr",
+    "start": 946,
+    "end": 951,
+    "sha256": "dd5ea74b67569c20ebc8c7f4e3e870d7a16223b668482db9bbf9d54d4960fe22",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "loop_inv/loop_inv.rs",
+    "start": 3,
+    "end": 16,
+    "sha256": "047f144135993067d996c1c7a14c703934e44ad12b7bfeb6b33a7c1652a644bf",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 84,
+    "end": 89,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L84"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/wand.rs",
+    "start": 27,
+    "end": 34,
+    "sha256": "f89e1d1b3b6896dbf09142c1dabe8591500a76eb5de82ba6f29c61ff0d065ece",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/wand.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/wand.rs#L27"
+  },
+  {
+    "file": "branch/log/viper_program/program-check.vpr",
+    "start": 1303,
+    "end": 1308,
+    "sha256": "602507925ec67117b612eab2bfe57504bb33c9fdc1a70ec16e41237189953350",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "branch/branch.rs",
+    "start": 11,
+    "end": 20,
+    "sha256": "7cc390575ed0eac9e82195596bdb747b03f04b31b604669587aa023aae4d7ef0",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/wand.rs",
+    "start": 22,
+    "end": 26,
+    "sha256": "f89e1d1b3b6896dbf09142c1dabe8591500a76eb5de82ba6f29c61ff0d065ece",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/wand.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/wand.rs#L22"
+  },
+  {
+    "file": "branch/log/viper_program/program-check.vpr",
+    "start": 1191,
+    "end": 1200,
+    "sha256": "602507925ec67117b612eab2bfe57504bb33c9fdc1a70ec16e41237189953350",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "branch/run.log",
+    "start": 15,
+    "end": 22,
+    "sha256": "d3c8888e3b29ee35d102f043290a6301b34ac5f58d0dd84841a09022f4fe319f",
+    "label": "循环重借用失败"
+  },
+  {
+    "file": "loop_borrow/run.log",
+    "start": 29,
+    "end": 36,
+    "sha256": "f3dacd5bbbb42d4d73635d95bcae66453d27f240487a40c85de329a467da4653",
+    "label": "PCG 官方链表例子失败"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 139,
+    "end": 143,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L139"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 229,
+    "end": 229,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L229"
+  },
+  {
+    "file": "loop_borrow/log/viper_program/program-check.vpr",
+    "start": 1369,
+    "end": 1377,
+    "sha256": "b515ef34007e73ba3c2b3ebe98b2ce452af2655491b59a386807d6e8887526b8",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "loop_borrow/loop_borrow.rs",
+    "start": 7,
+    "end": 19,
+    "sha256": "002755a99cf9b9dd0782630f26525323c0aa213798fc6080dfe5a73139724357",
+    "label": "Rust / Prusti 原始示例"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 128,
+    "end": 141,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L128"
+  },
+  {
+    "file": "reborrow/log/viper_program/program-check.vpr",
+    "start": 2087,
+    "end": 2090,
+    "sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+    "label": "Viper 实际输出"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 1058,
+    "end": 1070,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L1058"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 1145,
+    "end": 1158,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L1145"
+  },
+  {
+    "file": "source/pcg/src/borrow_checker/impl.rs",
+    "start": 335,
+    "end": 344,
+    "sha256": "fdf9b298d13a8b96304f3091f1f1cff1127641a9f5717f5327997759882c94d0",
+    "label": "PCG · pcg/src/borrow_checker/impl.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/borrow_checker/impl.rs#L335"
+  },
+  {
+    "file": "source/pcg/src/borrow_checker/impl.rs",
+    "start": 361,
+    "end": 371,
+    "sha256": "fdf9b298d13a8b96304f3091f1f1cff1127641a9f5717f5327997759882c94d0",
+    "label": "PCG · pcg/src/borrow_checker/impl.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/borrow_checker/impl.rs#L361"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_fn/method.rs",
+    "start": 296,
+    "end": 300,
+    "sha256": "a701aa1385be811d2d4547f0a60350f52819ff48631c508d8270cd08cfb8e51c",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_fn/method.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_fn/method.rs#L296"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/assign.rs",
+    "start": 200,
+    "end": 210,
+    "sha256": "bd63443b0c65832a4a2445c1f502d36b6c69aaf6a737c7727d68e39583231792",
+    "label": "PCG · pcg/src/pcg/visitor/assign.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/assign.rs#L200"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 393,
+    "end": 409,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L393"
+  },
+  {
+    "file": "source/pcg/src/pcg/obtain/expand.rs",
+    "start": 192,
+    "end": 199,
+    "sha256": "18f04bb6c2746bc5cd5aae700d272a17c6b826d156364975cd90727bee631553",
+    "label": "PCG · pcg/src/pcg/obtain/expand.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/obtain/expand.rs#L192"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 128,
+    "end": 134,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L128"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 743,
+    "end": 750,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L743"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/stmt.rs",
+    "start": 84,
+    "end": 101,
+    "sha256": "593e2a3782fc98667d067b78616ab69dd1799b287d690716e805527ae57b0bcf",
+    "label": "PCG · pcg/src/pcg/visitor/stmt.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/stmt.rs#L84"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 1036,
+    "end": 1045,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L1036"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 1161,
+    "end": 1167,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L1161"
+  },
+  {
+    "file": "source/pcg/src/pcg/obtain/expand.rs",
+    "start": 299,
+    "end": 306,
+    "sha256": "18f04bb6c2746bc5cd5aae700d272a17c6b826d156364975cd90727bee631553",
+    "label": "PCG · pcg/src/pcg/obtain/expand.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/obtain/expand.rs#L299"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 756,
+    "end": 767,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L756"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/pack.rs",
+    "start": 403,
+    "end": 407,
+    "sha256": "3f8a838cac783064def8905f3e4902e9af9f7b078ef054182f3bdee51355b6bb",
+    "label": "PCG · pcg/src/pcg/visitor/pack.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/pack.rs#L403"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/pack.rs",
+    "start": 150,
+    "end": 157,
+    "sha256": "3f8a838cac783064def8905f3e4902e9af9f7b078ef054182f3bdee51355b6bb",
+    "label": "PCG · pcg/src/pcg/visitor/pack.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/pack.rs#L150"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 670,
+    "end": 676,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L670"
+  },
+  {
+    "file": "source/pcg/src/borrow_pcg/unblock_graph.rs",
+    "start": 64,
+    "end": 73,
+    "sha256": "ae9ec91f4da15a5040591d2b808a6f52057ef1374cbf23222d22d266b76989d4",
+    "label": "PCG · pcg/src/borrow_pcg/unblock_graph.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/borrow_pcg/unblock_graph.rs#L64"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 889,
+    "end": 902,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L889"
+  },
+  {
+    "file": "source/pcg/src/borrow_pcg/abstraction/mod.rs",
+    "start": 652,
+    "end": 670,
+    "sha256": "2c11e2e5a580c0e2310a729065eb712bcd2aa5673c3248db3b7cde0937b7e645",
+    "label": "PCG · pcg/src/borrow_pcg/abstraction/mod.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/borrow_pcg/abstraction/mod.rs#L652"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/fn_wand.rs",
+    "start": 463,
+    "end": 474,
+    "sha256": "1b1fceb50c9fc95e1c5638ff36c396c2cbf89d1eb7f3b84a517394fb9752af69",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/fn_wand.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/fn_wand.rs#L463"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/function_call.rs",
+    "start": 104,
+    "end": 117,
+    "sha256": "a445fa50ceb26382a1d71564a1a107849162ec4d7f7ae55bb744147f3ae1f952",
+    "label": "PCG · pcg/src/pcg/visitor/function_call.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/function_call.rs#L104"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 776,
+    "end": 779,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L776"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 822,
+    "end": 827,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L822"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/assign.rs",
+    "start": 247,
+    "end": 254,
+    "sha256": "bd63443b0c65832a4a2445c1f502d36b6c69aaf6a737c7727d68e39583231792",
+    "label": "PCG · pcg/src/pcg/visitor/assign.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/assign.rs#L247"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 199,
+    "end": 205,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L199"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/assign.rs",
+    "start": 200,
+    "end": 210,
+    "sha256": "bd63443b0c65832a4a2445c1f502d36b6c69aaf6a737c7727d68e39583231792",
+    "label": "PCG · pcg/src/pcg/visitor/assign.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/assign.rs#L200"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 547,
+    "end": 550,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L547"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/ty/kinds/immref.rs",
+    "start": 80,
+    "end": 92,
+    "sha256": "6bba19a3dce6b2c4a2d9f1fce621c04a61b38948dca82ea2e4b8c147a9cd6d6c",
+    "label": "Prusti · prusti-encoder/src/encoders/ty/kinds/immref.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/ty/kinds/immref.rs#L80"
+  },
+  {
+    "file": "source/pcg/src/pcg/obtain/expand.rs",
+    "start": 316,
+    "end": 327,
+    "sha256": "18f04bb6c2746bc5cd5aae700d272a17c6b826d156364975cd90727bee631553",
+    "label": "PCG · pcg/src/pcg/obtain/expand.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/obtain/expand.rs#L316"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 756,
+    "end": 767,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L756"
+  },
+  {
+    "file": "source/pcg/src/pcg/obtain/expand.rs",
+    "start": 411,
+    "end": 427,
+    "sha256": "18f04bb6c2746bc5cd5aae700d272a17c6b826d156364975cd90727bee631553",
+    "label": "PCG · pcg/src/pcg/obtain/expand.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/obtain/expand.rs#L411"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 842,
+    "end": 844,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L842"
+  },
+  {
+    "file": "source/pcg/src/pcg/visitor/assign.rs",
+    "start": 264,
+    "end": 269,
+    "sha256": "bd63443b0c65832a4a2445c1f502d36b6c69aaf6a737c7727d68e39583231792",
+    "label": "PCG · pcg/src/pcg/visitor/assign.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/visitor/assign.rs#L264"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 676,
+    "end": 684,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L676"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 739,
+    "end": 741,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L739"
+  },
+  {
+    "file": "source/pcg/src/borrow_pcg/state/mod.rs",
+    "start": 617,
+    "end": 621,
+    "sha256": "8535dc1326c4124a8a2a9324b272718d0aae2645966e71b2af9698791a2ab190",
+    "label": "PCG · pcg/src/borrow_pcg/state/mod.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/borrow_pcg/state/mod.rs#L617"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 616,
+    "end": 620,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L616"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/mir_impure.rs",
+    "start": 652,
+    "end": 654,
+    "sha256": "fe558357eccdb130abe19664a330e4f361312d9ca21af8d48cf367d81c87b65e",
+    "label": "Prusti · prusti-encoder/src/encoders/mir_impure.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/mir_impure.rs#L652"
+  },
+  {
+    "file": "source/pcg/src/pcg/domain/mod.rs",
+    "start": 143,
+    "end": 149,
+    "sha256": "24d6b722a4a94047bbc8963537f422b6954cee34e583d35c0d974a435d2afb89",
+    "label": "PCG · pcg/src/pcg/domain/mod.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/domain/mod.rs#L143"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 63,
+    "end": 75,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L63"
+  },
+  {
+    "file": "source/pcg/src/borrow_pcg/graph/loop_abstraction.rs",
+    "start": 756,
+    "end": 766,
+    "sha256": "98c576ac299234a5b13103f443ae08035d136dc9805d6756fd7aadd98a850504",
+    "label": "PCG · pcg/src/borrow_pcg/graph/loop_abstraction.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/borrow_pcg/graph/loop_abstraction.rs#L756"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/wand.rs",
+    "start": 22,
+    "end": 40,
+    "sha256": "f89e1d1b3b6896dbf09142c1dabe8591500a76eb5de82ba6f29c61ff0d065ece",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/wand.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/wand.rs#L22"
+  },
+  {
+    "file": "source/pcg/src/pcg/node.rs",
+    "start": 38,
+    "end": 41,
+    "sha256": "9a4474a4cc12fb7375986d982860a769dc83bc763c3470138a2b740fe13306ed",
+    "label": "PCG · pcg/src/pcg/node.rs",
+    "upstream_url": "https://github.com/prusti/pcg/blob/495e59ba2295eb56e7226acd4dfdab3d445f9e89/src/pcg/node.rs#L38"
+  },
+  {
+    "file": "source/prusti-encoder/src/encoders/impure/loop.rs",
+    "start": 128,
+    "end": 141,
+    "sha256": "eaa7c6f5b8a4423b177d21cffbaf9cffa6a60ac28e7260634c442144e31d7788",
+    "label": "Prusti · prusti-encoder/src/encoders/impure/loop.rs",
+    "upstream_url": "https://github.com/prusti/prusti/blob/45b27b46116ef024516601d5888d572f03476e5b/prusti-encoder/src/encoders/impure/loop.rs#L128"
+  }
+]

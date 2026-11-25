@@ -1,0 +1,56 @@
+<!doctype html><meta charset="utf-8"><title>reborrow.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>reborrow.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use prusti_contracts::*;</span>
+<span id="L2"><a href="#L2">    2</a> </span>
+<span id="L3"><a href="#L3">    3</a> fn double_tuple&lt;&#x27;a&gt;(x: &amp;&#x27;a mut (i32, (i32, i32))) -&gt; &amp;&#x27;a mut i32</span>
+<span id="L4"><a href="#L4">    4</a> where</span>
+<span id="L5"><a href="#L5">    5</a>     &#x27;a: &#x27;a,</span>
+<span id="L6"><a href="#L6">    6</a> {</span>
+<span id="L7"><a href="#L7">    7</a>     &amp;mut x.1.0</span>
+<span id="L8"><a href="#L8">    8</a> }</span>
+<span id="L9"><a href="#L9">    9</a> </span>
+<span id="L10"><a href="#L10">   10</a> fn tuple&lt;&#x27;a&gt;(x: &amp;&#x27;a mut (i32, i32)) -&gt; &amp;&#x27;a mut i32</span>
+<span id="L11"><a href="#L11">   11</a> where</span>
+<span id="L12"><a href="#L12">   12</a>     &#x27;a: &#x27;a,</span>
+<span id="L13"><a href="#L13">   13</a> {</span>
+<span id="L14"><a href="#L14">   14</a>     &amp;mut x.0</span>
+<span id="L15"><a href="#L15">   15</a> }</span>
+<span id="L16"><a href="#L16">   16</a> </span>
+<span id="L17"><a href="#L17">   17</a> struct Container&lt;&#x27;a&gt; {</span>
+<span id="L18"><a href="#L18">   18</a>     x: &amp;&#x27;a mut i32,</span>
+<span id="L19"><a href="#L19">   19</a> }</span>
+<span id="L20"><a href="#L20">   20</a> #[after_expiry(*c.x == before_expiry(*result))]</span>
+<span id="L21"><a href="#L21">   21</a> fn use_container&lt;&#x27;a, &#x27;b: &#x27;a&gt;(c: Container&lt;&#x27;b&gt;) -&gt; &amp;&#x27;a mut i32 {</span>
+<span id="L22"><a href="#L22">   22</a>     c.x</span>
+<span id="L23"><a href="#L23">   23</a> }</span>
+<span id="L24"><a href="#L24">   24</a> </span>
+<span id="L25"><a href="#L25">   25</a> fn basic&lt;&#x27;l, &#x27;s&gt;(num: &amp;&#x27;l mut i32) -&gt; &amp;&#x27;s mut i32</span>
+<span id="L26"><a href="#L26">   26</a> where &#x27;l: &#x27;s</span>
+<span id="L27"><a href="#L27">   27</a> {</span>
+<span id="L28"><a href="#L28">   28</a>     &amp;mut *num</span>
+<span id="L29"><a href="#L29">   29</a> }</span>
+<span id="L30"><a href="#L30">   30</a> </span>
+<span id="L31"><a href="#L31">   31</a> fn basic_user() {</span>
+<span id="L32"><a href="#L32">   32</a>     let mut x = 42;</span>
+<span id="L33"><a href="#L33">   33</a>     let y = basic(&amp;mut x);</span>
+<span id="L34"><a href="#L34">   34</a>     // PCG: bb0[8] post_main: Add Abstraction Edge: FunctionCall(DefId(0:3 ~ 58_aurel_pledge[d8c8]::basic), [&#x27;?4, &#x27;?5]); path conditions: bb0</span>
+<span id="L35"><a href="#L35">   35</a>     *y = 72;</span>
+<span id="L36"><a href="#L36">   36</a>     // PCG: bb1[4] pre_operands: Remove Edge FunctionCall(DefId(0:3 ~ 58_aurel_pledge[d8c8]::basic), [&#x27;?4, &#x27;?5]) under conditions bb0 -&gt; bb1,</span>
+<span id="L37"><a href="#L37">   37</a>     drop(x);</span>
+<span id="L38"><a href="#L38">   38</a> }</span>
+<span id="L39"><a href="#L39">   39</a> </span>
+<span id="L40"><a href="#L40">   40</a> struct Point {</span>
+<span id="L41"><a href="#L41">   41</a>     x: i32,</span>
+<span id="L42"><a href="#L42">   42</a>     y: i32,</span>
+<span id="L43"><a href="#L43">   43</a> }</span>
+<span id="L44"><a href="#L44">   44</a> </span>
+<span id="L45"><a href="#L45">   45</a> #[after_expiry((pt.y == old(pt.y)) &amp; (pt.x == before_expiry(*result)))]</span>
+<span id="L46"><a href="#L46">   46</a> fn get_mut_x&lt;&#x27;a, &#x27;b: &#x27;a&gt;(pt: &amp;&#x27;b mut Point) -&gt; &amp;&#x27;a mut i32 {</span>
+<span id="L47"><a href="#L47">   47</a>     &amp;mut pt.x</span>
+<span id="L48"><a href="#L48">   48</a> }</span>
+<span id="L49"><a href="#L49">   49</a> </span>
+<span id="L50"><a href="#L50">   50</a> fn reborrow_user() {</span>
+<span id="L51"><a href="#L51">   51</a>     let mut pt = Point { x: 42, y: 72 };</span>
+<span id="L52"><a href="#L52">   52</a>     let y = get_mut_x(&amp;mut pt);</span>
+<span id="L53"><a href="#L53">   53</a>     *y = 72;</span>
+<span id="L54"><a href="#L54">   54</a>     assert!(pt.x == pt.y);</span>
+<span id="L55"><a href="#L55">   55</a> }</span>
+</pre>

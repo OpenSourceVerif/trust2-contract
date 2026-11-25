@@ -1,0 +1,16 @@
+  __          __        __  ___             
+ |__)  _\/_  |__) |  | /__`  |   ____\/_  | 
+ |      /\   |  \ \__/ .__/  |       /\   | 
+
+Prusti version: 0.3.0, commit 45b27b461 2026-11-23 20:18:05 UTC, built on 2026-11-24 09:37:28 UTC
+warning: function `main` is never used
+ --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_inv/loop_inv.rs:3:4
+  |
+3 | fn main() {
+  |    ^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+Verification of 1 items...
+warning: 1 warning emitted
+

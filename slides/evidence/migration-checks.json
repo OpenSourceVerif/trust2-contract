@@ -1,0 +1,9 @@
+{
+  "source": "prusti-tools/slides",
+  "destination": "contract-rust/slides",
+  "html_pages_checked": 45,
+  "local_links_checked": 29474,
+  "evidence_hashes_checked": 14680,
+  "html_sha256": "0b1d83b5b61cb8009751a9f916b57d273dd4f6a16df5f9510002fd02871c611d",
+  "original_retained": true
+}

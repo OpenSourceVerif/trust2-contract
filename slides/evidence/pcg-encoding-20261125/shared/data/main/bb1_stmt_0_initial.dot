@@ -1,0 +1,23 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">pt: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="Point"]
+"p2" [label=<<FONT FACE="courier">x: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 i32"]
+"r0" [label=<x↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 i32\
+"]
+"p3" [label=<<FONT FACE="courier">_3: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?8 Point"]
+"p4" [label=<<FONT FACE="courier">_4: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?9 Point"]
+"r1" [label=<_4↓'?9>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?9 Point\
+"]
+"p5" [label=<<FONT FACE="courier">(*_4): R</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="Point"]
+"r2" [label=<_3 before bb0[8]↓'?8 before bb0[8]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 Point\
+"]
+    "r2" -> "r0" [label="", id="edge_0", style="dashed", color="red"]
+    "p1" -> "r1" [label="bw0: shared '?2", id="edge_1", color="orange", edgetooltip=""]
+    "p1" -> "p5" [label="", id="edge_2", style="dashed", color="grey"]
+    "p5" -> "r2" [label="shared '?3", id="edge_3", color="orange", edgetooltip=""]
+    "p4" -> "p5" [label="", id="edge_4", color="green", edgetooltip=""]
+    "r1" -> "p5" [label="", id="edge_5", color="green", edgetooltip=""]
+}
+

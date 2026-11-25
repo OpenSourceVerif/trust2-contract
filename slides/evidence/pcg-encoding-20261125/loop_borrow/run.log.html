@@ -1,0 +1,40 @@
+<!doctype html><meta charset="utf-8"><title>run.log</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>run.log</h1><pre><span id="L1"><a href="#L1">    1</a>   __          __        __  ___             </span>
+<span id="L2"><a href="#L2">    2</a>  |__)  _\/_  |__) |  | /__`  |   ____\/_  | </span>
+<span id="L3"><a href="#L3">    3</a>  |      /\   |  \ \__/ .__/  |       /\   | </span>
+<span id="L4"><a href="#L4">    4</a> </span>
+<span id="L5"><a href="#L5">    5</a> Prusti version: 0.3.0, commit 45b27b461 2026-11-23 20:18:05 UTC, built on 2026-11-24 09:37:28 UTC</span>
+<span id="L6"><a href="#L6">    6</a> warning: struct `List` is never constructed</span>
+<span id="L7"><a href="#L7">    7</a>  --&gt; /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow/loop_borrow.rs:1:8</span>
+<span id="L8"><a href="#L8">    8</a>   |</span>
+<span id="L9"><a href="#L9">    9</a> 1 | struct List {</span>
+<span id="L10"><a href="#L10">   10</a>   |        ^^^^</span>
+<span id="L11"><a href="#L11">   11</a>   |</span>
+<span id="L12"><a href="#L12">   12</a>   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default</span>
+<span id="L13"><a href="#L13">   13</a> </span>
+<span id="L14"><a href="#L14">   14</a> warning: method `get_nth_loop` is never used</span>
+<span id="L15"><a href="#L15">   15</a>  --&gt; /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow/loop_borrow.rs:7:8</span>
+<span id="L16"><a href="#L16">   16</a>   |</span>
+<span id="L17"><a href="#L17">   17</a> 6 | impl List {</span>
+<span id="L18"><a href="#L18">   18</a>   | --------- method in this implementation</span>
+<span id="L19"><a href="#L19">   19</a> 7 |     fn get_nth_loop(&amp;mut self, n: usize) -&gt; &amp;mut u32 {</span>
+<span id="L20"><a href="#L20">   20</a>   |        ^^^^^^^^^^^^</span>
+<span id="L21"><a href="#L21">   21</a> </span>
+<span id="L22"><a href="#L22">   22</a> warning: function `main` is never used</span>
+<span id="L23"><a href="#L23">   23</a>   --&gt; /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow/loop_borrow.rs:22:4</span>
+<span id="L24"><a href="#L24">   24</a>    |</span>
+<span id="L25"><a href="#L25">   25</a> 22 | fn main() {}</span>
+<span id="L26"><a href="#L26">   26</a>    |    ^^^^</span>
+<span id="L27"><a href="#L27">   27</a> </span>
+<span id="L28"><a href="#L28">   28</a> Verification of 2 items...</span>
+<span id="L29"><a href="#L29">   29</a> error: [Prusti: internal error] Prusti encountered an unexpected internal error</span>
+<span id="L30"><a href="#L30">   30</a>   --&gt; /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow/loop_borrow.rs:19:6</span>
+<span id="L31"><a href="#L31">   31</a>    |</span>
+<span id="L32"><a href="#L32">   32</a> 19 |     }</span>
+<span id="L33"><a href="#L33">   33</a>    |      ^</span>
+<span id="L34"><a href="#L34">   34</a>    |</span>
+<span id="L35"><a href="#L35">   35</a>    = note: This is likely to be a bug in Prusti. We would appreciate a bug report: https://github.com/prusti/prusti/issues/new</span>
+<span id="L36"><a href="#L36">   36</a>    = note: A verification error occurred, but it could not be backtranslated: no handler found for error kind: assert.failed:insufficient.permission.</span>
+<span id="L37"><a href="#L37">   37</a> </span>
+<span id="L38"><a href="#L38">   38</a> error: aborting due to 1 previous error; 3 warnings emitted</span>
+<span id="L39"><a href="#L39">   39</a> </span>
+</pre>

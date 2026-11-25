@@ -1,0 +1,8 @@
+bb0 depth: 0, loops: [], loop head?: None
+bb1 depth: 1, loops: [LoopId(0)], loop head?: Some(LoopId(0))
+bb2 depth: 1, loops: [LoopId(0)], loop head?: None
+bb3 depth: 1, loops: [LoopId(0)], loop head?: None
+bb4 depth: 0, loops: [], loop head?: None
+bb5 depth: 0, loops: [], loop head?: None
+bb6 depth: 0, loops: [], loop head?: None
+bb7 depth: 0, loops: [], loop head?: None

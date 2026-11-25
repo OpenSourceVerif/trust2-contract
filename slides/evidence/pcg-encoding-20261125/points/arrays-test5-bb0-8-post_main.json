@@ -1,0 +1,59 @@
+{
+  "case": "arrays",
+  "function": "test5",
+  "block": "bb0",
+  "statement_index": 8,
+  "phase": "post_main",
+  "mir": {
+    "stmt": "y = move _3 as &mut [i32]",
+    "debug_stmt": "_2 = move _3 as &mut [i32] (PointerCoercion(Unsize, Implicit))",
+    "span": {
+      "low": {
+        "line": 33,
+        "column": 24
+      },
+      "high": {
+        "line": 33,
+        "column": 30
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [
+      "bw0",
+      "bw1"
+    ],
+    "borrows_in_scope_mid": [
+      "bw0",
+      "bw1"
+    ]
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge _3 before bb0[8]:PostOperands↓'?6 -> y↓'?5 with cast PointerCoercion(Unsize, Implicit)"
+          },
+          "debug_info": "connect_outliving_projections"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {
+    "bb1": {
+      "actions": []
+    }
+  },
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "arrays/data/test5/bb0_stmt_8_post_main.dot"
+}

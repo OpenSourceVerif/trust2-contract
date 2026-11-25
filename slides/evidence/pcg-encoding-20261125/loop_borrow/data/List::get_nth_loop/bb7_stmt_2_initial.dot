@@ -1,0 +1,40 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?10 mut u32"]
+"p1" [label=<<FONT FACE="courier">self: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?11 mut List"]
+"p2" [label=<<FONT FACE="courier">n: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p3" [label=<<FONT FACE="courier">_3: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?12 mut u32"]
+"p4" [label=<<FONT FACE="courier">i: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="usize"]
+"p5" [label=<<FONT FACE="courier">current: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?13 mut List"]
+"p6" [label=<<FONT FACE="courier">_6: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p7" [label=<<FONT FACE="courier">_7: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p8" [label=<<FONT FACE="courier">_8: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p9" [label=<<FONT FACE="courier">_11: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?14 mut List"]
+"p10" [label=<<FONT FACE="courier">_12: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?15 mut List"]
+"p11" [label=<<FONT FACE="courier">_13: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="isize"]
+"p12" [label=<<FONT FACE="courier">tail: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?16 mut std::boxed::Box<List, std::alloc::Global>"]
+"r0" [label=<tail↓'?16>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?16 mut std::boxed::Box<List, std::alloc::Global>\
+"]
+"p13" [label=<<FONT FACE="courier">_16: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="(usize, bool)"]
+"p14" [label=<<FONT FACE="courier">_17: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p15" [label=<<FONT FACE="courier">_19: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="!"]
+"p16" [label=<<FONT FACE="courier">(*current).tail</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="std::option::Option<std::boxed::Box<List, std::alloc::Global>>"]
+"p17" [label=<<FONT FACE="courier">(*current).tail@Some</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="std::option::Option<std::boxed::Box<List, std::alloc::Global>>"]
+"p18" [label=<<FONT FACE="courier">(*current).tail@Some.0</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="std::boxed::Box<List, std::alloc::Global>"]
+"r1" [label=<Remote(_1)↓'?11>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?11 mut List\
+"]
+"r2" [label=<current↓'?13 before bb7[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?13 mut List\
+"]
+"p19" [label=<<FONT FACE="courier">*current</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="List"]
+"p20" [label=<<FONT FACE="courier">(*current).head: E</FONT>>, fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="u32"]
+    "r2" -> "p19" [label="", id="edge_0", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb5"]
+    "p19" -> "p16" [label="", id="edge_1", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb5"]
+    "p17" -> "p18" [label="", id="edge_2", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb5"]
+    "p19" -> "p20" [label="", id="edge_3", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb5"]
+    "p16" -> "p17" [label="", id="edge_4", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb5"]
+    "r1" -> "r2" [label="loop at bb1[0]", id="edge_5", penwidth="3"]
+    "p5" -> "p19" [label="", id="edge_6", color="green", edgetooltip="bb2 -> bb3, bb3 -> bb5"]
+    "p18" -> "r0" [label="bw0: Default '?4", id="edge_7", color="orange", edgetooltip="bb2 -> bb3, bb3 -> bb5"]
+}
+

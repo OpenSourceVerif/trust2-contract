@@ -1,0 +1,5 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+}
+

@@ -1,0 +1,499 @@
+<!doctype html><meta charset="utf-8"><title>pack.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>pack.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use std::borrow::Cow;</span>
+<span id="L2"><a href="#L2">    2</a> </span>
+<span id="L3"><a href="#L3">    3</a> use super::PcgError;</span>
+<span id="L4"><a href="#L4">    4</a> use crate::{</span>
+<span id="L5"><a href="#L5">    5</a>     action::BorrowPcgAction,</span>
+<span id="L6"><a href="#L6">    6</a>     borrow_pcg::{</span>
+<span id="L7"><a href="#L7">    7</a>         borrow_pcg_edge::{BorrowPcgEdge, BorrowPcgEdgeLike, LocalNode},</span>
+<span id="L8"><a href="#L8">    8</a>         edge::{deref::DerefEdge, kind::BorrowPcgEdgeKind},</span>
+<span id="L9"><a href="#L9">    9</a>         edge_data::EdgeData,</span>
+<span id="L10"><a href="#L10">   10</a>         graph::{Conditioned, frozen::FrozenGraphRef},</span>
+<span id="L11"><a href="#L11">   11</a>     },</span>
+<span id="L12"><a href="#L12">   12</a>     pcg::{</span>
+<span id="L13"><a href="#L13">   13</a>         CapabilityKind, PcgNode, PcgRefLike,</span>
+<span id="L14"><a href="#L14">   14</a>         obtain::{PlaceCollapser, PlaceObtainer},</span>
+<span id="L15"><a href="#L15">   15</a>     },</span>
+<span id="L16"><a href="#L16">   16</a>     utils::{</span>
+<span id="L17"><a href="#L17">   17</a>         DataflowCtxt, DebugCtxt, HasPlace, PackStrategy, Place,</span>
+<span id="L18"><a href="#L18">   18</a>         data_structures::{HashMap, HashSet},</span>
+<span id="L19"><a href="#L19">   19</a>         display::DisplayWithCompilerCtxt,</span>
+<span id="L20"><a href="#L20">   20</a>         maybe_old::MaybeLabelledPlace,</span>
+<span id="L21"><a href="#L21">   21</a>     },</span>
+<span id="L22"><a href="#L22">   22</a> };</span>
+<span id="L23"><a href="#L23">   23</a> </span>
+<span id="L24"><a href="#L24">   24</a> type Reason = Cow&lt;&#x27;static, str&gt;;</span>
+<span id="L25"><a href="#L25">   25</a> </span>
+<span id="L26"><a href="#L26">   26</a> struct WithReason&lt;T&gt; {</span>
+<span id="L27"><a href="#L27">   27</a>     pub(crate) value: T,</span>
+<span id="L28"><a href="#L28">   28</a>     pub(crate) reason: Reason,</span>
+<span id="L29"><a href="#L29">   29</a> }</span>
+<span id="L30"><a href="#L30">   30</a> </span>
+<span id="L31"><a href="#L31">   31</a> struct EdgesToRemove&lt;&#x27;tcx&gt; {</span>
+<span id="L32"><a href="#L32">   32</a>     deref_edges:</span>
+<span id="L33"><a href="#L33">   33</a>         HashMap&lt;MaybeLabelledPlace&lt;&#x27;tcx&gt;, WithReason&lt;HashSet&lt;Conditioned&lt;DerefEdge&lt;&#x27;tcx&gt;&gt;&gt;&gt;&gt;,</span>
+<span id="L34"><a href="#L34">   34</a>     other_edges: Vec&lt;WithReason&lt;BorrowPcgEdge&lt;&#x27;tcx&gt;&gt;&gt;,</span>
+<span id="L35"><a href="#L35">   35</a> }</span>
+<span id="L36"><a href="#L36">   36</a> </span>
+<span id="L37"><a href="#L37">   37</a> #[allow(clippy::large_enum_variant)]</span>
+<span id="L38"><a href="#L38">   38</a> enum RemovalAction&lt;&#x27;tcx&gt; {</span>
+<span id="L39"><a href="#L39">   39</a>     RemoveDerefEdgesTo(</span>
+<span id="L40"><a href="#L40">   40</a>         MaybeLabelledPlace&lt;&#x27;tcx&gt;,</span>
+<span id="L41"><a href="#L41">   41</a>         HashSet&lt;Conditioned&lt;DerefEdge&lt;&#x27;tcx&gt;&gt;&gt;,</span>
+<span id="L42"><a href="#L42">   42</a>         Reason,</span>
+<span id="L43"><a href="#L43">   43</a>     ),</span>
+<span id="L44"><a href="#L44">   44</a>     RemoveOtherEdge(BorrowPcgEdge&lt;&#x27;tcx&gt;, Reason),</span>
+<span id="L45"><a href="#L45">   45</a> }</span>
+<span id="L46"><a href="#L46">   46</a> </span>
+<span id="L47"><a href="#L47">   47</a> impl&lt;&#x27;tcx&gt; EdgesToRemove&lt;&#x27;tcx&gt; {</span>
+<span id="L48"><a href="#L48">   48</a>     fn new() -&gt; Self {</span>
+<span id="L49"><a href="#L49">   49</a>         Self {</span>
+<span id="L50"><a href="#L50">   50</a>             deref_edges: HashMap::default(),</span>
+<span id="L51"><a href="#L51">   51</a>             other_edges: Vec::new(),</span>
+<span id="L52"><a href="#L52">   52</a>         }</span>
+<span id="L53"><a href="#L53">   53</a>     }</span>
+<span id="L54"><a href="#L54">   54</a> </span>
+<span id="L55"><a href="#L55">   55</a>     fn push(&amp;mut self, edge: &amp;BorrowPcgEdge&lt;&#x27;tcx&gt;, reason: Reason) {</span>
+<span id="L56"><a href="#L56">   56</a>         match edge.kind() {</span>
+<span id="L57"><a href="#L57">   57</a>             BorrowPcgEdgeKind::Deref(deref) =&gt; {</span>
+<span id="L58"><a href="#L58">   58</a>                 if let Some(deref_edges) = self.deref_edges.get_mut(&amp;deref.deref_place) {</span>
+<span id="L59"><a href="#L59">   59</a>                     deref_edges</span>
+<span id="L60"><a href="#L60">   60</a>                         .value</span>
+<span id="L61"><a href="#L61">   61</a>                         .insert(Conditioned::new(*deref, edge.conditions().clone()));</span>
+<span id="L62"><a href="#L62">   62</a>                 } else {</span>
+<span id="L63"><a href="#L63">   63</a>                     self.deref_edges.insert(</span>
+<span id="L64"><a href="#L64">   64</a>                         deref.deref_place,</span>
+<span id="L65"><a href="#L65">   65</a>                         WithReason {</span>
+<span id="L66"><a href="#L66">   66</a>                             value: vec![Conditioned::new(*deref, edge.conditions().clone())]</span>
+<span id="L67"><a href="#L67">   67</a>                                 .into_iter()</span>
+<span id="L68"><a href="#L68">   68</a>                                 .collect(),</span>
+<span id="L69"><a href="#L69">   69</a>                             reason,</span>
+<span id="L70"><a href="#L70">   70</a>                         },</span>
+<span id="L71"><a href="#L71">   71</a>                     );</span>
+<span id="L72"><a href="#L72">   72</a>                 }</span>
+<span id="L73"><a href="#L73">   73</a>             }</span>
+<span id="L74"><a href="#L74">   74</a>             _ =&gt; self.other_edges.push(WithReason {</span>
+<span id="L75"><a href="#L75">   75</a>                 value: edge.clone(),</span>
+<span id="L76"><a href="#L76">   76</a>                 reason,</span>
+<span id="L77"><a href="#L77">   77</a>             }),</span>
+<span id="L78"><a href="#L78">   78</a>         }</span>
+<span id="L79"><a href="#L79">   79</a>     }</span>
+<span id="L80"><a href="#L80">   80</a> </span>
+<span id="L81"><a href="#L81">   81</a>     fn is_empty(&amp;self) -&gt; bool {</span>
+<span id="L82"><a href="#L82">   82</a>         self.deref_edges.is_empty() &amp;&amp; self.other_edges.is_empty()</span>
+<span id="L83"><a href="#L83">   83</a>     }</span>
+<span id="L84"><a href="#L84">   84</a> </span>
+<span id="L85"><a href="#L85">   85</a>     fn removal_actions(self) -&gt; Vec&lt;RemovalAction&lt;&#x27;tcx&gt;&gt; {</span>
+<span id="L86"><a href="#L86">   86</a>         let mut actions = Vec::new();</span>
+<span id="L87"><a href="#L87">   87</a>         for (place, deref_edges) in self.deref_edges {</span>
+<span id="L88"><a href="#L88">   88</a>             actions.push(RemovalAction::RemoveDerefEdgesTo(</span>
+<span id="L89"><a href="#L89">   89</a>                 place,</span>
+<span id="L90"><a href="#L90">   90</a>                 deref_edges.value,</span>
+<span id="L91"><a href="#L91">   91</a>                 deref_edges.reason,</span>
+<span id="L92"><a href="#L92">   92</a>             ));</span>
+<span id="L93"><a href="#L93">   93</a>         }</span>
+<span id="L94"><a href="#L94">   94</a>         for edge in self.other_edges {</span>
+<span id="L95"><a href="#L95">   95</a>             actions.push(RemovalAction::RemoveOtherEdge(edge.value, edge.reason));</span>
+<span id="L96"><a href="#L96">   96</a>         }</span>
+<span id="L97"><a href="#L97">   97</a>         actions</span>
+<span id="L98"><a href="#L98">   98</a>     }</span>
+<span id="L99"><a href="#L99">   99</a> }</span>
+<span id="L100"><a href="#L100">  100</a> </span>
+<span id="L101"><a href="#L101">  101</a> impl&lt;&#x27;pcg, &#x27;a: &#x27;pcg, &#x27;tcx: &#x27;a, Ctxt: DataflowCtxt&lt;&#x27;a, &#x27;tcx&gt; + DebugCtxt&gt;</span>
+<span id="L102"><a href="#L102">  102</a>     PlaceObtainer&lt;&#x27;pcg, &#x27;a, &#x27;tcx, Ctxt&gt;</span>
+<span id="L103"><a href="#L103">  103</a> {</span>
+<span id="L104"><a href="#L104">  104</a>     /// Removes leaves that are old or dead (based on the borrow checker). This</span>
+<span id="L105"><a href="#L105">  105</a>     /// function should called prior to evaluating the effect of the statement</span>
+<span id="L106"><a href="#L106">  106</a>     /// at `location`.</span>
+<span id="L107"><a href="#L107">  107</a>     ///</span>
+<span id="L108"><a href="#L108">  108</a>     /// Note that the liveness calculation is performed based on what happened</span>
+<span id="L109"><a href="#L109">  109</a>     /// at the end of the *previous* statement.</span>
+<span id="L110"><a href="#L110">  110</a>     ///</span>
+<span id="L111"><a href="#L111">  111</a>     /// For example when evaluating:</span>
+<span id="L112"><a href="#L112">  112</a>     /// ```text</span>
+<span id="L113"><a href="#L113">  113</a>     /// bb0[1]: let x = &amp;mut y;</span>
+<span id="L114"><a href="#L114">  114</a>     /// bb0[2]: *x = 2;</span>
+<span id="L115"><a href="#L115">  115</a>     /// bb0[3]: ... // x is dead</span>
+<span id="L116"><a href="#L116">  116</a>     /// ```</span>
+<span id="L117"><a href="#L117">  117</a>     /// we do not remove the `*x -&gt; y` edge until `bb0[3]`.</span>
+<span id="L118"><a href="#L118">  118</a>     /// This ensures that the edge appears in the graph at the end of `bb0[2]`</span>
+<span id="L119"><a href="#L119">  119</a>     /// (rather than never at all).</span>
+<span id="L120"><a href="#L120">  120</a>     ///</span>
+<span id="L121"><a href="#L121">  121</a>     /// Additional caveat: we do not remove dead places that are function</span>
+<span id="L122"><a href="#L122">  122</a>     /// arguments. At least for now this interferes with the implementation in</span>
+<span id="L123"><a href="#L123">  123</a>     /// the Prusti purified encoding for accessing the final value of a</span>
+<span id="L124"><a href="#L124">  124</a>     /// reference-typed function argument in its postcondition.</span>
+<span id="L125"><a href="#L125">  125</a>     pub(crate) fn pack_old_and_dead_borrow_leaves(</span>
+<span id="L126"><a href="#L126">  126</a>         &amp;mut self,</span>
+<span id="L127"><a href="#L127">  127</a>         for_place: Option&lt;Place&lt;&#x27;tcx&gt;&gt;,</span>
+<span id="L128"><a href="#L128">  128</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L129"><a href="#L129">  129</a>         let debug_iteration_limit = 10000;</span>
+<span id="L130"><a href="#L130">  130</a>         let mut iteration = 0;</span>
+<span id="L131"><a href="#L131">  131</a>         let ctxt = self.ctxt;</span>
+<span id="L132"><a href="#L132">  132</a>         let block = self.location().block;</span>
+<span id="L133"><a href="#L133">  133</a>         self.restore_capability_to_leaf_places(</span>
+<span id="L134"><a href="#L134">  134</a>             for_place,</span>
+<span id="L135"><a href="#L135">  135</a>             |place| !ctxt.body_analysis().is_read_only_in_loop(block, place),</span>
+<span id="L136"><a href="#L136">  136</a>             ctxt,</span>
+<span id="L137"><a href="#L137">  137</a>         )?;</span>
+<span id="L138"><a href="#L138">  138</a>         let mut removed_edges = Vec::new();</span>
+<span id="L139"><a href="#L139">  139</a>         loop {</span>
+<span id="L140"><a href="#L140">  140</a>             iteration += 1;</span>
+<span id="L141"><a href="#L141">  141</a>             let edges_to_remove = self.identify_leaf_edges_to_remove(for_place);</span>
+<span id="L142"><a href="#L142">  142</a>             if edges_to_remove.is_empty() {</span>
+<span id="L143"><a href="#L143">  143</a>                 break self.finish_weakening_places_with_dead_lifetime_projections(&amp;removed_edges);</span>
+<span id="L144"><a href="#L144">  144</a>             }</span>
+<span id="L145"><a href="#L145">  145</a>             for action in edges_to_remove.removal_actions() {</span>
+<span id="L146"><a href="#L146">  146</a>                 match action {</span>
+<span id="L147"><a href="#L147">  147</a>                     RemovalAction::RemoveDerefEdgesTo(place, edges, reason) =&gt; {</span>
+<span id="L148"><a href="#L148">  148</a>                         self.remove_deref_edges_to(place, edges, &amp;reason)?;</span>
+<span id="L149"><a href="#L149">  149</a>                     }</span>
+<span id="L150"><a href="#L150">  150</a>                     RemovalAction::RemoveOtherEdge(borrow_pcg_edge, reason) =&gt; {</span>
+<span id="L151"><a href="#L151">  151</a>                         self.remove_edge_and_perform_associated_state_updates(</span>
+<span id="L152"><a href="#L152">  152</a>                             &amp;borrow_pcg_edge,</span>
+<span id="L153"><a href="#L153">  153</a>                             &amp;reason,</span>
+<span id="L154"><a href="#L154">  154</a>                         )?;</span>
+<span id="L155"><a href="#L155">  155</a>                         removed_edges.push(borrow_pcg_edge);</span>
+<span id="L156"><a href="#L156">  156</a>                     }</span>
+<span id="L157"><a href="#L157">  157</a>                 }</span>
+<span id="L158"><a href="#L158">  158</a>             }</span>
+<span id="L159"><a href="#L159">  159</a>             if iteration % 10 == 0 {</span>
+<span id="L160"><a href="#L160">  160</a>                 tracing::debug!(</span>
+<span id="L161"><a href="#L161">  161</a>                     &quot;Packing old and dead borrow leaves: iteration {}&quot;,</span>
+<span id="L162"><a href="#L162">  162</a>                     iteration</span>
+<span id="L163"><a href="#L163">  163</a>                 );</span>
+<span id="L164"><a href="#L164">  164</a>             }</span>
+<span id="L165"><a href="#L165">  165</a>             assert!(</span>
+<span id="L166"><a href="#L166">  166</a>                 iteration &lt;= debug_iteration_limit,</span>
+<span id="L167"><a href="#L167">  167</a>                 &quot;Packing old and dead borrow leaves took more than {debug_iteration_limit} iterations&quot;</span>
+<span id="L168"><a href="#L168">  168</a>             );</span>
+<span id="L169"><a href="#L169">  169</a>         }</span>
+<span id="L170"><a href="#L170">  170</a>     }</span>
+<span id="L171"><a href="#L171">  171</a> </span>
+<span id="L172"><a href="#L172">  172</a>     /// Cuts the delegations that keep a loan of `place` alive.</span>
+<span id="L173"><a href="#L173">  173</a>     ///</span>
+<span id="L174"><a href="#L174">  174</a>     /// A delegation stays alive for as long as its raw pointer is used, which</span>
+<span id="L175"><a href="#L175">  175</a>     /// also keeps alive the borrows leading to it. The borrow checker doesn&#x27;t</span>
+<span id="L176"><a href="#L176">  176</a>     /// see this: for `let r = &amp;mut x; let p = r as *mut i32; x = 1; *p = 2;` it</span>
+<span id="L177"><a href="#L177">  177</a>     /// accepts the access to `x`, since `r` is dead. Such an access invalidates</span>
+<span id="L178"><a href="#L178">  178</a>     /// the raw pointers derived from the loan, so the delegations are removed</span>
+<span id="L179"><a href="#L179">  179</a>     /// and the raw pointers lose their capability. A delegation of `place`</span>
+<span id="L180"><a href="#L180">  180</a>     /// itself is unaffected, since `place` is not lent out to the raw pointer.</span>
+<span id="L181"><a href="#L181">  181</a>     pub(crate) fn cut_delegations_through_loans_of(</span>
+<span id="L182"><a href="#L182">  182</a>         &amp;mut self,</span>
+<span id="L183"><a href="#L183">  183</a>         place: Place&lt;&#x27;tcx&gt;,</span>
+<span id="L184"><a href="#L184">  184</a>         obtain_cap: CapabilityKind,</span>
+<span id="L185"><a href="#L185">  185</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L186"><a href="#L186">  186</a>         let has_capability = match self.pcg.capability_of(place, self.ctxt) {</span>
+<span id="L187"><a href="#L187">  187</a>             None =&gt; false,</span>
+<span id="L188"><a href="#L188">  188</a>             Some(CapabilityKind::Read) =&gt; obtain_cap.is_read(),</span>
+<span id="L189"><a href="#L189">  189</a>             Some(_) =&gt; true,</span>
+<span id="L190"><a href="#L190">  190</a>         };</span>
+<span id="L191"><a href="#L191">  191</a>         if has_capability {</span>
+<span id="L192"><a href="#L192">  192</a>             return Ok(());</span>
+<span id="L193"><a href="#L193">  193</a>         }</span>
+<span id="L194"><a href="#L194">  194</a>         let delegations = self.delegations_through_loans_of(place);</span>
+<span id="L195"><a href="#L195">  195</a>         if delegations.is_empty() {</span>
+<span id="L196"><a href="#L196">  196</a>             return Ok(());</span>
+<span id="L197"><a href="#L197">  197</a>         }</span>
+<span id="L198"><a href="#L198">  198</a>         let context = format!(</span>
+<span id="L199"><a href="#L199">  199</a>             &quot;Delegation is cut because access to {} is needed&quot;,</span>
+<span id="L200"><a href="#L200">  200</a>             place.display_string(self.ctxt)</span>
+<span id="L201"><a href="#L201">  201</a>         );</span>
+<span id="L202"><a href="#L202">  202</a>         for edge in delegations {</span>
+<span id="L203"><a href="#L203">  203</a>             let BorrowPcgEdgeKind::Delegation(delegation) = edge.kind() else {</span>
+<span id="L204"><a href="#L204">  204</a>                 unreachable!()</span>
+<span id="L205"><a href="#L205">  205</a>             };</span>
+<span id="L206"><a href="#L206">  206</a>             let rawptr = delegation</span>
+<span id="L207"><a href="#L207">  207</a>                 .rawptr_place</span>
+<span id="L208"><a href="#L208">  208</a>                 .as_current_place()</span>
+<span id="L209"><a href="#L209">  209</a>                 .and_then(Place::parent_place);</span>
+<span id="L210"><a href="#L210">  210</a>             self.record_and_apply_action(</span>
+<span id="L211"><a href="#L211">  211</a>                 BorrowPcgAction::remove_edge(edge.clone(), context.clone()).into(),</span>
+<span id="L212"><a href="#L212">  212</a>             )?;</span>
+<span id="L213"><a href="#L213">  213</a>             if let Some(rawptr) = rawptr</span>
+<span id="L214"><a href="#L214">  214</a>                 &amp;&amp; self.pcg.capability_of(rawptr, self.ctxt) == Some(CapabilityKind::Exclusive)</span>
+<span id="L215"><a href="#L215">  215</a>             {</span>
+<span id="L216"><a href="#L216">  216</a>                 self.record_and_apply_action(</span>
+<span id="L217"><a href="#L217">  217</a>                     BorrowPcgAction::weaken(</span>
+<span id="L218"><a href="#L218">  218</a>                         rawptr,</span>
+<span id="L219"><a href="#L219">  219</a>                         CapabilityKind::Exclusive,</span>
+<span id="L220"><a href="#L220">  220</a>                         Some(CapabilityKind::Write),</span>
+<span id="L221"><a href="#L221">  221</a>                         context.clone(),</span>
+<span id="L222"><a href="#L222">  222</a>                     )</span>
+<span id="L223"><a href="#L223">  223</a>                     .into(),</span>
+<span id="L224"><a href="#L224">  224</a>                 )?;</span>
+<span id="L225"><a href="#L225">  225</a>             }</span>
+<span id="L226"><a href="#L226">  226</a>         }</span>
+<span id="L227"><a href="#L227">  227</a>         self.pack_old_and_dead_borrow_leaves(None)</span>
+<span id="L228"><a href="#L228">  228</a>     }</span>
+<span id="L229"><a href="#L229">  229</a> </span>
+<span id="L230"><a href="#L230">  230</a>     /// The delegation edges that (transitively) block a loan of `place`, or of</span>
+<span id="L231"><a href="#L231">  231</a>     /// a place overlapping with it.</span>
+<span id="L232"><a href="#L232">  232</a>     fn delegations_through_loans_of(&amp;self, place: Place&lt;&#x27;tcx&gt;) -&gt; Vec&lt;BorrowPcgEdge&lt;&#x27;tcx&gt;&gt; {</span>
+<span id="L233"><a href="#L233">  233</a>         let ctxt = self.ctxt.bc_ctxt();</span>
+<span id="L234"><a href="#L234">  234</a>         let graph = self.pcg.borrows_graph();</span>
+<span id="L235"><a href="#L235">  235</a>         let mut worklist = graph</span>
+<span id="L236"><a href="#L236">  236</a>             .edges()</span>
+<span id="L237"><a href="#L237">  237</a>             .filter(|edge| {</span>
+<span id="L238"><a href="#L238">  238</a>                 let BorrowPcgEdgeKind::Borrow(borrow) = edge.kind else {</span>
+<span id="L239"><a href="#L239">  239</a>                     return false;</span>
+<span id="L240"><a href="#L240">  240</a>                 };</span>
+<span id="L241"><a href="#L241">  241</a>                 borrow</span>
+<span id="L242"><a href="#L242">  242</a>                     .blocked_place</span>
+<span id="L243"><a href="#L243">  243</a>                     .as_current_place()</span>
+<span id="L244"><a href="#L244">  244</a>                     .is_some_and(|blocked| {</span>
+<span id="L245"><a href="#L245">  245</a>                         blocked.is_prefix_of(place) || place.is_prefix_of(blocked)</span>
+<span id="L246"><a href="#L246">  246</a>                     })</span>
+<span id="L247"><a href="#L247">  247</a>             })</span>
+<span id="L248"><a href="#L248">  248</a>             .map(BorrowPcgEdgeLike::to_owned_edge)</span>
+<span id="L249"><a href="#L249">  249</a>             .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L250"><a href="#L250">  250</a>         let mut seen = HashSet::default();</span>
+<span id="L251"><a href="#L251">  251</a>         let mut delegations = Vec::new();</span>
+<span id="L252"><a href="#L252">  252</a>         while let Some(edge) = worklist.pop() {</span>
+<span id="L253"><a href="#L253">  253</a>             if !seen.insert(edge.clone()) {</span>
+<span id="L254"><a href="#L254">  254</a>                 continue;</span>
+<span id="L255"><a href="#L255">  255</a>             }</span>
+<span id="L256"><a href="#L256">  256</a>             if matches!(edge.kind(), BorrowPcgEdgeKind::Delegation(_)) {</span>
+<span id="L257"><a href="#L257">  257</a>                 delegations.push(edge);</span>
+<span id="L258"><a href="#L258">  258</a>                 continue;</span>
+<span id="L259"><a href="#L259">  259</a>             }</span>
+<span id="L260"><a href="#L260">  260</a>             for node in edge.blocked_by_nodes(ctxt) {</span>
+<span id="L261"><a href="#L261">  261</a>                 worklist.extend(</span>
+<span id="L262"><a href="#L262">  262</a>                     graph</span>
+<span id="L263"><a href="#L263">  263</a>                         .edges_blocking(node.into(), ctxt)</span>
+<span id="L264"><a href="#L264">  264</a>                         .map(BorrowPcgEdgeLike::to_owned_edge),</span>
+<span id="L265"><a href="#L265">  265</a>                 );</span>
+<span id="L266"><a href="#L266">  266</a>             }</span>
+<span id="L267"><a href="#L267">  267</a>         }</span>
+<span id="L268"><a href="#L268">  268</a>         delegations</span>
+<span id="L269"><a href="#L269">  269</a>     }</span>
+<span id="L270"><a href="#L270">  270</a> </span>
+<span id="L271"><a href="#L271">  271</a>     /// Packs the expansions at or below `place` that can be packed without</span>
+<span id="L272"><a href="#L272">  272</a>     /// losing information.</span>
+<span id="L273"><a href="#L273">  273</a>     ///</span>
+<span id="L274"><a href="#L274">  274</a>     /// Under [`PackStrategy::Lazy`] this is the only point at which such</span>
+<span id="L275"><a href="#L275">  275</a>     /// expansions are packed: `place` is about to be required at a capability</span>
+<span id="L276"><a href="#L276">  276</a>     /// it cannot hold while it is expanded.</span>
+<span id="L277"><a href="#L277">  277</a>     pub(crate) fn pack_expansions_for_obtain_of(</span>
+<span id="L278"><a href="#L278">  278</a>         &amp;mut self,</span>
+<span id="L279"><a href="#L279">  279</a>         place: Place&lt;&#x27;tcx&gt;,</span>
+<span id="L280"><a href="#L280">  280</a>     ) -&gt; Result&lt;(), PcgError&gt; {</span>
+<span id="L281"><a href="#L281">  281</a>         loop {</span>
+<span id="L282"><a href="#L282">  282</a>             let to_pack = self.packable_expansions_at_or_below(place);</span>
+<span id="L283"><a href="#L283">  283</a>             if to_pack.is_empty() {</span>
+<span id="L284"><a href="#L284">  284</a>                 return Ok(());</span>
+<span id="L285"><a href="#L285">  285</a>             }</span>
+<span id="L286"><a href="#L286">  286</a>             for edge in to_pack {</span>
+<span id="L287"><a href="#L287">  287</a>                 self.remove_edge_and_perform_associated_state_updates(</span>
+<span id="L288"><a href="#L288">  288</a>                     &amp;edge,</span>
+<span id="L289"><a href="#L289">  289</a>                     &amp;format!(</span>
+<span id="L290"><a href="#L290">  290</a>                         &quot;Pack expansions to obtain {}&quot;,</span>
+<span id="L291"><a href="#L291">  291</a>                         place.display_string(self.ctxt)</span>
+<span id="L292"><a href="#L292">  292</a>                     ),</span>
+<span id="L293"><a href="#L293">  293</a>                 )?;</span>
+<span id="L294"><a href="#L294">  294</a>             }</span>
+<span id="L295"><a href="#L295">  295</a>         }</span>
+<span id="L296"><a href="#L296">  296</a>     }</span>
+<span id="L297"><a href="#L297">  297</a> </span>
+<span id="L298"><a href="#L298">  298</a>     fn packable_expansions_at_or_below(&amp;self, place: Place&lt;&#x27;tcx&gt;) -&gt; Vec&lt;BorrowPcgEdge&lt;&#x27;tcx&gt;&gt; {</span>
+<span id="L299"><a href="#L299">  299</a>         let fg = self.pcg.borrow.graph.frozen_graph();</span>
+<span id="L300"><a href="#L300">  300</a>         fg.leaf_edges(self.ctxt)</span>
+<span id="L301"><a href="#L301">  301</a>             .into_iter()</span>
+<span id="L302"><a href="#L302">  302</a>             .map(BorrowPcgEdgeLike::to_owned_edge)</span>
+<span id="L303"><a href="#L303">  303</a>             .filter(|edge| {</span>
+<span id="L304"><a href="#L304">  304</a>                 let BorrowPcgEdgeKind::BorrowPcgExpansion(expansion) = edge.kind() else {</span>
+<span id="L305"><a href="#L305">  305</a>                     return false;</span>
+<span id="L306"><a href="#L306">  306</a>                 };</span>
+<span id="L307"><a href="#L307">  307</a>                 expansion</span>
+<span id="L308"><a href="#L308">  308</a>                     .base()</span>
+<span id="L309"><a href="#L309">  309</a>                     .as_current_place()</span>
+<span id="L310"><a href="#L310">  310</a>                     .is_some_and(|base| place.is_prefix_of(base))</span>
+<span id="L311"><a href="#L311">  311</a>                     &amp;&amp; expansion.is_packable(self.pcg.place_capabilities, self.ctxt)</span>
+<span id="L312"><a href="#L312">  312</a>             })</span>
+<span id="L313"><a href="#L313">  313</a>             .collect()</span>
+<span id="L314"><a href="#L314">  314</a>     }</span>
+<span id="L315"><a href="#L315">  315</a> </span>
+<span id="L316"><a href="#L316">  316</a>     /// Identifies the set of edges that should be removed from the graph</span>
+<span id="L317"><a href="#L317">  317</a>     ///</span>
+<span id="L318"><a href="#L318">  318</a>     /// If `ancestor_place` is defined, we only consider a subset of the edges.</span>
+<span id="L319"><a href="#L319">  319</a>     ///</span>
+<span id="L320"><a href="#L320">  320</a>     /// The subset of edges is defined as follows:</span>
+<span id="L321"><a href="#L321">  321</a>     ///</span>
+<span id="L322"><a href="#L322">  322</a>     /// A node *can be killed* if it has a related current place that is a</span>
+<span id="L323"><a href="#L323">  323</a>     /// postfix of `ancestor_place`.</span>
+<span id="L324"><a href="#L324">  324</a>     ///</span>
+<span id="L325"><a href="#L325">  325</a>     /// Then we consider edges where either:</span>
+<span id="L326"><a href="#L326">  326</a>     ///</span>
+<span id="L327"><a href="#L327">  327</a>     /// 1. The edge is an expansion edge, and the base can be killed, or</span>
+<span id="L328"><a href="#L328">  328</a>     /// 2. The edge is some other kind of edge, and all of the blocking nodes can be killed</span>
+<span id="L329"><a href="#L329">  329</a>     fn identify_leaf_edges_to_remove&lt;&#x27;slf&gt;(</span>
+<span id="L330"><a href="#L330">  330</a>         &amp;&#x27;slf self,</span>
+<span id="L331"><a href="#L331">  331</a>         ancestor_place: Option&lt;Place&lt;&#x27;tcx&gt;&gt;,</span>
+<span id="L332"><a href="#L332">  332</a>     ) -&gt; EdgesToRemove&lt;&#x27;tcx&gt; {</span>
+<span id="L333"><a href="#L333">  333</a>         enum ShouldKillNode {</span>
+<span id="L334"><a href="#L334">  334</a>             Yes { reason: Cow&lt;&#x27;static, str&gt; },</span>
+<span id="L335"><a href="#L335">  335</a>             No,</span>
+<span id="L336"><a href="#L336">  336</a>         }</span>
+<span id="L337"><a href="#L337">  337</a> </span>
+<span id="L338"><a href="#L338">  338</a>         let ctxt = self.ctxt;</span>
+<span id="L339"><a href="#L339">  339</a>         let location = self.location();</span>
+<span id="L340"><a href="#L340">  340</a> </span>
+<span id="L341"><a href="#L341">  341</a>         let ancestor_predicate_allows_killing = |p: LocalNode&lt;&#x27;tcx&gt;| {</span>
+<span id="L342"><a href="#L342">  342</a>             let place = match p {</span>
+<span id="L343"><a href="#L343">  343</a>                 PcgNode::Place(p) =&gt; p,</span>
+<span id="L344"><a href="#L344">  344</a>                 PcgNode::LifetimeProjection(rp) =&gt; rp.base(),</span>
+<span id="L345"><a href="#L345">  345</a>             };</span>
+<span id="L346"><a href="#L346">  346</a>             if let Some(ancestor_place) = ancestor_place</span>
+<span id="L347"><a href="#L347">  347</a>                 &amp;&amp; (!place.is_current() || !ancestor_place.place().is_prefix_of(place.place()))</span>
+<span id="L348"><a href="#L348">  348</a>             {</span>
+<span id="L349"><a href="#L349">  349</a>                 return false;</span>
+<span id="L350"><a href="#L350">  350</a>             }</span>
+<span id="L351"><a href="#L351">  351</a>             true</span>
+<span id="L352"><a href="#L352">  352</a>         };</span>
+<span id="L353"><a href="#L353">  353</a> </span>
+<span id="L354"><a href="#L354">  354</a>         let should_kill_node = |p: LocalNode&lt;&#x27;tcx&gt;, fg: &amp;FrozenGraphRef&lt;&#x27;slf, &#x27;tcx&gt;| {</span>
+<span id="L355"><a href="#L355">  355</a>             let place = match p {</span>
+<span id="L356"><a href="#L356">  356</a>                 PcgNode::Place(p) =&gt; p,</span>
+<span id="L357"><a href="#L357">  357</a>                 PcgNode::LifetimeProjection(rp) =&gt; rp.base(),</span>
+<span id="L358"><a href="#L358">  358</a>             };</span>
+<span id="L359"><a href="#L359">  359</a>             if !ancestor_predicate_allows_killing(p) {</span>
+<span id="L360"><a href="#L360">  360</a>                 return ShouldKillNode::No;</span>
+<span id="L361"><a href="#L361">  361</a>             }</span>
+<span id="L362"><a href="#L362">  362</a> </span>
+<span id="L363"><a href="#L363">  363</a>             let has_live_rawptr_delegation = |node: PcgNode&lt;&#x27;tcx&gt;| {</span>
+<span id="L364"><a href="#L364">  364</a>                 self.pcg</span>
+<span id="L365"><a href="#L365">  365</a>                     .borrows_graph()</span>
+<span id="L366"><a href="#L366">  366</a>                     .edges_blocking(node, ctxt)</span>
+<span id="L367"><a href="#L367">  367</a>                     .into_iter()</span>
+<span id="L368"><a href="#L368">  368</a>                     .any(|e| {</span>
+<span id="L369"><a href="#L369">  369</a>                         matches!(</span>
+<span id="L370"><a href="#L370">  370</a>                             e.kind,</span>
+<span id="L371"><a href="#L371">  371</a>                             BorrowPcgEdgeKind::Delegation(delegation)</span>
+<span id="L372"><a href="#L372">  372</a>                                 if !ctxt.bc().is_dead(</span>
+<span id="L373"><a href="#L373">  373</a>                                     delegation.rawptr_place.place().into(),</span>
+<span id="L374"><a href="#L374">  374</a>                                     location,</span>
+<span id="L375"><a href="#L375">  375</a>                                 )</span>
+<span id="L376"><a href="#L376">  376</a>                         )</span>
+<span id="L377"><a href="#L377">  377</a>                     })</span>
+<span id="L378"><a href="#L378">  378</a>             };</span>
+<span id="L379"><a href="#L379">  379</a>             if has_live_rawptr_delegation(PcgNode::from(p))</span>
+<span id="L380"><a href="#L380">  380</a>                 || (matches!(p, PcgNode::LifetimeProjection(_))</span>
+<span id="L381"><a href="#L381">  381</a>                     &amp;&amp; has_live_rawptr_delegation(PcgNode::from(place)))</span>
+<span id="L382"><a href="#L382">  382</a>             {</span>
+<span id="L383"><a href="#L383">  383</a>                 return ShouldKillNode::No;</span>
+<span id="L384"><a href="#L384">  384</a>             }</span>
+<span id="L385"><a href="#L385">  385</a> </span>
+<span id="L386"><a href="#L386">  386</a>             if place.is_old() {</span>
+<span id="L387"><a href="#L387">  387</a>                 return ShouldKillNode::Yes {</span>
+<span id="L388"><a href="#L388">  388</a>                     reason: &quot;Place is old&quot;.into(),</span>
+<span id="L389"><a href="#L389">  389</a>                 };</span>
+<span id="L390"><a href="#L390">  390</a>             }</span>
+<span id="L391"><a href="#L391">  391</a> </span>
+<span id="L392"><a href="#L392">  392</a>             if p.is_place()</span>
+<span id="L393"><a href="#L393">  393</a>                 &amp;&amp; !place.place().projection.is_empty()</span>
+<span id="L394"><a href="#L394">  394</a>                 &amp;&amp; !fg.has_edge_blocking(place.into(), ctxt)</span>
+<span id="L395"><a href="#L395">  395</a>                 &amp;&amp; !place.place().contains_unsafe_deref(ctxt)</span>
+<span id="L396"><a href="#L396">  396</a>             {</span>
+<span id="L397"><a href="#L397">  397</a>                 return ShouldKillNode::Yes {</span>
+<span id="L398"><a href="#L398">  398</a>                     reason:</span>
+<span id="L399"><a href="#L399">  399</a>                         &quot;Node is a place with a non-empty projection and is not blocked by an edge&quot;</span>
+<span id="L400"><a href="#L400">  400</a>                             .into(),</span>
+<span id="L401"><a href="#L401">  401</a>                 };</span>
+<span id="L402"><a href="#L402">  402</a>             }</span>
+<span id="L403"><a href="#L403">  403</a>             if ctxt.bc().is_dead(p.into(), location) {</span>
+<span id="L404"><a href="#L404">  404</a>                 return ShouldKillNode::Yes {</span>
+<span id="L405"><a href="#L405">  405</a>                     reason: &quot;Borrow-checker reports node as dead&quot;.into(),</span>
+<span id="L406"><a href="#L406">  406</a>                 };</span>
+<span id="L407"><a href="#L407">  407</a>             }</span>
+<span id="L408"><a href="#L408">  408</a> </span>
+<span id="L409"><a href="#L409">  409</a>             ShouldKillNode::No</span>
+<span id="L410"><a href="#L410">  410</a>         };</span>
+<span id="L411"><a href="#L411">  411</a> </span>
+<span id="L412"><a href="#L412">  412</a>         enum ShouldPackEdge {</span>
+<span id="L413"><a href="#L413">  413</a>             Yes { reason: Cow&lt;&#x27;static, str&gt; },</span>
+<span id="L414"><a href="#L414">  414</a>             No,</span>
+<span id="L415"><a href="#L415">  415</a>         }</span>
+<span id="L416"><a href="#L416">  416</a> </span>
+<span id="L417"><a href="#L417">  417</a>         let mut edges_to_remove = EdgesToRemove::new();</span>
+<span id="L418"><a href="#L418">  418</a>         let fg = self.pcg.borrow.graph.frozen_graph();</span>
+<span id="L419"><a href="#L419">  419</a>         let location = self.location();</span>
+<span id="L420"><a href="#L420">  420</a>         let should_pack_edge = |edge: &amp;BorrowPcgEdgeKind&lt;&#x27;tcx&gt;| {</span>
+<span id="L421"><a href="#L421">  421</a>             if let BorrowPcgEdgeKind::BorrowPcgExpansion(expansion) = edge {</span>
+<span id="L422"><a href="#L422">  422</a>                 if !ancestor_predicate_allows_killing(expansion.base()) {</span>
+<span id="L423"><a href="#L423">  423</a>                     return ShouldPackEdge::No;</span>
+<span id="L424"><a href="#L424">  424</a>                 }</span>
+<span id="L425"><a href="#L425">  425</a>                 if expansion.expansion().iter().all(|node| {</span>
+<span id="L426"><a href="#L426">  426</a>                     node.is_old() || self.ctxt.bc().is_dead(node.place().into(), location)</span>
+<span id="L427"><a href="#L427">  427</a>                 }) {</span>
+<span id="L428"><a href="#L428">  428</a>                     ShouldPackEdge::Yes {</span>
+<span id="L429"><a href="#L429">  429</a>                         reason: &quot;Expansion is old or dead&quot;.into(),</span>
+<span id="L430"><a href="#L430">  430</a>                     }</span>
+<span id="L431"><a href="#L431">  431</a>                 } else if self.ctxt.settings().pack_strategy == PackStrategy::Eager</span>
+<span id="L432"><a href="#L432">  432</a>                     &amp;&amp; expansion.is_packable(self.pcg.place_capabilities, self.ctxt)</span>
+<span id="L433"><a href="#L433">  433</a>                 {</span>
+<span id="L434"><a href="#L434">  434</a>                     ShouldPackEdge::Yes {</span>
+<span id="L435"><a href="#L435">  435</a>                         reason: format!(</span>
+<span id="L436"><a href="#L436">  436</a>                             &quot;Expansion {} is packable&quot;,</span>
+<span id="L437"><a href="#L437">  437</a>                             expansion.display_string(self.ctxt)</span>
+<span id="L438"><a href="#L438">  438</a>                         )</span>
+<span id="L439"><a href="#L439">  439</a>                         .into(),</span>
+<span id="L440"><a href="#L440">  440</a>                     }</span>
+<span id="L441"><a href="#L441">  441</a>                 } else {</span>
+<span id="L442"><a href="#L442">  442</a>                     ShouldPackEdge::No</span>
+<span id="L443"><a href="#L443">  443</a>                 }</span>
+<span id="L444"><a href="#L444">  444</a>             } else {</span>
+<span id="L445"><a href="#L445">  445</a>                 let mut why_killed_reasons = Vec::new();</span>
+<span id="L446"><a href="#L446">  446</a>                 for node in edge.blocked_by_nodes(self.ctxt) {</span>
+<span id="L447"><a href="#L447">  447</a>                     if let ShouldKillNode::Yes { reason } = should_kill_node(node, &amp;fg) {</span>
+<span id="L448"><a href="#L448">  448</a>                         why_killed_reasons.push(format!(</span>
+<span id="L449"><a href="#L449">  449</a>                             &quot;{}: {}&quot;,</span>
+<span id="L450"><a href="#L450">  450</a>                             node.display_string(self.ctxt),</span>
+<span id="L451"><a href="#L451">  451</a>                             reason</span>
+<span id="L452"><a href="#L452">  452</a>                         ));</span>
+<span id="L453"><a href="#L453">  453</a>                     } else {</span>
+<span id="L454"><a href="#L454">  454</a>                         tracing::debug!(</span>
+<span id="L455"><a href="#L455">  455</a>                             &quot;Node {} will not be killed&quot;,</span>
+<span id="L456"><a href="#L456">  456</a>                             node.display_string(self.ctxt)</span>
+<span id="L457"><a href="#L457">  457</a>                         );</span>
+<span id="L458"><a href="#L458">  458</a>                         return ShouldPackEdge::No;</span>
+<span id="L459"><a href="#L459">  459</a>                     }</span>
+<span id="L460"><a href="#L460">  460</a>                 }</span>
+<span id="L461"><a href="#L461">  461</a>                 ShouldPackEdge::Yes {</span>
+<span id="L462"><a href="#L462">  462</a>                     reason: format!(</span>
+<span id="L463"><a href="#L463">  463</a>                         &quot;Edge is blocked by nodes that should be killed: {}&quot;,</span>
+<span id="L464"><a href="#L464">  464</a>                         why_killed_reasons.join(&quot;, &quot;)</span>
+<span id="L465"><a href="#L465">  465</a>                     )</span>
+<span id="L466"><a href="#L466">  466</a>                     .into(),</span>
+<span id="L467"><a href="#L467">  467</a>                 }</span>
+<span id="L468"><a href="#L468">  468</a>             }</span>
+<span id="L469"><a href="#L469">  469</a>         };</span>
+<span id="L470"><a href="#L470">  470</a>         let leaf_edges = fg.leaf_edges(self.ctxt);</span>
+<span id="L471"><a href="#L471">  471</a>         for edge in leaf_edges.into_iter().map(BorrowPcgEdgeLike::to_owned_edge) {</span>
+<span id="L472"><a href="#L472">  472</a>             tracing::debug!(</span>
+<span id="L473"><a href="#L473">  473</a>                 &quot;Checking leaf edge: {}&quot;,</span>
+<span id="L474"><a href="#L474">  474</a>                 edge.value.display_string(self.ctxt)</span>
+<span id="L475"><a href="#L475">  475</a>             );</span>
+<span id="L476"><a href="#L476">  476</a>             if let BorrowPcgEdgeKind::Delegation(delegation) = edge.value {</span>
+<span id="L477"><a href="#L477">  477</a>                 if let ShouldKillNode::Yes { reason } =</span>
+<span id="L478"><a href="#L478">  478</a>                     should_kill_node(delegation.rawptr_place.into(), &amp;fg)</span>
+<span id="L479"><a href="#L479">  479</a>                 {</span>
+<span id="L480"><a href="#L480">  480</a>                     edges_to_remove.push(&amp;edge, reason);</span>
+<span id="L481"><a href="#L481">  481</a>                     let edges = self</span>
+<span id="L482"><a href="#L482">  482</a>                         .pcg</span>
+<span id="L483"><a href="#L483">  483</a>                         .borrows_graph()</span>
+<span id="L484"><a href="#L484">  484</a>                         .edges_blocking(delegation.rawptr_place.into(), self.ctxt.bc_ctxt());</span>
+<span id="L485"><a href="#L485">  485</a>                     for edge_to_remove in edges {</span>
+<span id="L486"><a href="#L486">  486</a>                         edges_to_remove.push(</span>
+<span id="L487"><a href="#L487">  487</a>                             &amp;edge_to_remove.to_owned_edge(),</span>
+<span id="L488"><a href="#L488">  488</a>                             &quot;Delegation edge is removed&quot;.into(),</span>
+<span id="L489"><a href="#L489">  489</a>                         );</span>
+<span id="L490"><a href="#L490">  490</a>                     }</span>
+<span id="L491"><a href="#L491">  491</a>                 }</span>
+<span id="L492"><a href="#L492">  492</a>             } else if let ShouldPackEdge::Yes { reason } = should_pack_edge(edge.kind()) {</span>
+<span id="L493"><a href="#L493">  493</a>                 edges_to_remove.push(&amp;edge, reason);</span>
+<span id="L494"><a href="#L494">  494</a>             }</span>
+<span id="L495"><a href="#L495">  495</a>         }</span>
+<span id="L496"><a href="#L496">  496</a>         edges_to_remove</span>
+<span id="L497"><a href="#L497">  497</a>     }</span>
+<span id="L498"><a href="#L498">  498</a> }</span>
+</pre>

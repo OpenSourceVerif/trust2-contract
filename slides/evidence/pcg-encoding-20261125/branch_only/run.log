@@ -1,0 +1,16 @@
+  __          __        __  ___             
+ |__)  _\/_  |__) |  | /__`  |   ____\/_  | 
+ |      /\   |  \ \__/ .__/  |       /\   | 
+
+Prusti version: 0.3.0, commit 45b27b461 2026-11-23 20:18:05 UTC, built on 2026-11-24 09:37:28 UTC
+warning: unused import: `prusti_contracts::*`
+ --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch_only/branch_only.rs:1:5
+  |
+1 | use prusti_contracts::*;
+  |     ^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+Verification of 1 items...
+warning: 1 warning emitted
+

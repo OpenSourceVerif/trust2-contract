@@ -1,0 +1,514 @@
+<!doctype html><meta charset="utf-8"><title>cast.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>cast.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use prusti_rustc_interface::{</span>
+<span id="L2"><a href="#L2">    2</a>     middle::{mir, ty},</span>
+<span id="L3"><a href="#L3">    3</a>     span::symbol,</span>
+<span id="L4"><a href="#L4">    4</a> };</span>
+<span id="L5"><a href="#L5">    5</a> use task_encoder::{EncodeFullError, EncodeFullResult, TaskEncoder, TaskEncoderDependencies};</span>
+<span id="L6"><a href="#L6">    6</a> use vir::{CastType, ConstData, FunctionIdn, MethodIdn};</span>
+<span id="L7"><a href="#L7">    7</a> </span>
+<span id="L8"><a href="#L8">    8</a> use crate::encoders::{</span>
+<span id="L9"><a href="#L9">    9</a>     TyUseImpureEnc,</span>
+<span id="L10"><a href="#L10">   10</a>     builtin::{MetadataCastEnc, ValueCastEnc},</span>
+<span id="L11"><a href="#L11">   11</a>     ty::{</span>
+<span id="L12"><a href="#L12">   12</a>         LazyRustTy, RustTy, RustTyDecomposition, RustTySpecial, TySpecifics,</span>
+<span id="L13"><a href="#L13">   13</a>         generics::{GParams, GenericParamsEnc},</span>
+<span id="L14"><a href="#L14">   14</a>         interpretation::{</span>
+<span id="L15"><a href="#L15">   15</a>             bitvec::BitVecSize,</span>
+<span id="L16"><a href="#L16">   16</a>             float_conv::{FloatBitVecConvEnc, float_pow2_bits},</span>
+<span id="L17"><a href="#L17">   17</a>         },</span>
+<span id="L18"><a href="#L18">   18</a>         use_pure::TyUsePureEnc,</span>
+<span id="L19"><a href="#L19">   19</a>     },</span>
+<span id="L20"><a href="#L20">   20</a> };</span>
+<span id="L21"><a href="#L21">   21</a> </span>
+<span id="L22"><a href="#L22">   22</a> /// Encodes the builtin MIR cast operations (e.g. `IntToInt`, `PointerCoercion`)</span>
+<span id="L23"><a href="#L23">   23</a> /// as Viper functions with the correct semantics. The unsizing coercions and the</span>
+<span id="L24"><a href="#L24">   24</a> /// casts between raw pointers are applied to generic refs (the inner type is a</span>
+<span id="L25"><a href="#L25">   25</a> /// parameter), so their meaning is given by axioms: the general ones of</span>
+<span id="L26"><a href="#L26">   26</a> /// `MetadataCastEnc` and, for unsizing, those for concrete types in</span>
+<span id="L27"><a href="#L27">   27</a> /// `MetadataCastAxiomEnc` (e.g. `&amp;[T; N] -&gt; &amp;[T]`).</span>
+<span id="L28"><a href="#L28">   28</a> /// Also returns a side-effecting `unsize`/`undo` method for coercing the inner</span>
+<span id="L29"><a href="#L29">   29</a> /// referent (i.e. an `p_Param` to `p_Param` with different type).</span>
+<span id="L30"><a href="#L30">   30</a> ///</span>
+<span id="L31"><a href="#L31">   31</a> /// Use `MirBuiltinUseCastEnc` to encode a cast in a specific context (with concrete</span>
+<span id="L32"><a href="#L32">   32</a> /// type arguments).</span>
+<span id="L33"><a href="#L33">   33</a> pub(super) struct MirBuiltinCastEnc;</span>
+<span id="L34"><a href="#L34">   34</a> </span>
+<span id="L35"><a href="#L35">   35</a> #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]</span>
+<span id="L36"><a href="#L36">   36</a> pub(super) struct MirBuiltinCastTask&lt;&#x27;vir&gt; {</span>
+<span id="L37"><a href="#L37">   37</a>     pub(super) result_ty: RustTy&lt;&#x27;vir&gt;,</span>
+<span id="L38"><a href="#L38">   38</a>     pub(super) kind: mir::CastKind,</span>
+<span id="L39"><a href="#L39">   39</a>     pub(super) operand_ty: RustTy&lt;&#x27;vir&gt;,</span>
+<span id="L40"><a href="#L40">   40</a> }</span>
+<span id="L41"><a href="#L41">   41</a> </span>
+<span id="L42"><a href="#L42">   42</a> /// The types a cast depends on beyond the operand and result types that key</span>
+<span id="L43"><a href="#L43">   43</a> /// its task. Its function and methods take them as type arguments,</span>
+<span id="L44"><a href="#L44">   44</a> /// which `MirBuiltinUseCastEnc` supplies at each use.</span>
+<span id="L45"><a href="#L45">   45</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L46"><a href="#L46">   46</a> pub(super) enum CastTyArgs {</span>
+<span id="L47"><a href="#L47">   47</a>     /// No type arguments: the cast depends only on the operand and result</span>
+<span id="L48"><a href="#L48">   48</a>     /// types (e.g. an integer cast).</span>
+<span id="L49"><a href="#L49">   49</a>     None,</span>
+<span id="L50"><a href="#L50">   50</a>     /// The operand&#x27;s and the result&#x27;s referent types `[U, V]`, which give the</span>
+<span id="L51"><a href="#L51">   51</a>     /// metadata after a pointer cast (via `metadata_cast`) and the value of an</span>
+<span id="L52"><a href="#L52">   52</a>     /// unsizing coercion (e.g. `&amp;[T; N] -&gt; &amp;[T]`).</span>
+<span id="L53"><a href="#L53">   53</a>     Referents,</span>
+<span id="L54"><a href="#L54">   54</a> }</span>
+<span id="L55"><a href="#L55">   55</a> </span>
+<span id="L56"><a href="#L56">   56</a> impl CastTyArgs {</span>
+<span id="L57"><a href="#L57">   57</a>     /// The type parameters that the cast&#x27;s function and methods declare.</span>
+<span id="L58"><a href="#L58">   58</a>     fn params&lt;&#x27;vir&gt;(self, vcx: &amp;&#x27;vir vir::VirCtxt&lt;&#x27;vir&gt;) -&gt; GParams&lt;&#x27;vir&gt; {</span>
+<span id="L59"><a href="#L59">   59</a>         match self {</span>
+<span id="L60"><a href="#L60">   60</a>             CastTyArgs::None =&gt; GParams::empty(),</span>
+<span id="L61"><a href="#L61">   61</a>             CastTyArgs::Referents =&gt; {</span>
+<span id="L62"><a href="#L62">   62</a>                 let param = |idx, name| {</span>
+<span id="L63"><a href="#L63">   63</a>                     ty::Ty::new_param(vcx.tcx(), idx, symbol::Symbol::intern(name)).into()</span>
+<span id="L64"><a href="#L64">   64</a>                 };</span>
+<span id="L65"><a href="#L65">   65</a>                 GParams::empty_env(vcx.tcx().mk_args(&amp;[param(0, &quot;U&quot;), param(1, &quot;V&quot;)]))</span>
+<span id="L66"><a href="#L66">   66</a>             }</span>
+<span id="L67"><a href="#L67">   67</a>         }</span>
+<span id="L68"><a href="#L68">   68</a>     }</span>
+<span id="L69"><a href="#L69">   69</a> }</span>
+<span id="L70"><a href="#L70">   70</a> </span>
+<span id="L71"><a href="#L71">   71</a> /// The result of encoding a builtin cast.</span>
+<span id="L72"><a href="#L72">   72</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L73"><a href="#L73">   73</a> pub(super) struct MirBuiltinCastOutput&lt;&#x27;vir&gt; {</span>
+<span id="L74"><a href="#L74">   74</a>     /// The function from the operand snapshot to the result snapshot.</span>
+<span id="L75"><a href="#L75">   75</a>     pub(super) cast: FunctionIdn&lt;&#x27;vir, (vir::CSnap, vir::ManyTyVal, vir::ManyCSnap), vir::CSnap&gt;,</span>
+<span id="L76"><a href="#L76">   76</a>     /// For a `&amp;mut` unsizing coercion, the side-effecting methods that</span>
+<span id="L77"><a href="#L77">   77</a>     /// transfer permission between the original and the coerced reference.</span>
+<span id="L78"><a href="#L78">   78</a>     pub(super) unsize: Option&lt;vir::MethodIdn&lt;&#x27;vir, (vir::CSnap, vir::ManyTyVal, vir::ManyCSnap)&gt;&gt;,</span>
+<span id="L79"><a href="#L79">   79</a>     pub(super) undo: Option&lt;vir::MethodIdn&lt;&#x27;vir, (vir::CSnap, vir::ManyTyVal, vir::ManyCSnap)&gt;&gt;,</span>
+<span id="L80"><a href="#L80">   80</a>     /// The type arguments that `cast`, `unsize` and `undo` take.</span>
+<span id="L81"><a href="#L81">   81</a>     pub(super) ty_args: CastTyArgs,</span>
+<span id="L82"><a href="#L82">   82</a> }</span>
+<span id="L83"><a href="#L83">   83</a> </span>
+<span id="L84"><a href="#L84">   84</a> /// The Viper definitions produced for a builtin cast: always the cast function,</span>
+<span id="L85"><a href="#L85">   85</a> /// plus the side-effecting `unsize`/`undo` methods for `&amp;mut` unsize coercions.</span>
+<span id="L86"><a href="#L86">   86</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L87"><a href="#L87">   87</a> pub(super) struct MirBuiltinCastLocal&lt;&#x27;vir&gt; {</span>
+<span id="L88"><a href="#L88">   88</a>     cast: vir::Function&lt;&#x27;vir&gt;,</span>
+<span id="L89"><a href="#L89">   89</a>     unsize: Option&lt;vir::Method&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L90"><a href="#L90">   90</a>     undo: Option&lt;vir::Method&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L91"><a href="#L91">   91</a>     /// Whether this encodes something the user writes rather than something</span>
+<span id="L92"><a href="#L92">   92</a>     /// rustc or the encoding adds, which the simplifier may fold away (see</span>
+<span id="L93"><a href="#L93">   93</a>     /// `add_user_adt`).</span>
+<span id="L94"><a href="#L94">   94</a>     user_level: bool,</span>
+<span id="L95"><a href="#L95">   95</a> }</span>
+<span id="L96"><a href="#L96">   96</a> </span>
+<span id="L97"><a href="#L97">   97</a> impl TaskEncoder for MirBuiltinCastEnc {</span>
+<span id="L98"><a href="#L98">   98</a>     task_encoder::encoder_cache!(MirBuiltinCastEnc);</span>
+<span id="L99"><a href="#L99">   99</a>     const ENCODER_NAME: &amp;&#x27;static str = &quot;MIR builtin cast encoder&quot;;</span>
+<span id="L100"><a href="#L100">  100</a> </span>
+<span id="L101"><a href="#L101">  101</a>     type TaskDescription&lt;&#x27;vir&gt; = MirBuiltinCastTask&lt;&#x27;vir&gt;;</span>
+<span id="L102"><a href="#L102">  102</a> </span>
+<span id="L103"><a href="#L103">  103</a>     type OutputFullDependency&lt;&#x27;vir&gt; = MirBuiltinCastOutput&lt;&#x27;vir&gt;;</span>
+<span id="L104"><a href="#L104">  104</a>     type OutputFullLocal&lt;&#x27;vir&gt; = MirBuiltinCastLocal&lt;&#x27;vir&gt;;</span>
+<span id="L105"><a href="#L105">  105</a> </span>
+<span id="L106"><a href="#L106">  106</a>     fn task_to_key&lt;&#x27;vir&gt;(task: &amp;Self::TaskDescription&lt;&#x27;vir&gt;) -&gt; Self::TaskKey&lt;&#x27;vir&gt; {</span>
+<span id="L107"><a href="#L107">  107</a>         *task</span>
+<span id="L108"><a href="#L108">  108</a>     }</span>
+<span id="L109"><a href="#L109">  109</a> </span>
+<span id="L110"><a href="#L110">  110</a>     fn do_encode_full&lt;&#x27;vir&gt;(</span>
+<span id="L111"><a href="#L111">  111</a>         task_key: &amp;Self::TaskKey&lt;&#x27;vir&gt;,</span>
+<span id="L112"><a href="#L112">  112</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, Self&gt;,</span>
+<span id="L113"><a href="#L113">  113</a>     ) -&gt; EncodeFullResult&lt;&#x27;vir, Self&gt; {</span>
+<span id="L114"><a href="#L114">  114</a>         deps.emit_output_ref(*task_key, ())?;</span>
+<span id="L115"><a href="#L115">  115</a>         let MirBuiltinCastTask {</span>
+<span id="L116"><a href="#L116">  116</a>             result_ty,</span>
+<span id="L117"><a href="#L117">  117</a>             kind,</span>
+<span id="L118"><a href="#L118">  118</a>             operand_ty,</span>
+<span id="L119"><a href="#L119">  119</a>         } = *task_key;</span>
+<span id="L120"><a href="#L120">  120</a>         let op_ty = RustTyDecomposition::identity(operand_ty);</span>
+<span id="L121"><a href="#L121">  121</a>         let op_ty = deps.require_dep::&lt;TyUsePureEnc&gt;(op_ty)?;</span>
+<span id="L122"><a href="#L122">  122</a>         let op_ty_snap = op_ty.snapshot.downcast_ty::&lt;vir::CSnap&gt;();</span>
+<span id="L123"><a href="#L123">  123</a>         let res_ty = RustTyDecomposition::identity(result_ty);</span>
+<span id="L124"><a href="#L124">  124</a>         let res_ty = deps.require_dep::&lt;TyUsePureEnc&gt;(res_ty)?;</span>
+<span id="L125"><a href="#L125">  125</a>         let res_ty_snap = res_ty.snapshot.downcast_ty::&lt;vir::CSnap&gt;();</span>
+<span id="L126"><a href="#L126">  126</a> </span>
+<span id="L127"><a href="#L127">  127</a>         let (name, ty_args, user_level) = match kind {</span>
+<span id="L128"><a href="#L128">  128</a>             mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, ..) =&gt; {</span>
+<span id="L129"><a href="#L129">  129</a>                 (&quot;unsize&quot;, CastTyArgs::Referents, false)</span>
+<span id="L130"><a href="#L130">  130</a>             }</span>
+<span id="L131"><a href="#L131">  131</a>             mir::CastKind::IntToInt =&gt; (&quot;i2i&quot;, CastTyArgs::None, true),</span>
+<span id="L132"><a href="#L132">  132</a>             mir::CastKind::PtrToPtr =&gt; (&quot;p2p&quot;, CastTyArgs::Referents, true),</span>
+<span id="L133"><a href="#L133">  133</a>             mir::CastKind::IntToFloat =&gt; (&quot;i2f&quot;, CastTyArgs::None, true),</span>
+<span id="L134"><a href="#L134">  134</a>             mir::CastKind::FloatToInt =&gt; (&quot;f2i&quot;, CastTyArgs::None, true),</span>
+<span id="L135"><a href="#L135">  135</a>             mir::CastKind::PointerCoercion(</span>
+<span id="L136"><a href="#L136">  136</a>                 ty::adjustment::PointerCoercion::MutToConstPointer,</span>
+<span id="L137"><a href="#L137">  137</a>                 ..,</span>
+<span id="L138"><a href="#L138">  138</a>             ) =&gt; (&quot;mut2const&quot;, CastTyArgs::None, false),</span>
+<span id="L139"><a href="#L139">  139</a>             mir::CastKind::PointerCoercion(coercion, _) =&gt; {</span>
+<span id="L140"><a href="#L140">  140</a>                 return Err(EncodeFullError::unsupported(</span>
+<span id="L141"><a href="#L141">  141</a>                     format!(&quot;the pointer coercion `{coercion:?}`&quot;),</span>
+<span id="L142"><a href="#L142">  142</a>                     Vec::new(),</span>
+<span id="L143"><a href="#L143">  143</a>                 ));</span>
+<span id="L144"><a href="#L144">  144</a>             }</span>
+<span id="L145"><a href="#L145">  145</a>             other =&gt; {</span>
+<span id="L146"><a href="#L146">  146</a>                 return Err(EncodeFullError::unsupported(</span>
+<span id="L147"><a href="#L147">  147</a>                     format!(&quot;the cast `{other:?}`&quot;),</span>
+<span id="L148"><a href="#L148">  148</a>                     Vec::new(),</span>
+<span id="L149"><a href="#L149">  149</a>                 ));</span>
+<span id="L150"><a href="#L150">  150</a>             }</span>
+<span id="L151"><a href="#L151">  151</a>         };</span>
+<span id="L152"><a href="#L152">  152</a>         // The referent types are not part of the task key: a cast that needs</span>
+<span id="L153"><a href="#L153">  153</a>         // them takes them as type arguments (`CastTyArgs`), so the name only</span>
+<span id="L154"><a href="#L154">  154</a>         // uses the pointer types and one task serves every referent.</span>
+<span id="L155"><a href="#L155">  155</a>         let name = vir::with_vcx(|vcx| {</span>
+<span id="L156"><a href="#L156">  156</a>             vir::vir_format_identifier!(</span>
+<span id="L157"><a href="#L157">  157</a>                 vcx,</span>
+<span id="L158"><a href="#L158">  158</a>                 &quot;mir_cast_{name}_{}_to_{}&quot;,</span>
+<span id="L159"><a href="#L159">  159</a>                 operand_ty.name(),</span>
+<span id="L160"><a href="#L160">  160</a>                 result_ty.name(),</span>
+<span id="L161"><a href="#L161">  161</a>             )</span>
+<span id="L162"><a href="#L162">  162</a>         });</span>
+<span id="L163"><a href="#L163">  163</a>         let gparams = vir::with_vcx(|vcx| ty_args.params(vcx));</span>
+<span id="L164"><a href="#L164">  164</a>         let params = deps.require_dep::&lt;GenericParamsEnc&gt;(gparams)?;</span>
+<span id="L165"><a href="#L165">  165</a>         vir::with_vcx(|vcx| {</span>
+<span id="L166"><a href="#L166">  166</a>             let arg_decl = vcx.mk_local_decl(&quot;arg&quot;, op_ty_snap);</span>
+<span id="L167"><a href="#L167">  167</a>             let arg_ex = vcx.mk_local_ex(arg_decl);</span>
+<span id="L168"><a href="#L168">  168</a>             // The body of the cast function, and the `unsize`/`undo` methods</span>
+<span id="L169"><a href="#L169">  169</a>             // with their identifiers if the cast has them.</span>
+<span id="L170"><a href="#L170">  170</a>             let (expr, methods) = match kind {</span>
+<span id="L171"><a href="#L171">  171</a>                 mir::CastKind::IntToInt =&gt; {</span>
+<span id="L172"><a href="#L172">  172</a>                     let e_op_ty = op_ty.expect_primitive();</span>
+<span id="L173"><a href="#L173">  173</a>                     let e_res_ty = res_ty.expect_primitive();</span>
+<span id="L174"><a href="#L174">  174</a>                     let result_prim = *result_ty.expect_primitive();</span>
+<span id="L175"><a href="#L175">  175</a>                     let operand_prim = *operand_ty.expect_primitive();</span>
+<span id="L176"><a href="#L176">  176</a> </span>
+<span id="L177"><a href="#L177">  177</a>                     // An integer `as` cast never panics: when every value of the</span>
+<span id="L178"><a href="#L178">  178</a>                     // source type is representable in the target the value is</span>
+<span id="L179"><a href="#L179">  179</a>                     // preserved unchanged; otherwise it is truncated to the target</span>
+<span id="L180"><a href="#L180">  180</a>                     // width and reinterpreted with the target&#x27;s signedness. Either</span>
+<span id="L181"><a href="#L181">  181</a>                     // way any input is valid, so the cast function needs NO</span>
+<span id="L182"><a href="#L182">  182</a>                     // precondition.</span>
+<span id="L183"><a href="#L183">  183</a>                     let wrapped = if matches!(operand_prim.kind(), ty::TyKind::Bool) {</span>
+<span id="L184"><a href="#L184">  184</a>                         // `bool as &lt;int&gt;` is `b ? 1 : 0`; always lossless.</span>
+<span id="L185"><a href="#L185">  185</a>                         vcx.mk_ternary_expr(</span>
+<span id="L186"><a href="#L186">  186</a>                             arg_ex.downcast_ty(),</span>
+<span id="L187"><a href="#L187">  187</a>                             vcx.mk_int::&lt;1&gt;(),</span>
+<span id="L188"><a href="#L188">  188</a>                             vcx.mk_int::&lt;0&gt;(),</span>
+<span id="L189"><a href="#L189">  189</a>                         )</span>
+<span id="L190"><a href="#L190">  190</a>                         .upcast_ty()</span>
+<span id="L191"><a href="#L191">  191</a>                     } else {</span>
+<span id="L192"><a href="#L192">  192</a>                         let (to_bits, to_signed) = vcx.get_int_data(result_prim);</span>
+<span id="L193"><a href="#L193">  193</a>                         let (from_bits, from_signed) = vcx.get_int_data(operand_prim);</span>
+<span id="L194"><a href="#L194">  194</a> </span>
+<span id="L195"><a href="#L195">  195</a>                         let arg_prim = e_op_ty.snap_to_prim(arg_ex);</span>
+<span id="L196"><a href="#L196">  196</a> </span>
+<span id="L197"><a href="#L197">  197</a>                         let lossless = match (from_signed, to_signed) {</span>
+<span id="L198"><a href="#L198">  198</a>                             (false, false) | (true, true) =&gt; from_bits &lt;= to_bits,</span>
+<span id="L199"><a href="#L199">  199</a>                             (false, true) =&gt; from_bits &lt; to_bits, // one bit reserved for the sign</span>
+<span id="L200"><a href="#L200">  200</a>                             (true, false) =&gt; false,               // a negative source never fits</span>
+<span id="L201"><a href="#L201">  201</a>                         };</span>
+<span id="L202"><a href="#L202">  202</a>                         if lossless {</span>
+<span id="L203"><a href="#L203">  203</a>                             arg_prim</span>
+<span id="L204"><a href="#L204">  204</a>                         } else {</span>
+<span id="L205"><a href="#L205">  205</a>                             // Truncate to the target width and reinterpret with its</span>
+<span id="L206"><a href="#L206">  206</a>                             // signedness (two&#x27;s complement); the shared helper wraps</span>
+<span id="L207"><a href="#L207">  207</a>                             // `((x [+ 2^(N-1)]) mod 2^N) [- 2^(N-1)]`.</span>
+<span id="L208"><a href="#L208">  208</a>                             vcx.get_wrapped_val(arg_prim.downcast_ty(), result_prim)</span>
+<span id="L209"><a href="#L209">  209</a>                                 .upcast_ty()</span>
+<span id="L210"><a href="#L210">  210</a>                         }</span>
+<span id="L211"><a href="#L211">  211</a>                     };</span>
+<span id="L212"><a href="#L212">  212</a>                     let expr = e_res_ty.prim_to_snap(wrapped);</span>
+<span id="L213"><a href="#L213">  213</a> </span>
+<span id="L214"><a href="#L214">  214</a>                     (expr, None)</span>
+<span id="L215"><a href="#L215">  215</a>                 }</span>
+<span id="L216"><a href="#L216">  216</a>                 mir::CastKind::PtrToPtr =&gt; {</span>
+<span id="L217"><a href="#L217">  217</a>                     let e_op_ty = op_ty.expect_raw();</span>
+<span id="L218"><a href="#L218">  218</a>                     let e_res_ty = res_ty.expect_raw();</span>
+<span id="L219"><a href="#L219">  219</a>                     let metadata_cast = deps.require_dep::&lt;MetadataCastEnc&gt;(())?;</span>
+<span id="L220"><a href="#L220">  220</a>                     let metadata = metadata_cast(</span>
+<span id="L221"><a href="#L221">  221</a>                         e_op_ty.metadata_access(arg_ex).downcast_ty(),</span>
+<span id="L222"><a href="#L222">  222</a>                         params.ty_exprs()[0],</span>
+<span id="L223"><a href="#L223">  223</a>                         params.ty_exprs()[1],</span>
+<span id="L224"><a href="#L224">  224</a>                     );</span>
+<span id="L225"><a href="#L225">  225</a>                     let expr =</span>
+<span id="L226"><a href="#L226">  226</a>                         e_res_ty.prim_to_snap(e_op_ty.address_access(arg_ex), metadata.upcast_ty());</span>
+<span id="L227"><a href="#L227">  227</a>                     (expr, None)</span>
+<span id="L228"><a href="#L228">  228</a>                 }</span>
+<span id="L229"><a href="#L229">  229</a>                 // `*mut T` to `*const T` keeps the address and metadata.</span>
+<span id="L230"><a href="#L230">  230</a>                 mir::CastKind::PointerCoercion(</span>
+<span id="L231"><a href="#L231">  231</a>                     ty::adjustment::PointerCoercion::MutToConstPointer,</span>
+<span id="L232"><a href="#L232">  232</a>                     _,</span>
+<span id="L233"><a href="#L233">  233</a>                 ) =&gt; {</span>
+<span id="L234"><a href="#L234">  234</a>                     let e_op_ty = op_ty.expect_raw();</span>
+<span id="L235"><a href="#L235">  235</a>                     let e_res_ty = res_ty.expect_raw();</span>
+<span id="L236"><a href="#L236">  236</a>                     let expr = e_res_ty.prim_to_snap(</span>
+<span id="L237"><a href="#L237">  237</a>                         e_op_ty.address_access(arg_ex),</span>
+<span id="L238"><a href="#L238">  238</a>                         e_op_ty.metadata_access(arg_ex),</span>
+<span id="L239"><a href="#L239">  239</a>                     );</span>
+<span id="L240"><a href="#L240">  240</a> </span>
+<span id="L241"><a href="#L241">  241</a>                     (expr, None)</span>
+<span id="L242"><a href="#L242">  242</a>                 }</span>
+<span id="L243"><a href="#L243">  243</a>                 mir::CastKind::IntToFloat =&gt; {</span>
+<span id="L244"><a href="#L244">  244</a>                     let e_op_ty = op_ty.expect_primitive();</span>
+<span id="L245"><a href="#L245">  245</a>                     let (bits, signed) = vcx.get_int_data(*operand_ty.expect_primitive());</span>
+<span id="L246"><a href="#L246">  246</a>                     // Convert at the width of the source type, which keeps `int2bv` cheaper for Z3.</span>
+<span id="L247"><a href="#L247">  247</a>                     let ty::Float(float) = *result_ty.expect_primitive().kind() else {</span>
+<span id="L248"><a href="#L248">  248</a>                         unreachable!()</span>
+<span id="L249"><a href="#L249">  249</a>                     };</span>
+<span id="L250"><a href="#L250">  250</a>                     let conv = deps</span>
+<span id="L251"><a href="#L251">  251</a>                         .require_dep::&lt;FloatBitVecConvEnc&gt;((float, BitVecSize::from_bits(bits)))?;</span>
+<span id="L252"><a href="#L252">  252</a>                     let arg_prim = e_op_ty.snap_to_prim(arg_ex);</span>
+<span id="L253"><a href="#L253">  253</a>                     let expr = if signed {</span>
+<span id="L254"><a href="#L254">  254</a>                         (conv.from_sint)(arg_prim)</span>
+<span id="L255"><a href="#L255">  255</a>                     } else {</span>
+<span id="L256"><a href="#L256">  256</a>                         (conv.from_uint)(arg_prim)</span>
+<span id="L257"><a href="#L257">  257</a>                     };</span>
+<span id="L258"><a href="#L258">  258</a> </span>
+<span id="L259"><a href="#L259">  259</a>                     (expr, None)</span>
+<span id="L260"><a href="#L260">  260</a>                 }</span>
+<span id="L261"><a href="#L261">  261</a>                 mir::CastKind::FloatToInt =&gt; {</span>
+<span id="L262"><a href="#L262">  262</a>                     let e_op_ty = op_ty.expect_float();</span>
+<span id="L263"><a href="#L263">  263</a>                     let e_res_ty = res_ty.expect_primitive();</span>
+<span id="L264"><a href="#L264">  264</a>                     let result_prim = *result_ty.expect_primitive();</span>
+<span id="L265"><a href="#L265">  265</a>                     let ty::Float(float) = *operand_ty.expect_primitive().kind() else {</span>
+<span id="L266"><a href="#L266">  266</a>                         unreachable!()</span>
+<span id="L267"><a href="#L267">  267</a>                     };</span>
+<span id="L268"><a href="#L268">  268</a>                     let (bits, signed) = vcx.get_int_data(result_prim);</span>
+<span id="L269"><a href="#L269">  269</a>                     // Convert at the width of the target type, so that every</span>
+<span id="L270"><a href="#L270">  270</a>                     // in-range value is representable.</span>
+<span id="L271"><a href="#L271">  271</a>                     let conv = deps</span>
+<span id="L272"><a href="#L272">  272</a>                         .require_dep::&lt;FloatBitVecConvEnc&gt;((float, BitVecSize::from_bits(bits)))?;</span>
+<span id="L273"><a href="#L273">  273</a>                     let float_const = |bits: u128| {</span>
+<span id="L274"><a href="#L274">  274</a>                         (e_op_ty.prim_to_snap)(vcx.mk_const_expr(ConstData::Int(bits)))</span>
+<span id="L275"><a href="#L275">  275</a>                     };</span>
+<span id="L276"><a href="#L276">  276</a> </span>
+<span id="L277"><a href="#L277">  277</a>                     // `as` rounds towards zero, which the `RTZ` conversions</span>
+<span id="L278"><a href="#L278">  278</a>                     // already do. They are unspecified for values whose rounded</span>
+<span id="L279"><a href="#L279">  279</a>                     // value is out of range, so saturate first. The bounds</span>
+<span id="L280"><a href="#L280">  280</a>                     // `-2^(N-1)`/`0` and `2^(N-1)`/`2^N` are integers, so</span>
+<span id="L281"><a href="#L281">  281</a>                     // comparing the untruncated value against them gives the</span>
+<span id="L282"><a href="#L282">  282</a>                     // same result as comparing the truncated one. They are also</span>
+<span id="L283"><a href="#L283">  283</a>                     // powers of two and therefore exact (or infinite if out of</span>
+<span id="L284"><a href="#L284">  284</a>                     // the float&#x27;s range, in which case only the infinities reach</span>
+<span id="L285"><a href="#L285">  285</a>                     // them). The bounds are compared as floats: going via</span>
+<span id="L286"><a href="#L286">  286</a>                     // `fp.to_real` makes symbolic casts unprovable with Z3&#x27;s</span>
+<span id="L287"><a href="#L287">  287</a>                     // arithmetic solver.</span>
+<span id="L288"><a href="#L288">  288</a>                     let (lower, upper, in_range) = if signed {</span>
+<span id="L289"><a href="#L289">  289</a>                         (</span>
+<span id="L290"><a href="#L290">  290</a>                             float_pow2_bits(float, bits - 1, true),</span>
+<span id="L291"><a href="#L291">  291</a>                             float_pow2_bits(float, bits - 1, false),</span>
+<span id="L292"><a href="#L292">  292</a>                             (conv.bitvec.sbv_to_int)((conv.to_sbv)(arg_ex)),</span>
+<span id="L293"><a href="#L293">  293</a>                         )</span>
+<span id="L294"><a href="#L294">  294</a>                     } else {</span>
+<span id="L295"><a href="#L295">  295</a>                         (</span>
+<span id="L296"><a href="#L296">  296</a>                             0,</span>
+<span id="L297"><a href="#L297">  297</a>                             float_pow2_bits(float, bits, false),</span>
+<span id="L298"><a href="#L298">  298</a>                             (conv.bitvec.ubv_to_int)((conv.to_ubv)(arg_ex)),</span>
+<span id="L299"><a href="#L299">  299</a>                         )</span>
+<span id="L300"><a href="#L300">  300</a>                     };</span>
+<span id="L301"><a href="#L301">  301</a>                     let expr = vcx.mk_ternary_expr(</span>
+<span id="L302"><a href="#L302">  302</a>                         (e_op_ty.fp_is_nan)(arg_ex),</span>
+<span id="L303"><a href="#L303">  303</a>                         e_res_ty.prim_to_snap(vcx.mk_int::&lt;0&gt;().upcast_ty()),</span>
+<span id="L304"><a href="#L304">  304</a>                         vcx.mk_ternary_expr(</span>
+<span id="L305"><a href="#L305">  305</a>                             (e_op_ty.fp_leq)(arg_ex, float_const(lower)),</span>
+<span id="L306"><a href="#L306">  306</a>                             e_res_ty.prim_to_snap(vcx.get_min_int(result_prim).upcast_ty()),</span>
+<span id="L307"><a href="#L307">  307</a>                             vcx.mk_ternary_expr(</span>
+<span id="L308"><a href="#L308">  308</a>                                 (e_op_ty.fp_geq)(arg_ex, float_const(upper)),</span>
+<span id="L309"><a href="#L309">  309</a>                                 e_res_ty.prim_to_snap(vcx.get_max_int(result_prim).upcast_ty()),</span>
+<span id="L310"><a href="#L310">  310</a>                                 e_res_ty.prim_to_snap(in_range.upcast_ty()),</span>
+<span id="L311"><a href="#L311">  311</a>                             ),</span>
+<span id="L312"><a href="#L312">  312</a>                         ),</span>
+<span id="L313"><a href="#L313">  313</a>                     );</span>
+<span id="L314"><a href="#L314">  314</a> </span>
+<span id="L315"><a href="#L315">  315</a>                     (expr, None)</span>
+<span id="L316"><a href="#L316">  316</a>                 }</span>
+<span id="L317"><a href="#L317">  317</a>                 mir::CastKind::PointerCoercion(ty::adjustment::PointerCoercion::Unsize, _) =&gt; {</span>
+<span id="L318"><a href="#L318">  318</a>                     // Unsizing preserves the (wide) reference snapshot type and only</span>
+<span id="L319"><a href="#L319">  319</a>                     // rewrites the pointer metadata for the new referent. The cast</span>
+<span id="L320"><a href="#L320">  320</a>                     // (like the methods below) is parameterized by the operand and</span>
+<span id="L321"><a href="#L321">  321</a>                     // result referent types `U`, `V` (`CastTyArgs::Referents`),</span>
+<span id="L322"><a href="#L322">  322</a>                     // which `MirBuiltinUseCastEnc` supplies from each reference&#x27;s</span>
+<span id="L323"><a href="#L323">  323</a>                     // referent arg.</span>
+<span id="L324"><a href="#L324">  324</a>                     assert_eq!(op_ty_snap, res_ty_snap);</span>
+<span id="L325"><a href="#L325">  325</a>                     let u = params.ty_exprs()[0];</span>
+<span id="L326"><a href="#L326">  326</a>                     let v = params.ty_exprs()[1];</span>
+<span id="L327"><a href="#L327">  327</a>                     let value_cast = deps.require_dep::&lt;ValueCastEnc&gt;(())?;</span>
+<span id="L328"><a href="#L328">  328</a>                     let metadata_cast = deps.require_dep::&lt;MetadataCastEnc&gt;(())?;</span>
+<span id="L329"><a href="#L329">  329</a>                     let value_cast = |value| value_cast(value, u, v);</span>
+<span id="L330"><a href="#L330">  330</a>                     let metadata_cast = |metadata| metadata_cast(metadata, u, v);</span>
+<span id="L331"><a href="#L331">  331</a>                     let (is_mut, expr) = match &amp;op_ty.specifics {</span>
+<span id="L332"><a href="#L332">  332</a>                         TySpecifics::ImmRef(data) =&gt; {</span>
+<span id="L333"><a href="#L333">  333</a>                             let res_data = res_ty.expect_immref();</span>
+<span id="L334"><a href="#L334">  334</a>                             let expr = res_data.prim_to_snap(</span>
+<span id="L335"><a href="#L335">  335</a>                                 data.addr_access(arg_ex),</span>
+<span id="L336"><a href="#L336">  336</a>                                 metadata_cast(data.metadata_access(arg_ex).downcast_ty())</span>
+<span id="L337"><a href="#L337">  337</a>                                     .upcast_ty(),</span>
+<span id="L338"><a href="#L338">  338</a>                                 value_cast(data.value_access(arg_ex).downcast_ty()).upcast_ty(),</span>
+<span id="L339"><a href="#L339">  339</a>                             );</span>
+<span id="L340"><a href="#L340">  340</a>                             (false, expr)</span>
+<span id="L341"><a href="#L341">  341</a>                         }</span>
+<span id="L342"><a href="#L342">  342</a>                         TySpecifics::MutRef(data) =&gt; {</span>
+<span id="L343"><a href="#L343">  343</a>                             let res_data = res_ty.expect_mutref();</span>
+<span id="L344"><a href="#L344">  344</a>                             let expr = res_data.prim_to_snap(</span>
+<span id="L345"><a href="#L345">  345</a>                                 data.deref_access(arg_ex),</span>
+<span id="L346"><a href="#L346">  346</a>                                 metadata_cast(data.metadata_access(arg_ex).downcast_ty())</span>
+<span id="L347"><a href="#L347">  347</a>                                     .upcast_ty(),</span>
+<span id="L348"><a href="#L348">  348</a>                                 value_cast(data.value_access(arg_ex).downcast_ty()).upcast_ty(),</span>
+<span id="L349"><a href="#L349">  349</a>                             );</span>
+<span id="L350"><a href="#L350">  350</a>                             (true, expr)</span>
+<span id="L351"><a href="#L351">  351</a>                         }</span>
+<span id="L352"><a href="#L352">  352</a>                         // A `Box` (e.g. `Box&lt;[T; N]&gt; -&gt; Box&lt;[T]&gt;`): rebuild the</span>
+<span id="L353"><a href="#L353">  353</a>                         // snapshot with the coerced pointer metadata and value</span>
+<span id="L354"><a href="#L354">  354</a>                         // (the address is unchanged). Unlike `&amp;mut`, no</span>
+<span id="L355"><a href="#L355">  355</a>                         // side-effecting methods are needed: the box owns its</span>
+<span id="L356"><a href="#L356">  356</a>                         // referent, so the whole predicate is exhaled/inhaled</span>
+<span id="L357"><a href="#L357">  357</a>                         // by the surrounding assignment.</span>
+<span id="L358"><a href="#L358">  358</a>                         TySpecifics::StructLike(data)</span>
+<span id="L359"><a href="#L359">  359</a>                             if operand_ty.special == RustTySpecial::Box =&gt;</span>
+<span id="L360"><a href="#L360">  360</a>                         {</span>
+<span id="L361"><a href="#L361">  361</a>                             assert_eq!(operand_ty, result_ty);</span>
+<span id="L362"><a href="#L362">  362</a>                             let expr = data.box_unsize_snap(</span>
+<span id="L363"><a href="#L363">  363</a>                                 arg_ex,</span>
+<span id="L364"><a href="#L364">  364</a>                                 metadata_cast(data.box_metadata_access(arg_ex).downcast_ty())</span>
+<span id="L365"><a href="#L365">  365</a>                                     .upcast_ty(),</span>
+<span id="L366"><a href="#L366">  366</a>                                 value_cast(data.box_value_access(arg_ex).downcast_ty()).upcast_ty(),</span>
+<span id="L367"><a href="#L367">  367</a>                             );</span>
+<span id="L368"><a href="#L368">  368</a>                             (false, expr)</span>
+<span id="L369"><a href="#L369">  369</a>                         }</span>
+<span id="L370"><a href="#L370">  370</a>                         _ =&gt; {</span>
+<span id="L371"><a href="#L371">  371</a>                             return Err(EncodeFullError::unsupported(</span>
+<span id="L372"><a href="#L372">  372</a>                                 format!(</span>
+<span id="L373"><a href="#L373">  373</a>                                     &quot;unsizing of `{}` (only references and `Box` can be unsized)&quot;,</span>
+<span id="L374"><a href="#L374">  374</a>                                     operand_ty.name()</span>
+<span id="L375"><a href="#L375">  375</a>                                 ),</span>
+<span id="L376"><a href="#L376">  376</a>                                 Vec::new(),</span>
+<span id="L377"><a href="#L377">  377</a>                             ));</span>
+<span id="L378"><a href="#L378">  378</a>                         }</span>
+<span id="L379"><a href="#L379">  379</a>                     };</span>
+<span id="L380"><a href="#L380">  380</a>                     // For `&amp;mut` coercions, generate the side-effecting</span>
+<span id="L381"><a href="#L381">  381</a>                     // `unsize`/`undo` methods that move the (generic) `p_Param`</span>
+<span id="L382"><a href="#L382">  382</a>                     // predicate of the referent between the operand and result type</span>
+<span id="L383"><a href="#L383">  383</a>                     // at the same address (the coercion preserves it). The methods</span>
+<span id="L384"><a href="#L384">  384</a>                     // are declared over the same `[U, V]` type params (`params`),</span>
+<span id="L385"><a href="#L385">  385</a>                     // which `MirBuiltinUseCastEnc` instantiates with the operand</span>
+<span id="L386"><a href="#L386">  386</a>                     // referent `U` and result referent `V`.</span>
+<span id="L387"><a href="#L387">  387</a>                     // `new_param_ty(i).decompose(gparams)` builds a `Param`</span>
+<span id="L388"><a href="#L388">  388</a>                     // decomposition whose arg is `gparams`&#x27; `i`th type</span>
+<span id="L389"><a href="#L389">  389</a>                     // variable, so `ref_to_pred`/`ref_to_snap` yield</span>
+<span id="L390"><a href="#L390">  390</a>                     // `p_Param(addr, U)` / `p_Param(addr, V)` directly; the referent</span>
+<span id="L391"><a href="#L391">  391</a>                     // snapshot is transferred via `value_cast` (whose concrete-type</span>
+<span id="L392"><a href="#L392">  392</a>                     // axioms are added in `MirBuiltinUseCastEnc`).</span>
+<span id="L393"><a href="#L393">  393</a>                     let methods = if is_mut {</span>
+<span id="L394"><a href="#L394">  394</a>                         let u_impure = deps.require_dep::&lt;TyUseImpureEnc&gt;(</span>
+<span id="L395"><a href="#L395">  395</a>                             LazyRustTy::new_param_ty(0).decompose(gparams),</span>
+<span id="L396"><a href="#L396">  396</a>                         )?;</span>
+<span id="L397"><a href="#L397">  397</a>                         let v_impure = deps.require_dep::&lt;TyUseImpureEnc&gt;(</span>
+<span id="L398"><a href="#L398">  398</a>                             LazyRustTy::new_param_ty(1).decompose(gparams),</span>
+<span id="L399"><a href="#L399">  399</a>                         )?;</span>
+<span id="L400"><a href="#L400">  400</a> </span>
+<span id="L401"><a href="#L401">  401</a>                         let src_mutref = op_ty.expect_mutref();</span>
+<span id="L402"><a href="#L402">  402</a>                         let src_decl = vcx.mk_local_decl(&quot;src&quot;, op_ty_snap);</span>
+<span id="L403"><a href="#L403">  403</a>                         let src_ex = vcx.mk_local_ex(src_decl);</span>
+<span id="L404"><a href="#L404">  404</a>                         let addr = src_mutref.deref_access(src_ex);</span>
+<span id="L405"><a href="#L405">  405</a> </span>
+<span id="L406"><a href="#L406">  406</a>                         let u_pred = u_impure.ref_to_pred(vcx, addr, None);</span>
+<span id="L407"><a href="#L407">  407</a>                         let v_pred = v_impure.ref_to_pred(vcx, addr, None);</span>
+<span id="L408"><a href="#L408">  408</a>                         let u_snap = u_impure.ref_to_snap(addr).downcast_ty::&lt;vir::PSnap&gt;();</span>
+<span id="L409"><a href="#L409">  409</a>                         let v_snap = v_impure.ref_to_snap(addr).downcast_ty::&lt;vir::PSnap&gt;();</span>
+<span id="L410"><a href="#L410">  410</a> </span>
+<span id="L411"><a href="#L411">  411</a>                         // `unsize`: operand referent `U` -&gt; result referent `V`; the</span>
+<span id="L412"><a href="#L412">  412</a>                         // new `V` value is `value_cast(old(U), U, V)`. `undo` is the</span>
+<span id="L413"><a href="#L413">  413</a>                         // *reverse* equation: the old `V` value is `value_cast` of the</span>
+<span id="L414"><a href="#L414">  414</a>                         // recovered `U` value, `old(V) == value_cast(U, U, V)`. Both</span>
+<span id="L415"><a href="#L415">  415</a>                         // use the same `value_cast` direction (`U, V`), so a single</span>
+<span id="L416"><a href="#L416">  416</a>                         // axiom per coercion (added in `MirBuiltinUseCastEnc`) suffices.</span>
+<span id="L417"><a href="#L417">  417</a>                         let unsize_value =</span>
+<span id="L418"><a href="#L418">  418</a>                             vcx.mk_eq_expr(v_snap, value_cast(vcx.mk_old_expr(u_snap)));</span>
+<span id="L419"><a href="#L419">  419</a>                         let undo_value =</span>
+<span id="L420"><a href="#L420">  420</a>                             vcx.mk_eq_expr(vcx.mk_old_expr(v_snap), value_cast(u_snap));</span>
+<span id="L421"><a href="#L421">  421</a> </span>
+<span id="L422"><a href="#L422">  422</a>                         let unsize_idn = MethodIdn::new(</span>
+<span id="L423"><a href="#L423">  423</a>                             vir::vir_format_identifier!(</span>
+<span id="L424"><a href="#L424">  424</a>                                 vcx,</span>
+<span id="L425"><a href="#L425">  425</a>                                 &quot;mir_unsize_{}_to_{}&quot;,</span>
+<span id="L426"><a href="#L426">  426</a>                                 operand_ty.name(),</span>
+<span id="L427"><a href="#L427">  427</a>                                 result_ty.name()</span>
+<span id="L428"><a href="#L428">  428</a>                             ),</span>
+<span id="L429"><a href="#L429">  429</a>                             (op_ty_snap, params.ty_args(), params.const_args()),</span>
+<span id="L430"><a href="#L430">  430</a>                         );</span>
+<span id="L431"><a href="#L431">  431</a>                         let undo_idn = MethodIdn::new(</span>
+<span id="L432"><a href="#L432">  432</a>                             vir::vir_format_identifier!(</span>
+<span id="L433"><a href="#L433">  433</a>                                 vcx,</span>
+<span id="L434"><a href="#L434">  434</a>                                 &quot;mir_undo_unsize_{}_to_{}&quot;,</span>
+<span id="L435"><a href="#L435">  435</a>                                 operand_ty.name(),</span>
+<span id="L436"><a href="#L436">  436</a>                                 result_ty.name()</span>
+<span id="L437"><a href="#L437">  437</a>                             ),</span>
+<span id="L438"><a href="#L438">  438</a>                             (op_ty_snap, params.ty_args(), params.const_args()),</span>
+<span id="L439"><a href="#L439">  439</a>                         );</span>
+<span id="L440"><a href="#L440">  440</a>                         let unsize_method = vcx.mk_method(</span>
+<span id="L441"><a href="#L441">  441</a>                             unsize_idn,</span>
+<span id="L442"><a href="#L442">  442</a>                             (src_decl, params.ty_decls(), params.const_decls()),</span>
+<span id="L443"><a href="#L443">  443</a>                             &amp;[],</span>
+<span id="L444"><a href="#L444">  444</a>                             vcx.alloc_slice(&amp;[u_pred]),</span>
+<span id="L445"><a href="#L445">  445</a>                             vcx.alloc_slice(&amp;[v_pred, unsize_value]),</span>
+<span id="L446"><a href="#L446">  446</a>                             None,</span>
+<span id="L447"><a href="#L447">  447</a>                         );</span>
+<span id="L448"><a href="#L448">  448</a>                         let undo_method = vcx.mk_method(</span>
+<span id="L449"><a href="#L449">  449</a>                             undo_idn,</span>
+<span id="L450"><a href="#L450">  450</a>                             (src_decl, params.ty_decls(), params.const_decls()),</span>
+<span id="L451"><a href="#L451">  451</a>                             &amp;[],</span>
+<span id="L452"><a href="#L452">  452</a>                             vcx.alloc_slice(&amp;[v_pred]),</span>
+<span id="L453"><a href="#L453">  453</a>                             vcx.alloc_slice(&amp;[u_pred, undo_value]),</span>
+<span id="L454"><a href="#L454">  454</a>                             None,</span>
+<span id="L455"><a href="#L455">  455</a>                         );</span>
+<span id="L456"><a href="#L456">  456</a>                         Some(((unsize_method, unsize_idn), (undo_method, undo_idn)))</span>
+<span id="L457"><a href="#L457">  457</a>                     } else {</span>
+<span id="L458"><a href="#L458">  458</a>                         None</span>
+<span id="L459"><a href="#L459">  459</a>                     };</span>
+<span id="L460"><a href="#L460">  460</a>                     (expr, methods)</span>
+<span id="L461"><a href="#L461">  461</a>                 }</span>
+<span id="L462"><a href="#L462">  462</a>                 _ =&gt; unreachable!(&quot;unsupported cast kinds are rejected above&quot;),</span>
+<span id="L463"><a href="#L463">  463</a>             };</span>
+<span id="L464"><a href="#L464">  464</a> </span>
+<span id="L465"><a href="#L465">  465</a>             let cast_idn = FunctionIdn::new(</span>
+<span id="L466"><a href="#L466">  466</a>                 name,</span>
+<span id="L467"><a href="#L467">  467</a>                 (op_ty_snap, params.ty_args(), params.const_args()),</span>
+<span id="L468"><a href="#L468">  468</a>                 res_ty_snap,</span>
+<span id="L469"><a href="#L469">  469</a>             );</span>
+<span id="L470"><a href="#L470">  470</a>             let cast = vcx.mk_function(</span>
+<span id="L471"><a href="#L471">  471</a>                 cast_idn,</span>
+<span id="L472"><a href="#L472">  472</a>                 (arg_decl, params.ty_decls(), params.const_decls()),</span>
+<span id="L473"><a href="#L473">  473</a>                 &amp;[],</span>
+<span id="L474"><a href="#L474">  474</a>                 &amp;[],</span>
+<span id="L475"><a href="#L475">  475</a>                 None,</span>
+<span id="L476"><a href="#L476">  476</a>                 Some(expr),</span>
+<span id="L477"><a href="#L477">  477</a>             );</span>
+<span id="L478"><a href="#L478">  478</a>             let (unsize, undo) = methods.unzip();</span>
+<span id="L479"><a href="#L479">  479</a>             let (unsize, unsize_idn) = unsize.unzip();</span>
+<span id="L480"><a href="#L480">  480</a>             let (undo, undo_idn) = undo.unzip();</span>
+<span id="L481"><a href="#L481">  481</a>             Ok((</span>
+<span id="L482"><a href="#L482">  482</a>                 MirBuiltinCastLocal {</span>
+<span id="L483"><a href="#L483">  483</a>                     cast,</span>
+<span id="L484"><a href="#L484">  484</a>                     unsize,</span>
+<span id="L485"><a href="#L485">  485</a>                     undo,</span>
+<span id="L486"><a href="#L486">  486</a>                     user_level,</span>
+<span id="L487"><a href="#L487">  487</a>                 },</span>
+<span id="L488"><a href="#L488">  488</a>                 MirBuiltinCastOutput {</span>
+<span id="L489"><a href="#L489">  489</a>                     cast: cast_idn,</span>
+<span id="L490"><a href="#L490">  490</a>                     unsize: unsize_idn,</span>
+<span id="L491"><a href="#L491">  491</a>                     undo: undo_idn,</span>
+<span id="L492"><a href="#L492">  492</a>                     ty_args,</span>
+<span id="L493"><a href="#L493">  493</a>                 },</span>
+<span id="L494"><a href="#L494">  494</a>             ))</span>
+<span id="L495"><a href="#L495">  495</a>         })</span>
+<span id="L496"><a href="#L496">  496</a>     }</span>
+<span id="L497"><a href="#L497">  497</a> </span>
+<span id="L498"><a href="#L498">  498</a>     fn emit_outputs&lt;&#x27;vir&gt;(program: &amp;mut task_encoder::Program&lt;&#x27;vir&gt;) {</span>
+<span id="L499"><a href="#L499">  499</a>         for local in Self::all_outputs_local(program) {</span>
+<span id="L500"><a href="#L500">  500</a>             if local.user_level {</span>
+<span id="L501"><a href="#L501">  501</a>                 program.add_user_function(local.cast);</span>
+<span id="L502"><a href="#L502">  502</a>             } else {</span>
+<span id="L503"><a href="#L503">  503</a>                 program.add_function(local.cast);</span>
+<span id="L504"><a href="#L504">  504</a>             }</span>
+<span id="L505"><a href="#L505">  505</a>             if let Some(unsize) = local.unsize {</span>
+<span id="L506"><a href="#L506">  506</a>                 program.add_method(unsize);</span>
+<span id="L507"><a href="#L507">  507</a>             }</span>
+<span id="L508"><a href="#L508">  508</a>             if let Some(undo) = local.undo {</span>
+<span id="L509"><a href="#L509">  509</a>                 program.add_method(undo);</span>
+<span id="L510"><a href="#L510">  510</a>             }</span>
+<span id="L511"><a href="#L511">  511</a>         }</span>
+<span id="L512"><a href="#L512">  512</a>     }</span>
+<span id="L513"><a href="#L513">  513</a> }</span>
+</pre>

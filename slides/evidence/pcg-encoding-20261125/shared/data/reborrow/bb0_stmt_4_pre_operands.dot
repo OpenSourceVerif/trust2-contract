@@ -1,0 +1,43 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?5 mut U/#0"]
+"r0" [label=<RETURN↓'?5>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?5 mut U/#0\
+"]
+"r1" [label=<RETURN↓RegionsIn(U)>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?5 mut U/#0\
+"]
+"p1" [label=<<FONT FACE="courier">x: e</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut U/#0"]
+"p2" [label=<<FONT FACE="courier">*x</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="U/#0"]
+"r2" [label=<x↓'?6 before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"p3" [label=<<FONT FACE="courier">(*_2) before bb0[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="U/#0"]
+"p4" [label=<<FONT FACE="courier">_2 before bb0[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?7 mut U/#0"]
+"r3" [label=<_2 before bb0[3]↓'?7 before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut U/#0\
+"]
+"r4" [label=<Remote(_1)↓RegionsIn(U)>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r5" [label=<x↓RegionsIn(U) before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r6" [label=<*x↓RegionsIn(U) before bb0[1]>, fontcolor="blue", color="blue", shape="octagon", tooltip="U/#0\
+"]
+"r7" [label=<Remote(_1)↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut U/#0\
+"]
+"r8" [label=<(*_2) before bb0[3]↓RegionsIn(U) before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="U/#0\
+"]
+"r9" [label=<_2 before bb0[3]↓RegionsIn(U) before bb0[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut U/#0\
+"]
+    "r3" -> "p3" [label="", id="edge_0", color="green", edgetooltip=""]
+    "r8" -> "r1" [label="equals", id="edge_1", color="purple", penwidth="2"]
+    "r6" -> "r9" [label="equals", id="edge_2", color="purple", penwidth="2"]
+    "p1" -> "p2" [label="", id="edge_3", color="green", edgetooltip=""]
+    "r5" -> "r6" [label="", id="edge_4", color="green", edgetooltip=""]
+    "p3" -> "r0" [label="bw1: Default '?4", id="edge_5", color="orange", edgetooltip=""]
+    "r4" -> "r5" [label="InitialBorrows", id="edge_6", color="purple"]
+    "r7" -> "r2" [label="InitialBorrows", id="edge_7", color="purple"]
+    "r9" -> "r8" [label="", id="edge_8", color="green", edgetooltip=""]
+    "r2" -> "p2" [label="", id="edge_9", color="green", edgetooltip=""]
+    "p4" -> "p3" [label="", id="edge_10", color="green", edgetooltip=""]
+    "p2" -> "p3" [label="", id="edge_11", style="dashed", color="grey"]
+    "p2" -> "r3" [label="bw0: Default '?3", id="edge_12", color="orange", edgetooltip=""]
+}
+

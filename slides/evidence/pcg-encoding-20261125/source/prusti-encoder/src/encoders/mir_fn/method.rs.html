@@ -1,0 +1,441 @@
+<!doctype html><meta charset="utf-8"><title>method.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>method.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use pcg::borrow_pcg::FunctionData;</span>
+<span id="L2"><a href="#L2">    2</a> use prusti_interface::PrustiError;</span>
+<span id="L3"><a href="#L3">    3</a> use prusti_rustc_interface::{middle::mir, span::def_id::DefId};</span>
+<span id="L4"><a href="#L4">    4</a> use task_encoder::{</span>
+<span id="L5"><a href="#L5">    5</a>     EncodeFullError, EncodeFullResult, OutputRefAny, TaskEncoder, TaskEncoderDependencies,</span>
+<span id="L6"><a href="#L6">    6</a> };</span>
+<span id="L7"><a href="#L7">    7</a> use vir::MethodIdn;</span>
+<span id="L8"><a href="#L8">    8</a> </span>
+<span id="L9"><a href="#L9">    9</a> use crate::encoders::{</span>
+<span id="L10"><a href="#L10">   10</a>     FunctionCallEnc, Impure, ImpureEncVisitor, MirLocalDefEnc, MirLocalDefEncTask, MirSpecEnc,</span>
+<span id="L11"><a href="#L11">   11</a>     WandEnc, WandEncTask,</span>
+<span id="L12"><a href="#L12">   12</a>     mir_fn::{CallTaskDescription, RustSignature, SpecBlocks, SpecBlocksEnc},</span>
+<span id="L13"><a href="#L13">   13</a>     pure::spec::MirSpecEncMode,</span>
+<span id="L14"><a href="#L14">   14</a>     ty::generics::{</span>
+<span id="L15"><a href="#L15">   15</a>         GArgCaster, GArgs, GArgsCastEnc, GArgsTy, GArgsTyEnc, GParams, GenericParamsEnc,</span>
+<span id="L16"><a href="#L16">   16</a>         trait_impls::TraitImplEnc,</span>
+<span id="L17"><a href="#L17">   17</a>     },</span>
+<span id="L18"><a href="#L18">   18</a> };</span>
+<span id="L19"><a href="#L19">   19</a> </span>
+<span id="L20"><a href="#L20">   20</a> // Method wrapper</span>
+<span id="L21"><a href="#L21">   21</a> </span>
+<span id="L22"><a href="#L22">   22</a> pub struct MethodCallEnc;</span>
+<span id="L23"><a href="#L23">   23</a> </span>
+<span id="L24"><a href="#L24">   24</a> #[derive(Debug, Clone)]</span>
+<span id="L25"><a href="#L25">   25</a> pub struct MethodCallEncOutput&lt;&#x27;vir&gt; {</span>
+<span id="L26"><a href="#L26">   26</a>     method: MethodEncOutputRef&lt;&#x27;vir&gt;,</span>
+<span id="L27"><a href="#L27">   27</a>     ty_args: GArgsTy&lt;&#x27;vir&gt;,</span>
+<span id="L28"><a href="#L28">   28</a>     inputs: Vec&lt;GArgCaster&lt;&#x27;vir, Impure&gt;&gt;,</span>
+<span id="L29"><a href="#L29">   29</a>     output: GArgCaster&lt;&#x27;vir, Impure&gt;,</span>
+<span id="L30"><a href="#L30">   30</a> }</span>
+<span id="L31"><a href="#L31">   31</a> </span>
+<span id="L32"><a href="#L32">   32</a> impl&lt;&#x27;vir&gt; MethodCallEncOutput&lt;&#x27;vir&gt; {</span>
+<span id="L33"><a href="#L33">   33</a>     pub fn call(</span>
+<span id="L34"><a href="#L34">   34</a>         &amp;self,</span>
+<span id="L35"><a href="#L35">   35</a>         mut args: Vec&lt;vir::ExprRef&lt;&#x27;vir&gt;&gt;,</span>
+<span id="L36"><a href="#L36">   36</a>         ret: vir::ExprRef&lt;&#x27;vir&gt;,</span>
+<span id="L37"><a href="#L37">   37</a>     ) -&gt; Vec&lt;vir::Stmt&lt;&#x27;vir&gt;&gt; {</span>
+<span id="L38"><a href="#L38">   38</a>         assert_eq!(self.inputs.len(), args.len());</span>
+<span id="L39"><a href="#L39">   39</a>         let generics = args.iter().zip(self.inputs.iter());</span>
+<span id="L40"><a href="#L40">   40</a>         let mut stmts: Vec&lt;_&gt; = generics</span>
+<span id="L41"><a href="#L41">   41</a>             .filter_map(|(arg, caster)| caster.cast_to_callee_ctx(arg))</span>
+<span id="L42"><a href="#L42">   42</a>             .collect();</span>
+<span id="L43"><a href="#L43">   43</a> </span>
+<span id="L44"><a href="#L44">   44</a>         args.insert(0, ret);</span>
+<span id="L45"><a href="#L45">   45</a>         let call = (self.method.method_ref)(&amp;args, self.ty_args.get_ty(), self.ty_args.get_const())</span>
+<span id="L46"><a href="#L46">   46</a>             .alloc();</span>
+<span id="L47"><a href="#L47">   47</a>         stmts.push(call);</span>
+<span id="L48"><a href="#L48">   48</a> </span>
+<span id="L49"><a href="#L49">   49</a>         let result = self.output.cast_to_caller_ctx(ret);</span>
+<span id="L50"><a href="#L50">   50</a>         if let Some(result) = result {</span>
+<span id="L51"><a href="#L51">   51</a>             stmts.push(result);</span>
+<span id="L52"><a href="#L52">   52</a>         }</span>
+<span id="L53"><a href="#L53">   53</a>         stmts</span>
+<span id="L54"><a href="#L54">   54</a>     }</span>
+<span id="L55"><a href="#L55">   55</a> }</span>
+<span id="L56"><a href="#L56">   56</a> </span>
+<span id="L57"><a href="#L57">   57</a> impl TaskEncoder for MethodCallEnc {</span>
+<span id="L58"><a href="#L58">   58</a>     task_encoder::encoder_cache!(MethodCallEnc);</span>
+<span id="L59"><a href="#L59">   59</a>     type TaskDescription&lt;&#x27;tcx&gt; = CallTaskDescription&lt;&#x27;tcx&gt;;</span>
+<span id="L60"><a href="#L60">   60</a>     type OutputFullDependency&lt;&#x27;vir&gt; = MethodCallEncOutput&lt;&#x27;vir&gt;;</span>
+<span id="L61"><a href="#L61">   61</a> </span>
+<span id="L62"><a href="#L62">   62</a>     const ENCODER_NAME: &amp;&#x27;static str = &quot;method call encoder&quot;;</span>
+<span id="L63"><a href="#L63">   63</a> </span>
+<span id="L64"><a href="#L64">   64</a>     fn task_to_key&lt;&#x27;vir&gt;(task: &amp;Self::TaskDescription&lt;&#x27;vir&gt;) -&gt; Self::TaskKey&lt;&#x27;vir&gt; {</span>
+<span id="L65"><a href="#L65">   65</a>         *task</span>
+<span id="L66"><a href="#L66">   66</a>     }</span>
+<span id="L67"><a href="#L67">   67</a> </span>
+<span id="L68"><a href="#L68">   68</a>     fn do_encode_full&lt;&#x27;vir&gt;(</span>
+<span id="L69"><a href="#L69">   69</a>         task_key: &amp;Self::TaskKey&lt;&#x27;vir&gt;,</span>
+<span id="L70"><a href="#L70">   70</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, Self&gt;,</span>
+<span id="L71"><a href="#L71">   71</a>     ) -&gt; EncodeFullResult&lt;&#x27;vir, Self&gt; {</span>
+<span id="L72"><a href="#L72">   72</a>         deps.emit_output_ref(*task_key, ())?;</span>
+<span id="L73"><a href="#L73">   73</a>         let (callee_def_id, assoc_enc) = task_key.trait_call(deps)?;</span>
+<span id="L74"><a href="#L74">   74</a>         let method_ref = if let Some(assoc_enc) = assoc_enc {</span>
+<span id="L75"><a href="#L75">   75</a>             MethodEncOutputRef {</span>
+<span id="L76"><a href="#L76">   76</a>                 method_ref: assoc_enc.call_stub_impure,</span>
+<span id="L77"><a href="#L77">   77</a>             }</span>
+<span id="L78"><a href="#L78">   78</a>         } else {</span>
+<span id="L79"><a href="#L79">   79</a>             let method_ref = deps.require_ref::&lt;MethodEnc&gt;(task_key.callee)?;</span>
+<span id="L80"><a href="#L80">   80</a>             // The method of a callee whose wands cannot be generated is not</span>
+<span id="L81"><a href="#L81">   81</a>             // emitted (see `MethodEnc`), so a call to it cannot be encoded.</span>
+<span id="L82"><a href="#L82">   82</a>             let wands_task = WandEncTask {</span>
+<span id="L83"><a href="#L83">   83</a>                 data: FunctionData::new(task_key.callee),</span>
+<span id="L84"><a href="#L84">   84</a>             };</span>
+<span id="L85"><a href="#L85">   85</a>             deps.require_dep::&lt;WandEnc&gt;(wands_task)?;</span>
+<span id="L86"><a href="#L86">   86</a>             method_ref</span>
+<span id="L87"><a href="#L87">   87</a>         };</span>
+<span id="L88"><a href="#L88">   88</a>         let signature = RustSignature::new(callee_def_id);</span>
+<span id="L89"><a href="#L89">   89</a>         let ty_args = deps.require_dep::&lt;GArgsTyEnc&gt;(task_key.gargs)?;</span>
+<span id="L90"><a href="#L90">   90</a>         let inputs = signature</span>
+<span id="L91"><a href="#L91">   91</a>             .inputs</span>
+<span id="L92"><a href="#L92">   92</a>             .iter()</span>
+<span id="L93"><a href="#L93">   93</a>             .map(|ty| {</span>
+<span id="L94"><a href="#L94">   94</a>                 let normalized = ty.decompose_compare_normalize(signature.gparams, task_key.gargs);</span>
+<span id="L95"><a href="#L95">   95</a>                 deps.require_dep::&lt;GArgsCastEnc&lt;Impure&gt;&gt;(normalized)</span>
+<span id="L96"><a href="#L96">   96</a>             })</span>
+<span id="L97"><a href="#L97">   97</a>             .collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()?;</span>
+<span id="L98"><a href="#L98">   98</a>         let normalized = signature</span>
+<span id="L99"><a href="#L99">   99</a>             .output</span>
+<span id="L100"><a href="#L100">  100</a>             .decompose_compare_normalize(signature.gparams, task_key.gargs);</span>
+<span id="L101"><a href="#L101">  101</a>         let output = deps.require_dep::&lt;GArgsCastEnc&lt;Impure&gt;&gt;(normalized)?;</span>
+<span id="L102"><a href="#L102">  102</a>         Ok((</span>
+<span id="L103"><a href="#L103">  103</a>             (),</span>
+<span id="L104"><a href="#L104">  104</a>             MethodCallEncOutput {</span>
+<span id="L105"><a href="#L105">  105</a>                 method: method_ref,</span>
+<span id="L106"><a href="#L106">  106</a>                 ty_args,</span>
+<span id="L107"><a href="#L107">  107</a>                 inputs,</span>
+<span id="L108"><a href="#L108">  108</a>                 output,</span>
+<span id="L109"><a href="#L109">  109</a>             },</span>
+<span id="L110"><a href="#L110">  110</a>         ))</span>
+<span id="L111"><a href="#L111">  111</a>     }</span>
+<span id="L112"><a href="#L112">  112</a> </span>
+<span id="L113"><a href="#L113">  113</a>     fn emit_outputs&lt;&#x27;vir&gt;(program: &amp;mut task_encoder::Program&lt;&#x27;vir&gt;) {</span>
+<span id="L114"><a href="#L114">  114</a>         MethodEnc::emit_outputs(program);</span>
+<span id="L115"><a href="#L115">  115</a>     }</span>
+<span id="L116"><a href="#L116">  116</a> }</span>
+<span id="L117"><a href="#L117">  117</a> </span>
+<span id="L118"><a href="#L118">  118</a> // Method encoder</span>
+<span id="L119"><a href="#L119">  119</a> </span>
+<span id="L120"><a href="#L120">  120</a> pub(super) struct MethodEnc;</span>
+<span id="L121"><a href="#L121">  121</a> </span>
+<span id="L122"><a href="#L122">  122</a> #[derive(Debug, Clone)]</span>
+<span id="L123"><a href="#L123">  123</a> pub(super) struct MethodEncOutputRef&lt;&#x27;vir&gt; {</span>
+<span id="L124"><a href="#L124">  124</a>     method_ref: MethodIdn&lt;&#x27;vir, (vir::ManyRef, vir::ManyTyVal, vir::ManyCSnap)&gt;,</span>
+<span id="L125"><a href="#L125">  125</a> }</span>
+<span id="L126"><a href="#L126">  126</a> </span>
+<span id="L127"><a href="#L127">  127</a> impl&lt;&#x27;vir&gt; OutputRefAny for MethodEncOutputRef&lt;&#x27;vir&gt; {}</span>
+<span id="L128"><a href="#L128">  128</a> </span>
+<span id="L129"><a href="#L129">  129</a> #[derive(Debug, Clone, Copy)]</span>
+<span id="L130"><a href="#L130">  130</a> pub(super) struct MethodEncOutput&lt;&#x27;vir&gt; {</span>
+<span id="L131"><a href="#L131">  131</a>     method: vir::Method&lt;&#x27;vir&gt;,</span>
+<span id="L132"><a href="#L132">  132</a> }</span>
+<span id="L133"><a href="#L133">  133</a> </span>
+<span id="L134"><a href="#L134">  134</a> impl TaskEncoder for MethodEnc {</span>
+<span id="L135"><a href="#L135">  135</a>     task_encoder::encoder_cache!(MethodEnc);</span>
+<span id="L136"><a href="#L136">  136</a>     const ENCODER_NAME: &amp;&#x27;static str = &quot;method encoder&quot;;</span>
+<span id="L137"><a href="#L137">  137</a>     type TaskDescription&lt;&#x27;tcx&gt; = DefId;</span>
+<span id="L138"><a href="#L138">  138</a> </span>
+<span id="L139"><a href="#L139">  139</a>     type OutputRef&lt;&#x27;vir&gt; = MethodEncOutputRef&lt;&#x27;vir&gt;;</span>
+<span id="L140"><a href="#L140">  140</a>     type OutputFullLocal&lt;&#x27;vir&gt; = MethodEncOutput&lt;&#x27;vir&gt;;</span>
+<span id="L141"><a href="#L141">  141</a> </span>
+<span id="L142"><a href="#L142">  142</a>     fn task_to_key&lt;&#x27;vir&gt;(task: &amp;Self::TaskDescription&lt;&#x27;vir&gt;) -&gt; Self::TaskKey&lt;&#x27;vir&gt; {</span>
+<span id="L143"><a href="#L143">  143</a>         *task</span>
+<span id="L144"><a href="#L144">  144</a>     }</span>
+<span id="L145"><a href="#L145">  145</a> </span>
+<span id="L146"><a href="#L146">  146</a>     fn do_encode_full&lt;&#x27;vir&gt;(</span>
+<span id="L147"><a href="#L147">  147</a>         task_key: &amp;Self::TaskKey&lt;&#x27;vir&gt;,</span>
+<span id="L148"><a href="#L148">  148</a>         deps: &amp;mut TaskEncoderDependencies&lt;&#x27;vir, Self&gt;,</span>
+<span id="L149"><a href="#L149">  149</a>     ) -&gt; EncodeFullResult&lt;&#x27;vir, Self&gt; {</span>
+<span id="L150"><a href="#L150">  150</a>         let def_id = *task_key;</span>
+<span id="L151"><a href="#L151">  151</a>         vir::with_vcx(|vcx| {</span>
+<span id="L152"><a href="#L152">  152</a>             let span = vcx.tcx().def_span(def_id);</span>
+<span id="L153"><a href="#L153">  153</a> </span>
+<span id="L154"><a href="#L154">  154</a>             let arg_defs = deps.require_ref_spanned::&lt;MirLocalDefEnc&gt;(</span>
+<span id="L155"><a href="#L155">  155</a>                 MirLocalDefEncTask::Local {</span>
+<span id="L156"><a href="#L156">  156</a>                     def_id,</span>
+<span id="L157"><a href="#L157">  157</a>                     all_locals: false,</span>
+<span id="L158"><a href="#L158">  158</a>                 },</span>
+<span id="L159"><a href="#L159">  159</a>                 span,</span>
+<span id="L160"><a href="#L160">  160</a>             )?;</span>
+<span id="L161"><a href="#L161">  161</a> </span>
+<span id="L162"><a href="#L162">  162</a>             // Argument count for the Viper method:</span>
+<span id="L163"><a href="#L163">  163</a>             // - one (`Ref`) for the return place;</span>
+<span id="L164"><a href="#L164">  164</a>             // - one (`Ref`) for each MIR argument.</span>
+<span id="L165"><a href="#L165">  165</a>             //</span>
+<span id="L166"><a href="#L166">  166</a>             // Note that the return place is modelled as an argument of the</span>
+<span id="L167"><a href="#L167">  167</a>             // Viper method. This corresponds to an execution model where the</span>
+<span id="L168"><a href="#L168">  168</a>             // method can return data to the caller without a copy--it directly</span>
+<span id="L169"><a href="#L169">  169</a>             // modifies a place provided by the caller.</span>
+<span id="L170"><a href="#L170">  170</a>             //</span>
+<span id="L171"><a href="#L171">  171</a>             // TODO: type parameters: for generic methods we will want to pass</span>
+<span id="L172"><a href="#L172">  172</a>             //   values of type `Type` as well`</span>
+<span id="L173"><a href="#L173">  173</a>             let arg_count = arg_defs.arg_count + 1;</span>
+<span id="L174"><a href="#L174">  174</a> </span>
+<span id="L175"><a href="#L175">  175</a>             // Create the identifier and use it as an output ref. This is what</span>
+<span id="L176"><a href="#L176">  176</a>             // is used when other methods call this one.</span>
+<span id="L177"><a href="#L177">  177</a>             let method_name =</span>
+<span id="L178"><a href="#L178">  178</a>                 vir::vir_format_identifier!(vcx, &quot;m_{}&quot;, vir::ViperIdent::from_def_id(vcx, def_id));</span>
+<span id="L179"><a href="#L179">  179</a>             let ref_args = vcx.alloc_slice(&amp;vec![vir::TYPE_REF; arg_count]);</span>
+<span id="L180"><a href="#L180">  180</a>             let params = GParams::from(def_id);</span>
+<span id="L181"><a href="#L181">  181</a>             let generics = deps.require_dep_spanned::&lt;GenericParamsEnc&gt;(params, span)?;</span>
+<span id="L182"><a href="#L182">  182</a>             let method_ref = MethodIdn::new(</span>
+<span id="L183"><a href="#L183">  183</a>                 method_name,</span>
+<span id="L184"><a href="#L184">  184</a>                 (ref_args, generics.ty_args(), generics.const_args()),</span>
+<span id="L185"><a href="#L185">  185</a>             );</span>
+<span id="L186"><a href="#L186">  186</a>             deps.emit_output_ref(def_id, MethodEncOutputRef { method_ref })?;</span>
+<span id="L187"><a href="#L187">  187</a> </span>
+<span id="L188"><a href="#L188">  188</a>             let arg_defs = deps.require_dep_spanned::&lt;MirLocalDefEnc&gt;(</span>
+<span id="L189"><a href="#L189">  189</a>                 MirLocalDefEncTask::Local {</span>
+<span id="L190"><a href="#L190">  190</a>                     def_id,</span>
+<span id="L191"><a href="#L191">  191</a>                     all_locals: false,</span>
+<span id="L192"><a href="#L192">  192</a>                 },</span>
+<span id="L193"><a href="#L193">  193</a>                 span,</span>
+<span id="L194"><a href="#L194">  194</a>             )?;</span>
+<span id="L195"><a href="#L195">  195</a> </span>
+<span id="L196"><a href="#L196">  196</a>             // Method contract. We will need to emit pre- and postconditions for</span>
+<span id="L197"><a href="#L197">  197</a>             // the permissions, the functional spec, and (in the postcondition)</span>
+<span id="L198"><a href="#L198">  198</a>             // wands in case of a reborrowing function.</span>
+<span id="L199"><a href="#L199">  199</a>             let mut pres = Vec::new();</span>
+<span id="L200"><a href="#L200">  200</a>             let mut posts = Vec::new();</span>
+<span id="L201"><a href="#L201">  201</a>             let spec = deps.require_dep_spanned::&lt;MirSpecEnc&gt;(</span>
+<span id="L202"><a href="#L202">  202</a>                 (def_id, def_id, MirSpecEncMode::Impure),</span>
+<span id="L203"><a href="#L203">  203</a>                 span,</span>
+<span id="L204"><a href="#L204">  204</a>             )?;</span>
+<span id="L205"><a href="#L205">  205</a>             let function_data = FunctionData::new(def_id);</span>
+<span id="L206"><a href="#L206">  206</a>             let wands_task = WandEncTask {</span>
+<span id="L207"><a href="#L207">  207</a>                 data: function_data,</span>
+<span id="L208"><a href="#L208">  208</a>             };</span>
+<span id="L209"><a href="#L209">  209</a>             let wands = deps</span>
+<span id="L210"><a href="#L210">  210</a>                 .require_dep_spanned::&lt;WandEnc&gt;(wands_task, span)</span>
+<span id="L211"><a href="#L211">  211</a>                 .map_err(|err| match err {</span>
+<span id="L212"><a href="#L212">  212</a>                     EncodeFullError::AlreadyEncoded =&gt; err,</span>
+<span id="L213"><a href="#L213">  213</a>                     // Without its wands, the method has no sound contract, so</span>
+<span id="L214"><a href="#L214">  214</a>                     // it is not emitted. This is reported here, once; each call</span>
+<span id="L215"><a href="#L215">  215</a>                     // to it reports its own failure (see `MethodCallEnc`).</span>
+<span id="L216"><a href="#L216">  216</a>                     err =&gt; EncodeFullError::Reported(WandEnc::report_failure(vcx, def_id, &amp;err)),</span>
+<span id="L217"><a href="#L217">  217</a>                 })?;</span>
+<span id="L218"><a href="#L218">  218</a> </span>
+<span id="L219"><a href="#L219">  219</a>             // Add direct resources for inputs and outputs to the pre- and</span>
+<span id="L220"><a href="#L220">  220</a>             // postconditions, respectively. &quot;Direct&quot; here refers to owned</span>
+<span id="L221"><a href="#L221">  221</a>             // Viper resources that must be passed in/out given the signature,</span>
+<span id="L222"><a href="#L222">  222</a>             // without going through any dereferences.</span>
+<span id="L223"><a href="#L223">  223</a>             let mut args = Vec::with_capacity(arg_count + params.count());</span>
+<span id="L224"><a href="#L224">  224</a>             for arg_idx in (0..arg_count).map(mir::Local::from) {</span>
+<span id="L225"><a href="#L225">  225</a>                 let name_p = arg_defs[arg_idx].local.name;</span>
+<span id="L226"><a href="#L226">  226</a>                 args.push(vir::vir_local_decl! { vcx; [name_p] : Ref });</span>
+<span id="L227"><a href="#L227">  227</a>                 if arg_idx != mir::RETURN_PLACE {</span>
+<span id="L228"><a href="#L228">  228</a>                     pres.push(arg_defs[arg_idx].impure_pred);</span>
+<span id="L229"><a href="#L229">  229</a>                 }</span>
+<span id="L230"><a href="#L230">  230</a>             }</span>
+<span id="L231"><a href="#L231">  231</a>             posts.push(arg_defs[mir::RETURN_PLACE].impure_pred);</span>
+<span id="L232"><a href="#L232">  232</a> </span>
+<span id="L233"><a href="#L233">  233</a>             // ..</span>
+<span id="L234"><a href="#L234">  234</a>             pres.extend(wands.indirect_pres(vcx, &amp;arg_defs, deps));</span>
+<span id="L235"><a href="#L235">  235</a>             posts.extend(wands.indirect_posts(vcx, &amp;arg_defs, deps));</span>
+<span id="L236"><a href="#L236">  236</a>             posts.extend(wands.wand_posts(vcx, &amp;arg_defs, deps));</span>
+<span id="L237"><a href="#L237">  237</a> </span>
+<span id="L238"><a href="#L238">  238</a>             // The method of a pure function `f` gets the postcondition</span>
+<span id="L239"><a href="#L239">  239</a>             //     ensures snap(result) == f_(old(snap(args)))</span>
+<span id="L240"><a href="#L240">  240</a>             // with the addresses of `&amp;T` arguments nulled, exactly as a call</span>
+<span id="L241"><a href="#L241">  241</a>             // `f(args)` in a specification is encoded. So an impure call</span>
+<span id="L242"><a href="#L242">  242</a>             // learns the same value; the body proves it like any other</span>
+<span id="L243"><a href="#L243">  243</a>             // postcondition.</span>
+<span id="L244"><a href="#L244">  244</a>             let tie = if crate::encoders::is_function_pure(</span>
+<span id="L245"><a href="#L245">  245</a>                 def_id,</span>
+<span id="L246"><a href="#L246">  246</a>                 GArgs::new(params, params.rust_params()),</span>
+<span id="L247"><a href="#L247">  247</a>             ) {</span>
+<span id="L248"><a href="#L248">  248</a>                 let pure_func = deps.require_dep_spanned::&lt;FunctionCallEnc&gt;(</span>
+<span id="L249"><a href="#L249">  249</a>                     CallTaskDescription::new(def_id, params.rust_params(), def_id)</span>
+<span id="L250"><a href="#L250">  250</a>                         .resolve_trait_calls(false),</span>
+<span id="L251"><a href="#L251">  251</a>                     span,</span>
+<span id="L252"><a href="#L252">  252</a>                 )?;</span>
+<span id="L253"><a href="#L253">  253</a>                 let arg_snaps = (1..arg_count)</span>
+<span id="L254"><a href="#L254">  254</a>                     .map(mir::Local::from)</span>
+<span id="L255"><a href="#L255">  255</a>                     .map(|arg_idx| vcx.mk_old_expr(arg_defs[arg_idx].impure_snap))</span>
+<span id="L256"><a href="#L256">  256</a>                     .collect::&lt;Vec&lt;_&gt;&gt;();</span>
+<span id="L257"><a href="#L257">  257</a>                 let name = vcx.tcx().def_path_str(def_id);</span>
+<span id="L258"><a href="#L258">  258</a>                 Some(vcx.with_span(span, |vcx| {</span>
+<span id="L259"><a href="#L259">  259</a>                     vcx.add_error_taint(pure_func.body_taint());</span>
+<span id="L260"><a href="#L260">  260</a>                     vcx.handle_error(&quot;postcondition.violated:assertion.false&quot;, move |_| {</span>
+<span id="L261"><a href="#L261">  261</a>                         Some(vec![PrustiError::verification(</span>
+<span id="L262"><a href="#L262">  262</a>                             format!(</span>
+<span id="L263"><a href="#L263">  263</a>                                 &quot;the result of pure function `{name}` might not match its \</span>
+<span id="L264"><a href="#L264">  264</a>                                  definition with the addresses of its shared-reference \</span>
+<span id="L265"><a href="#L265">  265</a>                                  arguments ignored: either the result depends on those \</span>
+<span id="L266"><a href="#L266">  266</a>                                  addresses, which a pure function must not, or Prusti&#x27;s \</span>
+<span id="L267"><a href="#L267">  267</a>                                  impure and pure encodings of the function disagree&quot;</span>
+<span id="L268"><a href="#L268">  268</a>                             ),</span>
+<span id="L269"><a href="#L269">  269</a>                             span.into(),</span>
+<span id="L270"><a href="#L270">  270</a>                         )])</span>
+<span id="L271"><a href="#L271">  271</a>                     });</span>
+<span id="L272"><a href="#L272">  272</a>                     vcx.mk_eq_expr(</span>
+<span id="L273"><a href="#L273">  273</a>                         arg_defs[mir::RETURN_PLACE].impure_snap,</span>
+<span id="L274"><a href="#L274">  274</a>                         pure_func.call_pure(arg_snaps),</span>
+<span id="L275"><a href="#L275">  275</a>                     )</span>
+<span id="L276"><a href="#L276">  276</a>                 }))</span>
+<span id="L277"><a href="#L277">  277</a>             } else {</span>
+<span id="L278"><a href="#L278">  278</a>                 None</span>
+<span id="L279"><a href="#L279">  279</a>             };</span>
+<span id="L280"><a href="#L280">  280</a> </span>
+<span id="L281"><a href="#L281">  281</a>             // Trusted functions, call stubs, external functions and trait</span>
+<span id="L282"><a href="#L282">  282</a>             // functions without a default implementation have no body to</span>
+<span id="L283"><a href="#L283">  283</a>             // encode; only their contract is emitted.</span>
+<span id="L284"><a href="#L284">  284</a>             let blocks = if let Some(body_with_facts) =</span>
+<span id="L285"><a href="#L285">  285</a>                 crate::encoders::impure_body_with_facts(def_id)</span>
+<span id="L286"><a href="#L286">  286</a>             {</span>
+<span id="L287"><a href="#L287">  287</a>                 let body = &amp;body_with_facts.body;</span>
+<span id="L288"><a href="#L288">  288</a>                 let local_defs = deps.require_dep_spanned::&lt;MirLocalDefEnc&gt;(</span>
+<span id="L289"><a href="#L289">  289</a>                     MirLocalDefEncTask::Local {</span>
+<span id="L290"><a href="#L290">  290</a>                         def_id,</span>
+<span id="L291"><a href="#L291">  291</a>                         all_locals: true,</span>
+<span id="L292"><a href="#L292">  292</a>                     },</span>
+<span id="L293"><a href="#L293">  293</a>                     span,</span>
+<span id="L294"><a href="#L294">  294</a>                 )?;</span>
+<span id="L295"><a href="#L295">  295</a> </span>
+<span id="L296"><a href="#L296">  296</a>                 let pcg_creator = pcg::PcgCtxtCreator::new(vcx.tcx());</span>
+<span id="L297"><a href="#L297">  297</a>                 let pcg_ctxt = pcg_creator.new_nll_ctxt(&amp;body_with_facts);</span>
+<span id="L298"><a href="#L298">  298</a>                 let fpcs_analysis = pcg::run_pcg(pcg_ctxt);</span>
+<span id="L299"><a href="#L299">  299</a>                 pcg_ctxt.update_debug_visualization_metadata();</span>
+<span id="L300"><a href="#L300">  300</a> </span>
+<span id="L301"><a href="#L301">  301</a>                 let block_count = body.basic_blocks.len();</span>
+<span id="L302"><a href="#L302">  302</a> </span>
+<span id="L303"><a href="#L303">  303</a>                 let mut encoded_blocks = Vec::with_capacity(</span>
+<span id="L304"><a href="#L304">  304</a>                     // extra blocks: Start, End</span>
+<span id="L305"><a href="#L305">  305</a>                     2 + block_count,</span>
+<span id="L306"><a href="#L306">  306</a>                 );</span>
+<span id="L307"><a href="#L307">  307</a>                 let mut start_stmts = TraitImplEnc::assume_context_bounds(vcx, deps, params)?;</span>
+<span id="L308"><a href="#L308">  308</a>                 for local in (arg_count..body.local_decls.len()).map(mir::Local::from) {</span>
+<span id="L309"><a href="#L309">  309</a>                     // Spec-only locals have no definition.</span>
+<span id="L310"><a href="#L310">  310</a>                     let Some(local_def) = local_defs.get(local) else {</span>
+<span id="L311"><a href="#L311">  311</a>                         continue;</span>
+<span id="L312"><a href="#L312">  312</a>                     };</span>
+<span id="L313"><a href="#L313">  313</a>                     let name_p = local_def.local.name;</span>
+<span id="L314"><a href="#L314">  314</a>                     start_stmts.push(</span>
+<span id="L315"><a href="#L315">  315</a>                         vcx.mk_local_decl_stmt(vir::vir_local_decl! { vcx; [name_p] : Ref }, None),</span>
+<span id="L316"><a href="#L316">  316</a>                     )</span>
+<span id="L317"><a href="#L317">  317</a>                 }</span>
+<span id="L318"><a href="#L318">  318</a>                 // This will be overwritten later.</span>
+<span id="L319"><a href="#L319">  319</a>                 encoded_blocks.push(vcx.mk_cfg_block(</span>
+<span id="L320"><a href="#L320">  320</a>                     &amp;vir::CfgBlockLabelData::Start,</span>
+<span id="L321"><a href="#L321">  321</a>                     &amp;[],</span>
+<span id="L322"><a href="#L322">  322</a>                     &amp;[],</span>
+<span id="L323"><a href="#L323">  323</a>                     vcx.mk_goto_stmt(&amp;vir::CfgBlockLabelData::BasicBlock(0)),</span>
+<span id="L324"><a href="#L324">  324</a>                 ));</span>
+<span id="L325"><a href="#L325">  325</a> </span>
+<span id="L326"><a href="#L326">  326</a>                 let spec_blocks = SpecBlocks::new(</span>
+<span id="L327"><a href="#L327">  327</a>                     deps.require_dep::&lt;SpecBlocksEnc&gt;(def_id)?,</span>
+<span id="L328"><a href="#L328">  328</a>                     body,</span>
+<span id="L329"><a href="#L329">  329</a>                     fpcs_analysis.analysis().loop_analysis(),</span>
+<span id="L330"><a href="#L330">  330</a>                 );</span>
+<span id="L331"><a href="#L331">  331</a> </span>
+<span id="L332"><a href="#L332">  332</a>                 deps.check_cycle()?;</span>
+<span id="L333"><a href="#L333">  333</a>                 let mut visitor = ImpureEncVisitor {</span>
+<span id="L334"><a href="#L334">  334</a>                     vcx,</span>
+<span id="L335"><a href="#L335">  335</a>                     deps,</span>
+<span id="L336"><a href="#L336">  336</a>                     def_id,</span>
+<span id="L337"><a href="#L337">  337</a>                     local_decls: &amp;body.local_decls,</span>
+<span id="L338"><a href="#L338">  338</a>                     fpcs_analysis,</span>
+<span id="L339"><a href="#L339">  339</a>                     local_defs,</span>
+<span id="L340"><a href="#L340">  340</a>                     spec_blocks,</span>
+<span id="L341"><a href="#L341">  341</a>                     body,</span>
+<span id="L342"><a href="#L342">  342</a> </span>
+<span id="L343"><a href="#L343">  343</a>                     wands,</span>
+<span id="L344"><a href="#L344">  344</a> </span>
+<span id="L345"><a href="#L345">  345</a>                     tmp_ctr: 0,</span>
+<span id="L346"><a href="#L346">  346</a>                     label_ctr: 0,</span>
+<span id="L347"><a href="#L347">  347</a>                     call_labels: Default::default(),</span>
+<span id="L348"><a href="#L348">  348</a>                     wandless_calls: Default::default(),</span>
+<span id="L349"><a href="#L349">  349</a>                     from_to_vars: Default::default(),</span>
+<span id="L350"><a href="#L350">  350</a> </span>
+<span id="L351"><a href="#L351">  351</a>                     current_block: None,</span>
+<span id="L352"><a href="#L352">  352</a>                     current_block_pres: None,</span>
+<span id="L353"><a href="#L353">  353</a>                     current_block_succs: None,</span>
+<span id="L354"><a href="#L354">  354</a>                     current_block_label: None,</span>
+<span id="L355"><a href="#L355">  355</a>                     current_fpcs: None,</span>
+<span id="L356"><a href="#L356">  356</a> </span>
+<span id="L357"><a href="#L357">  357</a>                     current_stmts: None,</span>
+<span id="L358"><a href="#L358">  358</a>                     current_terminator: None,</span>
+<span id="L359"><a href="#L359">  359</a>                     encoded_blocks,</span>
+<span id="L360"><a href="#L360">  360</a>                 };</span>
+<span id="L361"><a href="#L361">  361</a>                 // if we encountered an error/cycle during encoding, we don&#x27;t</span>
+<span id="L362"><a href="#L362">  362</a>                 // emit a method body; encoding errors additionally surface as</span>
+<span id="L363"><a href="#L363">  363</a>                 // early errors rather than silently degrading to a stub</span>
+<span id="L364"><a href="#L364">  364</a>                 match visitor.visit_body(body) {</span>
+<span id="L365"><a href="#L365">  365</a>                     Ok(()) =&gt; {</span>
+<span id="L366"><a href="#L366">  366</a>                         start_stmts.extend(</span>
+<span id="L367"><a href="#L367">  367</a>                             visitor</span>
+<span id="L368"><a href="#L368">  368</a>                                 .from_to_vars</span>
+<span id="L369"><a href="#L369">  369</a>                                 .decls()</span>
+<span id="L370"><a href="#L370">  370</a>                                 .map(|v| vcx.mk_local_decl_stmt(v, Some(vcx.mk_bool::&lt;false&gt;()))),</span>
+<span id="L371"><a href="#L371">  371</a>                         );</span>
+<span id="L372"><a href="#L372">  372</a>                         visitor.encoded_blocks[0] = vcx.mk_cfg_block(</span>
+<span id="L373"><a href="#L373">  373</a>                             &amp;vir::CfgBlockLabelData::Start,</span>
+<span id="L374"><a href="#L374">  374</a>                             &amp;[],</span>
+<span id="L375"><a href="#L375">  375</a>                             vcx.alloc_slice(&amp;start_stmts),</span>
+<span id="L376"><a href="#L376">  376</a>                             vcx.mk_goto_stmt(&amp;vir::CfgBlockLabelData::BasicBlock(0)),</span>
+<span id="L377"><a href="#L377">  377</a>                         );</span>
+<span id="L378"><a href="#L378">  378</a> </span>
+<span id="L379"><a href="#L379">  379</a>                         visitor.encoded_blocks.push(vcx.mk_cfg_block(</span>
+<span id="L380"><a href="#L380">  380</a>                             vcx.alloc(vir::CfgBlockLabelData::End),</span>
+<span id="L381"><a href="#L381">  381</a>                             &amp;[],</span>
+<span id="L382"><a href="#L382">  382</a>                             &amp;[],</span>
+<span id="L383"><a href="#L383">  383</a>                             vcx.alloc(vir::TerminatorStmtData::Exit),</span>
+<span id="L384"><a href="#L384">  384</a>                         ));</span>
+<span id="L385"><a href="#L385">  385</a> </span>
+<span id="L386"><a href="#L386">  386</a>                         visitor.deps.check_cycle()?;</span>
+<span id="L387"><a href="#L387">  387</a> </span>
+<span id="L388"><a href="#L388">  388</a>                         Some(visitor.encoded_blocks)</span>
+<span id="L389"><a href="#L389">  389</a>                     }</span>
+<span id="L390"><a href="#L390">  390</a>                     Err(EncodeFullError::AlreadyEncoded) =&gt; None,</span>
+<span id="L391"><a href="#L391">  391</a>                     Err(err) =&gt; {</span>
+<span id="L392"><a href="#L392">  392</a>                         super::report_dep_error(vcx, &amp;err, |err| {</span>
+<span id="L393"><a href="#L393">  393</a>                             let span = err.span.unwrap_or_else(|| vcx.tcx().def_span(def_id));</span>
+<span id="L394"><a href="#L394">  394</a>                             // Worded like `FunctionEnc`&#x27;s error, so that when both</span>
+<span id="L395"><a href="#L395">  395</a>                             // encodings of a pure function&#x27;s body fail in the same</span>
+<span id="L396"><a href="#L396">  396</a>                             // way, rustc reports the identical error only once.</span>
+<span id="L397"><a href="#L397">  397</a>                             let name = vcx.tcx().def_path_str(def_id);</span>
+<span id="L398"><a href="#L398">  398</a>                             err.report(format!(&quot;function body `{name}`&quot;), span)</span>
+<span id="L399"><a href="#L399">  399</a>                         });</span>
+<span id="L400"><a href="#L400">  400</a>                         None</span>
+<span id="L401"><a href="#L401">  401</a>                     }</span>
+<span id="L402"><a href="#L402">  402</a>                 }</span>
+<span id="L403"><a href="#L403">  403</a>             } else {</span>
+<span id="L404"><a href="#L404">  404</a>                 None</span>
+<span id="L405"><a href="#L405">  405</a>             };</span>
+<span id="L406"><a href="#L406">  406</a> </span>
+<span id="L407"><a href="#L407">  407</a>             // Add functional specification as the last pre- and postconditions.</span>
+<span id="L408"><a href="#L408">  408</a>             pres.extend(spec.pre_exprs());</span>
+<span id="L409"><a href="#L409">  409</a>             posts.extend(spec.post_exprs());</span>
+<span id="L410"><a href="#L410">  410</a>             // After the functional postconditions: applying `f_` assumes its</span>
+<span id="L411"><a href="#L411">  411</a>             // (unchecked) postconditions, so they must be checked first.</span>
+<span id="L412"><a href="#L412">  412</a>             // Proving the tie still assumes them on the dummied arguments.</span>
+<span id="L413"><a href="#L413">  413</a>             // A postcondition that holds on the real arguments but not on the</span>
+<span id="L414"><a href="#L414">  414</a>             // dummied ones (e.g. `x as *const i32 != null`) is then assumed</span>
+<span id="L415"><a href="#L415">  415</a>             // false, which makes the tie vacuously provable and lets callers</span>
+<span id="L416"><a href="#L416">  416</a>             // derive false.</span>
+<span id="L417"><a href="#L417">  417</a>             posts.extend(tie);</span>
+<span id="L418"><a href="#L418">  418</a> </span>
+<span id="L419"><a href="#L419">  419</a>             Ok((</span>
+<span id="L420"><a href="#L420">  420</a>                 MethodEncOutput {</span>
+<span id="L421"><a href="#L421">  421</a>                     method: vcx.mk_method(</span>
+<span id="L422"><a href="#L422">  422</a>                         method_ref,</span>
+<span id="L423"><a href="#L423">  423</a>                         (&amp;args, generics.ty_decls(), generics.const_decls()),</span>
+<span id="L424"><a href="#L424">  424</a>                         &amp;[],</span>
+<span id="L425"><a href="#L425">  425</a>                         vcx.alloc_slice(&amp;pres),</span>
+<span id="L426"><a href="#L426">  426</a>                         vcx.alloc_slice(&amp;posts),</span>
+<span id="L427"><a href="#L427">  427</a>                         blocks.map(|blocks| vcx.alloc_slice(&amp;blocks)),</span>
+<span id="L428"><a href="#L428">  428</a>                     ),</span>
+<span id="L429"><a href="#L429">  429</a>                 },</span>
+<span id="L430"><a href="#L430">  430</a>                 (),</span>
+<span id="L431"><a href="#L431">  431</a>             ))</span>
+<span id="L432"><a href="#L432">  432</a>         })</span>
+<span id="L433"><a href="#L433">  433</a>     }</span>
+<span id="L434"><a href="#L434">  434</a> </span>
+<span id="L435"><a href="#L435">  435</a>     fn emit_outputs&lt;&#x27;vir&gt;(program: &amp;mut task_encoder::Program&lt;&#x27;vir&gt;) {</span>
+<span id="L436"><a href="#L436">  436</a>         for output in Self::all_outputs_local(program) {</span>
+<span id="L437"><a href="#L437">  437</a>             program.add_method(output.method);</span>
+<span id="L438"><a href="#L438">  438</a>         }</span>
+<span id="L439"><a href="#L439">  439</a>     }</span>
+<span id="L440"><a href="#L440">  440</a> }</span>
+</pre>

@@ -1,0 +1,22 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">x</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="i32"]
+"p2" [label=<<FONT FACE="courier">y: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?6 mut i32"]
+"r0" [label=<y↓'?6>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?6 mut i32\
+"]
+"r1" [label=<_3 before bb0[8]↓'?7 before bb0[8]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut i32\
+"]
+"p3" [label=<<FONT FACE="courier">(*_4) before bb1[2]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p4" [label=<<FONT FACE="courier">_4 before bb1[2]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?8 mut i32"]
+"r2" [label=<_4 before bb1[2]↓'?8 before bb0[7]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut i32\
+"]
+    "p1" -> "r2" [label="bw0: Default '?2", id="edge_0", color="orange", edgetooltip=""]
+    "r2" -> "p3" [label="", id="edge_1", color="green", edgetooltip=""]
+    "p1" -> "p3" [label="", id="edge_2", style="dashed", color="grey"]
+    "p4" -> "p3" [label="", id="edge_3", color="green", edgetooltip=""]
+    "r1" -> "r0" [label="", id="edge_4", style="dashed", color="red"]
+    "p3" -> "r1" [label="bw1: TwoPhaseBorrow '?3", id="edge_5", color="orange", edgetooltip=""]
+}
+

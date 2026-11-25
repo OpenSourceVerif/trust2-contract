@@ -1,0 +1,44 @@
+{
+  "case": "reborrow",
+  "function": "get_mut_x",
+  "block": "bb0",
+  "statement_index": 7,
+  "phase": "initial",
+  "mir": {
+    "stmt": "return",
+    "debug_stmt": "return",
+    "span": {
+      "low": {
+        "line": 48,
+        "column": 1
+      },
+      "high": {
+        "line": 48,
+        "column": 1
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [
+      "bw0"
+    ],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [],
+  "return_unblock_actions": [
+    "borrow: RETURN = &mut  (*_2) before bb0[6]:PreMain",
+    "{_2 before bb0[6]:PreMain} -> {(*_2) before bb0[6]:PreMain}",
+    "borrow: _2 before bb0[6]:PreMain <before bb0[4]:PreOperands> = &mut  (*_3) before bb0[5]:PreMain",
+    "{_3 before bb0[5]:PreMain} -> {(*_3) before bb0[5]:PreMain}",
+    "borrow: _3 before bb0[5]:PreMain <before bb0[3]:PreOperands> = &mut  (*pt).x",
+    "{*pt} -> {(*pt).x, (*pt).y}",
+    "{pt} -> {*pt}",
+    "Remote(_1)↓'?8 -> pt↓'?8 before bb0[2]:PreOperands"
+  ],
+  "successors": {},
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "reborrow/data/get_mut_x/bb0_stmt_7_initial.dot"
+}

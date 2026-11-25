@@ -1,0 +1,1678 @@
+<!doctype html><meta charset="utf-8"><title>program-check.vpr</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>program-check.vpr</h1><pre><span id="L1"><a href="#L1">    1</a> domain ParamTyp  {</span>
+<span id="L2"><a href="#L2">    2</a>   </span>
+<span id="L3"><a href="#L3">    3</a>   function s_Param_typ(arg0: s_Param): Type </span>
+<span id="L4"><a href="#L4">    4</a>   </span>
+<span id="L5"><a href="#L5">    5</a>   function s_Param_has_typ(arg0: s_Param, arg1: Type): Bool </span>
+<span id="L6"><a href="#L6">    6</a>   </span>
+<span id="L7"><a href="#L7">    7</a>   axiom s_Param_has_typ_own {</span>
+<span id="L8"><a href="#L8">    8</a>     (forall p: s_Param ::</span>
+<span id="L9"><a href="#L9">    9</a>       { s_Param_typ(p) }</span>
+<span id="L10"><a href="#L10">   10</a>       s_Param_has_typ(p, s_Param_typ(p)))</span>
+<span id="L11"><a href="#L11">   11</a>   }</span>
+<span id="L12"><a href="#L12">   12</a> }</span>
+<span id="L13"><a href="#L13">   13</a> </span>
+<span id="L14"><a href="#L14">   14</a> domain ParamTyp_make_generic_s_Int_i32  {</span>
+<span id="L15"><a href="#L15">   15</a>   </span>
+<span id="L16"><a href="#L16">   16</a>   axiom s_Param_typ_def_make_generic_s_Int_i32 {</span>
+<span id="L17"><a href="#L17">   17</a>     (forall x: s_Int_i32 ::</span>
+<span id="L18"><a href="#L18">   18</a>       { make_generic_s_Int_i32(x) }</span>
+<span id="L19"><a href="#L19">   19</a>       s_Param_typ(make_generic_s_Int_i32(x)) == s_Int_i32_type())</span>
+<span id="L20"><a href="#L20">   20</a>   }</span>
+<span id="L21"><a href="#L21">   21</a>   </span>
+<span id="L22"><a href="#L22">   22</a>   axiom s_Param_typ_variant_make_generic_s_Int_i32 {</span>
+<span id="L23"><a href="#L23">   23</a>     (forall p: s_Param ::</span>
+<span id="L24"><a href="#L24">   24</a>       { p.make_concrete_s_Int_i32, s_Param_typ(p) }</span>
+<span id="L25"><a href="#L25">   25</a>       s_Param_typ(p) == s_Int_i32_type() ==&gt;</span>
+<span id="L26"><a href="#L26">   26</a>       make_generic_s_Int_i32(p.make_concrete_s_Int_i32) == p)</span>
+<span id="L27"><a href="#L27">   27</a>   }</span>
+<span id="L28"><a href="#L28">   28</a> }</span>
+<span id="L29"><a href="#L29">   29</a> </span>
+<span id="L30"><a href="#L30">   30</a> domain ParamTyp_make_generic_s_0_Tuple  {</span>
+<span id="L31"><a href="#L31">   31</a>   </span>
+<span id="L32"><a href="#L32">   32</a>   axiom s_Param_typ_def_make_generic_s_0_Tuple {</span>
+<span id="L33"><a href="#L33">   33</a>     (forall x: s_0_Tuple ::</span>
+<span id="L34"><a href="#L34">   34</a>       { make_generic_s_0_Tuple(x) }</span>
+<span id="L35"><a href="#L35">   35</a>       s_Param_typ(make_generic_s_0_Tuple(x)) == s_0_Tuple_type())</span>
+<span id="L36"><a href="#L36">   36</a>   }</span>
+<span id="L37"><a href="#L37">   37</a>   </span>
+<span id="L38"><a href="#L38">   38</a>   axiom s_Param_typ_variant_make_generic_s_0_Tuple {</span>
+<span id="L39"><a href="#L39">   39</a>     (forall p: s_Param ::</span>
+<span id="L40"><a href="#L40">   40</a>       { s_Param_has_typ(p, s_0_Tuple_type()) }</span>
+<span id="L41"><a href="#L41">   41</a>       s_Param_typ(p) == s_0_Tuple_type() ==&gt;</span>
+<span id="L42"><a href="#L42">   42</a>       make_generic_s_0_Tuple(s_0_Tuple_cons()) == p)</span>
+<span id="L43"><a href="#L43">   43</a>   }</span>
+<span id="L44"><a href="#L44">   44</a>   </span>
+<span id="L45"><a href="#L45">   45</a>   axiom make_generic_s_0_Tuple_unit {</span>
+<span id="L46"><a href="#L46">   46</a>     (forall p: s_Param ::</span>
+<span id="L47"><a href="#L47">   47</a>       { p.make_concrete_s_0_Tuple }</span>
+<span id="L48"><a href="#L48">   48</a>       p.make_concrete_s_0_Tuple == s_0_Tuple_cons())</span>
+<span id="L49"><a href="#L49">   49</a>   }</span>
+<span id="L50"><a href="#L50">   50</a> }</span>
+<span id="L51"><a href="#L51">   51</a> </span>
+<span id="L52"><a href="#L52">   52</a> domain ParamTyp_make_generic_s_Str  {</span>
+<span id="L53"><a href="#L53">   53</a>   </span>
+<span id="L54"><a href="#L54">   54</a>   axiom s_Param_typ_def_make_generic_s_Str {</span>
+<span id="L55"><a href="#L55">   55</a>     (forall x: s_Str ::</span>
+<span id="L56"><a href="#L56">   56</a>       { make_generic_s_Str(x) }</span>
+<span id="L57"><a href="#L57">   57</a>       s_Param_typ(make_generic_s_Str(x)) == s_Str_type())</span>
+<span id="L58"><a href="#L58">   58</a>   }</span>
+<span id="L59"><a href="#L59">   59</a>   </span>
+<span id="L60"><a href="#L60">   60</a>   axiom s_Param_typ_variant_make_generic_s_Str {</span>
+<span id="L61"><a href="#L61">   61</a>     (forall p: s_Param ::</span>
+<span id="L62"><a href="#L62">   62</a>       { p.make_concrete_s_Str, s_Param_typ(p) }</span>
+<span id="L63"><a href="#L63">   63</a>       s_Param_typ(p) == s_Str_type() ==&gt;</span>
+<span id="L64"><a href="#L64">   64</a>       make_generic_s_Str(p.make_concrete_s_Str) == p)</span>
+<span id="L65"><a href="#L65">   65</a>   }</span>
+<span id="L66"><a href="#L66">   66</a> }</span>
+<span id="L67"><a href="#L67">   67</a> </span>
+<span id="L68"><a href="#L68">   68</a> domain ParamTyp_make_generic_s_UInt_usize  {</span>
+<span id="L69"><a href="#L69">   69</a>   </span>
+<span id="L70"><a href="#L70">   70</a>   axiom s_Param_typ_def_make_generic_s_UInt_usize {</span>
+<span id="L71"><a href="#L71">   71</a>     (forall x: s_UInt_usize ::</span>
+<span id="L72"><a href="#L72">   72</a>       { make_generic_s_UInt_usize(x) }</span>
+<span id="L73"><a href="#L73">   73</a>       s_Param_typ(make_generic_s_UInt_usize(x)) == s_UInt_usize_type())</span>
+<span id="L74"><a href="#L74">   74</a>   }</span>
+<span id="L75"><a href="#L75">   75</a>   </span>
+<span id="L76"><a href="#L76">   76</a>   axiom s_Param_typ_variant_make_generic_s_UInt_usize {</span>
+<span id="L77"><a href="#L77">   77</a>     (forall p: s_Param ::</span>
+<span id="L78"><a href="#L78">   78</a>       { p.make_concrete_s_UInt_usize, s_Param_typ(p) }</span>
+<span id="L79"><a href="#L79">   79</a>       s_Param_typ(p) == s_UInt_usize_type() ==&gt;</span>
+<span id="L80"><a href="#L80">   80</a>       make_generic_s_UInt_usize(p.make_concrete_s_UInt_usize) == p)</span>
+<span id="L81"><a href="#L81">   81</a>   }</span>
+<span id="L82"><a href="#L82">   82</a> }</span>
+<span id="L83"><a href="#L83">   83</a> </span>
+<span id="L84"><a href="#L84">   84</a> domain s_Int_i32  {</span>
+<span id="L85"><a href="#L85">   85</a>   </span>
+<span id="L86"><a href="#L86">   86</a>   function s_Int_i32_cons(arg0: Int): s_Int_i32 </span>
+<span id="L87"><a href="#L87">   87</a>   </span>
+<span id="L88"><a href="#L88">   88</a>   function s_Int_i32_value(arg0: s_Int_i32): Int </span>
+<span id="L89"><a href="#L89">   89</a>   </span>
+<span id="L90"><a href="#L90">   90</a>   axiom s_Int_i32_ax_cons {</span>
+<span id="L91"><a href="#L91">   91</a>     (forall s: s_Int_i32 ::</span>
+<span id="L92"><a href="#L92">   92</a>       { s_Int_i32_value(s) }</span>
+<span id="L93"><a href="#L93">   93</a>       s_Int_i32_cons(s_Int_i32_value(s)) == s)</span>
+<span id="L94"><a href="#L94">   94</a>   }</span>
+<span id="L95"><a href="#L95">   95</a>   </span>
+<span id="L96"><a href="#L96">   96</a>   axiom s_Int_i32_ax_bounds {</span>
+<span id="L97"><a href="#L97">   97</a>     (forall s: s_Int_i32 ::</span>
+<span id="L98"><a href="#L98">   98</a>       { s_Int_i32_value(s) }</span>
+<span id="L99"><a href="#L99">   99</a>       -2147483648 &lt;= s_Int_i32_value(s) &amp;&amp; s_Int_i32_value(s) &lt;= 2147483647)</span>
+<span id="L100"><a href="#L100">  100</a>   }</span>
+<span id="L101"><a href="#L101">  101</a>   </span>
+<span id="L102"><a href="#L102">  102</a>   axiom s_Int_i32_ax_value {</span>
+<span id="L103"><a href="#L103">  103</a>     (forall value: Int ::</span>
+<span id="L104"><a href="#L104">  104</a>       { s_Int_i32_cons(value) }</span>
+<span id="L105"><a href="#L105">  105</a>       -2147483648 &lt;= value &amp;&amp; value &lt;= 2147483647 ==&gt;</span>
+<span id="L106"><a href="#L106">  106</a>       s_Int_i32_value(s_Int_i32_cons(value)) == value)</span>
+<span id="L107"><a href="#L107">  107</a>   }</span>
+<span id="L108"><a href="#L108">  108</a> }</span>
+<span id="L109"><a href="#L109">  109</a> </span>
+<span id="L110"><a href="#L110">  110</a> domain s_Int_isize  {</span>
+<span id="L111"><a href="#L111">  111</a>   </span>
+<span id="L112"><a href="#L112">  112</a>   function s_Int_isize_cons(arg0: Int): s_Int_isize </span>
+<span id="L113"><a href="#L113">  113</a>   </span>
+<span id="L114"><a href="#L114">  114</a>   function s_Int_isize_value(arg0: s_Int_isize): Int </span>
+<span id="L115"><a href="#L115">  115</a>   </span>
+<span id="L116"><a href="#L116">  116</a>   axiom s_Int_isize_ax_cons {</span>
+<span id="L117"><a href="#L117">  117</a>     (forall s: s_Int_isize ::</span>
+<span id="L118"><a href="#L118">  118</a>       { s_Int_isize_value(s) }</span>
+<span id="L119"><a href="#L119">  119</a>       s_Int_isize_cons(s_Int_isize_value(s)) == s)</span>
+<span id="L120"><a href="#L120">  120</a>   }</span>
+<span id="L121"><a href="#L121">  121</a>   </span>
+<span id="L122"><a href="#L122">  122</a>   axiom s_Int_isize_ax_bounds {</span>
+<span id="L123"><a href="#L123">  123</a>     (forall s: s_Int_isize ::</span>
+<span id="L124"><a href="#L124">  124</a>       { s_Int_isize_value(s) }</span>
+<span id="L125"><a href="#L125">  125</a>       -9223372036854775808 &lt;= s_Int_isize_value(s) &amp;&amp;</span>
+<span id="L126"><a href="#L126">  126</a>       s_Int_isize_value(s) &lt;= 9223372036854775807)</span>
+<span id="L127"><a href="#L127">  127</a>   }</span>
+<span id="L128"><a href="#L128">  128</a>   </span>
+<span id="L129"><a href="#L129">  129</a>   axiom s_Int_isize_ax_value {</span>
+<span id="L130"><a href="#L130">  130</a>     (forall value: Int ::</span>
+<span id="L131"><a href="#L131">  131</a>       { s_Int_isize_cons(value) }</span>
+<span id="L132"><a href="#L132">  132</a>       -9223372036854775808 &lt;= value &amp;&amp; value &lt;= 9223372036854775807 ==&gt;</span>
+<span id="L133"><a href="#L133">  133</a>       s_Int_isize_value(s_Int_isize_cons(value)) == value)</span>
+<span id="L134"><a href="#L134">  134</a>   }</span>
+<span id="L135"><a href="#L135">  135</a> }</span>
+<span id="L136"><a href="#L136">  136</a> </span>
+<span id="L137"><a href="#L137">  137</a> domain s_Str  {</span>
+<span id="L138"><a href="#L138">  138</a>   </span>
+<span id="L139"><a href="#L139">  139</a>   </span>
+<span id="L140"><a href="#L140">  140</a> }</span>
+<span id="L141"><a href="#L141">  141</a> </span>
+<span id="L142"><a href="#L142">  142</a> domain s_UInt_usize  {</span>
+<span id="L143"><a href="#L143">  143</a>   </span>
+<span id="L144"><a href="#L144">  144</a>   function s_UInt_usize_cons(arg0: Int): s_UInt_usize </span>
+<span id="L145"><a href="#L145">  145</a>   </span>
+<span id="L146"><a href="#L146">  146</a>   function s_UInt_usize_value(arg0: s_UInt_usize): Int </span>
+<span id="L147"><a href="#L147">  147</a>   </span>
+<span id="L148"><a href="#L148">  148</a>   axiom s_UInt_usize_ax_cons {</span>
+<span id="L149"><a href="#L149">  149</a>     (forall s: s_UInt_usize ::</span>
+<span id="L150"><a href="#L150">  150</a>       { s_UInt_usize_value(s) }</span>
+<span id="L151"><a href="#L151">  151</a>       s_UInt_usize_cons(s_UInt_usize_value(s)) == s)</span>
+<span id="L152"><a href="#L152">  152</a>   }</span>
+<span id="L153"><a href="#L153">  153</a>   </span>
+<span id="L154"><a href="#L154">  154</a>   axiom s_UInt_usize_ax_bounds {</span>
+<span id="L155"><a href="#L155">  155</a>     (forall s: s_UInt_usize ::</span>
+<span id="L156"><a href="#L156">  156</a>       { s_UInt_usize_value(s) }</span>
+<span id="L157"><a href="#L157">  157</a>       0 &lt;= s_UInt_usize_value(s) &amp;&amp;</span>
+<span id="L158"><a href="#L158">  158</a>       s_UInt_usize_value(s) &lt;= 18446744073709551615)</span>
+<span id="L159"><a href="#L159">  159</a>   }</span>
+<span id="L160"><a href="#L160">  160</a>   </span>
+<span id="L161"><a href="#L161">  161</a>   axiom s_UInt_usize_ax_value {</span>
+<span id="L162"><a href="#L162">  162</a>     (forall value: Int ::</span>
+<span id="L163"><a href="#L163">  163</a>       { s_UInt_usize_cons(value) }</span>
+<span id="L164"><a href="#L164">  164</a>       0 &lt;= value &amp;&amp; value &lt;= 18446744073709551615 ==&gt;</span>
+<span id="L165"><a href="#L165">  165</a>       s_UInt_usize_value(s_UInt_usize_cons(value)) == value)</span>
+<span id="L166"><a href="#L166">  166</a>   }</span>
+<span id="L167"><a href="#L167">  167</a> }</span>
+<span id="L168"><a href="#L168">  168</a> </span>
+<span id="L169"><a href="#L169">  169</a> domain TypeRank  {</span>
+<span id="L170"><a href="#L170">  170</a>   </span>
+<span id="L171"><a href="#L171">  171</a>   function Type_rank(arg0: Type): Int </span>
+<span id="L172"><a href="#L172">  172</a>   </span>
+<span id="L173"><a href="#L173">  173</a>   axiom rank_Ref_mutable {</span>
+<span id="L174"><a href="#L174">  174</a>     (forall U$1: Type ::</span>
+<span id="L175"><a href="#L175">  175</a>       { s_Ref_mutable_type(U$1) }</span>
+<span id="L176"><a href="#L176">  176</a>       Type_rank(s_Ref_mutable_type(U$1)) &gt; Type_rank(U$1))</span>
+<span id="L177"><a href="#L177">  177</a>   }</span>
+<span id="L178"><a href="#L178">  178</a>   </span>
+<span id="L179"><a href="#L179">  179</a>   axiom rank_Ref_immutable {</span>
+<span id="L180"><a href="#L180">  180</a>     (forall U$1: Type ::</span>
+<span id="L181"><a href="#L181">  181</a>       { s_Ref_immutable_type(U$1) }</span>
+<span id="L182"><a href="#L182">  182</a>       Type_rank(s_Ref_immutable_type(U$1)) &gt; Type_rank(U$1))</span>
+<span id="L183"><a href="#L183">  183</a>   }</span>
+<span id="L184"><a href="#L184">  184</a> }</span>
+<span id="L185"><a href="#L185">  185</a> </span>
+<span id="L186"><a href="#L186">  186</a> domain Inhabited  {</span>
+<span id="L187"><a href="#L187">  187</a>   </span>
+<span id="L188"><a href="#L188">  188</a>   function inhabited(arg0: Type): Bool </span>
+<span id="L189"><a href="#L189">  189</a>   </span>
+<span id="L190"><a href="#L190">  190</a>   axiom inhabited_0_Tuple {</span>
+<span id="L191"><a href="#L191">  191</a>     inhabited(s_0_Tuple_type())</span>
+<span id="L192"><a href="#L192">  192</a>   }</span>
+<span id="L193"><a href="#L193">  193</a>   </span>
+<span id="L194"><a href="#L194">  194</a>   axiom inhabited_Bool {</span>
+<span id="L195"><a href="#L195">  195</a>     inhabited(s_Bool_type())</span>
+<span id="L196"><a href="#L196">  196</a>   }</span>
+<span id="L197"><a href="#L197">  197</a>   </span>
+<span id="L198"><a href="#L198">  198</a>   axiom inhabited_Int_i32 {</span>
+<span id="L199"><a href="#L199">  199</a>     inhabited(s_Int_i32_type())</span>
+<span id="L200"><a href="#L200">  200</a>   }</span>
+<span id="L201"><a href="#L201">  201</a>   </span>
+<span id="L202"><a href="#L202">  202</a>   axiom inhabited_Ref_mutable {</span>
+<span id="L203"><a href="#L203">  203</a>     (forall U$1: Type ::</span>
+<span id="L204"><a href="#L204">  204</a>       { inhabited(s_Ref_mutable_type(U$1)) }</span>
+<span id="L205"><a href="#L205">  205</a>       inhabited(s_Ref_mutable_type(U$1)) == inhabited(U$1))</span>
+<span id="L206"><a href="#L206">  206</a>   }</span>
+<span id="L207"><a href="#L207">  207</a>   </span>
+<span id="L208"><a href="#L208">  208</a>   axiom inhabited_Int_isize {</span>
+<span id="L209"><a href="#L209">  209</a>     inhabited(s_Int_isize_type())</span>
+<span id="L210"><a href="#L210">  210</a>   }</span>
+<span id="L211"><a href="#L211">  211</a>   </span>
+<span id="L212"><a href="#L212">  212</a>   axiom inhabited_Never {</span>
+<span id="L213"><a href="#L213">  213</a>     !inhabited(s_Never_type())</span>
+<span id="L214"><a href="#L214">  214</a>   }</span>
+<span id="L215"><a href="#L215">  215</a>   </span>
+<span id="L216"><a href="#L216">  216</a>   axiom inhabited_Ref_immutable {</span>
+<span id="L217"><a href="#L217">  217</a>     (forall U$1: Type ::</span>
+<span id="L218"><a href="#L218">  218</a>       { inhabited(s_Ref_immutable_type(U$1)) }</span>
+<span id="L219"><a href="#L219">  219</a>       inhabited(s_Ref_immutable_type(U$1)) == inhabited(U$1))</span>
+<span id="L220"><a href="#L220">  220</a>   }</span>
+<span id="L221"><a href="#L221">  221</a>   </span>
+<span id="L222"><a href="#L222">  222</a>   axiom inhabited_Str {</span>
+<span id="L223"><a href="#L223">  223</a>     inhabited(s_Str_type())</span>
+<span id="L224"><a href="#L224">  224</a>   }</span>
+<span id="L225"><a href="#L225">  225</a> }</span>
+<span id="L226"><a href="#L226">  226</a> </span>
+<span id="L227"><a href="#L227">  227</a> domain ReadPerm  {</span>
+<span id="L228"><a href="#L228">  228</a>   </span>
+<span id="L229"><a href="#L229">  229</a>   function read(): Perm </span>
+<span id="L230"><a href="#L230">  230</a>   </span>
+<span id="L231"><a href="#L231">  231</a>   axiom read_bounds {</span>
+<span id="L232"><a href="#L232">  232</a>     none &lt; read() &amp;&amp; read() &lt; write</span>
+<span id="L233"><a href="#L233">  233</a>   }</span>
+<span id="L234"><a href="#L234">  234</a> }</span>
+<span id="L235"><a href="#L235">  235</a> </span>
+<span id="L236"><a href="#L236">  236</a> domain trait_std$col$$col$marker$col$$col$Sized  {</span>
+<span id="L237"><a href="#L237">  237</a>   </span>
+<span id="L238"><a href="#L238">  238</a>   function std$col$$col$marker$col$$col$Sized_impl(arg0: Type): Bool </span>
+<span id="L239"><a href="#L239">  239</a> }</span>
+<span id="L240"><a href="#L240">  240</a> </span>
+<span id="L241"><a href="#L241">  241</a> domain trait_std$col$$col$marker$col$$col$MetaSized  {</span>
+<span id="L242"><a href="#L242">  242</a>   </span>
+<span id="L243"><a href="#L243">  243</a>   function std$col$$col$marker$col$$col$MetaSized_impl(arg0: Type): Bool </span>
+<span id="L244"><a href="#L244">  244</a> }</span>
+<span id="L245"><a href="#L245">  245</a> </span>
+<span id="L246"><a href="#L246">  246</a> domain trait_std$col$$col$ptr$col$$col$Pointee  {</span>
+<span id="L247"><a href="#L247">  247</a>   </span>
+<span id="L248"><a href="#L248">  248</a>   function std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(arg0: Type): Type </span>
+<span id="L249"><a href="#L249">  249</a>   </span>
+<span id="L250"><a href="#L250">  250</a>   function std$col$$col$ptr$col$$col$Pointee_impl(arg0: Type): Bool </span>
+<span id="L251"><a href="#L251">  251</a> }</span>
+<span id="L252"><a href="#L252">  252</a> </span>
+<span id="L253"><a href="#L253">  253</a> domain trait_std$col$$col$marker$col$$col$Sized_builtin  {</span>
+<span id="L254"><a href="#L254">  254</a>   </span>
+<span id="L255"><a href="#L255">  255</a>   axiom s_0_Tuple_Sized {</span>
+<span id="L256"><a href="#L256">  256</a>     std$col$$col$marker$col$$col$Sized_impl(s_0_Tuple_type())</span>
+<span id="L257"><a href="#L257">  257</a>   }</span>
+<span id="L258"><a href="#L258">  258</a>   </span>
+<span id="L259"><a href="#L259">  259</a>   axiom s_Bool_Sized {</span>
+<span id="L260"><a href="#L260">  260</a>     std$col$$col$marker$col$$col$Sized_impl(s_Bool_type())</span>
+<span id="L261"><a href="#L261">  261</a>   }</span>
+<span id="L262"><a href="#L262">  262</a>   </span>
+<span id="L263"><a href="#L263">  263</a>   axiom s_Int_i32_Sized {</span>
+<span id="L264"><a href="#L264">  264</a>     std$col$$col$marker$col$$col$Sized_impl(s_Int_i32_type())</span>
+<span id="L265"><a href="#L265">  265</a>   }</span>
+<span id="L266"><a href="#L266">  266</a>   </span>
+<span id="L267"><a href="#L267">  267</a>   axiom s_Ref_mutable_Sized {</span>
+<span id="L268"><a href="#L268">  268</a>     (forall U$1: Type ::</span>
+<span id="L269"><a href="#L269">  269</a>       { std$col$$col$marker$col$$col$Sized_impl(s_Ref_mutable_type(U$1)) }</span>
+<span id="L270"><a href="#L270">  270</a>       std$col$$col$marker$col$$col$Sized_impl(s_Ref_mutable_type(U$1)))</span>
+<span id="L271"><a href="#L271">  271</a>   }</span>
+<span id="L272"><a href="#L272">  272</a>   </span>
+<span id="L273"><a href="#L273">  273</a>   axiom s_Int_isize_Sized {</span>
+<span id="L274"><a href="#L274">  274</a>     std$col$$col$marker$col$$col$Sized_impl(s_Int_isize_type())</span>
+<span id="L275"><a href="#L275">  275</a>   }</span>
+<span id="L276"><a href="#L276">  276</a>   </span>
+<span id="L277"><a href="#L277">  277</a>   axiom s_Never_Sized {</span>
+<span id="L278"><a href="#L278">  278</a>     std$col$$col$marker$col$$col$Sized_impl(s_Never_type())</span>
+<span id="L279"><a href="#L279">  279</a>   }</span>
+<span id="L280"><a href="#L280">  280</a>   </span>
+<span id="L281"><a href="#L281">  281</a>   axiom s_Ref_immutable_Sized {</span>
+<span id="L282"><a href="#L282">  282</a>     (forall U$1: Type ::</span>
+<span id="L283"><a href="#L283">  283</a>       { std$col$$col$marker$col$$col$Sized_impl(s_Ref_immutable_type(U$1)) }</span>
+<span id="L284"><a href="#L284">  284</a>       std$col$$col$marker$col$$col$Sized_impl(s_Ref_immutable_type(U$1)))</span>
+<span id="L285"><a href="#L285">  285</a>   }</span>
+<span id="L286"><a href="#L286">  286</a>   </span>
+<span id="L287"><a href="#L287">  287</a>   axiom s_UInt_usize_Sized {</span>
+<span id="L288"><a href="#L288">  288</a>     std$col$$col$marker$col$$col$Sized_impl(s_UInt_usize_type())</span>
+<span id="L289"><a href="#L289">  289</a>   }</span>
+<span id="L290"><a href="#L290">  290</a> }</span>
+<span id="L291"><a href="#L291">  291</a> </span>
+<span id="L292"><a href="#L292">  292</a> domain trait_std$col$$col$marker$col$$col$MetaSized_builtin  {</span>
+<span id="L293"><a href="#L293">  293</a>   </span>
+<span id="L294"><a href="#L294">  294</a>   axiom s_0_Tuple_MetaSized {</span>
+<span id="L295"><a href="#L295">  295</a>     std$col$$col$marker$col$$col$MetaSized_impl(s_0_Tuple_type())</span>
+<span id="L296"><a href="#L296">  296</a>   }</span>
+<span id="L297"><a href="#L297">  297</a>   </span>
+<span id="L298"><a href="#L298">  298</a>   axiom s_Bool_MetaSized {</span>
+<span id="L299"><a href="#L299">  299</a>     std$col$$col$marker$col$$col$MetaSized_impl(s_Bool_type())</span>
+<span id="L300"><a href="#L300">  300</a>   }</span>
+<span id="L301"><a href="#L301">  301</a>   </span>
+<span id="L302"><a href="#L302">  302</a>   axiom s_Int_i32_MetaSized {</span>
+<span id="L303"><a href="#L303">  303</a>     std$col$$col$marker$col$$col$MetaSized_impl(s_Int_i32_type())</span>
+<span id="L304"><a href="#L304">  304</a>   }</span>
+<span id="L305"><a href="#L305">  305</a>   </span>
+<span id="L306"><a href="#L306">  306</a>   axiom s_Ref_mutable_MetaSized {</span>
+<span id="L307"><a href="#L307">  307</a>     (forall U$1: Type ::</span>
+<span id="L308"><a href="#L308">  308</a>       { std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_mutable_type(U$1)) }</span>
+<span id="L309"><a href="#L309">  309</a>       std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_mutable_type(U$1)))</span>
+<span id="L310"><a href="#L310">  310</a>   }</span>
+<span id="L311"><a href="#L311">  311</a>   </span>
+<span id="L312"><a href="#L312">  312</a>   axiom s_Int_isize_MetaSized {</span>
+<span id="L313"><a href="#L313">  313</a>     std$col$$col$marker$col$$col$MetaSized_impl(s_Int_isize_type())</span>
+<span id="L314"><a href="#L314">  314</a>   }</span>
+<span id="L315"><a href="#L315">  315</a>   </span>
+<span id="L316"><a href="#L316">  316</a>   axiom s_Never_MetaSized {</span>
+<span id="L317"><a href="#L317">  317</a>     std$col$$col$marker$col$$col$MetaSized_impl(s_Never_type())</span>
+<span id="L318"><a href="#L318">  318</a>   }</span>
+<span id="L319"><a href="#L319">  319</a>   </span>
+<span id="L320"><a href="#L320">  320</a>   axiom s_Ref_immutable_MetaSized {</span>
+<span id="L321"><a href="#L321">  321</a>     (forall U$1: Type ::</span>
+<span id="L322"><a href="#L322">  322</a>       { std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_immutable_type(U$1)) }</span>
+<span id="L323"><a href="#L323">  323</a>       std$col$$col$marker$col$$col$MetaSized_impl(s_Ref_immutable_type(U$1)))</span>
+<span id="L324"><a href="#L324">  324</a>   }</span>
+<span id="L325"><a href="#L325">  325</a>   </span>
+<span id="L326"><a href="#L326">  326</a>   axiom s_Str_MetaSized {</span>
+<span id="L327"><a href="#L327">  327</a>     std$col$$col$marker$col$$col$MetaSized_impl(s_Str_type())</span>
+<span id="L328"><a href="#L328">  328</a>   }</span>
+<span id="L329"><a href="#L329">  329</a>   </span>
+<span id="L330"><a href="#L330">  330</a>   axiom s_UInt_usize_MetaSized {</span>
+<span id="L331"><a href="#L331">  331</a>     std$col$$col$marker$col$$col$MetaSized_impl(s_UInt_usize_type())</span>
+<span id="L332"><a href="#L332">  332</a>   }</span>
+<span id="L333"><a href="#L333">  333</a> }</span>
+<span id="L334"><a href="#L334">  334</a> </span>
+<span id="L335"><a href="#L335">  335</a> domain trait_std$col$$col$ptr$col$$col$Pointee_builtin  {</span>
+<span id="L336"><a href="#L336">  336</a>   </span>
+<span id="L337"><a href="#L337">  337</a>   axiom pointee_metadata_sized {</span>
+<span id="L338"><a href="#L338">  338</a>     (forall ty: Type ::</span>
+<span id="L339"><a href="#L339">  339</a>       { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(ty) }</span>
+<span id="L340"><a href="#L340">  340</a>       std$col$$col$marker$col$$col$Sized_impl(ty) ==&gt;</span>
+<span id="L341"><a href="#L341">  341</a>       std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(ty) ==</span>
+<span id="L342"><a href="#L342">  342</a>       s_0_Tuple_type())</span>
+<span id="L343"><a href="#L343">  343</a>   }</span>
+<span id="L344"><a href="#L344">  344</a>   </span>
+<span id="L345"><a href="#L345">  345</a>   axiom s_0_Tuple_Metadata {</span>
+<span id="L346"><a href="#L346">  346</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_0_Tuple_type()) ==</span>
+<span id="L347"><a href="#L347">  347</a>     s_0_Tuple_type()</span>
+<span id="L348"><a href="#L348">  348</a>   }</span>
+<span id="L349"><a href="#L349">  349</a>   </span>
+<span id="L350"><a href="#L350">  350</a>   axiom s_Bool_Metadata {</span>
+<span id="L351"><a href="#L351">  351</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Bool_type()) ==</span>
+<span id="L352"><a href="#L352">  352</a>     s_0_Tuple_type()</span>
+<span id="L353"><a href="#L353">  353</a>   }</span>
+<span id="L354"><a href="#L354">  354</a>   </span>
+<span id="L355"><a href="#L355">  355</a>   axiom s_Int_i32_Metadata {</span>
+<span id="L356"><a href="#L356">  356</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Int_i32_type()) ==</span>
+<span id="L357"><a href="#L357">  357</a>     s_0_Tuple_type()</span>
+<span id="L358"><a href="#L358">  358</a>   }</span>
+<span id="L359"><a href="#L359">  359</a>   </span>
+<span id="L360"><a href="#L360">  360</a>   axiom s_Ref_mutable_Metadata {</span>
+<span id="L361"><a href="#L361">  361</a>     (forall U$1: Type ::</span>
+<span id="L362"><a href="#L362">  362</a>       { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_mutable_type(U$1)) }</span>
+<span id="L363"><a href="#L363">  363</a>       std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_mutable_type(U$1)) ==</span>
+<span id="L364"><a href="#L364">  364</a>       s_0_Tuple_type())</span>
+<span id="L365"><a href="#L365">  365</a>   }</span>
+<span id="L366"><a href="#L366">  366</a>   </span>
+<span id="L367"><a href="#L367">  367</a>   axiom s_Int_isize_Metadata {</span>
+<span id="L368"><a href="#L368">  368</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Int_isize_type()) ==</span>
+<span id="L369"><a href="#L369">  369</a>     s_0_Tuple_type()</span>
+<span id="L370"><a href="#L370">  370</a>   }</span>
+<span id="L371"><a href="#L371">  371</a>   </span>
+<span id="L372"><a href="#L372">  372</a>   axiom s_Never_Metadata {</span>
+<span id="L373"><a href="#L373">  373</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Never_type()) ==</span>
+<span id="L374"><a href="#L374">  374</a>     s_0_Tuple_type()</span>
+<span id="L375"><a href="#L375">  375</a>   }</span>
+<span id="L376"><a href="#L376">  376</a>   </span>
+<span id="L377"><a href="#L377">  377</a>   axiom s_Ref_immutable_Metadata {</span>
+<span id="L378"><a href="#L378">  378</a>     (forall U$1: Type ::</span>
+<span id="L379"><a href="#L379">  379</a>       { std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_immutable_type(U$1)) }</span>
+<span id="L380"><a href="#L380">  380</a>       std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Ref_immutable_type(U$1)) ==</span>
+<span id="L381"><a href="#L381">  381</a>       s_0_Tuple_type())</span>
+<span id="L382"><a href="#L382">  382</a>   }</span>
+<span id="L383"><a href="#L383">  383</a>   </span>
+<span id="L384"><a href="#L384">  384</a>   axiom s_Str_Metadata {</span>
+<span id="L385"><a href="#L385">  385</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_Str_type()) ==</span>
+<span id="L386"><a href="#L386">  386</a>     s_UInt_usize_type()</span>
+<span id="L387"><a href="#L387">  387</a>   }</span>
+<span id="L388"><a href="#L388">  388</a>   </span>
+<span id="L389"><a href="#L389">  389</a>   axiom s_UInt_usize_Metadata {</span>
+<span id="L390"><a href="#L390">  390</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(s_UInt_usize_type()) ==</span>
+<span id="L391"><a href="#L391">  391</a>     s_0_Tuple_type()</span>
+<span id="L392"><a href="#L392">  392</a>   }</span>
+<span id="L393"><a href="#L393">  393</a> }</span>
+<span id="L394"><a href="#L394">  394</a> </span>
+<span id="L395"><a href="#L395">  395</a> field p_Bool_val: Bool</span>
+<span id="L396"><a href="#L396">  396</a> </span>
+<span id="L397"><a href="#L397">  397</a> field p_Int_i32_val: s_Int_i32</span>
+<span id="L398"><a href="#L398">  398</a> </span>
+<span id="L399"><a href="#L399">  399</a> field p_Ref_mutable_addr: Ref</span>
+<span id="L400"><a href="#L400">  400</a> </span>
+<span id="L401"><a href="#L401">  401</a> field p_Ref_mutable_metadata: s_Param</span>
+<span id="L402"><a href="#L402">  402</a> </span>
+<span id="L403"><a href="#L403">  403</a> field p_Int_isize_val: s_Int_isize</span>
+<span id="L404"><a href="#L404">  404</a> </span>
+<span id="L405"><a href="#L405">  405</a> field p_Ref_immutable_addr: Ref</span>
+<span id="L406"><a href="#L406">  406</a> </span>
+<span id="L407"><a href="#L407">  407</a> field p_Ref_immutable_metadata: s_Param</span>
+<span id="L408"><a href="#L408">  408</a> </span>
+<span id="L409"><a href="#L409">  409</a> function f_core$col$$col$panicking$col$$col$panic(_1s: s_Ref_immutable): s_Never</span>
+<span id="L410"><a href="#L410">  410</a>   decreases *</span>
+<span id="L411"><a href="#L411">  411</a> </span>
+<span id="L412"><a href="#L412">  412</a> </span>
+<span id="L413"><a href="#L413">  413</a> function mir_binop_Eq_Int_i32_Int_i32(arg1: s_Int_i32, arg2: s_Int_i32): Bool</span>
+<span id="L414"><a href="#L414">  414</a> {</span>
+<span id="L415"><a href="#L415">  415</a>   s_Int_i32_value(arg1) == s_Int_i32_value(arg2)</span>
+<span id="L416"><a href="#L416">  416</a> }</span>
+<span id="L417"><a href="#L417">  417</a> </span>
+<span id="L418"><a href="#L418">  418</a> function s_0_Tuple_unreachable(): s_0_Tuple</span>
+<span id="L419"><a href="#L419">  419</a>   ensures false</span>
+<span id="L420"><a href="#L420">  420</a> </span>
+<span id="L421"><a href="#L421">  421</a> </span>
+<span id="L422"><a href="#L422">  422</a> function s_Bool_unreachable(): Bool</span>
+<span id="L423"><a href="#L423">  423</a>   ensures false</span>
+<span id="L424"><a href="#L424">  424</a> </span>
+<span id="L425"><a href="#L425">  425</a> </span>
+<span id="L426"><a href="#L426">  426</a> function s_Int_i32_unreachable(): s_Int_i32</span>
+<span id="L427"><a href="#L427">  427</a>   ensures false</span>
+<span id="L428"><a href="#L428">  428</a> </span>
+<span id="L429"><a href="#L429">  429</a> </span>
+<span id="L430"><a href="#L430">  430</a> function s_Ref_mutable_unreachable(U$1: Type): s_Ref_mutable</span>
+<span id="L431"><a href="#L431">  431</a>   ensures false</span>
+<span id="L432"><a href="#L432">  432</a> </span>
+<span id="L433"><a href="#L433">  433</a> </span>
+<span id="L434"><a href="#L434">  434</a> function s_Param_unreachable(T$0: Type): s_Param</span>
+<span id="L435"><a href="#L435">  435</a>   ensures false</span>
+<span id="L436"><a href="#L436">  436</a> </span>
+<span id="L437"><a href="#L437">  437</a> </span>
+<span id="L438"><a href="#L438">  438</a> function s_Never_unreachable(): s_Never</span>
+<span id="L439"><a href="#L439">  439</a>   ensures false</span>
+<span id="L440"><a href="#L440">  440</a> </span>
+<span id="L441"><a href="#L441">  441</a> </span>
+<span id="L442"><a href="#L442">  442</a> function s_Never_discr(self: s_Never): s_Int_isize</span>
+<span id="L443"><a href="#L443">  443</a>   ensures false</span>
+<span id="L444"><a href="#L444">  444</a> </span>
+<span id="L445"><a href="#L445">  445</a> </span>
+<span id="L446"><a href="#L446">  446</a> function s_Int_isize_unreachable(): s_Int_isize</span>
+<span id="L447"><a href="#L447">  447</a>   ensures false</span>
+<span id="L448"><a href="#L448">  448</a> </span>
+<span id="L449"><a href="#L449">  449</a> </span>
+<span id="L450"><a href="#L450">  450</a> function s_Ref_immutable_unreachable(U$1: Type): s_Ref_immutable</span>
+<span id="L451"><a href="#L451">  451</a>   ensures false</span>
+<span id="L452"><a href="#L452">  452</a> </span>
+<span id="L453"><a href="#L453">  453</a> </span>
+<span id="L454"><a href="#L454">  454</a> function s_Str_unreachable(): s_Str</span>
+<span id="L455"><a href="#L455">  455</a>   ensures false</span>
+<span id="L456"><a href="#L456">  456</a> </span>
+<span id="L457"><a href="#L457">  457</a> </span>
+<span id="L458"><a href="#L458">  458</a> function s_UInt_usize_unreachable(): s_UInt_usize</span>
+<span id="L459"><a href="#L459">  459</a>   ensures false</span>
+<span id="L460"><a href="#L460">  460</a> </span>
+<span id="L461"><a href="#L461">  461</a> </span>
+<span id="L462"><a href="#L462">  462</a> function p_0_Tuple_snap(self: Ref): s_0_Tuple</span>
+<span id="L463"><a href="#L463">  463</a>   requires acc(p_0_Tuple(self), write)</span>
+<span id="L464"><a href="#L464">  464</a> {</span>
+<span id="L465"><a href="#L465">  465</a>   (unfolding acc(p_0_Tuple(self), write) in s_0_Tuple_cons())</span>
+<span id="L466"><a href="#L466">  466</a> }</span>
+<span id="L467"><a href="#L467">  467</a> </span>
+<span id="L468"><a href="#L468">  468</a> function p_Bool_snap(self: Ref): Bool</span>
+<span id="L469"><a href="#L469">  469</a>   requires acc(p_Bool(self), write)</span>
+<span id="L470"><a href="#L470">  470</a> {</span>
+<span id="L471"><a href="#L471">  471</a>   (unfolding acc(p_Bool(self), write) in self.p_Bool_val)</span>
+<span id="L472"><a href="#L472">  472</a> }</span>
+<span id="L473"><a href="#L473">  473</a> </span>
+<span id="L474"><a href="#L474">  474</a> function p_Int_i32_snap(self: Ref): s_Int_i32</span>
+<span id="L475"><a href="#L475">  475</a>   requires acc(p_Int_i32(self), write)</span>
+<span id="L476"><a href="#L476">  476</a> {</span>
+<span id="L477"><a href="#L477">  477</a>   (unfolding acc(p_Int_i32(self), write) in self.p_Int_i32_val)</span>
+<span id="L478"><a href="#L478">  478</a> }</span>
+<span id="L479"><a href="#L479">  479</a> </span>
+<span id="L480"><a href="#L480">  480</a> function p_Ref_mutable_arbitrary_value(r: Ref, metadata: s_Param, U$1: Type): s_Ref_mutable</span>
+<span id="L481"><a href="#L481">  481</a>   ensures result.s_Ref_mutable_0 == r</span>
+<span id="L482"><a href="#L482">  482</a>   ensures result.s_Ref_mutable_1 == metadata</span>
+<span id="L483"><a href="#L483">  483</a> </span>
+<span id="L484"><a href="#L484">  484</a> </span>
+<span id="L485"><a href="#L485">  485</a> function p_Ref_mutable_snap(self: Ref, U$1: Type): s_Ref_mutable</span>
+<span id="L486"><a href="#L486">  486</a>   requires acc(p_Ref_mutable(self, U$1), write)</span>
+<span id="L487"><a href="#L487">  487</a>   ensures s_Param_typ(result.s_Ref_mutable_1) ==</span>
+<span id="L488"><a href="#L488">  488</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1)</span>
+<span id="L489"><a href="#L489">  489</a> {</span>
+<span id="L490"><a href="#L490">  490</a>   (unfolding acc(p_Ref_mutable(self, U$1), write) in</span>
+<span id="L491"><a href="#L491">  491</a>     p_Ref_mutable_arbitrary_value(self.p_Ref_mutable_addr, self.p_Ref_mutable_metadata,</span>
+<span id="L492"><a href="#L492">  492</a>     U$1))</span>
+<span id="L493"><a href="#L493">  493</a> }</span>
+<span id="L494"><a href="#L494">  494</a> </span>
+<span id="L495"><a href="#L495">  495</a> function p_Param_snap(self: Ref, T$0: Type): s_Param</span>
+<span id="L496"><a href="#L496">  496</a>   requires acc(p_Param(self, T$0), write)</span>
+<span id="L497"><a href="#L497">  497</a>   ensures s_Param_typ(result) == T$0</span>
+<span id="L498"><a href="#L498">  498</a> </span>
+<span id="L499"><a href="#L499">  499</a> </span>
+<span id="L500"><a href="#L500">  500</a> function p_Never_field_discr(self: Ref): Ref</span>
+<span id="L501"><a href="#L501">  501</a>   ensures (self == null) == (result == null)</span>
+<span id="L502"><a href="#L502">  502</a> </span>
+<span id="L503"><a href="#L503">  503</a> </span>
+<span id="L504"><a href="#L504">  504</a> function p_Never_snap(self: Ref): s_Never</span>
+<span id="L505"><a href="#L505">  505</a>   requires acc(p_Never(self), write)</span>
+<span id="L506"><a href="#L506">  506</a> {</span>
+<span id="L507"><a href="#L507">  507</a>   (unfolding acc(p_Never(self), write) in s_Never_unreachable())</span>
+<span id="L508"><a href="#L508">  508</a> }</span>
+<span id="L509"><a href="#L509">  509</a> </span>
+<span id="L510"><a href="#L510">  510</a> function p_Int_isize_snap(self: Ref): s_Int_isize</span>
+<span id="L511"><a href="#L511">  511</a>   requires acc(p_Int_isize(self), write)</span>
+<span id="L512"><a href="#L512">  512</a> {</span>
+<span id="L513"><a href="#L513">  513</a>   (unfolding acc(p_Int_isize(self), write) in self.p_Int_isize_val)</span>
+<span id="L514"><a href="#L514">  514</a> }</span>
+<span id="L515"><a href="#L515">  515</a> </span>
+<span id="L516"><a href="#L516">  516</a> function p_Ref_immutable_snap(self: Ref, U$1: Type): s_Ref_immutable</span>
+<span id="L517"><a href="#L517">  517</a>   requires acc(p_Ref_immutable(self, U$1), write)</span>
+<span id="L518"><a href="#L518">  518</a>   ensures s_Param_typ(result.s_Ref_immutable_1) ==</span>
+<span id="L519"><a href="#L519">  519</a>     std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1)</span>
+<span id="L520"><a href="#L520">  520</a>   ensures s_Param_typ(result.s_Ref_immutable_2) == U$1</span>
+<span id="L521"><a href="#L521">  521</a> {</span>
+<span id="L522"><a href="#L522">  522</a>   (unfolding acc(p_Ref_immutable(self, U$1), write) in</span>
+<span id="L523"><a href="#L523">  523</a>     s_Ref_immutable_cons(self.p_Ref_immutable_addr, self.p_Ref_immutable_metadata, p_Param_snap(self.p_Ref_immutable_addr,</span>
+<span id="L524"><a href="#L524">  524</a>     U$1)))</span>
+<span id="L525"><a href="#L525">  525</a> }</span>
+<span id="L526"><a href="#L526">  526</a> </span>
+<span id="L527"><a href="#L527">  527</a> function p_Str_snap(self: Ref): s_Str</span>
+<span id="L528"><a href="#L528">  528</a>   requires acc(p_Str(self), write)</span>
+<span id="L529"><a href="#L529">  529</a> </span>
+<span id="L530"><a href="#L530">  530</a> </span>
+<span id="L531"><a href="#L531">  531</a> function const_1_0_0(): s_Str</span>
+<span id="L532"><a href="#L532">  532</a> </span>
+<span id="L533"><a href="#L533">  533</a> </span>
+<span id="L534"><a href="#L534">  534</a> function const_1_0_1(): s_Str</span>
+<span id="L535"><a href="#L535">  535</a> </span>
+<span id="L536"><a href="#L536">  536</a> </span>
+<span id="L537"><a href="#L537">  537</a> function const_1_0_2(): s_Str</span>
+<span id="L538"><a href="#L538">  538</a> </span>
+<span id="L539"><a href="#L539">  539</a> </span>
+<span id="L540"><a href="#L540">  540</a> function addr_to_ref(arg: Int): Ref</span>
+<span id="L541"><a href="#L541">  541</a> </span>
+<span id="L542"><a href="#L542">  542</a> </span>
+<span id="L543"><a href="#L543">  543</a> predicate p_0_Tuple(self: Ref) {</span>
+<span id="L544"><a href="#L544">  544</a>   true</span>
+<span id="L545"><a href="#L545">  545</a> }</span>
+<span id="L546"><a href="#L546">  546</a> </span>
+<span id="L547"><a href="#L547">  547</a> predicate p_Bool(self: Ref) {</span>
+<span id="L548"><a href="#L548">  548</a>   acc(self.p_Bool_val, write)</span>
+<span id="L549"><a href="#L549">  549</a> }</span>
+<span id="L550"><a href="#L550">  550</a> </span>
+<span id="L551"><a href="#L551">  551</a> predicate p_Int_i32(self: Ref) {</span>
+<span id="L552"><a href="#L552">  552</a>   acc(self.p_Int_i32_val, write)</span>
+<span id="L553"><a href="#L553">  553</a> }</span>
+<span id="L554"><a href="#L554">  554</a> </span>
+<span id="L555"><a href="#L555">  555</a> predicate p_Ref_mutable(self: Ref, U$1: Type) {</span>
+<span id="L556"><a href="#L556">  556</a>   acc(self.p_Ref_mutable_addr, write) &amp;&amp;</span>
+<span id="L557"><a href="#L557">  557</a>   (acc(self.p_Ref_mutable_metadata, write) &amp;&amp;</span>
+<span id="L558"><a href="#L558">  558</a>   s_Param_typ(self.p_Ref_mutable_metadata) ==</span>
+<span id="L559"><a href="#L559">  559</a>   std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1))</span>
+<span id="L560"><a href="#L560">  560</a> }</span>
+<span id="L561"><a href="#L561">  561</a> </span>
+<span id="L562"><a href="#L562">  562</a> predicate p_Param(self: Ref, T$0: Type) </span>
+<span id="L563"><a href="#L563">  563</a> </span>
+<span id="L564"><a href="#L564">  564</a> predicate p_Never(self: Ref) {</span>
+<span id="L565"><a href="#L565">  565</a>   false</span>
+<span id="L566"><a href="#L566">  566</a> }</span>
+<span id="L567"><a href="#L567">  567</a> </span>
+<span id="L568"><a href="#L568">  568</a> predicate p_Int_isize(self: Ref) {</span>
+<span id="L569"><a href="#L569">  569</a>   acc(self.p_Int_isize_val, write)</span>
+<span id="L570"><a href="#L570">  570</a> }</span>
+<span id="L571"><a href="#L571">  571</a> </span>
+<span id="L572"><a href="#L572">  572</a> predicate p_Ref_immutable(self: Ref, U$1: Type) {</span>
+<span id="L573"><a href="#L573">  573</a>   acc(self.p_Ref_immutable_addr, write) &amp;&amp;</span>
+<span id="L574"><a href="#L574">  574</a>   acc(self.p_Ref_immutable_metadata, write) &amp;&amp;</span>
+<span id="L575"><a href="#L575">  575</a>   (s_Param_typ(self.p_Ref_immutable_metadata) ==</span>
+<span id="L576"><a href="#L576">  576</a>   std$col$$col$ptr$col$$col$Pointee_assoc_type_std$col$$col$ptr$col$$col$Pointee$col$$col$Metadata(U$1) &amp;&amp;</span>
+<span id="L577"><a href="#L577">  577</a>   acc(p_Param(self.p_Ref_immutable_addr, U$1), read()))</span>
+<span id="L578"><a href="#L578">  578</a> }</span>
+<span id="L579"><a href="#L579">  579</a> </span>
+<span id="L580"><a href="#L580">  580</a> predicate p_Str(self: Ref) </span>
+<span id="L581"><a href="#L581">  581</a> </span>
+<span id="L582"><a href="#L582">  582</a> method m_branch$col$$col$branch(_0p: Ref, _1p: Ref)</span>
+<span id="L583"><a href="#L583">  583</a>   requires inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_1p), write)</span>
+<span id="L584"><a href="#L584">  584</a>   ensures inhabited(s_0_Tuple_type()) &amp;&amp; acc(p_0_Tuple(_0p), write)</span>
+<span id="L585"><a href="#L585">  585</a> {</span>
+<span id="L586"><a href="#L586">  586</a>   var _2p: Ref</span>
+<span id="L587"><a href="#L587">  587</a>   var _3p: Ref</span>
+<span id="L588"><a href="#L588">  588</a>   var _4p: Ref</span>
+<span id="L589"><a href="#L589">  589</a>   var _5p: Ref</span>
+<span id="L590"><a href="#L590">  590</a>   var _6p: Ref</span>
+<span id="L591"><a href="#L591">  591</a>   var _7p: Ref</span>
+<span id="L592"><a href="#L592">  592</a>   var _8p: Ref</span>
+<span id="L593"><a href="#L593">  593</a>   var _9p: Ref</span>
+<span id="L594"><a href="#L594">  594</a>   var _10p: Ref</span>
+<span id="L595"><a href="#L595">  595</a>   var _11p: Ref</span>
+<span id="L596"><a href="#L596">  596</a>   var _12p: Ref</span>
+<span id="L597"><a href="#L597">  597</a>   var _13p: Ref</span>
+<span id="L598"><a href="#L598">  598</a>   var _14p: Ref</span>
+<span id="L599"><a href="#L599">  599</a>   var _15p: Ref</span>
+<span id="L600"><a href="#L600">  600</a>   var _from_bb4_to_bb5: Bool</span>
+<span id="L601"><a href="#L601">  601</a>   var _from_bb3_to_bb4: Bool</span>
+<span id="L602"><a href="#L602">  602</a>   var _from_bb2_to_bb3: Bool</span>
+<span id="L603"><a href="#L603">  603</a>   var _from_bb0_to_bb1: Bool</span>
+<span id="L604"><a href="#L604">  604</a>   var _from_bb7_to_bb9: Bool</span>
+<span id="L605"><a href="#L605">  605</a>   var _from_bb8_to_bb10: Bool</span>
+<span id="L606"><a href="#L606">  606</a>   var _from_bb4_to_bb6: Bool</span>
+<span id="L607"><a href="#L607">  607</a>   var _from_bb5_to_bb10: Bool</span>
+<span id="L608"><a href="#L608">  608</a>   var _from_bb0_to_bb2: Bool</span>
+<span id="L609"><a href="#L609">  609</a>   var _from_bb7_to_bb8: Bool</span>
+<span id="L610"><a href="#L610">  610</a>   var _from_bb1_to_bb3: Bool</span>
+<span id="L611"><a href="#L611">  611</a>   var _from_bb3_to_bb7: Bool</span>
+<span id="L612"><a href="#L612">  612</a>   var _tmp0: Bool</span>
+<span id="L613"><a href="#L613">  613</a>   var _tmp1: Bool</span>
+<span id="L614"><a href="#L614">  614</a>   var _tmp2: Bool</span>
+<span id="L615"><a href="#L615">  615</a>   var _tmp3: Bool</span>
+<span id="L616"><a href="#L616">  616</a>   var _tmp4: Bool</span>
+<span id="L617"><a href="#L617">  617</a>   var _tmp5: Bool</span>
+<span id="L618"><a href="#L618">  618</a>   var _tmp6: s_Int_i32</span>
+<span id="L619"><a href="#L619">  619</a>   var _tmp7: s_Int_i32</span>
+<span id="L620"><a href="#L620">  620</a>   var _tmp8: Bool</span>
+<span id="L621"><a href="#L621">  621</a>   var _tmp9: Bool</span>
+<span id="L622"><a href="#L622">  622</a>   var _tmp10: Ref</span>
+<span id="L623"><a href="#L623">  623</a>   var _tmp11: s_Int_i32</span>
+<span id="L624"><a href="#L624">  624</a>   var _tmp12: s_Int_i32</span>
+<span id="L625"><a href="#L625">  625</a>   var _tmp13: Bool</span>
+<span id="L626"><a href="#L626">  626</a>   var _tmp14: Bool</span>
+<span id="L627"><a href="#L627">  627</a>   var _tmp15: Ref</span>
+<span id="L628"><a href="#L628">  628</a>   label start</span>
+<span id="L629"><a href="#L629">  629</a>   // var _2p</span>
+<span id="L630"><a href="#L630">  630</a>   // var _3p</span>
+<span id="L631"><a href="#L631">  631</a>   // var _4p</span>
+<span id="L632"><a href="#L632">  632</a>   // var _5p</span>
+<span id="L633"><a href="#L633">  633</a>   // var _6p</span>
+<span id="L634"><a href="#L634">  634</a>   // var _7p</span>
+<span id="L635"><a href="#L635">  635</a>   // var _8p</span>
+<span id="L636"><a href="#L636">  636</a>   // var _9p</span>
+<span id="L637"><a href="#L637">  637</a>   // var _10p</span>
+<span id="L638"><a href="#L638">  638</a>   // var _11p</span>
+<span id="L639"><a href="#L639">  639</a>   // var _12p</span>
+<span id="L640"><a href="#L640">  640</a>   // var _13p</span>
+<span id="L641"><a href="#L641">  641</a>   // var _14p</span>
+<span id="L642"><a href="#L642">  642</a>   // var _15p</span>
+<span id="L643"><a href="#L643">  643</a>   _from_bb4_to_bb5 := false</span>
+<span id="L644"><a href="#L644">  644</a>   _from_bb3_to_bb4 := false</span>
+<span id="L645"><a href="#L645">  645</a>   _from_bb2_to_bb3 := false</span>
+<span id="L646"><a href="#L646">  646</a>   _from_bb0_to_bb1 := false</span>
+<span id="L647"><a href="#L647">  647</a>   _from_bb7_to_bb9 := false</span>
+<span id="L648"><a href="#L648">  648</a>   _from_bb8_to_bb10 := false</span>
+<span id="L649"><a href="#L649">  649</a>   _from_bb4_to_bb6 := false</span>
+<span id="L650"><a href="#L650">  650</a>   _from_bb5_to_bb10 := false</span>
+<span id="L651"><a href="#L651">  651</a>   _from_bb0_to_bb2 := false</span>
+<span id="L652"><a href="#L652">  652</a>   _from_bb7_to_bb8 := false</span>
+<span id="L653"><a href="#L653">  653</a>   _from_bb1_to_bb3 := false</span>
+<span id="L654"><a href="#L654">  654</a>   _from_bb3_to_bb7 := false</span>
+<span id="L655"><a href="#L655">  655</a>   goto bb_0</span>
+<span id="L656"><a href="#L656">  656</a>   label bb_0</span>
+<span id="L657"><a href="#L657">  657</a>   label _before_0_0</span>
+<span id="L658"><a href="#L658">  658</a>   // [MIR] bb0[0]: StorageLive(_2)</span>
+<span id="L659"><a href="#L659">  659</a>   label _before_0_1</span>
+<span id="L660"><a href="#L660">  660</a>   // [MIR] bb0[1]: _2 = const 1_i32</span>
+<span id="L661"><a href="#L661">  661</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _2, location: Before(AnalysisLocation { location: bb0[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L662"><a href="#L662">  662</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_2), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L663"><a href="#L663">  663</a>   p_Int_i32_assign(_2p, s_Int_i32_cons(1))</span>
+<span id="L664"><a href="#L664">  664</a>   label _before_0_2</span>
+<span id="L665"><a href="#L665">  665</a>   // [MIR] bb0[2]: FakeRead(ForLet(None), _2)</span>
+<span id="L666"><a href="#L666">  666</a>   label _before_0_3</span>
+<span id="L667"><a href="#L667">  667</a>   // [MIR] bb0[3]: StorageLive(_3)</span>
+<span id="L668"><a href="#L668">  668</a>   label _before_0_4</span>
+<span id="L669"><a href="#L669">  669</a>   // [MIR] bb0[4]: _3 = const 2_i32</span>
+<span id="L670"><a href="#L670">  670</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb0[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L671"><a href="#L671">  671</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_3), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L672"><a href="#L672">  672</a>   p_Int_i32_assign(_3p, s_Int_i32_cons(2))</span>
+<span id="L673"><a href="#L673">  673</a>   label _before_0_5</span>
+<span id="L674"><a href="#L674">  674</a>   // [MIR] bb0[5]: FakeRead(ForLet(None), _3)</span>
+<span id="L675"><a href="#L675">  675</a>   label _before_0_6</span>
+<span id="L676"><a href="#L676">  676</a>   // [MIR] bb0[6]: StorageLive(_4)</span>
+<span id="L677"><a href="#L677">  677</a>   label _before_0_7</span>
+<span id="L678"><a href="#L678">  678</a>   // [MIR] bb0[7]: StorageLive(_5)</span>
+<span id="L679"><a href="#L679">  679</a>   label _before_0_8</span>
+<span id="L680"><a href="#L680">  680</a>   // [MIR] bb0[8]: _5 = copy _1</span>
+<span id="L681"><a href="#L681">  681</a>   // var _tmp0</span>
+<span id="L682"><a href="#L682">  682</a>   _tmp0 := p_Bool_snap(_1p)</span>
+<span id="L683"><a href="#L683">  683</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb0[8], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L684"><a href="#L684">  684</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_5), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L685"><a href="#L685">  685</a>   p_Bool_assign(_5p, _tmp0)</span>
+<span id="L686"><a href="#L686">  686</a>   label _before_0_9</span>
+<span id="L687"><a href="#L687">  687</a>   // [MIR] bb0[9]: switchInt(move _5) -&gt; [0: bb2, otherwise: bb1]</span>
+<span id="L688"><a href="#L688">  688</a>   // PCG (T) pre_operands</span>
+<span id="L689"><a href="#L689">  689</a>   // PCG (T) post_operands</span>
+<span id="L690"><a href="#L690">  690</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb0[9], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L691"><a href="#L691">  691</a>   // PCG (T) pre_main</span>
+<span id="L692"><a href="#L692">  692</a>   // var _tmp1</span>
+<span id="L693"><a href="#L693">  693</a>   _tmp1 := p_Bool_snap(_5p)</span>
+<span id="L694"><a href="#L694">  694</a>   exhale inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_5p), write)</span>
+<span id="L695"><a href="#L695">  695</a>   // var _tmp2</span>
+<span id="L696"><a href="#L696">  696</a>   _tmp2 := _tmp1</span>
+<span id="L697"><a href="#L697">  697</a>   // PCG (T) post_main</span>
+<span id="L698"><a href="#L698">  698</a>   label _after_0</span>
+<span id="L699"><a href="#L699">  699</a>   if (_tmp2 == false) {</span>
+<span id="L700"><a href="#L700">  700</a>     _from_bb0_to_bb2 := true</span>
+<span id="L701"><a href="#L701">  701</a>     goto bb_2</span>
+<span id="L702"><a href="#L702">  702</a>   } else {</span>
+<span id="L703"><a href="#L703">  703</a>     _from_bb0_to_bb1 := true</span>
+<span id="L704"><a href="#L704">  704</a>     goto bb_1</span>
+<span id="L705"><a href="#L705">  705</a>   }</span>
+<span id="L706"><a href="#L706">  706</a>   label bb_2</span>
+<span id="L707"><a href="#L707">  707</a>   label _before_2_0</span>
+<span id="L708"><a href="#L708">  708</a>   // [MIR] bb2[0]: StorageLive(_6)</span>
+<span id="L709"><a href="#L709">  709</a>   label _before_2_1</span>
+<span id="L710"><a href="#L710">  710</a>   // [MIR] bb2[1]: _6 = &amp;mut _3</span>
+<span id="L711"><a href="#L711">  711</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb2[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L712"><a href="#L712">  712</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_6), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L713"><a href="#L713">  713</a>   p_Ref_mutable_assign(_6p, s_Int_i32_type(), p_Ref_mutable_arbitrary_value(_3p,</span>
+<span id="L714"><a href="#L714">  714</a>     make_generic_s_0_Tuple(s_0_Tuple_cons()), s_Int_i32_type()))</span>
+<span id="L715"><a href="#L715">  715</a>   make_generic_Int_i32(p_Ref_mutable_snap(_6p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L716"><a href="#L716">  716</a>   label _before_2_2</span>
+<span id="L717"><a href="#L717">  717</a>   // [MIR] bb2[2]: _4 = &amp;mut (*_6)</span>
+<span id="L718"><a href="#L718">  718</a>   if (_from_bb0_to_bb2) {</span>
+<span id="L719"><a href="#L719">  719</a>     make_concrete_Int_i32(p_Ref_mutable_snap(_6p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L720"><a href="#L720">  720</a>     // (PCG) handled edge Add: {_6} -&gt; {(*_6)}</span>
+<span id="L721"><a href="#L721">  721</a>   }</span>
+<span id="L722"><a href="#L722">  722</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_6))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; })), label: Some(Location(Before(AnalysisLocation { location: bb2[2], eval_stmt_phase: PreOperands }))) })</span>
+<span id="L723"><a href="#L723">  723</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb2[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L724"><a href="#L724">  724</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L725"><a href="#L725">  725</a>   p_Ref_mutable_assign(_4p, s_Int_i32_type(), p_Ref_mutable_arbitrary_value(p_Ref_mutable_snap(_6p,</span>
+<span id="L726"><a href="#L726">  726</a>     s_Int_i32_type()).s_Ref_mutable_0, make_generic_s_0_Tuple(p_Ref_mutable_snap(_6p,</span>
+<span id="L727"><a href="#L727">  727</a>     s_Int_i32_type()).s_Ref_mutable_1.make_concrete_s_0_Tuple), s_Int_i32_type()))</span>
+<span id="L728"><a href="#L728">  728</a>   make_generic_Int_i32(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L729"><a href="#L729">  729</a>   label _before_2_3</span>
+<span id="L730"><a href="#L730">  730</a>   // [MIR] bb2[3]: StorageDead(_6)</span>
+<span id="L731"><a href="#L731">  731</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb2[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L732"><a href="#L732">  732</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_6), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L733"><a href="#L733">  733</a>   // [PCG] Weaken(Weaken { place: _6, from: e, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L734"><a href="#L734">  734</a>   // Weaken to Write for _6 (skipped exhale: StorageDead)</span>
+<span id="L735"><a href="#L735">  735</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb2[3], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L736"><a href="#L736">  736</a>   label _before_2_4</span>
+<span id="L737"><a href="#L737">  737</a>   // [MIR] bb2[4]: goto -&gt; bb3</span>
+<span id="L738"><a href="#L738">  738</a>   // PCG (T) pre_operands</span>
+<span id="L739"><a href="#L739">  739</a>   // PCG (T) post_operands</span>
+<span id="L740"><a href="#L740">  740</a>   // PCG (T) pre_main</span>
+<span id="L741"><a href="#L741">  741</a>   // PCG (T) post_main</span>
+<span id="L742"><a href="#L742">  742</a>   label _after_2</span>
+<span id="L743"><a href="#L743">  743</a>   _from_bb2_to_bb3 := true</span>
+<span id="L744"><a href="#L744">  744</a>   goto bb_3</span>
+<span id="L745"><a href="#L745">  745</a>   label bb_1</span>
+<span id="L746"><a href="#L746">  746</a>   label _before_1_0</span>
+<span id="L747"><a href="#L747">  747</a>   // [MIR] bb1[0]: _4 = &amp;mut _2</span>
+<span id="L748"><a href="#L748">  748</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb1[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L749"><a href="#L749">  749</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L750"><a href="#L750">  750</a>   p_Ref_mutable_assign(_4p, s_Int_i32_type(), p_Ref_mutable_arbitrary_value(_2p,</span>
+<span id="L751"><a href="#L751">  751</a>     make_generic_s_0_Tuple(s_0_Tuple_cons()), s_Int_i32_type()))</span>
+<span id="L752"><a href="#L752">  752</a>   make_generic_Int_i32(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L753"><a href="#L753">  753</a>   label _before_1_1</span>
+<span id="L754"><a href="#L754">  754</a>   // [MIR] bb1[1]: goto -&gt; bb3</span>
+<span id="L755"><a href="#L755">  755</a>   // PCG (T) pre_operands</span>
+<span id="L756"><a href="#L756">  756</a>   // PCG (T) post_operands</span>
+<span id="L757"><a href="#L757">  757</a>   // PCG (T) pre_main</span>
+<span id="L758"><a href="#L758">  758</a>   // PCG (T) post_main</span>
+<span id="L759"><a href="#L759">  759</a>   label _after_1</span>
+<span id="L760"><a href="#L760">  760</a>   _from_bb1_to_bb3 := true</span>
+<span id="L761"><a href="#L761">  761</a>   goto bb_3</span>
+<span id="L762"><a href="#L762">  762</a>   label bb_3</span>
+<span id="L763"><a href="#L763">  763</a>   label _before_3_0</span>
+<span id="L764"><a href="#L764">  764</a>   // [MIR] bb3[0]: StorageDead(_5)</span>
+<span id="L765"><a href="#L765">  765</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb3[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L766"><a href="#L766">  766</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_5), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L767"><a href="#L767">  767</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb3[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L768"><a href="#L768">  768</a>   label _before_3_1</span>
+<span id="L769"><a href="#L769">  769</a>   // [MIR] bb3[1]: FakeRead(ForLet(None), _4)</span>
+<span id="L770"><a href="#L770">  770</a>   label _before_3_2</span>
+<span id="L771"><a href="#L771">  771</a>   // [MIR] bb3[2]: (*_4) = const 9_i32</span>
+<span id="L772"><a href="#L772">  772</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: (*_4), location: Before(AnalysisLocation { location: bb3[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L773"><a href="#L773">  773</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals((*_4)), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L774"><a href="#L774">  774</a>   make_concrete_Int_i32(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L775"><a href="#L775">  775</a>   // (PCG) handled edge Add: {r} -&gt; {*r}</span>
+<span id="L776"><a href="#L776">  776</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_4))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; })), label: Some(Location(Before(AnalysisLocation { location: bb3[2], eval_stmt_phase: PreMain }))) })</span>
+<span id="L777"><a href="#L777">  777</a>   // exhale due to weaken to Write</span>
+<span id="L778"><a href="#L778">  778</a>   exhale inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L779"><a href="#L779">  779</a>     acc(p_Int_i32(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0), write)</span>
+<span id="L780"><a href="#L780">  780</a>   p_Int_i32_assign(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0,</span>
+<span id="L781"><a href="#L781">  781</a>     s_Int_i32_cons(9))</span>
+<span id="L782"><a href="#L782">  782</a>   label _before_3_3</span>
+<span id="L783"><a href="#L783">  783</a>   // [MIR] bb3[3]: StorageLive(_7)</span>
+<span id="L784"><a href="#L784">  784</a>   make_generic_Int_i32(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L785"><a href="#L785">  785</a>   // (PCG) handled edge Remove: {r} -&gt; {*r}</span>
+<span id="L786"><a href="#L786">  786</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_4))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: Some(Location(Before(AnalysisLocation { location: bb3[2], eval_stmt_phase: PreMain }))), phantom: PhantomData&lt;&amp;()&gt; })), label: None })</span>
+<span id="L787"><a href="#L787">  787</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: (*_4), location: Before(AnalysisLocation { location: bb3[3], eval_stmt_phase: PreOperands }), reason: Collapse, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L788"><a href="#L788">  788</a>   // [PCG] RegainLoanedCapability(RegainedCapability { place: _4, capability: E })</span>
+<span id="L789"><a href="#L789">  789</a>   // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _4, capability: E })</span>
+<span id="L790"><a href="#L790">  790</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_4))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: Some(Future), phantom: PhantomData&lt;&amp;()&gt; })), label: None })</span>
+<span id="L791"><a href="#L791">  791</a>   if (_from_bb0_to_bb1) {</span>
+<span id="L792"><a href="#L792">  792</a>     make_concrete_Int_i32(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L793"><a href="#L793">  793</a>     // (PCG) handled edge Remove: borrow: r = &amp;mut  a</span>
+<span id="L794"><a href="#L794">  794</a>   }</span>
+<span id="L795"><a href="#L795">  795</a>   // [PCG] RegainLoanedCapability(RegainedCapability { place: _2, capability: E })</span>
+<span id="L796"><a href="#L796">  796</a>   // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _2, capability: E })</span>
+<span id="L797"><a href="#L797">  797</a>   if (_from_bb0_to_bb2) {</span>
+<span id="L798"><a href="#L798">  798</a>     make_concrete_Int_i32(p_Ref_mutable_snap(_4p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L799"><a href="#L799">  799</a>     // (PCG) handled edge Remove: borrow: r = &amp;mut  (*_6) before bb2[3]</span>
+<span id="L800"><a href="#L800">  800</a>   }</span>
+<span id="L801"><a href="#L801">  801</a>   // exhale due to weaken to Write</span>
+<span id="L802"><a href="#L802">  802</a>   exhale inhabited(s_Ref_mutable_type(s_Int_i32_type())) &amp;&amp;</span>
+<span id="L803"><a href="#L803">  803</a>     acc(p_Ref_mutable(_4p, s_Int_i32_type()), write)</span>
+<span id="L804"><a href="#L804">  804</a>   if (_from_bb0_to_bb2) {</span>
+<span id="L805"><a href="#L805">  805</a>     make_generic_Int_i32(old[_before_2_3](p_Ref_mutable_snap(old[_before_2_3](_6p),</span>
+<span id="L806"><a href="#L806">  806</a>       s_Int_i32_type()).s_Ref_mutable_0))</span>
+<span id="L807"><a href="#L807">  807</a>     // (PCG) handled edge Remove: {_6 before bb2[3]} -&gt; {(*_6) before bb2[3]}</span>
+<span id="L808"><a href="#L808">  808</a>   }</span>
+<span id="L809"><a href="#L809">  809</a>   if (_from_bb0_to_bb2) {</span>
+<span id="L810"><a href="#L810">  810</a>     make_concrete_Int_i32(old[_before_2_3](p_Ref_mutable_snap(old[_before_2_3](_6p),</span>
+<span id="L811"><a href="#L811">  811</a>       s_Int_i32_type()).s_Ref_mutable_0))</span>
+<span id="L812"><a href="#L812">  812</a>     // (PCG) handled edge Remove: borrow: _6 before bb2[3] &lt;before bb2[2]&gt; = &amp;mut  b</span>
+<span id="L813"><a href="#L813">  813</a>   }</span>
+<span id="L814"><a href="#L814">  814</a>   // [PCG] RegainLoanedCapability(RegainedCapability { place: _3, capability: E })</span>
+<span id="L815"><a href="#L815">  815</a>   // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _3, capability: E })</span>
+<span id="L816"><a href="#L816">  816</a>   label _before_3_4</span>
+<span id="L817"><a href="#L817">  817</a>   // [MIR] bb3[4]: _7 = copy _1</span>
+<span id="L818"><a href="#L818">  818</a>   // var _tmp3</span>
+<span id="L819"><a href="#L819">  819</a>   _tmp3 := p_Bool_snap(_1p)</span>
+<span id="L820"><a href="#L820">  820</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb3[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L821"><a href="#L821">  821</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_7), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L822"><a href="#L822">  822</a>   p_Bool_assign(_7p, _tmp3)</span>
+<span id="L823"><a href="#L823">  823</a>   label _before_3_5</span>
+<span id="L824"><a href="#L824">  824</a>   // [MIR] bb3[5]: switchInt(move _7) -&gt; [0: bb7, otherwise: bb4]</span>
+<span id="L825"><a href="#L825">  825</a>   // PCG (T) pre_operands</span>
+<span id="L826"><a href="#L826">  826</a>   // PCG (T) post_operands</span>
+<span id="L827"><a href="#L827">  827</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb3[5], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L828"><a href="#L828">  828</a>   // PCG (T) pre_main</span>
+<span id="L829"><a href="#L829">  829</a>   // var _tmp4</span>
+<span id="L830"><a href="#L830">  830</a>   _tmp4 := p_Bool_snap(_7p)</span>
+<span id="L831"><a href="#L831">  831</a>   exhale inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_7p), write)</span>
+<span id="L832"><a href="#L832">  832</a>   // var _tmp5</span>
+<span id="L833"><a href="#L833">  833</a>   _tmp5 := _tmp4</span>
+<span id="L834"><a href="#L834">  834</a>   // PCG (T) post_main</span>
+<span id="L835"><a href="#L835">  835</a>   label _after_3</span>
+<span id="L836"><a href="#L836">  836</a>   if (_tmp5 == false) {</span>
+<span id="L837"><a href="#L837">  837</a>     _from_bb3_to_bb7 := true</span>
+<span id="L838"><a href="#L838">  838</a>     goto bb_7</span>
+<span id="L839"><a href="#L839">  839</a>   } else {</span>
+<span id="L840"><a href="#L840">  840</a>     _from_bb3_to_bb4 := true</span>
+<span id="L841"><a href="#L841">  841</a>     goto bb_4</span>
+<span id="L842"><a href="#L842">  842</a>   }</span>
+<span id="L843"><a href="#L843">  843</a>   label bb_7</span>
+<span id="L844"><a href="#L844">  844</a>   label _before_7_0</span>
+<span id="L845"><a href="#L845">  845</a>   // [MIR] bb7[0]: StorageLive(_12)</span>
+<span id="L846"><a href="#L846">  846</a>   label _before_7_1</span>
+<span id="L847"><a href="#L847">  847</a>   // [MIR] bb7[1]: StorageLive(_13)</span>
+<span id="L848"><a href="#L848">  848</a>   label _before_7_2</span>
+<span id="L849"><a href="#L849">  849</a>   // [MIR] bb7[2]: StorageLive(_14)</span>
+<span id="L850"><a href="#L850">  850</a>   label _before_7_3</span>
+<span id="L851"><a href="#L851">  851</a>   // [MIR] bb7[3]: _14 = copy _3</span>
+<span id="L852"><a href="#L852">  852</a>   // var _tmp6</span>
+<span id="L853"><a href="#L853">  853</a>   _tmp6 := p_Int_i32_snap(_3p)</span>
+<span id="L854"><a href="#L854">  854</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb7[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L855"><a href="#L855">  855</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L856"><a href="#L856">  856</a>   p_Int_i32_assign(_14p, _tmp6)</span>
+<span id="L857"><a href="#L857">  857</a>   label _before_7_4</span>
+<span id="L858"><a href="#L858">  858</a>   // [MIR] bb7[4]: _13 = Eq(move _14, const 9_i32)</span>
+<span id="L859"><a href="#L859">  859</a>   // var _tmp7</span>
+<span id="L860"><a href="#L860">  860</a>   _tmp7 := p_Int_i32_snap(_14p)</span>
+<span id="L861"><a href="#L861">  861</a>   exhale inhabited(s_Int_i32_type()) &amp;&amp; acc(p_Int_i32(_14p), write)</span>
+<span id="L862"><a href="#L862">  862</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb7[4], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L863"><a href="#L863">  863</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb7[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L864"><a href="#L864">  864</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_13), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L865"><a href="#L865">  865</a>   p_Bool_assign(_13p, mir_binop_Eq_Int_i32_Int_i32(_tmp7, s_Int_i32_cons(9)))</span>
+<span id="L866"><a href="#L866">  866</a>   label _before_7_5</span>
+<span id="L867"><a href="#L867">  867</a>   // [MIR] bb7[5]: switchInt(move _13) -&gt; [0: bb9, otherwise: bb8]</span>
+<span id="L868"><a href="#L868">  868</a>   // PCG (T) pre_operands</span>
+<span id="L869"><a href="#L869">  869</a>   // PCG (T) post_operands</span>
+<span id="L870"><a href="#L870">  870</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb7[5], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L871"><a href="#L871">  871</a>   // PCG (T) pre_main</span>
+<span id="L872"><a href="#L872">  872</a>   // var _tmp8</span>
+<span id="L873"><a href="#L873">  873</a>   _tmp8 := p_Bool_snap(_13p)</span>
+<span id="L874"><a href="#L874">  874</a>   exhale inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_13p), write)</span>
+<span id="L875"><a href="#L875">  875</a>   // var _tmp9</span>
+<span id="L876"><a href="#L876">  876</a>   _tmp9 := _tmp8</span>
+<span id="L877"><a href="#L877">  877</a>   // PCG (T) post_main</span>
+<span id="L878"><a href="#L878">  878</a>   label _after_7</span>
+<span id="L879"><a href="#L879">  879</a>   if (_tmp9 == false) {</span>
+<span id="L880"><a href="#L880">  880</a>     _from_bb7_to_bb9 := true</span>
+<span id="L881"><a href="#L881">  881</a>     goto bb_9</span>
+<span id="L882"><a href="#L882">  882</a>   } else {</span>
+<span id="L883"><a href="#L883">  883</a>     _from_bb7_to_bb8 := true</span>
+<span id="L884"><a href="#L884">  884</a>     goto bb_8</span>
+<span id="L885"><a href="#L885">  885</a>   }</span>
+<span id="L886"><a href="#L886">  886</a>   label bb_9</span>
+<span id="L887"><a href="#L887">  887</a>   label _before_9_0</span>
+<span id="L888"><a href="#L888">  888</a>   // [MIR] bb9[0]: StorageDead(_14)</span>
+<span id="L889"><a href="#L889">  889</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb9[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L890"><a href="#L890">  890</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L891"><a href="#L891">  891</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb9[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L892"><a href="#L892">  892</a>   label _before_9_1</span>
+<span id="L893"><a href="#L893">  893</a>   // [MIR] bb9[1]: StorageLive(_15)</span>
+<span id="L894"><a href="#L894">  894</a>   label _before_9_2</span>
+<span id="L895"><a href="#L895">  895</a>   // [MIR] bb9[2]: _15 = core::panicking::panic(const &quot;assertion failed: b == 9&quot;) -&gt; bb11</span>
+<span id="L896"><a href="#L896">  896</a>   // PCG (T) pre_operands</span>
+<span id="L897"><a href="#L897">  897</a>   // PCG (T) post_operands</span>
+<span id="L898"><a href="#L898">  898</a>   // PCG (T) pre_main</span>
+<span id="L899"><a href="#L899">  899</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _15, location: Before(AnalysisLocation { location: bb9[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L900"><a href="#L900">  900</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_15), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L901"><a href="#L901">  901</a>   goto bb_term_9</span>
+<span id="L902"><a href="#L902">  902</a>   label bb_term_9</span>
+<span id="L903"><a href="#L903">  903</a>   // var _tmp10</span>
+<span id="L904"><a href="#L904">  904</a>   p_Ref_immutable_assign(_tmp10, s_Str_type(), s_Ref_immutable_cons(addr_to_ref(36893488147419103232), make_generic_s_UInt_usize(s_UInt_usize_cons(24)), make_generic_s_Str(const_1_0_0())))</span>
+<span id="L905"><a href="#L905">  905</a>   label pre0</span>
+<span id="L906"><a href="#L906">  906</a>   m_core$col$$col$panicking$col$$col$panic(_15p, _tmp10)</span>
+<span id="L907"><a href="#L907">  907</a>   label post1</span>
+<span id="L908"><a href="#L908">  908</a>   exhale false</span>
+<span id="L909"><a href="#L909">  909</a>   inhale false</span>
+<span id="L910"><a href="#L910">  910</a>   goto end</span>
+<span id="L911"><a href="#L911">  911</a>   label bb_8</span>
+<span id="L912"><a href="#L912">  912</a>   label _before_8_0</span>
+<span id="L913"><a href="#L913">  913</a>   // [MIR] bb8[0]: StorageDead(_14)</span>
+<span id="L914"><a href="#L914">  914</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb8[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L915"><a href="#L915">  915</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L916"><a href="#L916">  916</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb8[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L917"><a href="#L917">  917</a>   label _before_8_1</span>
+<span id="L918"><a href="#L918">  918</a>   // [MIR] bb8[1]: _12 = const ()</span>
+<span id="L919"><a href="#L919">  919</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb8[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L920"><a href="#L920">  920</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_12), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L921"><a href="#L921">  921</a>   p_0_Tuple_assign(_12p, s_0_Tuple_cons())</span>
+<span id="L922"><a href="#L922">  922</a>   label _before_8_2</span>
+<span id="L923"><a href="#L923">  923</a>   // [MIR] bb8[2]: StorageDead(_13)</span>
+<span id="L924"><a href="#L924">  924</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb8[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L925"><a href="#L925">  925</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_13), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L926"><a href="#L926">  926</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb8[2], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L927"><a href="#L927">  927</a>   label _before_8_3</span>
+<span id="L928"><a href="#L928">  928</a>   // [MIR] bb8[3]: StorageDead(_12)</span>
+<span id="L929"><a href="#L929">  929</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb8[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L930"><a href="#L930">  930</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_12), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L931"><a href="#L931">  931</a>   // [PCG] Weaken(Weaken { place: _12, from: E, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L932"><a href="#L932">  932</a>   // Weaken to Write for _12 (skipped exhale: StorageDead)</span>
+<span id="L933"><a href="#L933">  933</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb8[3], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L934"><a href="#L934">  934</a>   label _before_8_4</span>
+<span id="L935"><a href="#L935">  935</a>   // [MIR] bb8[4]: _0 = const ()</span>
+<span id="L936"><a href="#L936">  936</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _0, location: Before(AnalysisLocation { location: bb8[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L937"><a href="#L937">  937</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_0), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L938"><a href="#L938">  938</a>   p_0_Tuple_assign(_0p, s_0_Tuple_cons())</span>
+<span id="L939"><a href="#L939">  939</a>   label _before_8_5</span>
+<span id="L940"><a href="#L940">  940</a>   // [MIR] bb8[5]: goto -&gt; bb10</span>
+<span id="L941"><a href="#L941">  941</a>   // PCG (T) pre_operands</span>
+<span id="L942"><a href="#L942">  942</a>   // PCG (T) post_operands</span>
+<span id="L943"><a href="#L943">  943</a>   // PCG (T) pre_main</span>
+<span id="L944"><a href="#L944">  944</a>   // PCG (T) post_main</span>
+<span id="L945"><a href="#L945">  945</a>   label _after_8</span>
+<span id="L946"><a href="#L946">  946</a>   _from_bb8_to_bb10 := true</span>
+<span id="L947"><a href="#L947">  947</a>   goto bb_10</span>
+<span id="L948"><a href="#L948">  948</a>   label bb_4</span>
+<span id="L949"><a href="#L949">  949</a>   label _before_4_0</span>
+<span id="L950"><a href="#L950">  950</a>   // [MIR] bb4[0]: StorageLive(_8)</span>
+<span id="L951"><a href="#L951">  951</a>   label _before_4_1</span>
+<span id="L952"><a href="#L952">  952</a>   // [MIR] bb4[1]: StorageLive(_9)</span>
+<span id="L953"><a href="#L953">  953</a>   label _before_4_2</span>
+<span id="L954"><a href="#L954">  954</a>   // [MIR] bb4[2]: StorageLive(_10)</span>
+<span id="L955"><a href="#L955">  955</a>   label _before_4_3</span>
+<span id="L956"><a href="#L956">  956</a>   // [MIR] bb4[3]: _10 = copy _2</span>
+<span id="L957"><a href="#L957">  957</a>   // var _tmp11</span>
+<span id="L958"><a href="#L958">  958</a>   _tmp11 := p_Int_i32_snap(_2p)</span>
+<span id="L959"><a href="#L959">  959</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb4[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L960"><a href="#L960">  960</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_10), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L961"><a href="#L961">  961</a>   p_Int_i32_assign(_10p, _tmp11)</span>
+<span id="L962"><a href="#L962">  962</a>   label _before_4_4</span>
+<span id="L963"><a href="#L963">  963</a>   // [MIR] bb4[4]: _9 = Eq(move _10, const 9_i32)</span>
+<span id="L964"><a href="#L964">  964</a>   // var _tmp12</span>
+<span id="L965"><a href="#L965">  965</a>   _tmp12 := p_Int_i32_snap(_10p)</span>
+<span id="L966"><a href="#L966">  966</a>   exhale inhabited(s_Int_i32_type()) &amp;&amp; acc(p_Int_i32(_10p), write)</span>
+<span id="L967"><a href="#L967">  967</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb4[4], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L968"><a href="#L968">  968</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb4[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L969"><a href="#L969">  969</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_9), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L970"><a href="#L970">  970</a>   p_Bool_assign(_9p, mir_binop_Eq_Int_i32_Int_i32(_tmp12, s_Int_i32_cons(9)))</span>
+<span id="L971"><a href="#L971">  971</a>   label _before_4_5</span>
+<span id="L972"><a href="#L972">  972</a>   // [MIR] bb4[5]: switchInt(move _9) -&gt; [0: bb6, otherwise: bb5]</span>
+<span id="L973"><a href="#L973">  973</a>   // PCG (T) pre_operands</span>
+<span id="L974"><a href="#L974">  974</a>   // PCG (T) post_operands</span>
+<span id="L975"><a href="#L975">  975</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb4[5], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L976"><a href="#L976">  976</a>   // PCG (T) pre_main</span>
+<span id="L977"><a href="#L977">  977</a>   // var _tmp13</span>
+<span id="L978"><a href="#L978">  978</a>   _tmp13 := p_Bool_snap(_9p)</span>
+<span id="L979"><a href="#L979">  979</a>   exhale inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_9p), write)</span>
+<span id="L980"><a href="#L980">  980</a>   // var _tmp14</span>
+<span id="L981"><a href="#L981">  981</a>   _tmp14 := _tmp13</span>
+<span id="L982"><a href="#L982">  982</a>   // PCG (T) post_main</span>
+<span id="L983"><a href="#L983">  983</a>   label _after_4</span>
+<span id="L984"><a href="#L984">  984</a>   if (_tmp14 == false) {</span>
+<span id="L985"><a href="#L985">  985</a>     _from_bb4_to_bb6 := true</span>
+<span id="L986"><a href="#L986">  986</a>     goto bb_6</span>
+<span id="L987"><a href="#L987">  987</a>   } else {</span>
+<span id="L988"><a href="#L988">  988</a>     _from_bb4_to_bb5 := true</span>
+<span id="L989"><a href="#L989">  989</a>     goto bb_5</span>
+<span id="L990"><a href="#L990">  990</a>   }</span>
+<span id="L991"><a href="#L991">  991</a>   label bb_6</span>
+<span id="L992"><a href="#L992">  992</a>   label _before_6_0</span>
+<span id="L993"><a href="#L993">  993</a>   // [MIR] bb6[0]: StorageDead(_10)</span>
+<span id="L994"><a href="#L994">  994</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb6[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L995"><a href="#L995">  995</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_10), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L996"><a href="#L996">  996</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb6[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L997"><a href="#L997">  997</a>   label _before_6_1</span>
+<span id="L998"><a href="#L998">  998</a>   // [MIR] bb6[1]: StorageLive(_11)</span>
+<span id="L999"><a href="#L999">  999</a>   label _before_6_2</span>
+<span id="L1000"><a href="#L1000"> 1000</a>   // [MIR] bb6[2]: _11 = core::panicking::panic(const &quot;assertion failed: a == 9&quot;) -&gt; bb11</span>
+<span id="L1001"><a href="#L1001"> 1001</a>   // PCG (T) pre_operands</span>
+<span id="L1002"><a href="#L1002"> 1002</a>   // PCG (T) post_operands</span>
+<span id="L1003"><a href="#L1003"> 1003</a>   // PCG (T) pre_main</span>
+<span id="L1004"><a href="#L1004"> 1004</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _11, location: Before(AnalysisLocation { location: bb6[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1005"><a href="#L1005"> 1005</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_11), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1006"><a href="#L1006"> 1006</a>   goto bb_term_6</span>
+<span id="L1007"><a href="#L1007"> 1007</a>   label bb_term_6</span>
+<span id="L1008"><a href="#L1008"> 1008</a>   // var _tmp15</span>
+<span id="L1009"><a href="#L1009"> 1009</a>   p_Ref_immutable_assign(_tmp15, s_Str_type(), s_Ref_immutable_cons(addr_to_ref(18446744073709551616), make_generic_s_UInt_usize(s_UInt_usize_cons(24)), make_generic_s_Str(const_1_0_1())))</span>
+<span id="L1010"><a href="#L1010"> 1010</a>   label pre2</span>
+<span id="L1011"><a href="#L1011"> 1011</a>   m_core$col$$col$panicking$col$$col$panic(_11p, _tmp15)</span>
+<span id="L1012"><a href="#L1012"> 1012</a>   label post3</span>
+<span id="L1013"><a href="#L1013"> 1013</a>   exhale false</span>
+<span id="L1014"><a href="#L1014"> 1014</a>   inhale false</span>
+<span id="L1015"><a href="#L1015"> 1015</a>   goto end</span>
+<span id="L1016"><a href="#L1016"> 1016</a>   label bb_11</span>
+<span id="L1017"><a href="#L1017"> 1017</a>   // cleanup block</span>
+<span id="L1018"><a href="#L1018"> 1018</a>   assert false</span>
+<span id="L1019"><a href="#L1019"> 1019</a>   goto end</span>
+<span id="L1020"><a href="#L1020"> 1020</a>   label bb_5</span>
+<span id="L1021"><a href="#L1021"> 1021</a>   label _before_5_0</span>
+<span id="L1022"><a href="#L1022"> 1022</a>   // [MIR] bb5[0]: StorageDead(_10)</span>
+<span id="L1023"><a href="#L1023"> 1023</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb5[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1024"><a href="#L1024"> 1024</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_10), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1025"><a href="#L1025"> 1025</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb5[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1026"><a href="#L1026"> 1026</a>   label _before_5_1</span>
+<span id="L1027"><a href="#L1027"> 1027</a>   // [MIR] bb5[1]: _8 = const ()</span>
+<span id="L1028"><a href="#L1028"> 1028</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb5[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1029"><a href="#L1029"> 1029</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_8), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1030"><a href="#L1030"> 1030</a>   p_0_Tuple_assign(_8p, s_0_Tuple_cons())</span>
+<span id="L1031"><a href="#L1031"> 1031</a>   label _before_5_2</span>
+<span id="L1032"><a href="#L1032"> 1032</a>   // [MIR] bb5[2]: StorageDead(_9)</span>
+<span id="L1033"><a href="#L1033"> 1033</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb5[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1034"><a href="#L1034"> 1034</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_9), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1035"><a href="#L1035"> 1035</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _9, location: Before(AnalysisLocation { location: bb5[2], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1036"><a href="#L1036"> 1036</a>   label _before_5_3</span>
+<span id="L1037"><a href="#L1037"> 1037</a>   // [MIR] bb5[3]: StorageDead(_8)</span>
+<span id="L1038"><a href="#L1038"> 1038</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb5[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1039"><a href="#L1039"> 1039</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_8), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1040"><a href="#L1040"> 1040</a>   // [PCG] Weaken(Weaken { place: _8, from: E, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1041"><a href="#L1041"> 1041</a>   // Weaken to Write for _8 (skipped exhale: StorageDead)</span>
+<span id="L1042"><a href="#L1042"> 1042</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb5[3], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1043"><a href="#L1043"> 1043</a>   label _before_5_4</span>
+<span id="L1044"><a href="#L1044"> 1044</a>   // [MIR] bb5[4]: _0 = const ()</span>
+<span id="L1045"><a href="#L1045"> 1045</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _0, location: Before(AnalysisLocation { location: bb5[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1046"><a href="#L1046"> 1046</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_0), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1047"><a href="#L1047"> 1047</a>   p_0_Tuple_assign(_0p, s_0_Tuple_cons())</span>
+<span id="L1048"><a href="#L1048"> 1048</a>   label _before_5_5</span>
+<span id="L1049"><a href="#L1049"> 1049</a>   // [MIR] bb5[5]: goto -&gt; bb10</span>
+<span id="L1050"><a href="#L1050"> 1050</a>   // PCG (T) pre_operands</span>
+<span id="L1051"><a href="#L1051"> 1051</a>   // PCG (T) post_operands</span>
+<span id="L1052"><a href="#L1052"> 1052</a>   // PCG (T) pre_main</span>
+<span id="L1053"><a href="#L1053"> 1053</a>   // PCG (T) post_main</span>
+<span id="L1054"><a href="#L1054"> 1054</a>   label _after_5</span>
+<span id="L1055"><a href="#L1055"> 1055</a>   _from_bb5_to_bb10 := true</span>
+<span id="L1056"><a href="#L1056"> 1056</a>   goto bb_10</span>
+<span id="L1057"><a href="#L1057"> 1057</a>   label bb_10</span>
+<span id="L1058"><a href="#L1058"> 1058</a>   label _before_10_0</span>
+<span id="L1059"><a href="#L1059"> 1059</a>   // [MIR] bb10[0]: StorageDead(_7)</span>
+<span id="L1060"><a href="#L1060"> 1060</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb10[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1061"><a href="#L1061"> 1061</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_7), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1062"><a href="#L1062"> 1062</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb10[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1063"><a href="#L1063"> 1063</a>   label _before_10_1</span>
+<span id="L1064"><a href="#L1064"> 1064</a>   // [MIR] bb10[1]: StorageDead(_4)</span>
+<span id="L1065"><a href="#L1065"> 1065</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb10[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1066"><a href="#L1066"> 1066</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1067"><a href="#L1067"> 1067</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb10[1], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1068"><a href="#L1068"> 1068</a>   label _before_10_2</span>
+<span id="L1069"><a href="#L1069"> 1069</a>   // [MIR] bb10[2]: StorageDead(_3)</span>
+<span id="L1070"><a href="#L1070"> 1070</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb10[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1071"><a href="#L1071"> 1071</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_3), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1072"><a href="#L1072"> 1072</a>   // [PCG] Weaken(Weaken { place: _3, from: E, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1073"><a href="#L1073"> 1073</a>   // Weaken to Write for _3 (skipped exhale: StorageDead)</span>
+<span id="L1074"><a href="#L1074"> 1074</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb10[2], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1075"><a href="#L1075"> 1075</a>   label _before_10_3</span>
+<span id="L1076"><a href="#L1076"> 1076</a>   // [MIR] bb10[3]: StorageDead(_2)</span>
+<span id="L1077"><a href="#L1077"> 1077</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _2, location: Before(AnalysisLocation { location: bb10[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1078"><a href="#L1078"> 1078</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_2), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1079"><a href="#L1079"> 1079</a>   // [PCG] Weaken(Weaken { place: _2, from: E, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1080"><a href="#L1080"> 1080</a>   // Weaken to Write for _2 (skipped exhale: StorageDead)</span>
+<span id="L1081"><a href="#L1081"> 1081</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _2, location: Before(AnalysisLocation { location: bb10[3], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1082"><a href="#L1082"> 1082</a>   label _before_10_4</span>
+<span id="L1083"><a href="#L1083"> 1083</a>   // [MIR] bb10[4]: return</span>
+<span id="L1084"><a href="#L1084"> 1084</a>   // PCG (T) pre_operands</span>
+<span id="L1085"><a href="#L1085"> 1085</a>   // PCG (T) post_operands</span>
+<span id="L1086"><a href="#L1086"> 1086</a>   // PCG (T) pre_main</span>
+<span id="L1087"><a href="#L1087"> 1087</a>   label package_post4</span>
+<span id="L1088"><a href="#L1088"> 1088</a>   goto end</span>
+<span id="L1089"><a href="#L1089"> 1089</a>   label end</span>
+<span id="L1090"><a href="#L1090"> 1090</a>   // return</span>
+<span id="L1091"><a href="#L1091"> 1091</a> }</span>
+<span id="L1092"><a href="#L1092"> 1092</a> </span>
+<span id="L1093"><a href="#L1093"> 1093</a> method m_core$col$$col$panicking$col$$col$panic(_0p: Ref, _1p: Ref)</span>
+<span id="L1094"><a href="#L1094"> 1094</a>   requires inhabited(s_Ref_immutable_type(s_Str_type())) &amp;&amp;</span>
+<span id="L1095"><a href="#L1095"> 1095</a>     acc(p_Ref_immutable(_1p, s_Str_type()), write)</span>
+<span id="L1096"><a href="#L1096"> 1096</a>   requires false</span>
+<span id="L1097"><a href="#L1097"> 1097</a>   ensures inhabited(s_Never_type()) &amp;&amp; acc(p_Never(_0p), write)</span>
+<span id="L1098"><a href="#L1098"> 1098</a>   ensures p_Never_snap(_0p) ==</span>
+<span id="L1099"><a href="#L1099"> 1099</a>     f_core$col$$col$panicking$col$$col$panic(s_Ref_immutable_cons(null, old(p_Ref_immutable_snap(_1p,</span>
+<span id="L1100"><a href="#L1100"> 1100</a>     s_Str_type())).s_Ref_immutable_1, old(p_Ref_immutable_snap(_1p, s_Str_type())).s_Ref_immutable_2))</span>
+<span id="L1101"><a href="#L1101"> 1101</a> </span>
+<span id="L1102"><a href="#L1102"> 1102</a> </span>
+<span id="L1103"><a href="#L1103"> 1103</a> method m_branch$col$$col$loop_reborrow(_0p: Ref, _1p: Ref)</span>
+<span id="L1104"><a href="#L1104"> 1104</a>   requires inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_1p), write)</span>
+<span id="L1105"><a href="#L1105"> 1105</a>   ensures inhabited(s_0_Tuple_type()) &amp;&amp; acc(p_0_Tuple(_0p), write)</span>
+<span id="L1106"><a href="#L1106"> 1106</a> {</span>
+<span id="L1107"><a href="#L1107"> 1107</a>   var _2p: Ref</span>
+<span id="L1108"><a href="#L1108"> 1108</a>   var _3p: Ref</span>
+<span id="L1109"><a href="#L1109"> 1109</a>   var _4p: Ref</span>
+<span id="L1110"><a href="#L1110"> 1110</a>   var _5p: Ref</span>
+<span id="L1111"><a href="#L1111"> 1111</a>   var _6p: Ref</span>
+<span id="L1112"><a href="#L1112"> 1112</a>   var _7p: Ref</span>
+<span id="L1113"><a href="#L1113"> 1113</a>   var _8p: Ref</span>
+<span id="L1114"><a href="#L1114"> 1114</a>   var _9p: Ref</span>
+<span id="L1115"><a href="#L1115"> 1115</a>   var _10p: Ref</span>
+<span id="L1116"><a href="#L1116"> 1116</a>   var _11p: Ref</span>
+<span id="L1117"><a href="#L1117"> 1117</a>   var _12p: Ref</span>
+<span id="L1118"><a href="#L1118"> 1118</a>   var _13p: Ref</span>
+<span id="L1119"><a href="#L1119"> 1119</a>   var _14p: Ref</span>
+<span id="L1120"><a href="#L1120"> 1120</a>   var _15p: Ref</span>
+<span id="L1121"><a href="#L1121"> 1121</a>   var _from_bb1_to_bb2: Bool</span>
+<span id="L1122"><a href="#L1122"> 1122</a>   var _from_bb2_to_bb4: Bool</span>
+<span id="L1123"><a href="#L1123"> 1123</a>   var _from_bb4_to_bb5: Bool</span>
+<span id="L1124"><a href="#L1124"> 1124</a>   var _from_bb2_to_bb3: Bool</span>
+<span id="L1125"><a href="#L1125"> 1125</a>   var _from_bb3_to_bb1: Bool</span>
+<span id="L1126"><a href="#L1126"> 1126</a>   var _from_bb0_to_bb1: Bool</span>
+<span id="L1127"><a href="#L1127"> 1127</a>   var _from_bb4_to_bb6: Bool</span>
+<span id="L1128"><a href="#L1128"> 1128</a>   var _tmp0: Bool</span>
+<span id="L1129"><a href="#L1129"> 1129</a>   var _tmp1: Bool</span>
+<span id="L1130"><a href="#L1130"> 1130</a>   var _tmp2: Bool</span>
+<span id="L1131"><a href="#L1131"> 1131</a>   var _tmp3: s_Int_i32</span>
+<span id="L1132"><a href="#L1132"> 1132</a>   var _tmp4: s_Int_i32</span>
+<span id="L1133"><a href="#L1133"> 1133</a>   var _tmp5: Bool</span>
+<span id="L1134"><a href="#L1134"> 1134</a>   var _tmp6: Bool</span>
+<span id="L1135"><a href="#L1135"> 1135</a>   var _tmp7: Ref</span>
+<span id="L1136"><a href="#L1136"> 1136</a>   var _tmp8: s_Ref_mutable</span>
+<span id="L1137"><a href="#L1137"> 1137</a>   label start</span>
+<span id="L1138"><a href="#L1138"> 1138</a>   // var _2p</span>
+<span id="L1139"><a href="#L1139"> 1139</a>   // var _3p</span>
+<span id="L1140"><a href="#L1140"> 1140</a>   // var _4p</span>
+<span id="L1141"><a href="#L1141"> 1141</a>   // var _5p</span>
+<span id="L1142"><a href="#L1142"> 1142</a>   // var _6p</span>
+<span id="L1143"><a href="#L1143"> 1143</a>   // var _7p</span>
+<span id="L1144"><a href="#L1144"> 1144</a>   // var _8p</span>
+<span id="L1145"><a href="#L1145"> 1145</a>   // var _9p</span>
+<span id="L1146"><a href="#L1146"> 1146</a>   // var _10p</span>
+<span id="L1147"><a href="#L1147"> 1147</a>   // var _11p</span>
+<span id="L1148"><a href="#L1148"> 1148</a>   // var _12p</span>
+<span id="L1149"><a href="#L1149"> 1149</a>   // var _13p</span>
+<span id="L1150"><a href="#L1150"> 1150</a>   // var _14p</span>
+<span id="L1151"><a href="#L1151"> 1151</a>   // var _15p</span>
+<span id="L1152"><a href="#L1152"> 1152</a>   _from_bb1_to_bb2 := false</span>
+<span id="L1153"><a href="#L1153"> 1153</a>   _from_bb2_to_bb4 := false</span>
+<span id="L1154"><a href="#L1154"> 1154</a>   _from_bb4_to_bb5 := false</span>
+<span id="L1155"><a href="#L1155"> 1155</a>   _from_bb2_to_bb3 := false</span>
+<span id="L1156"><a href="#L1156"> 1156</a>   _from_bb3_to_bb1 := false</span>
+<span id="L1157"><a href="#L1157"> 1157</a>   _from_bb0_to_bb1 := false</span>
+<span id="L1158"><a href="#L1158"> 1158</a>   _from_bb4_to_bb6 := false</span>
+<span id="L1159"><a href="#L1159"> 1159</a>   goto bb_0</span>
+<span id="L1160"><a href="#L1160"> 1160</a>   label bb_0</span>
+<span id="L1161"><a href="#L1161"> 1161</a>   label _before_0_0</span>
+<span id="L1162"><a href="#L1162"> 1162</a>   // [MIR] bb0[0]: StorageLive(_2)</span>
+<span id="L1163"><a href="#L1163"> 1163</a>   label _before_0_1</span>
+<span id="L1164"><a href="#L1164"> 1164</a>   // [MIR] bb0[1]: _2 = const 1_i32</span>
+<span id="L1165"><a href="#L1165"> 1165</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _2, location: Before(AnalysisLocation { location: bb0[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1166"><a href="#L1166"> 1166</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_2), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1167"><a href="#L1167"> 1167</a>   p_Int_i32_assign(_2p, s_Int_i32_cons(1))</span>
+<span id="L1168"><a href="#L1168"> 1168</a>   label _before_0_2</span>
+<span id="L1169"><a href="#L1169"> 1169</a>   // [MIR] bb0[2]: FakeRead(ForLet(None), _2)</span>
+<span id="L1170"><a href="#L1170"> 1170</a>   label _before_0_3</span>
+<span id="L1171"><a href="#L1171"> 1171</a>   // [MIR] bb0[3]: StorageLive(_3)</span>
+<span id="L1172"><a href="#L1172"> 1172</a>   label _before_0_4</span>
+<span id="L1173"><a href="#L1173"> 1173</a>   // [MIR] bb0[4]: _3 = &amp;mut _2</span>
+<span id="L1174"><a href="#L1174"> 1174</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb0[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1175"><a href="#L1175"> 1175</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_3), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1176"><a href="#L1176"> 1176</a>   p_Ref_mutable_assign(_3p, s_Int_i32_type(), p_Ref_mutable_arbitrary_value(_2p,</span>
+<span id="L1177"><a href="#L1177"> 1177</a>     make_generic_s_0_Tuple(s_0_Tuple_cons()), s_Int_i32_type()))</span>
+<span id="L1178"><a href="#L1178"> 1178</a>   make_generic_Int_i32(p_Ref_mutable_snap(_3p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L1179"><a href="#L1179"> 1179</a>   label _before_0_5</span>
+<span id="L1180"><a href="#L1180"> 1180</a>   // [MIR] bb0[5]: FakeRead(ForLet(None), _3)</span>
+<span id="L1181"><a href="#L1181"> 1181</a>   label _before_0_6</span>
+<span id="L1182"><a href="#L1182"> 1182</a>   // [MIR] bb0[6]: StorageLive(_4)</span>
+<span id="L1183"><a href="#L1183"> 1183</a>   label _before_0_7</span>
+<span id="L1184"><a href="#L1184"> 1184</a>   // [MIR] bb0[7]: goto -&gt; bb1</span>
+<span id="L1185"><a href="#L1185"> 1185</a>   // PCG (T) pre_operands</span>
+<span id="L1186"><a href="#L1186"> 1186</a>   // PCG (T) post_operands</span>
+<span id="L1187"><a href="#L1187"> 1187</a>   // PCG (T) pre_main</span>
+<span id="L1188"><a href="#L1188"> 1188</a>   // PCG (T) post_main</span>
+<span id="L1189"><a href="#L1189"> 1189</a>   label _after_0</span>
+<span id="L1190"><a href="#L1190"> 1190</a>   label outer_package0</span>
+<span id="L1191"><a href="#L1191"> 1191</a>   package inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1192"><a href="#L1192"> 1192</a>   acc(p_Param(old[outer_package0](p_Ref_mutable_snap(_3p, s_Int_i32_type())).s_Ref_mutable_0,</span>
+<span id="L1193"><a href="#L1193"> 1193</a>   s_Int_i32_type()), write) --*</span>
+<span id="L1194"><a href="#L1194"> 1194</a>   inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1195"><a href="#L1195"> 1195</a>   acc(p_Int_i32(old[outer_package0](_2p)), write) {</span>
+<span id="L1196"><a href="#L1196"> 1196</a>     make_concrete_Int_i32(old[outer_package0](p_Ref_mutable_snap(old[outer_package0](_3p),</span>
+<span id="L1197"><a href="#L1197"> 1197</a>       s_Int_i32_type()).s_Ref_mutable_0))</span>
+<span id="L1198"><a href="#L1198"> 1198</a>     // (PCG) handled edge Remove: borrow: r = &amp;mut  x</span>
+<span id="L1199"><a href="#L1199"> 1199</a>   }</span>
+<span id="L1200"><a href="#L1200"> 1200</a>   // (PCG) handled edge Add: Loop(bb1): x -&gt; r↓&#x27;?6</span>
+<span id="L1201"><a href="#L1201"> 1201</a>   _from_bb0_to_bb1 := true</span>
+<span id="L1202"><a href="#L1202"> 1202</a>   goto bb_1</span>
+<span id="L1203"><a href="#L1203"> 1203</a>   label bb_1</span>
+<span id="L1204"><a href="#L1204"> 1204</a>     invariant inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_1p), write)</span>
+<span id="L1205"><a href="#L1205"> 1205</a>     invariant inhabited(s_Ref_mutable_type(s_Int_i32_type())) &amp;&amp;</span>
+<span id="L1206"><a href="#L1206"> 1206</a>       acc(p_Ref_mutable(_3p, s_Int_i32_type()), write)</span>
+<span id="L1207"><a href="#L1207"> 1207</a>     invariant inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1208"><a href="#L1208"> 1208</a>       acc(p_Param(p_Ref_mutable_snap(_3p, s_Int_i32_type()).s_Ref_mutable_0,</span>
+<span id="L1209"><a href="#L1209"> 1209</a>       s_Int_i32_type()), write)</span>
+<span id="L1210"><a href="#L1210"> 1210</a>   label _before_1_0</span>
+<span id="L1211"><a href="#L1211"> 1211</a>   // [MIR] bb1[0]: falseUnwind -&gt; [real: bb2, unwind: bb7]</span>
+<span id="L1212"><a href="#L1212"> 1212</a>   // PCG (T) pre_operands</span>
+<span id="L1213"><a href="#L1213"> 1213</a>   // PCG (T) post_operands</span>
+<span id="L1214"><a href="#L1214"> 1214</a>   // PCG (T) pre_main</span>
+<span id="L1215"><a href="#L1215"> 1215</a>   // PCG (T) post_main</span>
+<span id="L1216"><a href="#L1216"> 1216</a>   label _after_1</span>
+<span id="L1217"><a href="#L1217"> 1217</a>   _from_bb1_to_bb2 := true</span>
+<span id="L1218"><a href="#L1218"> 1218</a>   goto bb_2</span>
+<span id="L1219"><a href="#L1219"> 1219</a>   label bb_2</span>
+<span id="L1220"><a href="#L1220"> 1220</a>   label _before_2_0</span>
+<span id="L1221"><a href="#L1221"> 1221</a>   // [MIR] bb2[0]: StorageLive(_6)</span>
+<span id="L1222"><a href="#L1222"> 1222</a>   label _before_2_1</span>
+<span id="L1223"><a href="#L1223"> 1223</a>   // [MIR] bb2[1]: _6 = copy _1</span>
+<span id="L1224"><a href="#L1224"> 1224</a>   // var _tmp0</span>
+<span id="L1225"><a href="#L1225"> 1225</a>   _tmp0 := p_Bool_snap(_1p)</span>
+<span id="L1226"><a href="#L1226"> 1226</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb2[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1227"><a href="#L1227"> 1227</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_6), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1228"><a href="#L1228"> 1228</a>   p_Bool_assign(_6p, _tmp0)</span>
+<span id="L1229"><a href="#L1229"> 1229</a>   label _before_2_2</span>
+<span id="L1230"><a href="#L1230"> 1230</a>   // [MIR] bb2[2]: switchInt(move _6) -&gt; [0: bb4, otherwise: bb3]</span>
+<span id="L1231"><a href="#L1231"> 1231</a>   // PCG (T) pre_operands</span>
+<span id="L1232"><a href="#L1232"> 1232</a>   // PCG (T) post_operands</span>
+<span id="L1233"><a href="#L1233"> 1233</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb2[2], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1234"><a href="#L1234"> 1234</a>   // PCG (T) pre_main</span>
+<span id="L1235"><a href="#L1235"> 1235</a>   // var _tmp1</span>
+<span id="L1236"><a href="#L1236"> 1236</a>   _tmp1 := p_Bool_snap(_6p)</span>
+<span id="L1237"><a href="#L1237"> 1237</a>   exhale inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_6p), write)</span>
+<span id="L1238"><a href="#L1238"> 1238</a>   // var _tmp2</span>
+<span id="L1239"><a href="#L1239"> 1239</a>   _tmp2 := _tmp1</span>
+<span id="L1240"><a href="#L1240"> 1240</a>   // PCG (T) post_main</span>
+<span id="L1241"><a href="#L1241"> 1241</a>   label _after_2</span>
+<span id="L1242"><a href="#L1242"> 1242</a>   if (_tmp2 == false) {</span>
+<span id="L1243"><a href="#L1243"> 1243</a>     // (PCG) handled edge Add: Loop(bb1): x -&gt; r↓&#x27;?6</span>
+<span id="L1244"><a href="#L1244"> 1244</a>     _from_bb2_to_bb4 := true</span>
+<span id="L1245"><a href="#L1245"> 1245</a>     goto bb_4</span>
+<span id="L1246"><a href="#L1246"> 1246</a>   } else {</span>
+<span id="L1247"><a href="#L1247"> 1247</a>     // (PCG) handled edge Add: Loop(bb1): x -&gt; r↓&#x27;?6</span>
+<span id="L1248"><a href="#L1248"> 1248</a>     _from_bb2_to_bb3 := true</span>
+<span id="L1249"><a href="#L1249"> 1249</a>     goto bb_3</span>
+<span id="L1250"><a href="#L1250"> 1250</a>   }</span>
+<span id="L1251"><a href="#L1251"> 1251</a>   label bb_4</span>
+<span id="L1252"><a href="#L1252"> 1252</a>   label _before_4_0</span>
+<span id="L1253"><a href="#L1253"> 1253</a>   // [MIR] bb4[0]: StorageLive(_10)</span>
+<span id="L1254"><a href="#L1254"> 1254</a>   label _before_4_1</span>
+<span id="L1255"><a href="#L1255"> 1255</a>   // [MIR] bb4[1]: _4 = const ()</span>
+<span id="L1256"><a href="#L1256"> 1256</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb4[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1257"><a href="#L1257"> 1257</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1258"><a href="#L1258"> 1258</a>   p_0_Tuple_assign(_4p, s_0_Tuple_cons())</span>
+<span id="L1259"><a href="#L1259"> 1259</a>   label _before_4_2</span>
+<span id="L1260"><a href="#L1260"> 1260</a>   // [MIR] bb4[2]: StorageDead(_10)</span>
+<span id="L1261"><a href="#L1261"> 1261</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb4[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1262"><a href="#L1262"> 1262</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_10), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1263"><a href="#L1263"> 1263</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _10, location: Before(AnalysisLocation { location: bb4[2], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1264"><a href="#L1264"> 1264</a>   label _before_4_3</span>
+<span id="L1265"><a href="#L1265"> 1265</a>   // [MIR] bb4[3]: StorageDead(_6)</span>
+<span id="L1266"><a href="#L1266"> 1266</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb4[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1267"><a href="#L1267"> 1267</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_6), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1268"><a href="#L1268"> 1268</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb4[3], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1269"><a href="#L1269"> 1269</a>   label _before_4_4</span>
+<span id="L1270"><a href="#L1270"> 1270</a>   // [MIR] bb4[4]: StorageDead(_4)</span>
+<span id="L1271"><a href="#L1271"> 1271</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb4[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1272"><a href="#L1272"> 1272</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_4), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1273"><a href="#L1273"> 1273</a>   // [PCG] Weaken(Weaken { place: _4, from: E, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1274"><a href="#L1274"> 1274</a>   // Weaken to Write for _4 (skipped exhale: StorageDead)</span>
+<span id="L1275"><a href="#L1275"> 1275</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _4, location: Before(AnalysisLocation { location: bb4[4], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1276"><a href="#L1276"> 1276</a>   label _before_4_5</span>
+<span id="L1277"><a href="#L1277"> 1277</a>   // [MIR] bb4[5]: (*_3) = const 9_i32</span>
+<span id="L1278"><a href="#L1278"> 1278</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: (*_3), location: Before(AnalysisLocation { location: bb4[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1279"><a href="#L1279"> 1279</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals((*_3)), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1280"><a href="#L1280"> 1280</a>   if (_from_bb2_to_bb4) {</span>
+<span id="L1281"><a href="#L1281"> 1281</a>     make_concrete_Int_i32(p_Ref_mutable_snap(_3p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L1282"><a href="#L1282"> 1282</a>     // (PCG) handled edge Add: {r} -&gt; {*r}</span>
+<span id="L1283"><a href="#L1283"> 1283</a>   }</span>
+<span id="L1284"><a href="#L1284"> 1284</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_3))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; })), label: Some(Location(Before(AnalysisLocation { location: bb4[5], eval_stmt_phase: PreMain }))) })</span>
+<span id="L1285"><a href="#L1285"> 1285</a>   // exhale due to weaken to Write</span>
+<span id="L1286"><a href="#L1286"> 1286</a>   exhale inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1287"><a href="#L1287"> 1287</a>     acc(p_Int_i32(p_Ref_mutable_snap(_3p, s_Int_i32_type()).s_Ref_mutable_0), write)</span>
+<span id="L1288"><a href="#L1288"> 1288</a>   p_Int_i32_assign(p_Ref_mutable_snap(_3p, s_Int_i32_type()).s_Ref_mutable_0,</span>
+<span id="L1289"><a href="#L1289"> 1289</a>     s_Int_i32_cons(9))</span>
+<span id="L1290"><a href="#L1290"> 1290</a>   label _before_4_6</span>
+<span id="L1291"><a href="#L1291"> 1291</a>   // [MIR] bb4[6]: StorageLive(_12)</span>
+<span id="L1292"><a href="#L1292"> 1292</a>   if (_from_bb2_to_bb4) {</span>
+<span id="L1293"><a href="#L1293"> 1293</a>     make_generic_Int_i32(p_Ref_mutable_snap(_3p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L1294"><a href="#L1294"> 1294</a>     // (PCG) handled edge Remove: {r} -&gt; {*r}</span>
+<span id="L1295"><a href="#L1295"> 1295</a>   }</span>
+<span id="L1296"><a href="#L1296"> 1296</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_3))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: Some(Location(Before(AnalysisLocation { location: bb4[5], eval_stmt_phase: PreMain }))), phantom: PhantomData&lt;&amp;()&gt; })), label: None })</span>
+<span id="L1297"><a href="#L1297"> 1297</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: (*_3), location: Before(AnalysisLocation { location: bb4[6], eval_stmt_phase: PreOperands }), reason: Collapse, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1298"><a href="#L1298"> 1298</a>   // [PCG] RegainLoanedCapability(RegainedCapability { place: _3, capability: E })</span>
+<span id="L1299"><a href="#L1299"> 1299</a>   // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _3, capability: E })</span>
+<span id="L1300"><a href="#L1300"> 1300</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_3))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: Some(Future), phantom: PhantomData&lt;&amp;()&gt; })), label: None })</span>
+<span id="L1301"><a href="#L1301"> 1301</a>   if (_from_bb2_to_bb4) {</span>
+<span id="L1302"><a href="#L1302"> 1302</a>     label outer_package1</span>
+<span id="L1303"><a href="#L1303"> 1303</a>     apply inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1304"><a href="#L1304"> 1304</a>       acc(p_Param(old[outer_package1](p_Ref_mutable_snap(_3p, s_Int_i32_type())).s_Ref_mutable_0,</span>
+<span id="L1305"><a href="#L1305"> 1305</a>       s_Int_i32_type()), write) --*</span>
+<span id="L1306"><a href="#L1306"> 1306</a>       inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1307"><a href="#L1307"> 1307</a>       acc(p_Int_i32(old[outer_package1](_2p)), write)</span>
+<span id="L1308"><a href="#L1308"> 1308</a>     // (PCG) handled edge Remove: Loop(bb1): x -&gt; r↓&#x27;?6</span>
+<span id="L1309"><a href="#L1309"> 1309</a>   }</span>
+<span id="L1310"><a href="#L1310"> 1310</a>   // [PCG] RegainLoanedCapability(RegainedCapability { place: _2, capability: E })</span>
+<span id="L1311"><a href="#L1311"> 1311</a>   // ignored repack op: RegainLoanedCapability(RegainedCapability { place: _2, capability: E })</span>
+<span id="L1312"><a href="#L1312"> 1312</a>   // exhale due to weaken to Write</span>
+<span id="L1313"><a href="#L1313"> 1313</a>   exhale inhabited(s_Ref_mutable_type(s_Int_i32_type())) &amp;&amp;</span>
+<span id="L1314"><a href="#L1314"> 1314</a>     acc(p_Ref_mutable(_3p, s_Int_i32_type()), write)</span>
+<span id="L1315"><a href="#L1315"> 1315</a>   label _before_4_7</span>
+<span id="L1316"><a href="#L1316"> 1316</a>   // [MIR] bb4[7]: StorageLive(_13)</span>
+<span id="L1317"><a href="#L1317"> 1317</a>   label _before_4_8</span>
+<span id="L1318"><a href="#L1318"> 1318</a>   // [MIR] bb4[8]: StorageLive(_14)</span>
+<span id="L1319"><a href="#L1319"> 1319</a>   label _before_4_9</span>
+<span id="L1320"><a href="#L1320"> 1320</a>   // [MIR] bb4[9]: _14 = copy _2</span>
+<span id="L1321"><a href="#L1321"> 1321</a>   // var _tmp3</span>
+<span id="L1322"><a href="#L1322"> 1322</a>   _tmp3 := p_Int_i32_snap(_2p)</span>
+<span id="L1323"><a href="#L1323"> 1323</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb4[9], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1324"><a href="#L1324"> 1324</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1325"><a href="#L1325"> 1325</a>   p_Int_i32_assign(_14p, _tmp3)</span>
+<span id="L1326"><a href="#L1326"> 1326</a>   label _before_4_10</span>
+<span id="L1327"><a href="#L1327"> 1327</a>   // [MIR] bb4[10]: _13 = Eq(move _14, const 9_i32)</span>
+<span id="L1328"><a href="#L1328"> 1328</a>   // var _tmp4</span>
+<span id="L1329"><a href="#L1329"> 1329</a>   _tmp4 := p_Int_i32_snap(_14p)</span>
+<span id="L1330"><a href="#L1330"> 1330</a>   exhale inhabited(s_Int_i32_type()) &amp;&amp; acc(p_Int_i32(_14p), write)</span>
+<span id="L1331"><a href="#L1331"> 1331</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb4[10], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1332"><a href="#L1332"> 1332</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb4[10], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1333"><a href="#L1333"> 1333</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_13), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1334"><a href="#L1334"> 1334</a>   p_Bool_assign(_13p, mir_binop_Eq_Int_i32_Int_i32(_tmp4, s_Int_i32_cons(9)))</span>
+<span id="L1335"><a href="#L1335"> 1335</a>   label _before_4_11</span>
+<span id="L1336"><a href="#L1336"> 1336</a>   // [MIR] bb4[11]: switchInt(move _13) -&gt; [0: bb6, otherwise: bb5]</span>
+<span id="L1337"><a href="#L1337"> 1337</a>   // PCG (T) pre_operands</span>
+<span id="L1338"><a href="#L1338"> 1338</a>   // PCG (T) post_operands</span>
+<span id="L1339"><a href="#L1339"> 1339</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb4[11], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1340"><a href="#L1340"> 1340</a>   // PCG (T) pre_main</span>
+<span id="L1341"><a href="#L1341"> 1341</a>   // var _tmp5</span>
+<span id="L1342"><a href="#L1342"> 1342</a>   _tmp5 := p_Bool_snap(_13p)</span>
+<span id="L1343"><a href="#L1343"> 1343</a>   exhale inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_13p), write)</span>
+<span id="L1344"><a href="#L1344"> 1344</a>   // var _tmp6</span>
+<span id="L1345"><a href="#L1345"> 1345</a>   _tmp6 := _tmp5</span>
+<span id="L1346"><a href="#L1346"> 1346</a>   // PCG (T) post_main</span>
+<span id="L1347"><a href="#L1347"> 1347</a>   label _after_4</span>
+<span id="L1348"><a href="#L1348"> 1348</a>   if (_tmp6 == false) {</span>
+<span id="L1349"><a href="#L1349"> 1349</a>     _from_bb4_to_bb6 := true</span>
+<span id="L1350"><a href="#L1350"> 1350</a>     goto bb_6</span>
+<span id="L1351"><a href="#L1351"> 1351</a>   } else {</span>
+<span id="L1352"><a href="#L1352"> 1352</a>     _from_bb4_to_bb5 := true</span>
+<span id="L1353"><a href="#L1353"> 1353</a>     goto bb_5</span>
+<span id="L1354"><a href="#L1354"> 1354</a>   }</span>
+<span id="L1355"><a href="#L1355"> 1355</a>   label bb_6</span>
+<span id="L1356"><a href="#L1356"> 1356</a>   label _before_6_0</span>
+<span id="L1357"><a href="#L1357"> 1357</a>   // [MIR] bb6[0]: StorageDead(_14)</span>
+<span id="L1358"><a href="#L1358"> 1358</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb6[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1359"><a href="#L1359"> 1359</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1360"><a href="#L1360"> 1360</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb6[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1361"><a href="#L1361"> 1361</a>   label _before_6_1</span>
+<span id="L1362"><a href="#L1362"> 1362</a>   // [MIR] bb6[1]: StorageLive(_15)</span>
+<span id="L1363"><a href="#L1363"> 1363</a>   label _before_6_2</span>
+<span id="L1364"><a href="#L1364"> 1364</a>   // [MIR] bb6[2]: _15 = core::panicking::panic(const &quot;assertion failed: x == 9&quot;) -&gt; bb7</span>
+<span id="L1365"><a href="#L1365"> 1365</a>   // PCG (T) pre_operands</span>
+<span id="L1366"><a href="#L1366"> 1366</a>   // PCG (T) post_operands</span>
+<span id="L1367"><a href="#L1367"> 1367</a>   // PCG (T) pre_main</span>
+<span id="L1368"><a href="#L1368"> 1368</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _15, location: Before(AnalysisLocation { location: bb6[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1369"><a href="#L1369"> 1369</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_15), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1370"><a href="#L1370"> 1370</a>   goto bb_term_6</span>
+<span id="L1371"><a href="#L1371"> 1371</a>   label bb_term_6</span>
+<span id="L1372"><a href="#L1372"> 1372</a>   // var _tmp7</span>
+<span id="L1373"><a href="#L1373"> 1373</a>   p_Ref_immutable_assign(_tmp7, s_Str_type(), s_Ref_immutable_cons(addr_to_ref(55340232221128654848), make_generic_s_UInt_usize(s_UInt_usize_cons(24)), make_generic_s_Str(const_1_0_2())))</span>
+<span id="L1374"><a href="#L1374"> 1374</a>   label pre2</span>
+<span id="L1375"><a href="#L1375"> 1375</a>   m_core$col$$col$panicking$col$$col$panic(_15p, _tmp7)</span>
+<span id="L1376"><a href="#L1376"> 1376</a>   label post3</span>
+<span id="L1377"><a href="#L1377"> 1377</a>   exhale false</span>
+<span id="L1378"><a href="#L1378"> 1378</a>   inhale false</span>
+<span id="L1379"><a href="#L1379"> 1379</a>   goto end</span>
+<span id="L1380"><a href="#L1380"> 1380</a>   label bb_5</span>
+<span id="L1381"><a href="#L1381"> 1381</a>   label _before_5_0</span>
+<span id="L1382"><a href="#L1382"> 1382</a>   // [MIR] bb5[0]: StorageDead(_14)</span>
+<span id="L1383"><a href="#L1383"> 1383</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb5[0], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1384"><a href="#L1384"> 1384</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_14), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1385"><a href="#L1385"> 1385</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _14, location: Before(AnalysisLocation { location: bb5[0], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1386"><a href="#L1386"> 1386</a>   label _before_5_1</span>
+<span id="L1387"><a href="#L1387"> 1387</a>   // [MIR] bb5[1]: _12 = const ()</span>
+<span id="L1388"><a href="#L1388"> 1388</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb5[1], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1389"><a href="#L1389"> 1389</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_12), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1390"><a href="#L1390"> 1390</a>   p_0_Tuple_assign(_12p, s_0_Tuple_cons())</span>
+<span id="L1391"><a href="#L1391"> 1391</a>   label _before_5_2</span>
+<span id="L1392"><a href="#L1392"> 1392</a>   // [MIR] bb5[2]: StorageDead(_13)</span>
+<span id="L1393"><a href="#L1393"> 1393</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb5[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1394"><a href="#L1394"> 1394</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_13), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1395"><a href="#L1395"> 1395</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _13, location: Before(AnalysisLocation { location: bb5[2], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1396"><a href="#L1396"> 1396</a>   label _before_5_3</span>
+<span id="L1397"><a href="#L1397"> 1397</a>   // [MIR] bb5[3]: StorageDead(_12)</span>
+<span id="L1398"><a href="#L1398"> 1398</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb5[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1399"><a href="#L1399"> 1399</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_12), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1400"><a href="#L1400"> 1400</a>   // [PCG] Weaken(Weaken { place: _12, from: E, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1401"><a href="#L1401"> 1401</a>   // Weaken to Write for _12 (skipped exhale: StorageDead)</span>
+<span id="L1402"><a href="#L1402"> 1402</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _12, location: Before(AnalysisLocation { location: bb5[3], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1403"><a href="#L1403"> 1403</a>   label _before_5_4</span>
+<span id="L1404"><a href="#L1404"> 1404</a>   // [MIR] bb5[4]: _0 = const ()</span>
+<span id="L1405"><a href="#L1405"> 1405</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _0, location: Before(AnalysisLocation { location: bb5[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1406"><a href="#L1406"> 1406</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_0), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1407"><a href="#L1407"> 1407</a>   p_0_Tuple_assign(_0p, s_0_Tuple_cons())</span>
+<span id="L1408"><a href="#L1408"> 1408</a>   label _before_5_5</span>
+<span id="L1409"><a href="#L1409"> 1409</a>   // [MIR] bb5[5]: StorageDead(_3)</span>
+<span id="L1410"><a href="#L1410"> 1410</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb5[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1411"><a href="#L1411"> 1411</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_3), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1412"><a href="#L1412"> 1412</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb5[5], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1413"><a href="#L1413"> 1413</a>   label _before_5_6</span>
+<span id="L1414"><a href="#L1414"> 1414</a>   // [MIR] bb5[6]: StorageDead(_2)</span>
+<span id="L1415"><a href="#L1415"> 1415</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _2, location: Before(AnalysisLocation { location: bb5[6], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1416"><a href="#L1416"> 1416</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_2), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1417"><a href="#L1417"> 1417</a>   // [PCG] Weaken(Weaken { place: _2, from: E, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1418"><a href="#L1418"> 1418</a>   // Weaken to Write for _2 (skipped exhale: StorageDead)</span>
+<span id="L1419"><a href="#L1419"> 1419</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _2, location: Before(AnalysisLocation { location: bb5[6], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1420"><a href="#L1420"> 1420</a>   label _before_5_7</span>
+<span id="L1421"><a href="#L1421"> 1421</a>   // [MIR] bb5[7]: return</span>
+<span id="L1422"><a href="#L1422"> 1422</a>   // PCG (T) pre_operands</span>
+<span id="L1423"><a href="#L1423"> 1423</a>   // PCG (T) post_operands</span>
+<span id="L1424"><a href="#L1424"> 1424</a>   // PCG (T) pre_main</span>
+<span id="L1425"><a href="#L1425"> 1425</a>   label package_post4</span>
+<span id="L1426"><a href="#L1426"> 1426</a>   goto end</span>
+<span id="L1427"><a href="#L1427"> 1427</a>   label bb_3</span>
+<span id="L1428"><a href="#L1428"> 1428</a>   label _before_3_0</span>
+<span id="L1429"><a href="#L1429"> 1429</a>   // [MIR] bb3[0]: StorageLive(_7)</span>
+<span id="L1430"><a href="#L1430"> 1430</a>   label _before_3_1</span>
+<span id="L1431"><a href="#L1431"> 1431</a>   // [MIR] bb3[1]: StorageLive(_8)</span>
+<span id="L1432"><a href="#L1432"> 1432</a>   label _before_3_2</span>
+<span id="L1433"><a href="#L1433"> 1433</a>   // [MIR] bb3[2]: _8 = &amp;mut (*_3)</span>
+<span id="L1434"><a href="#L1434"> 1434</a>   if (_from_bb2_to_bb3) {</span>
+<span id="L1435"><a href="#L1435"> 1435</a>     make_concrete_Int_i32(p_Ref_mutable_snap(_3p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L1436"><a href="#L1436"> 1436</a>     // (PCG) handled edge Add: {r} -&gt; {*r}</span>
+<span id="L1437"><a href="#L1437"> 1437</a>   }</span>
+<span id="L1438"><a href="#L1438"> 1438</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_3))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; })), label: Some(Location(Before(AnalysisLocation { location: bb3[2], eval_stmt_phase: PreOperands }))) })</span>
+<span id="L1439"><a href="#L1439"> 1439</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb3[2], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1440"><a href="#L1440"> 1440</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_8), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1441"><a href="#L1441"> 1441</a>   p_Ref_mutable_assign(_8p, s_Int_i32_type(), p_Ref_mutable_arbitrary_value(p_Ref_mutable_snap(_3p,</span>
+<span id="L1442"><a href="#L1442"> 1442</a>     s_Int_i32_type()).s_Ref_mutable_0, make_generic_s_0_Tuple(p_Ref_mutable_snap(_3p,</span>
+<span id="L1443"><a href="#L1443"> 1443</a>     s_Int_i32_type()).s_Ref_mutable_1.make_concrete_s_0_Tuple), s_Int_i32_type()))</span>
+<span id="L1444"><a href="#L1444"> 1444</a>   make_generic_Int_i32(p_Ref_mutable_snap(_8p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L1445"><a href="#L1445"> 1445</a>   label _before_3_3</span>
+<span id="L1446"><a href="#L1446"> 1446</a>   // [MIR] bb3[3]: _7 = &amp;mut (*_8)</span>
+<span id="L1447"><a href="#L1447"> 1447</a>   if (_from_bb2_to_bb3) {</span>
+<span id="L1448"><a href="#L1448"> 1448</a>     make_concrete_Int_i32(p_Ref_mutable_snap(_8p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L1449"><a href="#L1449"> 1449</a>     // (PCG) handled edge Add: {_8} -&gt; {(*_8)}</span>
+<span id="L1450"><a href="#L1450"> 1450</a>   }</span>
+<span id="L1451"><a href="#L1451"> 1451</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: Equals(LifetimeProjection(LifetimeProjection { base: Place(Local(Current(_8))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; })), label: Some(Location(Before(AnalysisLocation { location: bb3[3], eval_stmt_phase: PreOperands }))) })</span>
+<span id="L1452"><a href="#L1452"> 1452</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb3[3], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1453"><a href="#L1453"> 1453</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_7), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1454"><a href="#L1454"> 1454</a>   p_Ref_mutable_assign(_7p, s_Int_i32_type(), p_Ref_mutable_arbitrary_value(p_Ref_mutable_snap(_8p,</span>
+<span id="L1455"><a href="#L1455"> 1455</a>     s_Int_i32_type()).s_Ref_mutable_0, make_generic_s_0_Tuple(p_Ref_mutable_snap(_8p,</span>
+<span id="L1456"><a href="#L1456"> 1456</a>     s_Int_i32_type()).s_Ref_mutable_1.make_concrete_s_0_Tuple), s_Int_i32_type()))</span>
+<span id="L1457"><a href="#L1457"> 1457</a>   make_generic_Int_i32(p_Ref_mutable_snap(_7p, s_Int_i32_type()).s_Ref_mutable_0)</span>
+<span id="L1458"><a href="#L1458"> 1458</a>   label _before_3_4</span>
+<span id="L1459"><a href="#L1459"> 1459</a>   // [MIR] bb3[4]: _3 = move _7</span>
+<span id="L1460"><a href="#L1460"> 1460</a>   // var _tmp8</span>
+<span id="L1461"><a href="#L1461"> 1461</a>   _tmp8 := p_Ref_mutable_snap(_7p, s_Int_i32_type())</span>
+<span id="L1462"><a href="#L1462"> 1462</a>   exhale inhabited(s_Ref_mutable_type(s_Int_i32_type())) &amp;&amp;</span>
+<span id="L1463"><a href="#L1463"> 1463</a>     acc(p_Ref_mutable(_7p, s_Int_i32_type()), write)</span>
+<span id="L1464"><a href="#L1464"> 1464</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb3[4], eval_stmt_phase: PostOperands }), reason: MoveOut, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1465"><a href="#L1465"> 1465</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _3, location: Before(AnalysisLocation { location: bb3[4], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1466"><a href="#L1466"> 1466</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_3), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1467"><a href="#L1467"> 1467</a>   // exhale due to weaken to Write</span>
+<span id="L1468"><a href="#L1468"> 1468</a>   exhale inhabited(s_Ref_mutable_type(s_Int_i32_type())) &amp;&amp;</span>
+<span id="L1469"><a href="#L1469"> 1469</a>     acc(p_Ref_mutable(_3p, s_Int_i32_type()), write)</span>
+<span id="L1470"><a href="#L1470"> 1470</a>   p_Ref_mutable_assign(_3p, s_Int_i32_type(), _tmp8)</span>
+<span id="L1471"><a href="#L1471"> 1471</a>   // (ignoring) Add BorrowFlow(BorrowFlowEdge { source: LifetimeProjection { base: Place(Local(Labelled(LabelledPlace { place: _7, at: Before(AnalysisLocation { location: bb3[4], eval_stmt_phase: PostOperands }), _marker: PhantomData&lt;&amp;()&gt; }))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; }, target: LifetimeProjection { base: Current(_3), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; }, kind: Assignment(AssignmentData { operand_type: Move, cast: None }) })</span>
+<span id="L1472"><a href="#L1472"> 1472</a>   // (PCG) handled edge Add: _7 before bb3[4]:PostOperands↓&#x27;?7 -&gt; r↓&#x27;?6</span>
+<span id="L1473"><a href="#L1473"> 1473</a>   label _before_3_5</span>
+<span id="L1474"><a href="#L1474"> 1474</a>   // [MIR] bb3[5]: StorageDead(_7)</span>
+<span id="L1475"><a href="#L1475"> 1475</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb3[5], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1476"><a href="#L1476"> 1476</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_7), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1477"><a href="#L1477"> 1477</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _7, location: Before(AnalysisLocation { location: bb3[5], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1478"><a href="#L1478"> 1478</a>   label _before_3_6</span>
+<span id="L1479"><a href="#L1479"> 1479</a>   // [MIR] bb3[6]: StorageDead(_8)</span>
+<span id="L1480"><a href="#L1480"> 1480</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb3[6], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1481"><a href="#L1481"> 1481</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_8), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1482"><a href="#L1482"> 1482</a>   // [PCG] Weaken(Weaken { place: _8, from: e, to: W, for_storage_dead: true, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1483"><a href="#L1483"> 1483</a>   // Weaken to Write for _8 (skipped exhale: StorageDead)</span>
+<span id="L1484"><a href="#L1484"> 1484</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _8, location: Before(AnalysisLocation { location: bb3[6], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1485"><a href="#L1485"> 1485</a>   label _before_3_7</span>
+<span id="L1486"><a href="#L1486"> 1486</a>   // [MIR] bb3[7]: _1 = const false</span>
+<span id="L1487"><a href="#L1487"> 1487</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _1, location: Before(AnalysisLocation { location: bb3[7], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1488"><a href="#L1488"> 1488</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_1), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1489"><a href="#L1489"> 1489</a>   // exhale due to weaken to Write</span>
+<span id="L1490"><a href="#L1490"> 1490</a>   exhale inhabited(s_Bool_type()) &amp;&amp; acc(p_Bool(_1p), write)</span>
+<span id="L1491"><a href="#L1491"> 1491</a>   p_Bool_assign(_1p, false)</span>
+<span id="L1492"><a href="#L1492"> 1492</a>   label _before_3_8</span>
+<span id="L1493"><a href="#L1493"> 1493</a>   // [MIR] bb3[8]: _5 = const ()</span>
+<span id="L1494"><a href="#L1494"> 1494</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _5, location: Before(AnalysisLocation { location: bb3[8], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1495"><a href="#L1495"> 1495</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_5), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1496"><a href="#L1496"> 1496</a>   p_0_Tuple_assign(_5p, s_0_Tuple_cons())</span>
+<span id="L1497"><a href="#L1497"> 1497</a>   label _before_3_9</span>
+<span id="L1498"><a href="#L1498"> 1498</a>   // [MIR] bb3[9]: StorageDead(_6)</span>
+<span id="L1499"><a href="#L1499"> 1499</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb3[9], eval_stmt_phase: PreMain }), reason: Write, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1500"><a href="#L1500"> 1500</a>   // (ignoring) LabelLifetimeProjection(LabelLifetimeProjectionAction { predicate: And([PlaceEquals(_6), InSourceNodes, EdgeType(BorrowFlow { future_edge_kind: Some(FromExpansion) })]), label: None })</span>
+<span id="L1501"><a href="#L1501"> 1501</a>   // (ignoring) LabelPlace(LabelPlaceAction { place: _6, location: Before(AnalysisLocation { location: bb3[9], eval_stmt_phase: PreMain }), reason: StorageDead, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1502"><a href="#L1502"> 1502</a>   label _before_3_10</span>
+<span id="L1503"><a href="#L1503"> 1503</a>   // [MIR] bb3[10]: goto -&gt; bb1</span>
+<span id="L1504"><a href="#L1504"> 1504</a>   // PCG (T) pre_operands</span>
+<span id="L1505"><a href="#L1505"> 1505</a>   // PCG (T) post_operands</span>
+<span id="L1506"><a href="#L1506"> 1506</a>   // PCG (T) pre_main</span>
+<span id="L1507"><a href="#L1507"> 1507</a>   // PCG (T) post_main</span>
+<span id="L1508"><a href="#L1508"> 1508</a>   label _after_3</span>
+<span id="L1509"><a href="#L1509"> 1509</a>   // [PCG] Weaken(Weaken { place: _5, from: E, to: W, for_storage_dead: false, _marker: PhantomData&lt;&amp;()&gt; })</span>
+<span id="L1510"><a href="#L1510"> 1510</a>   // exhale due to weaken to Write</span>
+<span id="L1511"><a href="#L1511"> 1511</a>   exhale inhabited(s_0_Tuple_type()) &amp;&amp; acc(p_0_Tuple(_5p), write)</span>
+<span id="L1512"><a href="#L1512"> 1512</a>   label outer_package5</span>
+<span id="L1513"><a href="#L1513"> 1513</a>   package inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1514"><a href="#L1514"> 1514</a>   acc(p_Param(old[outer_package5](p_Ref_mutable_snap(_3p, s_Int_i32_type())).s_Ref_mutable_0,</span>
+<span id="L1515"><a href="#L1515"> 1515</a>   s_Int_i32_type()), write) --*</span>
+<span id="L1516"><a href="#L1516"> 1516</a>   inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1517"><a href="#L1517"> 1517</a>   acc(p_Int_i32(old[outer_package5](_2p)), write) {</span>
+<span id="L1518"><a href="#L1518"> 1518</a>     assert (!_from_bb2_to_bb3 ==&gt;</span>
+<span id="L1519"><a href="#L1519"> 1519</a>       inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1520"><a href="#L1520"> 1520</a>       acc(p_Int_i32(old[outer_package5](_2p)), write)) &amp;&amp;</span>
+<span id="L1521"><a href="#L1521"> 1521</a>       (_from_bb2_to_bb3 ==&gt;</span>
+<span id="L1522"><a href="#L1522"> 1522</a>       inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1523"><a href="#L1523"> 1523</a>       acc(p_Param(old[_before_3_4](p_Ref_mutable_snap(_3p, s_Int_i32_type())).s_Ref_mutable_0,</span>
+<span id="L1524"><a href="#L1524"> 1524</a>       s_Int_i32_type()), write) --*</span>
+<span id="L1525"><a href="#L1525"> 1525</a>       inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1526"><a href="#L1526"> 1526</a>       acc(p_Int_i32(old[outer_package5](_2p)), write))</span>
+<span id="L1527"><a href="#L1527"> 1527</a>     // (ignoring) Remove BorrowFlow(BorrowFlowEdge { source: LifetimeProjection { base: Place(Local(Labelled(LabelledPlace { place: _7, at: Before(AnalysisLocation { location: bb3[4], eval_stmt_phase: PostOperands }), _marker: PhantomData&lt;&amp;()&gt; }))), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; }, target: LifetimeProjection { base: Current(_3), region_idx: LifetimeProjectionIdx(0, PhantomData&lt;pcg::borrow_pcg::region_projection::Generalized&gt;), label: None, phantom: PhantomData&lt;&amp;()&gt; }, kind: Assignment(AssignmentData { operand_type: Move, cast: None }) })</span>
+<span id="L1528"><a href="#L1528"> 1528</a>     // (PCG) handled edge Remove: _7 before bb3[4]:PostOperands↓&#x27;?7 -&gt; r↓&#x27;?6</span>
+<span id="L1529"><a href="#L1529"> 1529</a>     if (_from_bb2_to_bb3) {</span>
+<span id="L1530"><a href="#L1530"> 1530</a>       make_concrete_Int_i32(old[_before_3_4](p_Ref_mutable_snap(old[_before_3_4](_7p),</span>
+<span id="L1531"><a href="#L1531"> 1531</a>         s_Int_i32_type()).s_Ref_mutable_0))</span>
+<span id="L1532"><a href="#L1532"> 1532</a>       // (PCG) handled edge Remove: borrow: _7 before bb3[4] = &amp;mut  (*_8) before bb3[6]</span>
+<span id="L1533"><a href="#L1533"> 1533</a>     }</span>
+<span id="L1534"><a href="#L1534"> 1534</a>     if (_from_bb2_to_bb3) {</span>
+<span id="L1535"><a href="#L1535"> 1535</a>       make_generic_Int_i32(old[_before_3_6](p_Ref_mutable_snap(old[_before_3_6](_8p),</span>
+<span id="L1536"><a href="#L1536"> 1536</a>         s_Int_i32_type()).s_Ref_mutable_0))</span>
+<span id="L1537"><a href="#L1537"> 1537</a>       // (PCG) handled edge Remove: {_8 before bb3[6]} -&gt; {(*_8) before bb3[6]}</span>
+<span id="L1538"><a href="#L1538"> 1538</a>     }</span>
+<span id="L1539"><a href="#L1539"> 1539</a>     if (_from_bb2_to_bb3) {</span>
+<span id="L1540"><a href="#L1540"> 1540</a>       make_concrete_Int_i32(old[_before_3_6](p_Ref_mutable_snap(old[_before_3_6](_8p),</span>
+<span id="L1541"><a href="#L1541"> 1541</a>         s_Int_i32_type()).s_Ref_mutable_0))</span>
+<span id="L1542"><a href="#L1542"> 1542</a>       // (PCG) handled edge Remove: borrow: _8 before bb3[6] &lt;before bb3[3]&gt; = &amp;mut  *r before bb3[4]</span>
+<span id="L1543"><a href="#L1543"> 1543</a>     }</span>
+<span id="L1544"><a href="#L1544"> 1544</a>     if (_from_bb2_to_bb3) {</span>
+<span id="L1545"><a href="#L1545"> 1545</a>       make_generic_Int_i32(old[_before_3_4](p_Ref_mutable_snap(old[_before_3_4](_3p),</span>
+<span id="L1546"><a href="#L1546"> 1546</a>         s_Int_i32_type()).s_Ref_mutable_0))</span>
+<span id="L1547"><a href="#L1547"> 1547</a>       // (PCG) handled edge Remove: {r before bb3[4]} -&gt; {*r before bb3[4]}</span>
+<span id="L1548"><a href="#L1548"> 1548</a>     }</span>
+<span id="L1549"><a href="#L1549"> 1549</a>     if (_from_bb2_to_bb3) {</span>
+<span id="L1550"><a href="#L1550"> 1550</a>       apply inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1551"><a href="#L1551"> 1551</a>         acc(p_Param(old[_before_3_4](p_Ref_mutable_snap(_3p, s_Int_i32_type())).s_Ref_mutable_0,</span>
+<span id="L1552"><a href="#L1552"> 1552</a>         s_Int_i32_type()), write) --*</span>
+<span id="L1553"><a href="#L1553"> 1553</a>         inhabited(s_Int_i32_type()) &amp;&amp;</span>
+<span id="L1554"><a href="#L1554"> 1554</a>         acc(p_Int_i32(old[outer_package5](_2p)), write)</span>
+<span id="L1555"><a href="#L1555"> 1555</a>       // (PCG) handled edge Remove: Loop(bb1): x -&gt; r before bb3[4]:PreMain↓&#x27;?6 before bb3[2]:PreOperands</span>
+<span id="L1556"><a href="#L1556"> 1556</a>     }</span>
+<span id="L1557"><a href="#L1557"> 1557</a>   }</span>
+<span id="L1558"><a href="#L1558"> 1558</a>   // (PCG) handled edge Add: Loop(bb1): x -&gt; r↓&#x27;?6</span>
+<span id="L1559"><a href="#L1559"> 1559</a>   _from_bb3_to_bb1 := true</span>
+<span id="L1560"><a href="#L1560"> 1560</a>   goto bb_1</span>
+<span id="L1561"><a href="#L1561"> 1561</a>   label bb_7</span>
+<span id="L1562"><a href="#L1562"> 1562</a>   // cleanup block</span>
+<span id="L1563"><a href="#L1563"> 1563</a>   assert false</span>
+<span id="L1564"><a href="#L1564"> 1564</a>   goto end</span>
+<span id="L1565"><a href="#L1565"> 1565</a>   label end</span>
+<span id="L1566"><a href="#L1566"> 1566</a>   // return</span>
+<span id="L1567"><a href="#L1567"> 1567</a> }</span>
+<span id="L1568"><a href="#L1568"> 1568</a> </span>
+<span id="L1569"><a href="#L1569"> 1569</a> method make_generic_Int_i32(self: Ref)</span>
+<span id="L1570"><a href="#L1570"> 1570</a>   requires acc(p_Int_i32(self), write)</span>
+<span id="L1571"><a href="#L1571"> 1571</a>   ensures acc(p_Param(self, s_Int_i32_type()), write)</span>
+<span id="L1572"><a href="#L1572"> 1572</a>   ensures old(make_generic_s_Int_i32(p_Int_i32_snap(self))) ==</span>
+<span id="L1573"><a href="#L1573"> 1573</a>     p_Param_snap(self, s_Int_i32_type())</span>
+<span id="L1574"><a href="#L1574"> 1574</a> </span>
+<span id="L1575"><a href="#L1575"> 1575</a> </span>
+<span id="L1576"><a href="#L1576"> 1576</a> method make_concrete_Int_i32(self: Ref)</span>
+<span id="L1577"><a href="#L1577"> 1577</a>   requires acc(p_Param(self, s_Int_i32_type()), write)</span>
+<span id="L1578"><a href="#L1578"> 1578</a>   ensures acc(p_Int_i32(self), write)</span>
+<span id="L1579"><a href="#L1579"> 1579</a>   ensures old(p_Param_snap(self, s_Int_i32_type())) ==</span>
+<span id="L1580"><a href="#L1580"> 1580</a>     make_generic_s_Int_i32(p_Int_i32_snap(self))</span>
+<span id="L1581"><a href="#L1581"> 1581</a> </span>
+<span id="L1582"><a href="#L1582"> 1582</a> </span>
+<span id="L1583"><a href="#L1583"> 1583</a> method make_generic_Str(self: Ref)</span>
+<span id="L1584"><a href="#L1584"> 1584</a>   requires acc(p_Str(self), write)</span>
+<span id="L1585"><a href="#L1585"> 1585</a>   ensures acc(p_Param(self, s_Str_type()), write)</span>
+<span id="L1586"><a href="#L1586"> 1586</a>   ensures old(make_generic_s_Str(p_Str_snap(self))) ==</span>
+<span id="L1587"><a href="#L1587"> 1587</a>     p_Param_snap(self, s_Str_type())</span>
+<span id="L1588"><a href="#L1588"> 1588</a> </span>
+<span id="L1589"><a href="#L1589"> 1589</a> </span>
+<span id="L1590"><a href="#L1590"> 1590</a> method make_concrete_Str(self: Ref)</span>
+<span id="L1591"><a href="#L1591"> 1591</a>   requires acc(p_Param(self, s_Str_type()), write)</span>
+<span id="L1592"><a href="#L1592"> 1592</a>   ensures acc(p_Str(self), write)</span>
+<span id="L1593"><a href="#L1593"> 1593</a>   ensures old(p_Param_snap(self, s_Str_type())) ==</span>
+<span id="L1594"><a href="#L1594"> 1594</a>     make_generic_s_Str(p_Str_snap(self))</span>
+<span id="L1595"><a href="#L1595"> 1595</a> </span>
+<span id="L1596"><a href="#L1596"> 1596</a> </span>
+<span id="L1597"><a href="#L1597"> 1597</a> method p_0_Tuple_assign(self: Ref, value: s_0_Tuple)</span>
+<span id="L1598"><a href="#L1598"> 1598</a>   ensures acc(p_0_Tuple(self), write)</span>
+<span id="L1599"><a href="#L1599"> 1599</a>   ensures p_0_Tuple_snap(self) == value</span>
+<span id="L1600"><a href="#L1600"> 1600</a> </span>
+<span id="L1601"><a href="#L1601"> 1601</a> </span>
+<span id="L1602"><a href="#L1602"> 1602</a> method p_Bool_assign(self: Ref, value: Bool)</span>
+<span id="L1603"><a href="#L1603"> 1603</a>   ensures acc(p_Bool(self), write)</span>
+<span id="L1604"><a href="#L1604"> 1604</a>   ensures p_Bool_snap(self) == value</span>
+<span id="L1605"><a href="#L1605"> 1605</a> </span>
+<span id="L1606"><a href="#L1606"> 1606</a> </span>
+<span id="L1607"><a href="#L1607"> 1607</a> method p_Int_i32_assign(self: Ref, value: s_Int_i32)</span>
+<span id="L1608"><a href="#L1608"> 1608</a>   ensures acc(p_Int_i32(self), write)</span>
+<span id="L1609"><a href="#L1609"> 1609</a>   ensures p_Int_i32_snap(self) == value</span>
+<span id="L1610"><a href="#L1610"> 1610</a> </span>
+<span id="L1611"><a href="#L1611"> 1611</a> </span>
+<span id="L1612"><a href="#L1612"> 1612</a> method p_Ref_mutable_assign(self: Ref, U$1: Type, value: s_Ref_mutable)</span>
+<span id="L1613"><a href="#L1613"> 1613</a>   ensures acc(p_Ref_mutable(self, U$1), write)</span>
+<span id="L1614"><a href="#L1614"> 1614</a>   ensures p_Ref_mutable_snap(self, U$1) == value</span>
+<span id="L1615"><a href="#L1615"> 1615</a> </span>
+<span id="L1616"><a href="#L1616"> 1616</a> </span>
+<span id="L1617"><a href="#L1617"> 1617</a> method p_Param_assign(self: Ref, T$0: Type, value: s_Param)</span>
+<span id="L1618"><a href="#L1618"> 1618</a>   ensures acc(p_Param(self, T$0), write)</span>
+<span id="L1619"><a href="#L1619"> 1619</a>   ensures p_Param_snap(self, T$0) == value</span>
+<span id="L1620"><a href="#L1620"> 1620</a> </span>
+<span id="L1621"><a href="#L1621"> 1621</a> </span>
+<span id="L1622"><a href="#L1622"> 1622</a> method p_Never_assign(self: Ref, value: s_Never)</span>
+<span id="L1623"><a href="#L1623"> 1623</a>   ensures acc(p_Never(self), write)</span>
+<span id="L1624"><a href="#L1624"> 1624</a>   ensures p_Never_snap(self) == value</span>
+<span id="L1625"><a href="#L1625"> 1625</a> </span>
+<span id="L1626"><a href="#L1626"> 1626</a> </span>
+<span id="L1627"><a href="#L1627"> 1627</a> method p_Int_isize_assign(self: Ref, value: s_Int_isize)</span>
+<span id="L1628"><a href="#L1628"> 1628</a>   ensures acc(p_Int_isize(self), write)</span>
+<span id="L1629"><a href="#L1629"> 1629</a>   ensures p_Int_isize_snap(self) == value</span>
+<span id="L1630"><a href="#L1630"> 1630</a> </span>
+<span id="L1631"><a href="#L1631"> 1631</a> </span>
+<span id="L1632"><a href="#L1632"> 1632</a> method p_Ref_immutable_assign(self: Ref, U$1: Type, value: s_Ref_immutable)</span>
+<span id="L1633"><a href="#L1633"> 1633</a>   ensures acc(p_Ref_immutable(self, U$1), write)</span>
+<span id="L1634"><a href="#L1634"> 1634</a>   ensures p_Ref_immutable_snap(self, U$1) == value</span>
+<span id="L1635"><a href="#L1635"> 1635</a> </span>
+<span id="L1636"><a href="#L1636"> 1636</a> </span>
+<span id="L1637"><a href="#L1637"> 1637</a> method p_Str_assign(self: Ref, value: s_Str)</span>
+<span id="L1638"><a href="#L1638"> 1638</a>   ensures acc(p_Str(self), write)</span>
+<span id="L1639"><a href="#L1639"> 1639</a>   ensures p_Str_snap(self) == value</span>
+<span id="L1640"><a href="#L1640"> 1640</a> </span>
+<span id="L1641"><a href="#L1641"> 1641</a> </span>
+<span id="L1642"><a href="#L1642"> 1642</a> adt s_Param {</span>
+<span id="L1643"><a href="#L1643"> 1643</a>   make_generic_s_Int_i32(make_concrete_s_Int_i32: s_Int_i32)</span>
+<span id="L1644"><a href="#L1644"> 1644</a>   make_generic_s_0_Tuple(make_concrete_s_0_Tuple: s_0_Tuple)</span>
+<span id="L1645"><a href="#L1645"> 1645</a>   make_generic_s_Str(make_concrete_s_Str: s_Str)</span>
+<span id="L1646"><a href="#L1646"> 1646</a>   make_generic_s_UInt_usize(make_concrete_s_UInt_usize: s_UInt_usize)</span>
+<span id="L1647"><a href="#L1647"> 1647</a>   s_Param_Unknown(s_Param_Unknown_id: Int)</span>
+<span id="L1648"><a href="#L1648"> 1648</a> }</span>
+<span id="L1649"><a href="#L1649"> 1649</a> </span>
+<span id="L1650"><a href="#L1650"> 1650</a> adt s_0_Tuple {</span>
+<span id="L1651"><a href="#L1651"> 1651</a>   s_0_Tuple_cons()</span>
+<span id="L1652"><a href="#L1652"> 1652</a> }</span>
+<span id="L1653"><a href="#L1653"> 1653</a> </span>
+<span id="L1654"><a href="#L1654"> 1654</a> adt s_Ref_mutable {</span>
+<span id="L1655"><a href="#L1655"> 1655</a>   s_Ref_mutable_cons(s_Ref_mutable_0: Ref, s_Ref_mutable_1: s_Param, s_Ref_mutable_2: s_Param)</span>
+<span id="L1656"><a href="#L1656"> 1656</a> }</span>
+<span id="L1657"><a href="#L1657"> 1657</a> </span>
+<span id="L1658"><a href="#L1658"> 1658</a> adt s_Never {</span>
+<span id="L1659"><a href="#L1659"> 1659</a>   s_Never_DummyConstructor()</span>
+<span id="L1660"><a href="#L1660"> 1660</a> }</span>
+<span id="L1661"><a href="#L1661"> 1661</a> </span>
+<span id="L1662"><a href="#L1662"> 1662</a> adt s_Ref_immutable {</span>
+<span id="L1663"><a href="#L1663"> 1663</a>   s_Ref_immutable_cons(s_Ref_immutable_0: Ref, s_Ref_immutable_1: s_Param, s_Ref_immutable_2: s_Param)</span>
+<span id="L1664"><a href="#L1664"> 1664</a> }</span>
+<span id="L1665"><a href="#L1665"> 1665</a> </span>
+<span id="L1666"><a href="#L1666"> 1666</a> adt Type {</span>
+<span id="L1667"><a href="#L1667"> 1667</a>   s_0_Tuple_type()</span>
+<span id="L1668"><a href="#L1668"> 1668</a>   s_Bool_type()</span>
+<span id="L1669"><a href="#L1669"> 1669</a>   s_Int_i32_type()</span>
+<span id="L1670"><a href="#L1670"> 1670</a>   s_Ref_mutable_type(s_Ref_mutable_typaram_U$1: Type)</span>
+<span id="L1671"><a href="#L1671"> 1671</a>   s_Int_isize_type()</span>
+<span id="L1672"><a href="#L1672"> 1672</a>   s_Never_type()</span>
+<span id="L1673"><a href="#L1673"> 1673</a>   s_Ref_immutable_type(s_Ref_immutable_typaram_U$1: Type)</span>
+<span id="L1674"><a href="#L1674"> 1674</a>   s_Str_type()</span>
+<span id="L1675"><a href="#L1675"> 1675</a>   s_UInt_usize_type()</span>
+<span id="L1676"><a href="#L1676"> 1676</a>   Unknown_type(id: Int)</span>
+<span id="L1677"><a href="#L1677"> 1677</a> }</span>
+</pre>

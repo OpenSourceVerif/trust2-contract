@@ -1,0 +1,226 @@
+[
+  {
+    "case": "reborrow",
+    "upstream_source": "prusti-tests/tests/verify/pass/borrows/reborrow_mut.rs",
+    "origin": "unchanged upstream",
+    "sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow"
+    ],
+    "exit_code": 0,
+    "seconds": 51.22,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  },
+  {
+    "case": "mutable",
+    "upstream_source": "prusti-tests/tests/verify/pass/quick/mut-borrows.rs",
+    "origin": "unchanged upstream",
+    "sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable/mutable.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable"
+    ],
+    "exit_code": 0,
+    "seconds": 44.95,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/mutable/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  },
+  {
+    "case": "shared",
+    "upstream_source": "prusti-tests/tests/verify/pass/borrows/reborrow_shared.rs",
+    "origin": "unchanged upstream",
+    "sha256": "728d21c0b96d03554be420530be3187f293c524fcfed1ca876bfe3278accbe4e",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/shared.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared"
+    ],
+    "exit_code": 0,
+    "seconds": 31.09,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/shared/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  },
+  {
+    "case": "arrays",
+    "upstream_source": "prusti-tests/tests/verify/pass/arrays/arrays_slices.rs",
+    "origin": "unchanged upstream",
+    "sha256": "90372244aff09378a4573c2d4d44bdb936141f4f3c1e03b2e26e5277525e90b4",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays"
+    ],
+    "exit_code": 0,
+    "seconds": 39.26,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  },
+  {
+    "case": "loop_inv",
+    "upstream_source": "prusti-tests/tests/verify/pass/loop-invs/simple-inv.rs",
+    "origin": "unchanged upstream",
+    "sha256": "047f144135993067d996c1c7a14c703934e44ad12b7bfeb6b33a7c1652a644bf",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_inv/loop_inv.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_inv"
+    ],
+    "exit_code": 0,
+    "seconds": 36.62,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_inv/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_inv/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  },
+  {
+    "case": "loop_borrow",
+    "upstream_source": "pcg/test-files/037_demo_loop.rs",
+    "origin": "unchanged upstream",
+    "sha256": "002755a99cf9b9dd0782630f26525323c0aa213798fc6080dfe5a73139724357",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow/loop_borrow.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow"
+    ],
+    "exit_code": 1,
+    "seconds": 42.27,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/loop_borrow/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  },
+  {
+    "case": "branch",
+    "upstream_source": null,
+    "origin": "authored demonstration; actually executed",
+    "sha256": "7cc390575ed0eac9e82195596bdb747b03f04b31b604669587aa023aae4d7ef0",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch/branch.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch"
+    ],
+    "exit_code": 1,
+    "seconds": 27.67,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  },
+  {
+    "case": "branch_only",
+    "upstream_source": null,
+    "origin": "authored demonstration; actually executed",
+    "sha256": "ca98a74871998c0535531b65336f4f836f68b551bd08763c9f63934d5695f7f1",
+    "command": [
+      "/home/shenghao/GitHub/prusti/target/release/prusti-rustc",
+      "--edition=2021",
+      "--crate-type=lib",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch_only/branch_only.rs",
+      "--out-dir",
+      "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch_only"
+    ],
+    "exit_code": 0,
+    "seconds": 27.09,
+    "environment": {
+      "PCG_VISUALIZATION": "true",
+      "PCG_VISUALIZATION_DATA_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch_only/data",
+      "PRUSTI_DUMP_VIPER_PROGRAM": "true",
+      "PRUSTI_LOG_DIR": "/home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/branch_only/log",
+      "PRUSTI_CHECK_OVERFLOWS": "false",
+      "JAVA_HOME": "/home/shenghao/GitHub/prusti-tools/java",
+      "VIPER_HOME": "/home/shenghao/GitHub/prusti/viper_tools/backends",
+      "Z3_EXE": "/home/shenghao/GitHub/prusti/viper_tools/z3/bin/z3"
+    },
+    "prusti_revision": "45b27b46116ef024516601d5888d572f03476e5b",
+    "pcg_revision": "495e59ba2295eb56e7226acd4dfdab3d445f9e89"
+  }
+]

@@ -1,0 +1,31 @@
+{
+  "case": "mutable",
+  "function": "test1",
+  "block": "bb2",
+  "statement_index": 2,
+  "phase": "post_main",
+  "mir": {
+    "stmt": "_6 = core::panicking::panic(const \"assertion failed: a == 4\")",
+    "debug_stmt": "_6 = core::panicking::panic(const \"assertion failed: a == 4\") -> bb3",
+    "span": {
+      "low": {
+        "line": 22,
+        "column": 4
+      },
+      "high": {
+        "line": 22,
+        "column": 19
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": []
+  },
+  "phase_actions": [],
+  "return_unblock_actions": null,
+  "successors": {},
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "mutable/data/test1/bb2_stmt_2_post_main.dot"
+}

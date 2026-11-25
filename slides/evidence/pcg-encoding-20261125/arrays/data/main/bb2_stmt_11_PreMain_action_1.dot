@@ -1,0 +1,25 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">x: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="[i32; 3_usize]"]
+"p2" [label=<<FONT FACE="courier">y: R</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="[i32; 42_usize]"]
+"p3" [label=<<FONT FACE="courier">_9: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p4" [label=<<FONT FACE="courier">_10: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p5" [label=<<FONT FACE="courier">_11: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="usize"]
+"p6" [label=<<FONT FACE="courier">_12: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?15 [i32]"]
+"r0" [label=<_12↓'?15>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?15 [i32]\
+"]
+"p7" [label=<<FONT FACE="courier">_13: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?16 [i32; 42_usize]"]
+"p8" [label=<<FONT FACE="courier">_19: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p9" [label=<<FONT FACE="courier">_25: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p10" [label=<<FONT FACE="courier">_31: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p11" [label=<<FONT FACE="courier">_34: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p12" [label=<<FONT FACE="courier">_39: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p13" [label=<<FONT FACE="courier">_45: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"r1" [label=<_13 before bb2[10]↓'?16>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?16 [i32; 42_usize]\
+"]
+    "r1" -> "r0" [label="Move with cast PointerCoercion(Unsize, Implicit)", id="edge_0", color="purple"]
+    "p2" -> "r1" [label="bw1: shared '?4", id="edge_1", color="orange", edgetooltip="bb1 -> bb2"]
+}
+

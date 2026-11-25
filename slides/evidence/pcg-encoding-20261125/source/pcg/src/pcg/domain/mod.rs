@@ -1,0 +1,725 @@
+// © 2023, ETH Zurich
+//
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+use std::{
+    fmt::{Debug, Formatter},
+    rc::Rc,
+};
+
+use derive_more::From;
+
+#[cfg(feature = "visualization")]
+use crate::visualization::stmt_graphs;
+use crate::{
+    AnalysisEngine,
+    action::AppliedActions,
+    error::PcgError,
+    r#loop::{LoopAnalysis, LoopId, LoopPlaceUsageAnalysis, PlaceUsages},
+    pcg::{
+        ctxt::{AnalysisCtxt, HasSettings},
+        place_capabilities::PlaceCapabilities,
+    },
+    pcg_validity_assert,
+    rustc_interface::{
+        index::IndexVec,
+        middle::mir::{self, BasicBlock},
+        mir_dataflow::{JoinSemiLattice, fmt::DebugWithContext, move_paths::MoveData},
+    },
+    utils::{
+        CompilerCtxt, DataflowCtxt, HasBorrowCheckerCtxt, PANIC_ON_ERROR, PcgSettings, Place,
+        SnapshotLocation,
+        arena::PcgArenaRef,
+        domain_data::{DomainData, DomainDataIndex},
+        eval_stmt_data::EvalStmtData,
+        initialized::DefinitelyInitialized,
+        liveness::PlaceLiveness,
+    },
+};
+
+mod dataflow_stmt_phase;
+mod eval_stmt_phase;
+mod pcg;
+
+pub use dataflow_stmt_phase::*;
+pub use eval_stmt_phase::*;
+pub use pcg::*;
+
+use super::PcgEngine;
+
+#[derive(Copy, Clone)]
+pub struct DataflowIterationDebugInfo {
+    pub join_with: BasicBlock,
+}
+
+#[derive(Clone, Eq, Debug)]
+pub struct PcgDomainData<'a, 'tcx, Capabilities = PlaceCapabilities<'tcx>> {
+    pub(crate) pcg: DomainData<PcgArenaRef<'a, Pcg<'a, 'tcx, Capabilities>>>,
+    pub(crate) actions: EvalStmtData<AppliedActions<'tcx>>,
+}
+
+impl<'a, 'tcx> PcgDomainData<'a, 'tcx> {
+    pub(crate) fn from_incoming(
+        self_block: BasicBlock,
+        other: &DomainDataWithCtxt<'a, 'tcx, AnalysisCtxt<'a, 'tcx>>,
+    ) -> Self {
+        pcg_validity_assert!(self_block != other.ctxt.block);
+        let mut entry_state = (*other.data.pcg.states.0.post_main).clone();
+        entry_state
+            .borrow
+            .add_cfg_edge(other.ctxt.block, self_block, other.ctxt);
+        let domain_data = DomainData::new(Rc::new_in(entry_state, other.ctxt.arena));
+        Self {
+            pcg: domain_data,
+            actions: EvalStmtData::default(),
+        }
+    }
+
+    pub(crate) fn start_block(ctxt: AnalysisCtxt<'a, 'tcx>) -> Self {
+        let pcg = Pcg::start_block(ctxt);
+        Self {
+            pcg: DomainData::new(Rc::new_in(pcg, ctxt.arena)),
+            actions: EvalStmtData::default(),
+        }
+    }
+}
+
+impl<Capabilities: PartialEq> PartialEq for PcgDomainData<'_, '_, Capabilities> {
+    fn eq(&self, other: &Self) -> bool {
+        self.pcg == other.pcg
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct BodyAnalysis<'a, 'tcx> {
+    pub(crate) definitely_initialized: DefinitelyInitialized<'a, 'tcx>,
+    pub(crate) place_liveness: PlaceLiveness<'a, 'tcx>,
+    pub(crate) loop_place_usage_analysis: LoopPlaceUsageAnalysis<'tcx>,
+    pub(crate) loop_analysis: LoopAnalysis,
+    loop_invariant_capabilities: IndexVec<LoopId, PlaceUsages<'tcx>>,
+}
+
+impl<'a, 'tcx> BodyAnalysis<'a, 'tcx> {
+    pub(crate) fn new(ctxt: CompilerCtxt<'a, 'tcx>, move_data: &'a MoveData<'tcx>) -> Self {
+        let definitely_initialized = DefinitelyInitialized::new(ctxt.tcx(), ctxt.body(), move_data);
+        let place_liveness = PlaceLiveness::new(ctxt);
+        let loop_analysis = LoopAnalysis::find_loops(ctxt.body());
+        let loop_place_usage_analysis =
+            LoopPlaceUsageAnalysis::new(ctxt.tcx(), ctxt.body(), &loop_analysis);
+        let mut analysis = Self {
+            definitely_initialized,
+            place_liveness,
+            loop_place_usage_analysis,
+            loop_analysis,
+            loop_invariant_capabilities: IndexVec::new(),
+        };
+        let loops = analysis.loop_analysis.all_loops().collect::<Vec<_>>();
+        analysis.loop_invariant_capabilities = loops
+            .into_iter()
+            .map(|loop_id| analysis.compute_loop_invariant_capabilities(loop_id, ctxt))
+            .collect();
+        analysis
+    }
+
+    /// The loop invariant capabilities of `loop_id`: the places used in the
+    /// loop that are live and initialized at its head, consolidated (c.f.
+    /// [`PlaceUsages::consolidate`]) such that no place in the result is a
+    /// prefix of another.
+    ///
+    /// Places behind a raw pointer dereference are excluded: their capabilities
+    /// are governed by the delegation edges of the borrow PCG rather than by
+    /// unpacking the owned PCG.
+    fn compute_loop_invariant_capabilities(
+        &self,
+        loop_id: LoopId,
+        ctxt: CompilerCtxt<'a, 'tcx>,
+    ) -> PlaceUsages<'tcx> {
+        let loop_head_location = mir::Location {
+            block: self.loop_analysis.loop_head_block(loop_id),
+            statement_index: 0,
+        };
+        self.get_places_used_in_loop(loop_id)
+            .usages_where(|usage| {
+                self.is_live_and_initialized_at(loop_head_location, usage.place)
+                    && !usage.place.contains_unsafe_deref(ctxt)
+            })
+            .consolidate()
+    }
+
+    pub(crate) fn loop_invariant_capabilities(&self, loop_id: LoopId) -> &PlaceUsages<'tcx> {
+        &self.loop_invariant_capabilities[loop_id]
+    }
+
+    pub(crate) fn is_read_only_in_loop(&self, block: BasicBlock, place: Place<'tcx>) -> bool {
+        self.loop_analysis.loops(block).any(|loop_id| {
+            let mut overlapping_usages = self
+                .loop_invariant_capabilities(loop_id)
+                .iter()
+                .filter(|usage| usage.place.is_prefix_of(place) || place.is_prefix_of(usage.place))
+                .peekable();
+            if overlapping_usages.peek().is_none() {
+                // No usages in the loop
+                return false;
+            }
+            overlapping_usages.all(|usage| usage.usage.is_read())
+        })
+    }
+
+    /// The places whose expansions must be preserved while `block` executes,
+    /// because the invariant capabilities of a loop containing `block` require
+    /// them to be individually accessible.
+    pub(crate) fn places_required_by_enclosing_loops(
+        &self,
+        block: BasicBlock,
+    ) -> impl Iterator<Item = Place<'tcx>> + '_ {
+        self.loop_analysis
+            .loops(block)
+            .flat_map(|loop_id| self.loop_invariant_capabilities(loop_id).iter_places())
+    }
+
+    pub(crate) fn is_loop_head(&self, block: BasicBlock) -> bool {
+        self.loop_place_usage_analysis.is_loop_head(block)
+    }
+
+    pub(crate) fn get_places_used_in_loop(&self, loop_id: LoopId) -> &PlaceUsages<'tcx> {
+        let loop_head = self.loop_analysis.loop_head_block(loop_id);
+        self.loop_place_usage_analysis
+            .get_used_places(loop_head)
+            .unwrap()
+    }
+
+    pub(crate) fn get_places_used_in_loop_with_head(
+        &self,
+        block: BasicBlock,
+    ) -> Option<&PlaceUsages<'tcx>> {
+        self.loop_analysis
+            .loop_head_of(block)
+            .map(|loop_id| self.get_places_used_in_loop(loop_id))
+    }
+
+    pub(crate) fn is_live_and_initialized_at(
+        &self,
+        location: mir::Location,
+        place: Place<'tcx>,
+    ) -> bool {
+        self.place_liveness.is_live(place, location)
+            && self.is_definitely_initialized_at(location, place)
+    }
+
+    pub(crate) fn is_definitely_initialized_at(
+        &self,
+        location: mir::Location,
+        place: Place<'tcx>,
+    ) -> bool {
+        self.definitely_initialized
+            .is_definitely_initialized(location, place)
+    }
+}
+
+impl Debug for PcgDomain<'_, '_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            PcgDomain::Error(pcg_error) => write!(f, "Error({pcg_error:?})"),
+            PcgDomain::Analysis(dataflow_state) => {
+                write!(f, "Analysis({dataflow_state:?})")
+            }
+            PcgDomain::Results(dataflow_state) => {
+                write!(f, "Results({dataflow_state:?})")
+            }
+            PcgDomain::Bottom => write!(f, "Bottom"),
+        }
+    }
+}
+
+mod private {
+    use derive_more::From;
+
+    use crate::{
+        borrow_checker::BorrowCheckerInterface,
+        pcg::{BodyAnalysis, DomainDataWithCtxt},
+        rustc_interface::middle::ty::{self, TyCtxt},
+        utils::{
+            CompilerCtxt, DebugCtxt, HasBorrowCheckerCtxt, HasCompilerCtxt, HasTyCtxt, PcgSettings,
+            display::{DisplayOutput, DisplayWithCtxt, OutputMode},
+        },
+    };
+
+    #[derive(Clone, From, Eq)]
+    pub struct PendingDataflowState<'a, 'tcx, T> {
+        pending: Vec<DomainDataWithCtxt<'a, 'tcx, T>>,
+    }
+
+    impl<T> PartialEq for PendingDataflowState<'_, '_, T> {
+        fn eq(&self, other: &Self) -> bool {
+            self.pending == other.pending
+        }
+    }
+
+    impl<T> Default for PendingDataflowState<'_, '_, T> {
+        fn default() -> Self {
+            Self { pending: vec![] }
+        }
+    }
+
+    impl<'a, 'tcx, T> PendingDataflowState<'a, 'tcx, T> {
+        pub(crate) fn take_first(
+            self,
+        ) -> (
+            DomainDataWithCtxt<'a, 'tcx, T>,
+            Vec<DomainDataWithCtxt<'a, 'tcx, T>>,
+        ) {
+            let mut iter = self.pending.into_iter();
+            (iter.next().unwrap(), iter.collect())
+        }
+
+        pub(crate) fn take(&mut self) -> Self {
+            std::mem::take(self)
+        }
+
+        pub(crate) fn push(&mut self, data: DomainDataWithCtxt<'a, 'tcx, T>) -> bool {
+            if self.pending.contains(&data) {
+                return false;
+            }
+            self.pending.push(data);
+            true
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    pub struct CompilerCtxtWithSettings<'a, 'tcx> {
+        ctxt: CompilerCtxt<'a, 'tcx>,
+        pub(crate) settings: &'a PcgSettings,
+        pub(crate) body_analysis: &'a BodyAnalysis<'a, 'tcx>,
+    }
+
+    impl std::fmt::Debug for CompilerCtxtWithSettings<'_, '_> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(
+                f,
+                "CompilerCtxtWithSettings {{ {} }}",
+                self.ctxt.func_name()
+            )
+        }
+    }
+
+    pub type ResultsCtxt<'a, 'tcx> = CompilerCtxtWithSettings<'a, 'tcx>;
+
+    impl<'a, 'tcx: 'a> ResultsCtxt<'a, 'tcx> {
+        pub(crate) fn new(
+            ctxt: CompilerCtxt<'a, 'tcx>,
+            settings: &'a PcgSettings,
+            body_analysis: &'a BodyAnalysis<'a, 'tcx>,
+        ) -> Self {
+            Self {
+                ctxt,
+                settings,
+                body_analysis,
+            }
+        }
+    }
+
+    impl<'a, 'tcx: 'a> DisplayWithCtxt<ResultsCtxt<'a, 'tcx>> for ty::RegionVid {
+        fn display_output(&self, ctxt: ResultsCtxt<'a, 'tcx>, mode: OutputMode) -> DisplayOutput {
+            self.display_output(ctxt.ctxt, mode)
+        }
+    }
+
+    impl<'a, 'tcx: 'a> DebugCtxt for ResultsCtxt<'a, 'tcx> {
+        fn func_name(&self) -> String {
+            self.ctxt.func_name()
+        }
+        fn num_basic_blocks(&self) -> usize {
+            self.ctxt.num_basic_blocks()
+        }
+    }
+
+    impl<'a, 'tcx: 'a> HasTyCtxt<'tcx> for ResultsCtxt<'a, 'tcx> {
+        fn tcx(&self) -> TyCtxt<'tcx> {
+            self.ctxt.tcx
+        }
+    }
+
+    impl<'a, 'tcx: 'a> HasBorrowCheckerCtxt<'a, 'tcx> for ResultsCtxt<'a, 'tcx> {
+        fn bc_ctxt(&self) -> CompilerCtxt<'a, 'tcx, &'a dyn BorrowCheckerInterface<'tcx>> {
+            self.ctxt
+        }
+
+        fn bc(&self) -> &'a dyn BorrowCheckerInterface<'tcx> {
+            self.ctxt.borrow_checker()
+        }
+    }
+
+    impl<'a, 'tcx: 'a> HasCompilerCtxt<'a, 'tcx> for ResultsCtxt<'a, 'tcx> {
+        fn ctxt(self) -> CompilerCtxt<'a, 'tcx, ()> {
+            self.ctxt.ctxt()
+        }
+    }
+}
+
+pub(crate) use private::*;
+
+impl<'a, 'tcx> PendingDataflowState<'a, 'tcx, AnalysisCtxt<'a, 'tcx>> {
+    pub(crate) fn join(
+        self,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) -> Result<DomainDataWithCtxt<'a, 'tcx, AnalysisCtxt<'a, 'tcx>>, PcgError> {
+        let (mut first, mut rest) = self.take_first();
+        rest.retain(|other| ctxt.should_join_from(other.ctxt.block));
+
+        if !rest.is_empty() {
+            // Determine the common owned state before merging borrow graphs
+            // or applying the loop abstraction.
+            let mut target = (*first.data.pcg.states.0.post_main).clone();
+            for other in &rest {
+                target.join_owned(
+                    &other.data.pcg.states.0.post_main,
+                    SnapshotLocation::BeforeJoin(ctxt.block),
+                    SnapshotLocation::After(other.ctxt.block),
+                    ctxt,
+                )?;
+            }
+
+            // Preserve each predecessor's values before its edge repacks.
+            for incoming in std::iter::once(&mut first).chain(rest.iter_mut()) {
+                Rc::make_mut(&mut incoming.data.pcg.states.0.post_main).join_owned(
+                    &target,
+                    SnapshotLocation::After(incoming.ctxt.block),
+                    SnapshotLocation::BeforeJoin(ctxt.block),
+                    ctxt,
+                )?;
+            }
+        }
+
+        let mut result: DomainDataWithCtxt<'a, 'tcx, AnalysisCtxt<'a, 'tcx>> =
+            DomainDataWithCtxt::new(PcgDomainData::from_incoming(ctxt.block, &first), ctxt);
+        let curr = Rc::make_mut(&mut result.data.pcg.entry_state);
+        for other in &rest {
+            curr.merge_borrows(&other.data.pcg.states.0.post_main, other.ctxt.block, ctxt);
+        }
+        if !rest.is_empty() || ctxt.body_analysis.is_loop_head(ctxt.block) {
+            curr.finish_join(ctxt);
+        }
+        Ok(result)
+    }
+}
+
+#[derive(Clone)]
+pub enum DataflowState<'a, 'tcx, T> {
+    Pending(PendingDataflowState<'a, 'tcx, T>),
+    Transfer(DomainDataWithCtxt<'a, 'tcx, T>),
+}
+
+impl<'a, 'tcx> DataflowState<'a, 'tcx, AnalysisCtxt<'a, 'tcx>> {
+    pub(crate) fn ensure_transfer(
+        &mut self,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) -> Result<&mut DomainDataWithCtxt<'a, 'tcx, AnalysisCtxt<'a, 'tcx>>, PcgError> {
+        match self {
+            DataflowState::Pending(pending_state) => {
+                let pending_state = pending_state.take();
+                *self = DataflowState::Transfer(pending_state.join(ctxt)?);
+                Ok(self.expect_transfer_mut())
+            }
+            DataflowState::Transfer(domain_data_with_ctxt) => Ok(domain_data_with_ctxt),
+        }
+    }
+
+    pub(crate) fn take_into_data(
+        self,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) -> Result<DomainDataWithCtxt<'a, 'tcx, AnalysisCtxt<'a, 'tcx>>, PcgError> {
+        match self {
+            DataflowState::Pending(pending) => Ok(pending.join(ctxt)?),
+            DataflowState::Transfer(transfer) => Ok(transfer),
+        }
+    }
+}
+impl<'a, 'tcx, T> DataflowState<'a, 'tcx, T> {
+    pub(crate) fn expect_pending_mut(&mut self) -> &mut PendingDataflowState<'a, 'tcx, T> {
+        match self {
+            DataflowState::Pending(pending) => pending,
+            _ => panic!("Expected pending domain, got {self:?}"),
+        }
+    }
+
+    pub(crate) fn expect_transfer(&self) -> &DomainDataWithCtxt<'a, 'tcx, T> {
+        match self {
+            DataflowState::Transfer(transfer) => transfer,
+            _ => panic!("Expected transfer domain, got {self:?}"),
+        }
+    }
+
+    pub(crate) fn expect_transfer_mut(&mut self) -> &mut DomainDataWithCtxt<'a, 'tcx, T> {
+        match self {
+            DataflowState::Transfer(transfer) => transfer,
+            _ => panic!("Expected transfer domain, got {self:?}"),
+        }
+    }
+}
+
+impl<T> PartialEq for DataflowState<'_, '_, T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (DataflowState::Pending(d1), DataflowState::Pending(d2)) => d1 == d2,
+            (DataflowState::Transfer(d1), DataflowState::Transfer(d2)) => d1 == d2,
+            _ => false,
+        }
+    }
+}
+
+impl<T> Eq for DataflowState<'_, '_, T> {}
+
+impl<T> Debug for DataflowState<'_, '_, T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DataflowState::Pending(_) => write!(f, "Pending"),
+            DataflowState::Transfer(_) => write!(f, "Transfer"),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct DomainDataWithCtxt<'a, 'tcx, T> {
+    pub(crate) ctxt: T,
+    pub(crate) data: PcgDomainData<'a, 'tcx>,
+}
+
+impl<'a, 'tcx: 'a> HasPcgDomainData<'a, 'tcx> for PcgDomain<'a, 'tcx> {
+    fn data(&self) -> &PcgDomainData<'a, 'tcx> {
+        match self {
+            PcgDomain::Analysis(dataflow_state) => &dataflow_state.expect_transfer().data,
+            PcgDomain::Results(data) => &data.data,
+            _ => panic!("Expected analysis or results domain, got {self:?}"),
+        }
+    }
+}
+
+impl<'a, 'tcx: 'a, T> HasPcgDomainData<'a, 'tcx> for DomainDataWithCtxt<'a, 'tcx, T> {
+    fn data(&self) -> &PcgDomainData<'a, 'tcx> {
+        &self.data
+    }
+}
+
+impl<'a, 'tcx: 'a> DomainDataWithCtxt<'a, 'tcx, AnalysisCtxt<'a, 'tcx>> {
+    fn into_results(self) -> DomainDataWithCtxt<'a, 'tcx, ResultsCtxt<'a, 'tcx>> {
+        DomainDataWithCtxt::new(
+            self.data,
+            ResultsCtxt::new(
+                self.ctxt.bc_ctxt(),
+                self.ctxt.settings,
+                self.ctxt.body_analysis,
+            ),
+        )
+    }
+}
+
+impl<'a, 'tcx, T> DomainDataWithCtxt<'a, 'tcx, T> {
+    pub(crate) fn new(data: PcgDomainData<'a, 'tcx>, ctxt: T) -> Self {
+        Self { ctxt, data }
+    }
+}
+
+impl<T> PartialEq for DomainDataWithCtxt<'_, '_, T> {
+    fn eq(&self, other: &Self) -> bool {
+        self.data == other.data
+    }
+}
+
+impl<T: Eq> Eq for DomainDataWithCtxt<'_, '_, T> {}
+
+#[derive(From, Clone)]
+pub enum PcgDomain<'a, 'tcx> {
+    Bottom,
+    Error(PcgError),
+    Analysis(DataflowState<'a, 'tcx, AnalysisCtxt<'a, 'tcx>>),
+    Results(DomainDataWithCtxt<'a, 'tcx, ResultsCtxt<'a, 'tcx>>),
+}
+
+impl Eq for PcgDomain<'_, '_> {}
+
+impl PartialEq for PcgDomain<'_, '_> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (PcgDomain::Bottom, PcgDomain::Bottom) => true,
+            (PcgDomain::Error(e1), PcgDomain::Error(e2)) => e1 == e2,
+            (PcgDomain::Analysis(d1), PcgDomain::Analysis(d2)) => d1 == d2,
+            (PcgDomain::Results(d1), PcgDomain::Results(d2)) => d1 == d2,
+            _ => false,
+        }
+    }
+}
+
+impl<'a, 'tcx: 'a> PcgDomain<'a, 'tcx> {
+    pub(crate) fn is_results(&self) -> bool {
+        matches!(self, PcgDomain::Results(_))
+    }
+
+    pub(crate) fn take(&mut self) -> PcgDomain<'a, 'tcx> {
+        std::mem::replace(self, PcgDomain::Bottom)
+    }
+
+    pub(crate) fn bottom() -> Self {
+        Self::Bottom
+    }
+    pub(crate) fn record_error(&mut self, error: PcgError) {
+        *self = Self::Error(error);
+    }
+    pub(crate) fn data_mut(&mut self) -> &mut PcgDomainData<'a, 'tcx> {
+        match self {
+            PcgDomain::Analysis(dataflow_state) => &mut dataflow_state.expect_transfer_mut().data,
+            PcgDomain::Results(data) => &mut data.data,
+            _ => panic!("Expected analysis or results domain, got {self:?}"),
+        }
+    }
+    pub(crate) fn complete(&mut self, ctxt: AnalysisCtxt<'a, 'tcx>) {
+        if self.is_bottom() || self.is_error() {
+            return;
+        }
+        let domain = self.take();
+        *self = PcgDomain::Results(
+            domain
+                .take_analysis()
+                .take_into_data(ctxt)
+                .unwrap()
+                .into_results(),
+        );
+    }
+}
+
+impl<'a, 'tcx: 'a> DataflowCtxt<'a, 'tcx> for ResultsCtxt<'a, 'tcx> {
+    fn try_into_analysis_ctxt(self) -> Option<AnalysisCtxt<'a, 'tcx>> {
+        None
+    }
+
+    fn body_analysis(self) -> &'a BodyAnalysis<'a, 'tcx> {
+        self.body_analysis
+    }
+}
+
+impl<'a, 'tcx: 'a> HasSettings<'a> for ResultsCtxt<'a, 'tcx> {
+    fn settings(&self) -> &'a PcgSettings {
+        self.settings
+    }
+}
+
+pub(crate) trait HasPcgDomainData<'a, 'tcx: 'a> {
+    fn data(&self) -> &PcgDomainData<'a, 'tcx>;
+
+    fn pcg<'slf>(&'slf self, phase: impl Into<DomainDataIndex>) -> &'slf Pcg<'a, 'tcx>
+    where
+        'a: 'slf,
+    {
+        &self.data().pcg[phase.into()]
+    }
+
+    #[cfg(feature = "visualization")]
+    fn generate_dot_graph(
+        &self,
+        phase: DataflowStmtPhase,
+        location: mir::Location,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) {
+        let index = match phase {
+            DataflowStmtPhase::EvalStmt(phase) => DomainDataIndex::Eval(phase),
+            _ => DomainDataIndex::Initial,
+        };
+        ctxt.generate_pcg_debug_visualization_graph(
+            location,
+            stmt_graphs::ToGraph::Phase(phase),
+            self.pcg(index).into(),
+        );
+    }
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub(crate) struct ErrorState {
+    error: Option<PcgError>,
+}
+
+impl ErrorState {
+    pub(crate) fn error(&self) -> Option<&PcgError> {
+        self.error.as_ref()
+    }
+
+    pub(crate) fn record_error(&mut self, error: PcgError) {
+        assert!(!*PANIC_ON_ERROR, "PCG Error: {error:?}");
+        tracing::error!("PCG Error: {error:?}");
+        self.error = Some(error);
+    }
+}
+
+impl<'a, 'tcx> PcgDomain<'a, 'tcx> {
+    pub(crate) fn error(&self) -> Option<&PcgError> {
+        match self {
+            PcgDomain::Error(e) => Some(e),
+            _ => None,
+        }
+    }
+    pub(crate) fn is_bottom(&self) -> bool {
+        matches!(self, PcgDomain::Bottom)
+    }
+
+    pub(crate) fn is_error(&self) -> bool {
+        matches!(self, PcgDomain::Error(_))
+    }
+
+    pub(crate) fn take_analysis(self) -> DataflowState<'a, 'tcx, AnalysisCtxt<'a, 'tcx>> {
+        match self {
+            PcgDomain::Analysis(dataflow_state) => dataflow_state,
+            _ => panic!("Expected analysis domain, got {self:?}"),
+        }
+    }
+
+    pub(crate) fn expect_results_or_error(
+        &self,
+    ) -> Result<&DomainDataWithCtxt<'a, 'tcx, ResultsCtxt<'a, 'tcx>>, PcgError> {
+        match self {
+            PcgDomain::Results(dataflow_state) => Ok(dataflow_state),
+            PcgDomain::Error(pcg_error) => Err(pcg_error.clone()),
+            _ => panic!("Expected results or error domain, got {self:?}"),
+        }
+    }
+}
+
+impl JoinSemiLattice for PcgDomain<'_, '_> {
+    fn join(&mut self, other: &Self) -> bool {
+        match other {
+            PcgDomain::Bottom => false,
+            PcgDomain::Error(e) => {
+                self.record_error(e.clone());
+                false
+            }
+            PcgDomain::Analysis(dataflow_state) => {
+                let other = dataflow_state.expect_transfer();
+                match self {
+                    PcgDomain::Bottom => {
+                        *self =
+                            PcgDomain::Analysis(DataflowState::Pending(vec![other.clone()].into()));
+                        true
+                    }
+                    PcgDomain::Error(_) => false,
+                    PcgDomain::Analysis(dataflow_state) => {
+                        let self_dataflow_state = dataflow_state.expect_pending_mut();
+                        self_dataflow_state.push(other.clone());
+                        false
+                    }
+                    PcgDomain::Results(_) => unreachable!(),
+                }
+            }
+            PcgDomain::Results(_) => unreachable!(),
+        }
+    }
+}
+
+impl<'a, 'tcx> DebugWithContext<AnalysisEngine<PcgEngine<'a, 'tcx>>> for PcgDomain<'a, 'tcx> {
+    fn fmt_diff_with(
+        &self,
+        _old: &Self,
+        _ctxt: &AnalysisEngine<PcgEngine<'a, 'tcx>>,
+        _f: &mut Formatter<'_>,
+    ) -> std::fmt::Result {
+        Ok(())
+    }
+}

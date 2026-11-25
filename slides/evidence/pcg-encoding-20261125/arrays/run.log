@@ -1,0 +1,66 @@
+  __          __        __  ___             
+ |__)  _\/_  |__) |  | /__`  |   ____\/_  | 
+ |      /\   |  \ \__/ .__/  |       /\   | 
+
+Prusti version: 0.3.0, commit 45b27b461 2026-11-23 20:18:05 UTC, built on 2026-11-24 09:37:28 UTC
+warning: unused variable: `x`
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:39:12
+   |
+39 | fn test5_2(x: [i32; 3]) {}
+   |            ^ help: if this is intentional, prefix it with an underscore: `_x`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `test1` is never used
+ --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:4:4
+  |
+4 | fn test1(x: [i32; 3]) {
+  |    ^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `test2` is never used
+ --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:8:4
+  |
+8 | fn test2(x: [i32; 3]) {
+  |    ^^^^^
+
+warning: function `array_len` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:12:4
+   |
+12 | fn array_len() {
+   |    ^^^^^^^^^
+
+warning: function `test3` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:20:4
+   |
+20 | fn test3<const N: usize>(x: [i32; N]) -> i32 {
+   |    ^^^^^
+
+warning: function `test4` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:26:4
+   |
+26 | fn test4(x: [i32; 3]) {
+   |    ^^^^^
+
+warning: function `test5` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:31:4
+   |
+31 | fn test5() {
+   |    ^^^^^
+
+warning: function `test5_2` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:39:4
+   |
+39 | fn test5_2(x: [i32; 3]) {}
+   |    ^^^^^^^
+
+warning: function `main` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/arrays/arrays.rs:41:4
+   |
+41 | fn main() {
+   |    ^^^^
+
+Verification of 8 items...
+warning: 9 warnings emitted
+

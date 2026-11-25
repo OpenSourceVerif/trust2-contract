@@ -1,0 +1,12 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">v: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="T/#0"]
+"r0" [label=<v↓RegionsIn(T)>, fontcolor="blue", color="blue", shape="octagon", tooltip="T/#0\
+"]
+"r1" [label=<Remote(_1)↓RegionsIn(T)>, fontcolor="blue", color="blue", shape="octagon", tooltip="T/#0\
+"]
+    "r1" -> "r0" [label="InitialBorrows", id="edge_0", color="purple"]
+}
+

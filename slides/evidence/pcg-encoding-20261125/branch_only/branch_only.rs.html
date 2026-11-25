@@ -1,0 +1,11 @@
+<!doctype html><meta charset="utf-8"><title>branch_only.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>branch_only.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use prusti_contracts::*;</span>
+<span id="L2"><a href="#L2">    2</a> </span>
+<span id="L3"><a href="#L3">    3</a> pub fn branch(flag: bool) {</span>
+<span id="L4"><a href="#L4">    4</a>     let mut a = 1;</span>
+<span id="L5"><a href="#L5">    5</a>     let mut b = 2;</span>
+<span id="L6"><a href="#L6">    6</a>     let r = if flag { &amp;mut a } else { &amp;mut b };</span>
+<span id="L7"><a href="#L7">    7</a>     *r = 9;</span>
+<span id="L8"><a href="#L8">    8</a>     if flag { assert!(a == 9); } else { assert!(b == 9); }</span>
+<span id="L9"><a href="#L9">    9</a> }</span>
+<span id="L10"><a href="#L10">   10</a> </span>
+</pre>

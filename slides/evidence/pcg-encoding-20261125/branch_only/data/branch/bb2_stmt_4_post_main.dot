@@ -1,0 +1,22 @@
+digraph "graph" {
+layout=dot
+node [shape=rect]
+"p0" [label=<<FONT FACE="courier">RETURN: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label=<<FONT FACE="courier">flag: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="bool"]
+"p2" [label=<<FONT FACE="courier">a: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="i32"]
+"p3" [label=<<FONT FACE="courier">b</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="i32"]
+"p4" [label=<<FONT FACE="courier">r: E</FONT>>, fontcolor="black", color="black", shape="rect", tooltip="&'?7 mut i32"]
+"r0" [label=<r↓'?7>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut i32\
+"]
+"p5" [label=<<FONT FACE="courier">_5: W</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="bool"]
+"p6" [label=<<FONT FACE="courier">(*_6) before bb2[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"r1" [label=<_6 before bb2[3]↓'?8 before bb2[2]>, fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut i32\
+"]
+"p7" [label=<<FONT FACE="courier">_6 before bb2[3]</FONT>>, fontcolor="gray", color="gray", shape="rect", tooltip="&'?8 mut i32"]
+    "p7" -> "p6" [label="", id="edge_0", color="green", edgetooltip="bb0 -> bb2"]
+    "p6" -> "r0" [label="bw2: Default '?4", id="edge_1", color="orange", edgetooltip="bb0 -> bb2"]
+    "r1" -> "p6" [label="", id="edge_2", color="green", edgetooltip="bb0 -> bb2"]
+    "p3" -> "r1" [label="bw1: Default '?3", id="edge_3", color="orange", edgetooltip="bb0 -> bb2"]
+    "p3" -> "p6" [label="", id="edge_4", style="dashed", color="grey"]
+}
+

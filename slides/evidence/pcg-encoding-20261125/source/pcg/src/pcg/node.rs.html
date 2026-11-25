@@ -1,0 +1,291 @@
+<!doctype html><meta charset="utf-8"><title>node.rs</title><style>body{font:14px monospace;margin:24px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:#788}span:target{background:#ffe9aa}span{scroll-margin-top:16px}</style><h1>node.rs</h1><pre><span id="L1"><a href="#L1">    1</a> use crate::{</span>
+<span id="L2"><a href="#L2">    2</a>     borrow_pcg::{</span>
+<span id="L3"><a href="#L3">    3</a>         borrow_pcg_edge::LocalNode,</span>
+<span id="L4"><a href="#L4">    4</a>         domain::LoopAbstractionInput,</span>
+<span id="L5"><a href="#L5">    5</a>         edge_data::{LabelNodePredicate, NodeReplacement},</span>
+<span id="L6"><a href="#L6">    6</a>         graph::loop_abstraction::MaybeRemoteCurrentPlace,</span>
+<span id="L7"><a href="#L7">    7</a>         has_pcs_elem::{</span>
+<span id="L8"><a href="#L8">    8</a>             LabelLifetimeProjection, LabelLifetimeProjectionResult, LabelNodeContext, LabelPlace,</span>
+<span id="L9"><a href="#L9">    9</a>             PlaceLabeller,</span>
+<span id="L10"><a href="#L10">   10</a>         },</span>
+<span id="L11"><a href="#L11">   11</a>         region_projection::{</span>
+<span id="L12"><a href="#L12">   12</a>             LifetimeProjection, LifetimeProjectionLabel, PcgLifetimeProjectionBase,</span>
+<span id="L13"><a href="#L13">   13</a>             PcgLifetimeProjectionBaseLike, PlaceOrConst,</span>
+<span id="L14"><a href="#L14">   14</a>         },</span>
+<span id="L15"><a href="#L15">   15</a>     },</span>
+<span id="L16"><a href="#L16">   16</a>     rustc_interface::middle::mir,</span>
+<span id="L17"><a href="#L17">   17</a>     utils::{</span>
+<span id="L18"><a href="#L18">   18</a>         DebugCtxt, PcgPlace, Place, SnapshotLocation,</span>
+<span id="L19"><a href="#L19">   19</a>         data_structures::HashSet,</span>
+<span id="L20"><a href="#L20">   20</a>         display::{DisplayOutput, DisplayWithCtxt, OutputMode},</span>
+<span id="L21"><a href="#L21">   21</a>         json::ToJsonWithCtxt,</span>
+<span id="L22"><a href="#L22">   22</a>         maybe_old::MaybeLabelledPlace,</span>
+<span id="L23"><a href="#L23">   23</a>         place::maybe_remote::MaybeRemotePlace,</span>
+<span id="L24"><a href="#L24">   24</a>         validity::HasValidityCheck,</span>
+<span id="L25"><a href="#L25">   25</a>     },</span>
+<span id="L26"><a href="#L26">   26</a> };</span>
+<span id="L27"><a href="#L27">   27</a> </span>
+<span id="L28"><a href="#L28">   28</a> #[deprecated(note = &quot;Use `PcgNode` instead&quot;)]</span>
+<span id="L29"><a href="#L29">   29</a> pub type PCGNode&lt;&#x27;tcx&gt; = PcgNode&lt;&#x27;tcx&gt;;</span>
+<span id="L30"><a href="#L30">   30</a> </span>
+<span id="L31"><a href="#L31">   31</a> #[derive(PartialEq, Eq, Hash, Debug, Clone, Copy)]</span>
+<span id="L32"><a href="#L32">   32</a> pub enum PcgNodeType {</span>
+<span id="L33"><a href="#L33">   33</a>     Place,</span>
+<span id="L34"><a href="#L34">   34</a>     LifetimeProjection,</span>
+<span id="L35"><a href="#L35">   35</a> }</span>
+<span id="L36"><a href="#L36">   36</a> </span>
+<span id="L37"><a href="#L37">   37</a> #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, PartialOrd, Ord)]</span>
+<span id="L38"><a href="#L38">   38</a> pub enum PcgNode&lt;&#x27;tcx, T = MaybeLabelledPlace&lt;&#x27;tcx&gt;, U = PcgLifetimeProjectionBase&lt;&#x27;tcx&gt;&gt; {</span>
+<span id="L39"><a href="#L39">   39</a>     Place(T),</span>
+<span id="L40"><a href="#L40">   40</a>     LifetimeProjection(LifetimeProjection&lt;&#x27;tcx, U&gt;),</span>
+<span id="L41"><a href="#L41">   41</a> }</span>
+<span id="L42"><a href="#L42">   42</a> </span>
+<span id="L43"><a href="#L43">   43</a> pub(crate) type PcgNodeWithPlace&lt;&#x27;tcx, P = Place&lt;&#x27;tcx&gt;&gt; =</span>
+<span id="L44"><a href="#L44">   44</a>     PcgNode&lt;&#x27;tcx, MaybeLabelledPlace&lt;&#x27;tcx, P&gt;, PcgLifetimeProjectionBase&lt;&#x27;tcx, P&gt;&gt;;</span>
+<span id="L45"><a href="#L45">   45</a> </span>
+<span id="L46"><a href="#L46">   46</a> impl&lt;&#x27;tcx, Ctxt, T: LabelPlace&lt;&#x27;tcx, Ctxt&gt;, U: LabelPlace&lt;&#x27;tcx, Ctxt&gt;&gt; LabelPlace&lt;&#x27;tcx, Ctxt&gt;</span>
+<span id="L47"><a href="#L47">   47</a>     for PcgNode&lt;&#x27;tcx, T, U&gt;</span>
+<span id="L48"><a href="#L48">   48</a> {</span>
+<span id="L49"><a href="#L49">   49</a>     fn label_place(&amp;mut self, labeller: &amp;impl PlaceLabeller&lt;&#x27;tcx, Ctxt&gt;, ctxt: Ctxt) -&gt; bool {</span>
+<span id="L50"><a href="#L50">   50</a>         match self {</span>
+<span id="L51"><a href="#L51">   51</a>             PcgNode::Place(p) =&gt; p.label_place(labeller, ctxt),</span>
+<span id="L52"><a href="#L52">   52</a>             PcgNode::LifetimeProjection(rp) =&gt; rp.base.label_place(labeller, ctxt),</span>
+<span id="L53"><a href="#L53">   53</a>         }</span>
+<span id="L54"><a href="#L54">   54</a>     }</span>
+<span id="L55"><a href="#L55">   55</a> }</span>
+<span id="L56"><a href="#L56">   56</a> </span>
+<span id="L57"><a href="#L57">   57</a> impl From&lt;mir::Local&gt; for PcgNode&lt;&#x27;_&gt; {</span>
+<span id="L58"><a href="#L58">   58</a>     fn from(local: mir::Local) -&gt; Self {</span>
+<span id="L59"><a href="#L59">   59</a>         PcgNode::Place(local.into())</span>
+<span id="L60"><a href="#L60">   60</a>     }</span>
+<span id="L61"><a href="#L61">   61</a> }</span>
+<span id="L62"><a href="#L62">   62</a> </span>
+<span id="L63"><a href="#L63">   63</a> impl&lt;&#x27;tcx&gt; PcgNode&lt;&#x27;tcx&gt; {</span>
+<span id="L64"><a href="#L64">   64</a>     pub(crate) fn related_maybe_remote_current_place(</span>
+<span id="L65"><a href="#L65">   65</a>         &amp;self,</span>
+<span id="L66"><a href="#L66">   66</a>     ) -&gt; Option&lt;MaybeRemoteCurrentPlace&lt;&#x27;tcx&gt;&gt; {</span>
+<span id="L67"><a href="#L67">   67</a>         match self {</span>
+<span id="L68"><a href="#L68">   68</a>             PcgNode::Place(p) =&gt; match p {</span>
+<span id="L69"><a href="#L69">   69</a>                 MaybeLabelledPlace::Current(place) =&gt; Some(MaybeRemoteCurrentPlace::Local(*place)),</span>
+<span id="L70"><a href="#L70">   70</a>                 MaybeLabelledPlace::Labelled(_) =&gt; None,</span>
+<span id="L71"><a href="#L71">   71</a>             },</span>
+<span id="L72"><a href="#L72">   72</a>             PcgNode::LifetimeProjection(rp) =&gt; rp.base().maybe_remote_current_place(),</span>
+<span id="L73"><a href="#L73">   73</a>         }</span>
+<span id="L74"><a href="#L74">   74</a>     }</span>
+<span id="L75"><a href="#L75">   75</a> }</span>
+<span id="L76"><a href="#L76">   76</a> </span>
+<span id="L77"><a href="#L77">   77</a> impl&lt;&#x27;tcx, P: Copy&gt; PcgNode&lt;&#x27;tcx, MaybeLabelledPlace&lt;&#x27;tcx, P&gt;, PcgLifetimeProjectionBase&lt;&#x27;tcx, P&gt;&gt; {</span>
+<span id="L78"><a href="#L78">   78</a>     pub fn related_place(self) -&gt; Option&lt;MaybeRemotePlace&lt;&#x27;tcx, P&gt;&gt; {</span>
+<span id="L79"><a href="#L79">   79</a>         match self {</span>
+<span id="L80"><a href="#L80">   80</a>             PcgNode::Place(p) =&gt; Some(p.into()),</span>
+<span id="L81"><a href="#L81">   81</a>             PcgNode::LifetimeProjection(rp) =&gt; match rp.base {</span>
+<span id="L82"><a href="#L82">   82</a>                 PlaceOrConst::Place(p) =&gt; Some(p),</span>
+<span id="L83"><a href="#L83">   83</a>                 _ =&gt; None,</span>
+<span id="L84"><a href="#L84">   84</a>             },</span>
+<span id="L85"><a href="#L85">   85</a>         }</span>
+<span id="L86"><a href="#L86">   86</a>     }</span>
+<span id="L87"><a href="#L87">   87</a> </span>
+<span id="L88"><a href="#L88">   88</a>     pub fn related_maybe_labelled_place(self) -&gt; Option&lt;MaybeLabelledPlace&lt;&#x27;tcx, P&gt;&gt; {</span>
+<span id="L89"><a href="#L89">   89</a>         self.related_place().and_then(|p| p.as_local_place())</span>
+<span id="L90"><a href="#L90">   90</a>     }</span>
+<span id="L91"><a href="#L91">   91</a> }</span>
+<span id="L92"><a href="#L92">   92</a> </span>
+<span id="L93"><a href="#L93">   93</a> impl&lt;&#x27;tcx, T, U&gt; PcgNode&lt;&#x27;tcx, T, U&gt; {</span>
+<span id="L94"><a href="#L94">   94</a>     pub(crate) fn is_place(&amp;self) -&gt; bool {</span>
+<span id="L95"><a href="#L95">   95</a>         matches!(self, PcgNode::Place(_))</span>
+<span id="L96"><a href="#L96">   96</a>     }</span>
+<span id="L97"><a href="#L97">   97</a> </span>
+<span id="L98"><a href="#L98">   98</a>     pub fn expect_lifetime_projection(self) -&gt; LifetimeProjection&lt;&#x27;tcx, U&gt; {</span>
+<span id="L99"><a href="#L99">   99</a>         match self {</span>
+<span id="L100"><a href="#L100">  100</a>             PcgNode::LifetimeProjection(rp) =&gt; rp,</span>
+<span id="L101"><a href="#L101">  101</a>             _ =&gt; panic!(),</span>
+<span id="L102"><a href="#L102">  102</a>         }</span>
+<span id="L103"><a href="#L103">  103</a>     }</span>
+<span id="L104"><a href="#L104">  104</a> </span>
+<span id="L105"><a href="#L105">  105</a>     pub(crate) fn try_into_lifetime_projection(self) -&gt; Result&lt;LifetimeProjection&lt;&#x27;tcx, U&gt;, Self&gt; {</span>
+<span id="L106"><a href="#L106">  106</a>         match self {</span>
+<span id="L107"><a href="#L107">  107</a>             PcgNode::LifetimeProjection(rp) =&gt; Ok(rp),</span>
+<span id="L108"><a href="#L108">  108</a>             _ =&gt; Err(self),</span>
+<span id="L109"><a href="#L109">  109</a>         }</span>
+<span id="L110"><a href="#L110">  110</a>     }</span>
+<span id="L111"><a href="#L111">  111</a> }</span>
+<span id="L112"><a href="#L112">  112</a> </span>
+<span id="L113"><a href="#L113">  113</a> impl&lt;&#x27;tcx&gt; From&lt;LoopAbstractionInput&lt;&#x27;tcx&gt;&gt; for PcgNode&lt;&#x27;tcx&gt; {</span>
+<span id="L114"><a href="#L114">  114</a>     fn from(target: LoopAbstractionInput&lt;&#x27;tcx&gt;) -&gt; Self {</span>
+<span id="L115"><a href="#L115">  115</a>         target.0</span>
+<span id="L116"><a href="#L116">  116</a>     }</span>
+<span id="L117"><a href="#L117">  117</a> }</span>
+<span id="L118"><a href="#L118">  118</a> </span>
+<span id="L119"><a href="#L119">  119</a> impl&lt;&#x27;tcx, T, U&gt; LabelLifetimeProjection&lt;&#x27;tcx&gt; for PcgNode&lt;&#x27;tcx, T, U&gt;</span>
+<span id="L120"><a href="#L120">  120</a> where</span>
+<span id="L121"><a href="#L121">  121</a>     LifetimeProjection&lt;&#x27;tcx, U&gt;: LabelLifetimeProjection&lt;&#x27;tcx&gt;,</span>
+<span id="L122"><a href="#L122">  122</a> {</span>
+<span id="L123"><a href="#L123">  123</a>     fn label_lifetime_projection(</span>
+<span id="L124"><a href="#L124">  124</a>         &amp;mut self,</span>
+<span id="L125"><a href="#L125">  125</a>         label: Option&lt;LifetimeProjectionLabel&gt;,</span>
+<span id="L126"><a href="#L126">  126</a>     ) -&gt; LabelLifetimeProjectionResult {</span>
+<span id="L127"><a href="#L127">  127</a>         if let PcgNode::LifetimeProjection(this_projection) = self {</span>
+<span id="L128"><a href="#L128">  128</a>             this_projection.label_lifetime_projection(label)</span>
+<span id="L129"><a href="#L129">  129</a>         } else {</span>
+<span id="L130"><a href="#L130">  130</a>             LabelLifetimeProjectionResult::Unchanged</span>
+<span id="L131"><a href="#L131">  131</a>         }</span>
+<span id="L132"><a href="#L132">  132</a>     }</span>
+<span id="L133"><a href="#L133">  133</a> }</span>
+<span id="L134"><a href="#L134">  134</a> </span>
+<span id="L135"><a href="#L135">  135</a> impl&lt;T, U&gt; From&lt;T&gt; for PcgNode&lt;&#x27;_, T, U&gt; {</span>
+<span id="L136"><a href="#L136">  136</a>     fn from(value: T) -&gt; Self {</span>
+<span id="L137"><a href="#L137">  137</a>         PcgNode::Place(value)</span>
+<span id="L138"><a href="#L138">  138</a>     }</span>
+<span id="L139"><a href="#L139">  139</a> }</span>
+<span id="L140"><a href="#L140">  140</a> </span>
+<span id="L141"><a href="#L141">  141</a> impl&lt;&#x27;tcx, U&gt; From&lt;LifetimeProjection&lt;&#x27;tcx, U&gt;&gt; for PcgNode&lt;&#x27;tcx, MaybeRemotePlace&lt;&#x27;tcx&gt;, U&gt; {</span>
+<span id="L142"><a href="#L142">  142</a>     fn from(value: LifetimeProjection&lt;&#x27;tcx, U&gt;) -&gt; Self {</span>
+<span id="L143"><a href="#L143">  143</a>         PcgNode::LifetimeProjection(value)</span>
+<span id="L144"><a href="#L144">  144</a>     }</span>
+<span id="L145"><a href="#L145">  145</a> }</span>
+<span id="L146"><a href="#L146">  146</a> </span>
+<span id="L147"><a href="#L147">  147</a> impl&lt;&#x27;tcx&gt; From&lt;LifetimeProjection&lt;&#x27;tcx, Place&lt;&#x27;tcx&gt;&gt;&gt; for PcgNode&lt;&#x27;tcx&gt; {</span>
+<span id="L148"><a href="#L148">  148</a>     fn from(value: LifetimeProjection&lt;&#x27;tcx, Place&lt;&#x27;tcx&gt;&gt;) -&gt; Self {</span>
+<span id="L149"><a href="#L149">  149</a>         PcgNode::LifetimeProjection(value.into())</span>
+<span id="L150"><a href="#L150">  150</a>     }</span>
+<span id="L151"><a href="#L151">  151</a> }</span>
+<span id="L152"><a href="#L152">  152</a> </span>
+<span id="L153"><a href="#L153">  153</a> impl&lt;&#x27;tcx&gt; From&lt;LifetimeProjection&lt;&#x27;tcx, MaybeLabelledPlace&lt;&#x27;tcx&gt;&gt;&gt; for PcgNode&lt;&#x27;tcx&gt; {</span>
+<span id="L154"><a href="#L154">  154</a>     fn from(value: LifetimeProjection&lt;&#x27;tcx, MaybeLabelledPlace&lt;&#x27;tcx&gt;&gt;) -&gt; Self {</span>
+<span id="L155"><a href="#L155">  155</a>         PcgNode::LifetimeProjection(value.into())</span>
+<span id="L156"><a href="#L156">  156</a>     }</span>
+<span id="L157"><a href="#L157">  157</a> }</span>
+<span id="L158"><a href="#L158">  158</a> </span>
+<span id="L159"><a href="#L159">  159</a> impl&lt;&#x27;tcx, Ctxt, P, T: PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt;, U: PcgLifetimeProjectionBaseLike&lt;&#x27;tcx, P&gt;&gt;</span>
+<span id="L160"><a href="#L160">  160</a>     PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt; for PcgNode&lt;&#x27;tcx, T, U&gt;</span>
+<span id="L161"><a href="#L161">  161</a> {</span>
+<span id="L162"><a href="#L162">  162</a>     fn to_pcg_node(self, ctxt: Ctxt) -&gt; PcgNodeWithPlace&lt;&#x27;tcx, P&gt; {</span>
+<span id="L163"><a href="#L163">  163</a>         match self {</span>
+<span id="L164"><a href="#L164">  164</a>             PcgNode::Place(p) =&gt; p.to_pcg_node(ctxt),</span>
+<span id="L165"><a href="#L165">  165</a>             PcgNode::LifetimeProjection(rp) =&gt; rp.to_pcg_node(ctxt),</span>
+<span id="L166"><a href="#L166">  166</a>         }</span>
+<span id="L167"><a href="#L167">  167</a>     }</span>
+<span id="L168"><a href="#L168">  168</a> }</span>
+<span id="L169"><a href="#L169">  169</a> </span>
+<span id="L170"><a href="#L170">  170</a> impl&lt;&#x27;tcx, Ctxt: Copy + DebugCtxt, T: HasValidityCheck&lt;Ctxt&gt;, U&gt; HasValidityCheck&lt;Ctxt&gt;</span>
+<span id="L171"><a href="#L171">  171</a>     for PcgNode&lt;&#x27;tcx, T, U&gt;</span>
+<span id="L172"><a href="#L172">  172</a> where</span>
+<span id="L173"><a href="#L173">  173</a>     LifetimeProjection&lt;&#x27;tcx, U&gt;: HasValidityCheck&lt;Ctxt&gt;,</span>
+<span id="L174"><a href="#L174">  174</a> {</span>
+<span id="L175"><a href="#L175">  175</a>     fn check_validity(&amp;self, ctxt: Ctxt) -&gt; Result&lt;(), String&gt; {</span>
+<span id="L176"><a href="#L176">  176</a>         match self {</span>
+<span id="L177"><a href="#L177">  177</a>             PcgNode::Place(p) =&gt; p.check_validity(ctxt),</span>
+<span id="L178"><a href="#L178">  178</a>             PcgNode::LifetimeProjection(rp) =&gt; rp.check_validity(ctxt),</span>
+<span id="L179"><a href="#L179">  179</a>         }</span>
+<span id="L180"><a href="#L180">  180</a>     }</span>
+<span id="L181"><a href="#L181">  181</a> }</span>
+<span id="L182"><a href="#L182">  182</a> </span>
+<span id="L183"><a href="#L183">  183</a> impl&lt;&#x27;tcx, Ctxt, T: DisplayWithCtxt&lt;Ctxt&gt;, U&gt; DisplayWithCtxt&lt;Ctxt&gt; for PcgNode&lt;&#x27;tcx, T, U&gt;</span>
+<span id="L184"><a href="#L184">  184</a> where</span>
+<span id="L185"><a href="#L185">  185</a>     LifetimeProjection&lt;&#x27;tcx, U&gt;: DisplayWithCtxt&lt;Ctxt&gt;,</span>
+<span id="L186"><a href="#L186">  186</a> {</span>
+<span id="L187"><a href="#L187">  187</a>     fn display_output(&amp;self, ctxt: Ctxt, mode: OutputMode) -&gt; DisplayOutput {</span>
+<span id="L188"><a href="#L188">  188</a>         match self {</span>
+<span id="L189"><a href="#L189">  189</a>             PcgNode::Place(p) =&gt; p.display_output(ctxt, mode),</span>
+<span id="L190"><a href="#L190">  190</a>             PcgNode::LifetimeProjection(rp) =&gt; rp.display_output(ctxt, mode),</span>
+<span id="L191"><a href="#L191">  191</a>         }</span>
+<span id="L192"><a href="#L192">  192</a>     }</span>
+<span id="L193"><a href="#L193">  193</a> }</span>
+<span id="L194"><a href="#L194">  194</a> </span>
+<span id="L195"><a href="#L195">  195</a> impl&lt;T, U, Ctxt&gt; ToJsonWithCtxt&lt;Ctxt&gt; for PcgNode&lt;&#x27;_, T, U&gt; {</span>
+<span id="L196"><a href="#L196">  196</a>     fn to_json(&amp;self, _ctxt: Ctxt) -&gt; serde_json::Value {</span>
+<span id="L197"><a href="#L197">  197</a>         todo!()</span>
+<span id="L198"><a href="#L198">  198</a>     }</span>
+<span id="L199"><a href="#L199">  199</a> }</span>
+<span id="L200"><a href="#L200">  200</a> </span>
+<span id="L201"><a href="#L201">  201</a> pub trait MaybeHasLocation {</span>
+<span id="L202"><a href="#L202">  202</a>     fn location(&amp;self) -&gt; Option&lt;SnapshotLocation&gt;;</span>
+<span id="L203"><a href="#L203">  203</a> }</span>
+<span id="L204"><a href="#L204">  204</a> </span>
+<span id="L205"><a href="#L205">  205</a> impl&lt;T: MaybeHasLocation, U: MaybeHasLocation&gt; MaybeHasLocation for PcgNode&lt;&#x27;_, T, U&gt; {</span>
+<span id="L206"><a href="#L206">  206</a>     fn location(&amp;self) -&gt; Option&lt;SnapshotLocation&gt; {</span>
+<span id="L207"><a href="#L207">  207</a>         match self {</span>
+<span id="L208"><a href="#L208">  208</a>             PcgNode::Place(place) =&gt; place.location(),</span>
+<span id="L209"><a href="#L209">  209</a>             PcgNode::LifetimeProjection(region_projection) =&gt; region_projection.base.location(),</span>
+<span id="L210"><a href="#L210">  210</a>         }</span>
+<span id="L211"><a href="#L211">  211</a>     }</span>
+<span id="L212"><a href="#L212">  212</a> }</span>
+<span id="L213"><a href="#L213">  213</a> </span>
+<span id="L214"><a href="#L214">  214</a> pub trait PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt;:</span>
+<span id="L215"><a href="#L215">  215</a>     Clone + Copy + std::fmt::Debug + Eq + PartialEq + std::hash::Hash</span>
+<span id="L216"><a href="#L216">  216</a> {</span>
+<span id="L217"><a href="#L217">  217</a>     fn to_pcg_node(self, ctxt: Ctxt) -&gt; PcgNodeWithPlace&lt;&#x27;tcx, P&gt;;</span>
+<span id="L218"><a href="#L218">  218</a> </span>
+<span id="L219"><a href="#L219">  219</a>     fn try_to_local_node(self, ctxt: Ctxt) -&gt; Option&lt;LocalNode&lt;&#x27;tcx, P&gt;&gt;</span>
+<span id="L220"><a href="#L220">  220</a>     where</span>
+<span id="L221"><a href="#L221">  221</a>         P: Copy,</span>
+<span id="L222"><a href="#L222">  222</a>     {</span>
+<span id="L223"><a href="#L223">  223</a>         match self.to_pcg_node(ctxt) {</span>
+<span id="L224"><a href="#L224">  224</a>             PcgNode::Place(p) =&gt; Some(p.into()),</span>
+<span id="L225"><a href="#L225">  225</a>             PcgNode::LifetimeProjection(rp) =&gt; rp</span>
+<span id="L226"><a href="#L226">  226</a>                 .base</span>
+<span id="L227"><a href="#L227">  227</a>                 .as_local_place()</span>
+<span id="L228"><a href="#L228">  228</a>                 .map(|local_place| LocalNode::LifetimeProjection(rp.with_base(local_place))),</span>
+<span id="L229"><a href="#L229">  229</a>         }</span>
+<span id="L230"><a href="#L230">  230</a>     }</span>
+<span id="L231"><a href="#L231">  231</a> }</span>
+<span id="L232"><a href="#L232">  232</a> </span>
+<span id="L233"><a href="#L233">  233</a> macro_rules! pcg_node_like_wrapper {</span>
+<span id="L234"><a href="#L234">  234</a>     ($ty:ty) =&gt; {</span>
+<span id="L235"><a href="#L235">  235</a>         impl&lt;&#x27;tcx, Ctxt, P: $crate::utils::PcgNodeComponent&gt; PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt; for $ty</span>
+<span id="L236"><a href="#L236">  236</a>         where</span>
+<span id="L237"><a href="#L237">  237</a>             &lt;Self as std::ops::Deref&gt;::Target: PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt;,</span>
+<span id="L238"><a href="#L238">  238</a>         {</span>
+<span id="L239"><a href="#L239">  239</a>             fn to_pcg_node(self, ctxt: Ctxt) -&gt; PcgNodeWithPlace&lt;&#x27;tcx, P&gt; {</span>
+<span id="L240"><a href="#L240">  240</a>                 use std::ops::Deref;</span>
+<span id="L241"><a href="#L241">  241</a>                 self.deref().to_pcg_node(ctxt)</span>
+<span id="L242"><a href="#L242">  242</a>             }</span>
+<span id="L243"><a href="#L243">  243</a>         }</span>
+<span id="L244"><a href="#L244">  244</a>     };</span>
+<span id="L245"><a href="#L245">  245</a> }</span>
+<span id="L246"><a href="#L246">  246</a> pub(crate) use pcg_node_like_wrapper;</span>
+<span id="L247"><a href="#L247">  247</a> </span>
+<span id="L248"><a href="#L248">  248</a> pub(crate) trait LabelPlaceConditionally&lt;&#x27;tcx, Ctxt, P: PcgPlace&lt;&#x27;tcx, Ctxt&gt;&gt;:</span>
+<span id="L249"><a href="#L249">  249</a>     PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt; + LabelPlace&lt;&#x27;tcx, Ctxt, P&gt;</span>
+<span id="L250"><a href="#L250">  250</a> {</span>
+<span id="L251"><a href="#L251">  251</a>     fn label_place_conditionally(</span>
+<span id="L252"><a href="#L252">  252</a>         &amp;mut self,</span>
+<span id="L253"><a href="#L253">  253</a>         replacements: &amp;mut HashSet&lt;NodeReplacement&lt;&#x27;tcx, P&gt;&gt;,</span>
+<span id="L254"><a href="#L254">  254</a>         predicate: &amp;LabelNodePredicate&lt;&#x27;tcx, P&gt;,</span>
+<span id="L255"><a href="#L255">  255</a>         labeller: &amp;impl PlaceLabeller&lt;&#x27;tcx, Ctxt, P&gt;,</span>
+<span id="L256"><a href="#L256">  256</a>         node_context: LabelNodeContext,</span>
+<span id="L257"><a href="#L257">  257</a>         ctxt: Ctxt,</span>
+<span id="L258"><a href="#L258">  258</a>     ) {</span>
+<span id="L259"><a href="#L259">  259</a>         let orig = self.to_pcg_node(ctxt);</span>
+<span id="L260"><a href="#L260">  260</a>         if predicate.applies_to(orig, node_context) {</span>
+<span id="L261"><a href="#L261">  261</a>             let changed = self.label_place(labeller, ctxt);</span>
+<span id="L262"><a href="#L262">  262</a>             if changed {</span>
+<span id="L263"><a href="#L263">  263</a>                 replacements.insert(NodeReplacement::new(orig, self.to_pcg_node(ctxt)));</span>
+<span id="L264"><a href="#L264">  264</a>             }</span>
+<span id="L265"><a href="#L265">  265</a>         }</span>
+<span id="L266"><a href="#L266">  266</a>     }</span>
+<span id="L267"><a href="#L267">  267</a> }</span>
+<span id="L268"><a href="#L268">  268</a> </span>
+<span id="L269"><a href="#L269">  269</a> impl&lt;&#x27;tcx, Ctxt, P: PcgPlace&lt;&#x27;tcx, Ctxt&gt;, T: PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt; + LabelPlace&lt;&#x27;tcx, Ctxt, P&gt;&gt;</span>
+<span id="L270"><a href="#L270">  270</a>     LabelPlaceConditionally&lt;&#x27;tcx, Ctxt, P&gt; for T</span>
+<span id="L271"><a href="#L271">  271</a> {</span>
+<span id="L272"><a href="#L272">  272</a> }</span>
+<span id="L273"><a href="#L273">  273</a> </span>
+<span id="L274"><a href="#L274">  274</a> pub(crate) trait LocalNodeLike&lt;&#x27;tcx, Ctxt, P = Place&lt;&#x27;tcx&gt;&gt;:</span>
+<span id="L275"><a href="#L275">  275</a>     Copy + PcgNodeLike&lt;&#x27;tcx, Ctxt, P&gt;</span>
+<span id="L276"><a href="#L276">  276</a> {</span>
+<span id="L277"><a href="#L277">  277</a>     fn to_local_node(self, ctxt: Ctxt) -&gt; LocalNode&lt;&#x27;tcx, P&gt;;</span>
+<span id="L278"><a href="#L278">  278</a> }</span>
+<span id="L279"><a href="#L279">  279</a> </span>
+<span id="L280"><a href="#L280">  280</a> impl&lt;&#x27;tcx, Ctxt&gt; LocalNodeLike&lt;&#x27;tcx, Ctxt&gt; for mir::Place&lt;&#x27;tcx&gt; {</span>
+<span id="L281"><a href="#L281">  281</a>     fn to_local_node(self, _ctxt: Ctxt) -&gt; LocalNode&lt;&#x27;tcx&gt; {</span>
+<span id="L282"><a href="#L282">  282</a>         LocalNode::Place(self.into())</span>
+<span id="L283"><a href="#L283">  283</a>     }</span>
+<span id="L284"><a href="#L284">  284</a> }</span>
+<span id="L285"><a href="#L285">  285</a> </span>
+<span id="L286"><a href="#L286">  286</a> impl&lt;&#x27;tcx, Ctxt&gt; PcgNodeLike&lt;&#x27;tcx, Ctxt, Place&lt;&#x27;tcx&gt;&gt; for mir::Place&lt;&#x27;tcx&gt; {</span>
+<span id="L287"><a href="#L287">  287</a>     fn to_pcg_node(self, _ctxt: Ctxt) -&gt; PcgNode&lt;&#x27;tcx&gt; {</span>
+<span id="L288"><a href="#L288">  288</a>         self.into()</span>
+<span id="L289"><a href="#L289">  289</a>     }</span>
+<span id="L290"><a href="#L290">  290</a> }</span>
+</pre>

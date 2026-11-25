@@ -1,0 +1,66 @@
+{
+  "case": "shared",
+  "function": "get_x",
+  "block": "bb0",
+  "statement_index": 1,
+  "phase": "pre_operands",
+  "mir": {
+    "stmt": "_2 = & (*pt).x",
+    "debug_stmt": "_2 = &((*_1).0: i32)",
+    "span": {
+      "low": {
+        "line": 10,
+        "column": 4
+      },
+      "high": {
+        "line": 10,
+        "column": 9
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [],
+    "borrows_in_scope_mid": []
+  },
+  "phase_actions": [
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {pt} -> {*pt}"
+          },
+          "debug_info": "expand_place_one_level: add deref edge"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    },
+    {
+      "action": {
+        "type": "Borrow",
+        "data": {
+          "kind": {
+            "type": "AddEdge",
+            "data": "Add Edge {*pt} -> {(*pt).x, (*pt).y}"
+          },
+          "debug_info": "add_borrow_pcg_expansion"
+        }
+      },
+      "result": {
+        "changed": true,
+        "change_summary": ""
+      },
+      "_marker": null
+    }
+  ],
+  "return_unblock_actions": null,
+  "successors": {},
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "shared/data/get_x/bb0_stmt_1_pre_operands.dot"
+}

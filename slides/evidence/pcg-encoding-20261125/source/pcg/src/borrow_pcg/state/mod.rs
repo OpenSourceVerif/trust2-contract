@@ -1,0 +1,623 @@
+//! The data structure representing the state of the Borrow PCG.
+
+use std::borrow::Cow;
+
+use crate::{
+    HasSettings,
+    borrow_pcg::{
+        action::ApplyActionResult,
+        borrow_pcg_edge::{BlockingNode, LocalNode},
+        edge_data::{LabelEdgeLifetimeProjections, LabelEdgePlaces, display_node_replacements},
+        graph::join::JoinBorrowsArgs,
+        region_projection::PcgLifetimeProjectionBase,
+        validity_conditions::{
+            JoinValidityConditionsResult, ValidityConditionOps, ValidityConditionsLike,
+        },
+    },
+    pcg::{
+        PcgNodeWithPlace,
+        place_capabilities::{PlaceCapabilities, PlaceCapabilitiesReader},
+    },
+    utils::{
+        DebugCtxt, HasBorrowCheckerCtxt, HasCompilerCtxt, HasLocals, PlaceLike,
+        data_structures::HashSet,
+        display::{DisplayWithCtxt, OutputMode},
+        maybe_remote::MaybeRemotePlace,
+    },
+};
+
+use super::{
+    borrow_pcg_edge::{BlockedNode, BorrowPcgEdge, BorrowPcgEdgeRef},
+    graph::BorrowsGraph,
+    validity_conditions::{PathCondition, ValidityConditions},
+};
+use crate::{
+    action::BorrowPcgAction,
+    borrow_pcg::{
+        action::{BorrowPcgActionKind, LabelPlaceReason},
+        edge::{
+            borrow::BorrowEdge,
+            borrow_flow::{BorrowFlowEdge, BorrowFlowEdgeKind},
+            kind::BorrowPcgEdgeKind,
+        },
+        edge_data::{EdgeData, LabelNodePredicate},
+        has_pcs_elem::{PlaceLabeller, SetLabel},
+        region_projection::{LifetimeProjection, LifetimeProjectionLabel},
+    },
+    pcg::{
+        CapabilityKind, PcgNode, ctxt::AnalysisCtxt, place_capabilities::PlaceCapabilitiesInterface,
+    },
+    pcg_validity_assert,
+    rustc_interface::middle::{
+        mir::{self, BasicBlock, BorrowKind, Location, MutBorrowKind},
+        ty,
+    },
+    utils::{
+        CompilerCtxt, Place, display::DebugLines, place::maybe_old::MaybeLabelledPlace,
+        remote::RemotePlace, validity::HasValidityCheck,
+    },
+};
+
+fn map_label_predicate<'tcx, P: Copy>(
+    predicate: &LabelNodePredicate<'tcx, P>,
+) -> LabelNodePredicate<'tcx, P> {
+    match predicate {
+        LabelNodePredicate::LifetimeProjectionLabelEquals(label) => {
+            LabelNodePredicate::LifetimeProjectionLabelEquals(*label)
+        }
+        LabelNodePredicate::PlaceLabelEquals(location) => {
+            LabelNodePredicate::PlaceLabelEquals(*location)
+        }
+        LabelNodePredicate::ProjectionRegionIdxEquals(region_idx) => {
+            LabelNodePredicate::ProjectionRegionIdxEquals(*region_idx)
+        }
+        LabelNodePredicate::Equals(node) => LabelNodePredicate::Equals(*node),
+        LabelNodePredicate::PlaceEquals(place) => LabelNodePredicate::PlaceEquals(*place),
+        LabelNodePredicate::PlaceIsPostfixOf(place) => LabelNodePredicate::PlaceIsPostfixOf(*place),
+        LabelNodePredicate::NodeType(node_type) => LabelNodePredicate::NodeType(*node_type),
+        LabelNodePredicate::And(predicates) => {
+            LabelNodePredicate::And(predicates.iter().map(map_label_predicate).collect())
+        }
+        LabelNodePredicate::Or(predicates) => {
+            LabelNodePredicate::Or(predicates.iter().map(map_label_predicate).collect())
+        }
+        LabelNodePredicate::Not(predicate) => {
+            LabelNodePredicate::Not(Box::new(map_label_predicate(predicate)))
+        }
+        LabelNodePredicate::EdgeType(edge_type) => LabelNodePredicate::EdgeType(*edge_type),
+        LabelNodePredicate::InSourceNodes => LabelNodePredicate::InSourceNodes,
+        LabelNodePredicate::InTargetNodes => LabelNodePredicate::InTargetNodes,
+    }
+}
+
+/// The state of the Borrow PCG, including the Borrow PCG graph and the validity
+/// conditions associated with the current basic block.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct BorrowsState<
+    'a,
+    'tcx,
+    EdgeKind: PartialEq + Eq + std::hash::Hash = BorrowPcgEdgeKind<'tcx>,
+    VC = ValidityConditions,
+> {
+    pub(crate) graph: BorrowsGraph<'tcx, EdgeKind, VC>,
+    pub(crate) validity_conditions: &'a VC,
+}
+
+impl<EdgeKind: PartialEq + Eq + std::hash::Hash, VC: ValidityConditionsLike> Default
+    for BorrowsState<'_, '_, EdgeKind, VC>
+{
+    fn default() -> Self {
+        Self {
+            graph: BorrowsGraph::default(),
+            validity_conditions: VC::EMPTY,
+        }
+    }
+}
+
+pub(crate) struct BorrowStateMutRef<
+    'pcg,
+    'tcx,
+    EdgeKind = BorrowPcgEdgeKind<'tcx>,
+    VC = ValidityConditions,
+> {
+    pub(crate) graph: &'pcg mut BorrowsGraph<'tcx, EdgeKind, VC>,
+    pub(crate) validity_conditions: &'pcg VC,
+}
+
+impl<'pcg, 'tcx, EdgeKind, VC> BorrowStateMutRef<'pcg, 'tcx, EdgeKind, VC> {
+    pub(crate) fn new(
+        graph: &'pcg mut BorrowsGraph<'tcx, EdgeKind, VC>,
+        validity_conditions: &'pcg VC,
+    ) -> Self {
+        Self {
+            graph,
+            validity_conditions,
+        }
+    }
+}
+
+pub(crate) struct BorrowStateRef<
+    'pcg,
+    'tcx,
+    EdgeKind = BorrowPcgEdgeKind<'tcx>,
+    VC = ValidityConditions,
+> {
+    pub(crate) graph: &'pcg BorrowsGraph<'tcx, EdgeKind, VC>,
+    #[allow(unused)]
+    pub(crate) validity_conditions: &'pcg VC,
+}
+
+impl<'pcg, 'tcx, EdgeKind: std::hash::Hash + Eq, VC> BorrowStateRef<'pcg, 'tcx, EdgeKind, VC> {
+    pub(crate) fn new(
+        graph: &'pcg BorrowsGraph<'tcx, EdgeKind, VC>,
+        validity_conditions: &'pcg VC,
+    ) -> Self {
+        Self {
+            graph,
+            validity_conditions,
+        }
+    }
+}
+
+impl<EdgeKind, VC> Clone for BorrowStateRef<'_, '_, EdgeKind, VC> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<EdgeKind, VC> Copy for BorrowStateRef<'_, '_, EdgeKind, VC> {}
+
+pub(crate) trait BorrowsStateLike<'tcx, EdgeKind = BorrowPcgEdgeKind<'tcx>, VC = ValidityConditions>
+{
+    fn as_mut_ref(&mut self) -> BorrowStateMutRef<'_, 'tcx, EdgeKind, VC>;
+    fn as_ref(&self) -> BorrowStateRef<'_, 'tcx, EdgeKind, VC>;
+
+    fn graph_mut(&mut self) -> &mut BorrowsGraph<'tcx, EdgeKind, VC> {
+        self.as_mut_ref().graph
+    }
+    fn graph(&self) -> &BorrowsGraph<'tcx, EdgeKind, VC>;
+
+    fn leaf_nodes<'a, Ctxt: HasCompilerCtxt<'a, 'tcx> + DebugCtxt>(
+        &self,
+        ctxt: Ctxt,
+    ) -> Vec<LocalNode<'tcx>>
+    where
+        EdgeKind: Eq + std::hash::Hash + EdgeData<'tcx, Ctxt, Place<'tcx>>,
+        'tcx: 'a,
+    {
+        self.graph().frozen_graph().leaf_nodes(ctxt)
+    }
+
+    fn label_place_and_update_related_capabilities<
+        'a,
+        P: PlaceLike<'tcx, Ctxt> + DisplayWithCtxt<Ctxt>,
+        Ctxt: Copy + HasCompilerCtxt<'a, 'tcx>,
+        C,
+    >(
+        &mut self,
+        place: P,
+        reason: LabelPlaceReason,
+        labeller: &impl PlaceLabeller<'tcx, Ctxt, P>,
+        capabilities: &mut impl PlaceCapabilitiesInterface<'tcx, C, P>,
+        ctxt: Ctxt,
+    ) -> ApplyActionResult
+    where
+        'tcx: 'a,
+        EdgeKind: LabelEdgePlaces<'tcx, Ctxt, P> + Eq + std::hash::Hash,
+        VC: ValidityConditionOps<Ctxt>,
+        PcgNodeWithPlace<'tcx, P>: DisplayWithCtxt<Ctxt>,
+    {
+        let state = self.as_mut_ref();
+        let replacements = state.graph.label_place(place, reason, labeller, ctxt);
+        // If in a join we don't want to change capabilities because this will
+        // essentially be handled by the join logic.
+        // See 69_http_header_map.rs
+        if reason != LabelPlaceReason::JoinOwnedReadAndWriteCapabilities {
+            capabilities.retain(|p, _| !p.projects_indirection_from(place, ctxt));
+        }
+        let display = display_node_replacements(&replacements, ctxt, OutputMode::Normal);
+        ApplyActionResult {
+            changed: true,
+            change_summary: display,
+        }
+    }
+
+    fn label_lifetime_projections<'a, P, Ctxt: Copy>(
+        &mut self,
+        predicate: &LabelNodePredicate<'tcx, P>,
+        label: Option<LifetimeProjectionLabel>,
+        ctxt: Ctxt,
+    ) -> bool
+    where
+        'tcx: 'a,
+        EdgeKind: LabelEdgeLifetimeProjections<'tcx, Ctxt, P> + Eq + std::hash::Hash,
+        VC: ValidityConditionOps<Ctxt>,
+    {
+        self.graph_mut()
+            .label_lifetime_projections(predicate, label, ctxt)
+    }
+
+    fn remove<'a, P: Copy + Eq + std::hash::Hash, Ctxt: Copy, C>(
+        &mut self,
+        edge: &EdgeKind,
+        capabilities: &mut impl PlaceCapabilitiesInterface<'tcx, C, P>,
+        ctxt: Ctxt,
+    ) -> bool
+    where
+        'tcx: 'a,
+        EdgeKind: EdgeData<'tcx, Ctxt, P> + Eq + std::hash::Hash,
+    {
+        let state = self.as_mut_ref();
+        let removed = state.graph.remove(edge).is_some();
+        if removed {
+            for node in edge.blocked_by_nodes(ctxt) {
+                if !state.graph.contains(node, ctxt)
+                    && let PcgNode::Place(MaybeLabelledPlace::Current(place)) = node
+                {
+                    let _ = capabilities.remove(place, ctxt);
+                }
+            }
+        }
+        removed
+    }
+
+    fn apply_action<
+        'a,
+        Ctxt: DebugCtxt + HasCompilerCtxt<'a, 'tcx> + HasSettings<'a>,
+        P: PlaceLike<'tcx, Ctxt> + DisplayWithCtxt<Ctxt>,
+    >(
+        &mut self,
+        action: BorrowPcgAction<'tcx, EdgeKind, P, VC>,
+        capabilities: &mut impl PlaceCapabilitiesInterface<'tcx, CapabilityKind, P>,
+        ctxt: Ctxt,
+    ) -> ApplyActionResult
+    where
+        'tcx: 'a,
+        VC: ValidityConditionOps<Ctxt>,
+        EdgeKind: EdgeData<'tcx, Ctxt, P>
+            + LabelEdgePlaces<'tcx, Ctxt, P>
+            + LabelEdgeLifetimeProjections<'tcx, Ctxt, P>
+            + Eq
+            + std::hash::Hash,
+        MaybeRemotePlace<'tcx, P>: DisplayWithCtxt<Ctxt>,
+    {
+        match action.kind {
+            BorrowPcgActionKind::Restore(restore) => {
+                let restore_place = restore.place();
+                if let Some(cap) = capabilities.get(restore_place, ctxt) {
+                    pcg_validity_assert!(cap < restore.capability());
+                }
+                if !capabilities.insert(restore_place, restore.capability(), ctxt) {
+                    // panic!("Capability should have been updated")
+                }
+                if restore.capability() == CapabilityKind::Exclusive {
+                    self.label_lifetime_projections(
+                        &LabelNodePredicate::all_future_postfixes(restore_place),
+                        None,
+                        ctxt,
+                    );
+                }
+                ApplyActionResult::changed_no_display()
+            }
+            BorrowPcgActionKind::Weaken(weaken) => {
+                let weaken_place = weaken.place();
+                pcg_validity_assert!(
+                    capabilities.get(weaken_place, ctxt).unwrap() == weaken.from,
+                    [ctxt],
+                    "Weakening from {:?} to {:?} is not valid",
+                    capabilities.get(weaken_place, ctxt).unwrap(),
+                    weaken.from
+                );
+                match weaken.to {
+                    Some(to) => {
+                        capabilities.insert(weaken_place, to, ctxt);
+                    }
+                    None => {
+                        assert!(capabilities.remove(weaken_place, ctxt).is_some());
+                    }
+                }
+                ApplyActionResult::changed_no_display()
+            }
+            BorrowPcgActionKind::LabelPlace(action) => self
+                .label_place_and_update_related_capabilities(
+                    action.place,
+                    action.reason,
+                    &SetLabel(action.location),
+                    capabilities,
+                    ctxt,
+                ),
+            BorrowPcgActionKind::RemoveEdge(edge) => {
+                ApplyActionResult::from_changed(self.remove(&edge.value, capabilities, ctxt))
+            }
+            BorrowPcgActionKind::AddEdge { edge } => {
+                ApplyActionResult::from_changed(self.graph_mut().insert(edge, ctxt))
+            }
+            BorrowPcgActionKind::LabelLifetimeProjection(action) => {
+                let predicate = map_label_predicate(action.predicate());
+                ApplyActionResult::from_changed(self.label_lifetime_projections(
+                    &predicate,
+                    action.label(),
+                    ctxt,
+                ))
+            }
+        }
+    }
+
+    fn edges_blocking<'slf, Ctxt: Copy + DebugCtxt>(
+        &'slf self,
+        node: BlockedNode<'tcx>,
+        ctxt: Ctxt,
+    ) -> impl Iterator<Item = BorrowPcgEdgeRef<'tcx, 'slf, EdgeKind, VC>>
+    where
+        EdgeKind: EdgeData<'tcx, Ctxt, Place<'tcx>> + std::hash::Hash + Eq + 'slf,
+        VC: 'slf,
+        'tcx: 'slf,
+    {
+        self.graph().edges_blocking(node, ctxt)
+    }
+}
+
+impl<'pcg, 'tcx: 'pcg> BorrowsStateLike<'tcx> for BorrowStateMutRef<'pcg, 'tcx> {
+    fn as_mut_ref(&mut self) -> BorrowStateMutRef<'_, 'tcx> {
+        BorrowStateMutRef::new(self.graph, self.validity_conditions)
+    }
+
+    fn graph(&self) -> &BorrowsGraph<'tcx> {
+        self.graph
+    }
+
+    fn as_ref(&self) -> BorrowStateRef<'_, 'tcx> {
+        BorrowStateRef::new(self.graph, self.validity_conditions)
+    }
+}
+
+impl<'tcx, EdgeKind: Eq + std::hash::Hash, VC> BorrowsStateLike<'tcx, EdgeKind, VC>
+    for BorrowsState<'_, 'tcx, EdgeKind, VC>
+{
+    fn as_mut_ref(&mut self) -> BorrowStateMutRef<'_, 'tcx, EdgeKind, VC> {
+        BorrowStateMutRef::new(&mut self.graph, self.validity_conditions)
+    }
+
+    fn graph(&self) -> &BorrowsGraph<'tcx, EdgeKind, VC> {
+        &self.graph
+    }
+
+    fn as_ref(&self) -> BorrowStateRef<'_, 'tcx, EdgeKind, VC> {
+        BorrowStateRef::new(&self.graph, self.validity_conditions)
+    }
+}
+
+impl<'pcg, 'tcx> From<&'pcg mut BorrowsState<'_, 'tcx>> for BorrowStateMutRef<'pcg, 'tcx> {
+    fn from(borrows_state: &'pcg mut BorrowsState<'_, 'tcx>) -> Self {
+        Self::new(&mut borrows_state.graph, borrows_state.validity_conditions)
+    }
+}
+
+impl<'a, 'tcx: 'a, Ctxt: HasBorrowCheckerCtxt<'a, 'tcx> + DebugCtxt> DebugLines<Ctxt>
+    for BorrowsState<'_, 'tcx>
+{
+    fn debug_lines(&self, ctxt: Ctxt) -> Vec<Cow<'static, str>> {
+        self.graph.debug_lines(ctxt)
+    }
+}
+
+impl<'a, 'tcx: 'a, Ctxt: HasBorrowCheckerCtxt<'a, 'tcx> + DebugCtxt> HasValidityCheck<Ctxt>
+    for BorrowStateRef<'_, 'tcx>
+{
+    fn check_validity(&self, ctxt: Ctxt) -> Result<(), String> {
+        self.graph.check_validity(ctxt)
+    }
+}
+
+impl<'a, 'tcx: 'a, Ctxt: HasBorrowCheckerCtxt<'a, 'tcx> + DebugCtxt> HasValidityCheck<Ctxt>
+    for BorrowStateMutRef<'_, 'tcx>
+{
+    fn check_validity(&self, ctxt: Ctxt) -> Result<(), String> {
+        self.as_ref().check_validity(ctxt)
+    }
+}
+
+impl<EdgeKind: Eq + std::hash::Hash, VC> BorrowsState<'_, '_, EdgeKind, VC> {}
+
+impl<'a, 'tcx> BorrowsState<'a, 'tcx, BorrowPcgEdgeKind<'tcx>, ValidityConditions> {
+    fn introduce_initial_borrows(
+        &mut self,
+        local: mir::Local,
+        capabilities: &mut impl PlaceCapabilitiesInterface<'tcx, CapabilityKind, Place<'tcx>>,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) {
+        let arg_place: Place<'tcx> = local.into();
+        for lifetime in arg_place.generalized_lifetimes(ctxt) {
+            let source_projection: LifetimeProjection<'tcx, RemotePlace> =
+                LifetimeProjection::new(RemotePlace::new(local), lifetime, None, ctxt)
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "Failed to create region for remote place (for {local:?}).
+                                    It does not have lifetime {lifetime:?}",
+                        );
+                    });
+            let source_projection: LifetimeProjection<'tcx, PcgLifetimeProjectionBase<'tcx>> =
+                source_projection.rebase();
+            let target_projection = LifetimeProjection::<'tcx, MaybeLabelledPlace<'tcx>>::new(
+                MaybeLabelledPlace::Current(arg_place),
+                lifetime,
+                None,
+                ctxt,
+            )
+            .unwrap();
+            assert!(
+                self.apply_action(
+                    BorrowPcgAction::add_edge(
+                        BorrowPcgEdge::new(
+                            BorrowFlowEdge::new(
+                                source_projection,
+                                target_projection,
+                                BorrowFlowEdgeKind::InitialBorrows,
+                            )
+                            .into(),
+                            ValidityConditions::new(),
+                        ),
+                        "Introduce initial borrows",
+                    ),
+                    capabilities,
+                    ctxt
+                )
+                .changed
+            );
+        }
+    }
+
+    pub(crate) fn start_block(
+        capabilities: &mut impl PlaceCapabilitiesInterface<'tcx, CapabilityKind, Place<'tcx>>,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) -> Self {
+        let mut borrow = Self::default();
+        for arg in ctxt.args_iter() {
+            borrow.introduce_initial_borrows(arg, capabilities, ctxt);
+        }
+        borrow
+    }
+}
+
+impl<'a, 'tcx> BorrowsState<'a, 'tcx> {
+    #[must_use]
+    pub fn graph(&self) -> &BorrowsGraph<'tcx> {
+        &self.graph
+    }
+
+    /// The branch choices taken on every path reaching this state.
+    #[must_use]
+    pub fn validity_conditions(&self) -> &ValidityConditions {
+        self.validity_conditions
+    }
+
+    pub(crate) fn merge(&mut self, other: &Self, ctxt: AnalysisCtxt<'a, 'tcx>) {
+        self.graph.merge(&other.graph, ctxt);
+        if let JoinValidityConditionsResult::Changed(new_validity_conditions) = self
+            .validity_conditions
+            .join_result(other.validity_conditions, ctxt.body())
+        {
+            self.validity_conditions = ctxt.arena.alloc(new_validity_conditions);
+        }
+    }
+
+    pub(crate) fn finish_join(
+        &mut self,
+        args: JoinBorrowsArgs<'_, 'a, 'tcx>,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) {
+        self.graph.finish_join(self.validity_conditions, args, ctxt);
+    }
+
+    /// Remove all edges that are not valid for `path`, based on their validity
+    /// conditions.
+    pub fn filter_for_path(&mut self, path: &[BasicBlock], ctxt: CompilerCtxt<'_, 'tcx>) {
+        self.graph.filter_for_path(path, ctxt);
+    }
+
+    pub(crate) fn edges_blocking<'slf, 'mir: 'slf>(
+        &'slf self,
+        node: BlockedNode<'tcx>,
+        ctxt: CompilerCtxt<'mir, 'tcx>,
+    ) -> Vec<BorrowPcgEdgeRef<'tcx, 'slf>> {
+        self.graph.edges_blocking(node, ctxt).collect()
+    }
+
+    #[must_use]
+    pub fn nodes_blocking<'slf, 'mir: 'slf>(
+        &'slf self,
+        node: BlockedNode<'tcx>,
+        ctxt: CompilerCtxt<'mir, 'tcx>,
+    ) -> HashSet<BlockingNode<'tcx>> {
+        self.graph
+            .edges_blocking(node, ctxt)
+            .flat_map(|e| e.blocked_by_nodes(ctxt).collect::<Vec<_>>())
+            .collect()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub(crate) fn add_borrow<Ctxt: HasBorrowCheckerCtxt<'a, 'tcx> + HasSettings<'a>>(
+        &mut self,
+        blocked_place: Place<'tcx>,
+        assigned_place: Place<'tcx>,
+        kind: BorrowKind,
+        location: Location,
+        region: ty::Region<'tcx>,
+        capabilities: &mut PlaceCapabilities<'tcx>,
+        ctxt: Ctxt,
+    ) where
+        'tcx: 'a,
+    {
+        assert!(
+            assigned_place.ty(ctxt).ty.ref_mutability().is_some(),
+            "{:?}:{:?} Assigned place {:?} is not a reference. Ty: {:?}",
+            ctxt.body().source.def_id(),
+            location,
+            assigned_place,
+            assigned_place.ty(ctxt).ty
+        );
+        let borrow_edge = BorrowEdge::new(
+            blocked_place.into(),
+            assigned_place.into(),
+            kind,
+            location,
+            region,
+            ctxt,
+        );
+        assert!(self.graph.insert(
+            BorrowPcgEdge::new(
+                BorrowPcgEdgeKind::Borrow(borrow_edge),
+                self.validity_conditions.clone(),
+            ),
+            ctxt.ctxt()
+        ));
+
+        if let BorrowKind::Mut {
+            kind: MutBorrowKind::Default | MutBorrowKind::ClosureCapture,
+        } = kind
+        {
+            let _ = capabilities.remove(blocked_place, ctxt);
+        } else {
+            let blocked_place_capability = capabilities.get(blocked_place, ctxt);
+            match blocked_place_capability {
+                Some(CapabilityKind::Exclusive) => {
+                    assert!(capabilities.insert(blocked_place, CapabilityKind::Read, ctxt));
+                }
+                Some(CapabilityKind::Read) => {
+                    // Do nothing, this just adds another shared borrow
+                }
+                other => {
+                    // Shouldn't be None or Write, due to capability updates
+                    // based on the TripleWalker analysis
+                    pcg_validity_assert!(
+                        false,
+                        "{:?}: Unexpected capability for borrow blocked place {:?}: {:?}",
+                        location,
+                        blocked_place,
+                        other
+                    );
+                }
+            }
+        }
+    }
+}
+
+impl<'a, 'tcx, EdgeKind: PartialEq + Eq + std::hash::Hash> BorrowsState<'a, 'tcx, EdgeKind> {
+    pub(crate) fn add_cfg_edge(
+        &mut self,
+        from: BasicBlock,
+        to: BasicBlock,
+        ctxt: AnalysisCtxt<'a, 'tcx>,
+    ) -> bool {
+        pcg_validity_assert!(
+            !ctxt.ctxt.is_back_edge(from, to),
+            [ctxt],
+            "Adding CFG edge from {from:?} to {to:?} is a back edge"
+        );
+        let pc = PathCondition::new(from, to);
+        let mut validity_conditions = self.validity_conditions.clone();
+        validity_conditions.insert(pc, ctxt.body());
+        self.validity_conditions = ctxt.arena.alloc(validity_conditions);
+        self.graph.add_path_condition(pc, ctxt.ctxt)
+    }
+}

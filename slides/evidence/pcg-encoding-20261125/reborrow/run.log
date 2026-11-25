@@ -1,0 +1,67 @@
+  __          __        __  ___             
+ |__)  _\/_  |__) |  | /__`  |   ____\/_  | 
+ |      /\   |  \ \__/ .__/  |       /\   | 
+
+Prusti version: 0.3.0, commit 45b27b461 2026-11-23 20:18:05 UTC, built on 2026-11-24 09:37:28 UTC
+warning: function `double_tuple` is never used
+ --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:3:4
+  |
+3 | fn double_tuple<'a>(x: &'a mut (i32, (i32, i32))) -> &'a mut i32
+  |    ^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: function `tuple` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:10:4
+   |
+10 | fn tuple<'a>(x: &'a mut (i32, i32)) -> &'a mut i32
+   |    ^^^^^
+
+warning: function `use_container` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:21:4
+   |
+21 | fn use_container<'a, 'b: 'a>(c: Container<'b>) -> &'a mut i32 {
+   |    ^^^^^^^^^^^^^
+
+warning: function `basic` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:25:4
+   |
+25 | fn basic<'l, 's>(num: &'l mut i32) -> &'s mut i32
+   |    ^^^^^
+
+warning: function `basic_user` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:31:4
+   |
+31 | fn basic_user() {
+   |    ^^^^^^^^^^
+
+warning: function `get_mut_x` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:46:4
+   |
+46 | fn get_mut_x<'a, 'b: 'a>(pt: &'b mut Point) -> &'a mut i32 {
+   |    ^^^^^^^^^
+
+warning: function `reborrow_user` is never used
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:50:4
+   |
+50 | fn reborrow_user() {
+   |    ^^^^^^^^^^^^^
+
+warning: calls to `std::mem::drop` with a value that implements `Copy` does nothing
+  --> /home/shenghao/GitHub/prusti-tools/slides/evidence/pcg-encoding-20261125/reborrow/reborrow.rs:37:5
+   |
+37 |     drop(x);
+   |     ^^^^^-^
+   |          |
+   |          argument has type `i32`
+   |
+   = note: `#[warn(dropping_copy_types)]` on by default
+help: use `let _ = ...` to ignore the expression or result
+   |
+37 -     drop(x);
+37 +     let _ = x;
+   |
+
+Verification of 7 items...
+warning: 8 warnings emitted
+
