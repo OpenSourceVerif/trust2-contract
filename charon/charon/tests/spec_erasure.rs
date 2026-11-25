@@ -9,7 +9,8 @@ mod util;
 /// exercise the exact driver hooks without spawning full Cargo builds per case.
 const INTERNAL_PRELUDE: &str = r#"
 pub mod internal {
-    pub fn entry(_: u32) {}
+    pub fn entry() {}
+    pub fn anchor(_: u32) {}
     pub fn precondition<T: FnOnce() -> bool>(_: T) {}
     pub fn postcondition<T, U: FnOnce(T) -> bool>(_: U) {}
     pub trait TypeInvariant {
@@ -117,7 +118,7 @@ fn non_copy_and_drop_values_can_be_reused_in_specs_and_moved_by_host() {
 
         pub fn passthrough(x: NonCopy, mut p: Pair) -> NonCopy {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::precondition(|| {
                     let mut acc = 0;
                     if consume(x) && consume(normalize(x)) {
@@ -127,20 +128,19 @@ fn non_copy_and_drop_values_can_be_reused_in_specs_and_moved_by_host() {
                 });
             }
             {
-                internal::entry(0);
+                internal::entry();
                 internal::postcondition::<NonCopy, _>(|res| {
-                    consume(x)
+                    let orig = x;
+                    internal::forall(|q: NonCopy| {
+                        internal::implies(consume(q), orig.v == orig.v)
+                    }) && consume(orig)
                         && consume(res)
                         && consume(res)
-                        && {
-                            internal::entry(0);
-                            internal::forall(|q: NonCopy| internal::implies(consume(q), consume(q)))
-                        }
                 });
             }
             let r = &mut p.a;
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume(p.b) && consume(p.b) && r.v == 0);
             }
             r.v += 1;
@@ -178,13 +178,13 @@ fn active_mutable_borrow_blocks_direct_reads_but_allows_deref_and_disjoint_field
         pub fn allowed(mut p: Pair) -> i32 {
             let r = &mut p.a;
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume(p.b) && r.0 >= 0);
             }
             r.0 += 1;
             // `r` is dead here under NLL, so reading `p` as a whole is valid again.
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume_pair(p));
             }
             p.a.0 + p.b.0
@@ -201,7 +201,7 @@ fn active_mutable_borrow_blocks_direct_reads_but_allows_deref_and_disjoint_field
         pub fn reject_direct_read(mut x: NonCopy) -> i32 {
             let r = &mut x;
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume(x));
             }
             r.0 += 1;
@@ -221,7 +221,7 @@ fn active_mutable_borrow_blocks_direct_reads_but_allows_deref_and_disjoint_field
         pub fn reject_overlapping_parent(mut p: Pair) -> i32 {
             let r = &mut p.a;
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume_pair(p));
             }
             r.0 += 1;
@@ -238,7 +238,7 @@ fn active_mutable_borrow_blocks_direct_reads_but_allows_deref_and_disjoint_field
             let r = &mut x;
             let r2 = &mut *r;
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| *r == 0);
             }
             *r2 += 1;
@@ -261,7 +261,7 @@ fn moved_and_uninitialized_places_are_rejected_at_spec_anchors() {
         pub fn ok_unmoved_sibling(p: Pair) {
             drop(p.a);
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume(p.b));
             }
         }
@@ -277,7 +277,7 @@ fn moved_and_uninitialized_places_are_rejected_at_spec_anchors() {
         pub fn err_use_after_move(x: NonCopy) {
             drop(x);
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume(x));
             }
         }
@@ -295,7 +295,7 @@ fn moved_and_uninitialized_places_are_rejected_at_spec_anchors() {
         pub fn err_partial_move(p: Pair) {
             drop(p.a);
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume_pair(p));
             }
         }
@@ -312,7 +312,7 @@ fn moved_and_uninitialized_places_are_rejected_at_spec_anchors() {
         pub fn err_uninitialized() -> NonCopy {
             let x: NonCopy;
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| consume(x));
             }
             x = NonCopy(1);
@@ -330,7 +330,7 @@ fn impure_constructs_inside_specs_and_runtime_quantifiers_are_rejected() {
         r#"
         pub fn err_mutate_host(mut x: i32) -> i32 {
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| { x = 1; true });
             }
             x
@@ -344,7 +344,7 @@ fn impure_constructs_inside_specs_and_runtime_quantifiers_are_rejected() {
         r#"
         pub fn err_local_mut_ref() {
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| {
                     let mut s = 0;
                     let r = &mut s;
@@ -362,7 +362,7 @@ fn impure_constructs_inside_specs_and_runtime_quantifiers_are_rejected() {
         pub struct Pair { pub a: i32, pub b: i32 }
         pub fn err_field_write() {
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| {
                     let mut p = Pair { a: 0, b: 1 };
                     p.a = 2;
@@ -379,7 +379,7 @@ fn impure_constructs_inside_specs_and_runtime_quantifiers_are_rejected() {
         r#"
         pub fn err_loop_in_spec() {
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| {
                     let mut i = 0;
                     while i < 3 {
@@ -397,7 +397,6 @@ fn impure_constructs_inside_specs_and_runtime_quantifiers_are_rejected() {
     expect_err_containing(
         r#"
         pub fn err_runtime_quantifier() -> bool {
-            internal::entry(0);
             internal::forall(|x: i32| x == x)
         }
         "#,
@@ -409,10 +408,10 @@ fn impure_constructs_inside_specs_and_runtime_quantifiers_are_rejected() {
         r#"
         pub fn err_nested_assert_in_spec(x: i32) {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::precondition(|| {
                     {
-                        internal::entry(0);
+                        internal::anchor(0);
                         internal::contract_assert(|| x > 0);
                     }
                     x >= 0
@@ -443,11 +442,11 @@ fn function_contracts_leave_zero_borrowck_pollution_for_ullbc_pcg() -> anyhow::R
         r#"
         pub fn target(y: i32) -> i32 {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::precondition(|| y >= 0);
             }
             {
-                internal::entry(0);
+                internal::entry();
                 internal::postcondition::<i32, _>(|res| res == 1 && y >= 0);
             }
             let mut x = y;
@@ -568,17 +567,17 @@ fn multi_hop_copy_for_deref_captures_resolve_to_host_places() {
             w: RefWrap<'a>,
         ) -> i32 {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::precondition(|| **pp >= 0 && ***ppp >= 0 && consume(*w.r));
             }
             {
-                internal::entry(0);
+                internal::entry();
                 internal::postcondition::<i32, _>(|res| {
                     res >= 0 && **pp >= 0 && ***ppp >= 0 && w.r.v >= 0
                 });
             }
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| **pp >= 0 && consume(*w.r) && consume(*w.r));
             }
             0
@@ -610,7 +609,7 @@ fn multi_hop_copy_for_deref_captures_resolve_to_host_places() {
         pub fn reject_mutably_borrowed_ref_field<'a>(mut w: RefWrap<'a>, alt: &'a i32) -> i32 {
             let slot = &mut w.r;
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| *w.r >= 0);
             }
             *slot = alt;
@@ -627,11 +626,9 @@ fn nested_quantifiers_fold_outer_capture_chains_without_orphan_locals() {
         r#"
         pub fn bounded_double(x: u32) -> u32 {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::postcondition::<u32, _>(|res| {
-                    internal::entry(0);
                     internal::forall(|a: u32| {
-                        internal::entry(0);
                         internal::exists(|b: u32| b == a || b == res || b == x)
                     })
                 });
@@ -673,7 +670,7 @@ fn spec_bodies_strip_all_implicit_drops_and_reject_explicit_drop() -> anyhow::Re
 
         pub fn inspect_ref(x: &SpecDropOnly) -> i32 {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::precondition(|| {
                     let local_a = SpecDropOnly { v: x.v };
                     let local_b = SpecDropOnly { v: local_a.v + 1 };
@@ -681,19 +678,17 @@ fn spec_bodies_strip_all_implicit_drops_and_reject_explicit_drop() -> anyhow::Re
                 });
             }
             {
-                internal::entry(0);
+                internal::entry();
                 internal::postcondition::<i32, _>(|res| {
-                    res == x.v && {
-                        internal::entry(0);
-                        internal::forall(|q: SpecDropOnly| {
+                    res == x.v
+                        && internal::forall(|q: SpecDropOnly| {
                             let copy_q = q;
                             copy_q.v == q.v
                         })
-                    }
                 });
             }
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| {
                     let tmp = SpecDropOnly { v: 0 };
                     tmp.v == 0
@@ -761,7 +756,7 @@ fn spec_bodies_strip_all_implicit_drops_and_reject_explicit_drop() -> anyhow::Re
         pub struct NonCopy(pub i32);
         pub fn err_explicit_drop_in_pre(x: NonCopy) -> NonCopy {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::precondition(|| {
                     drop(x);
                     true
@@ -779,9 +774,8 @@ fn spec_bodies_strip_all_implicit_drops_and_reject_explicit_drop() -> anyhow::Re
         pub struct NonCopy(pub i32);
         pub fn err_explicit_drop_in_quantifier() {
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| {
-                    internal::entry(0);
                     internal::forall(|q: NonCopy| {
                         core::mem::drop(q);
                         true
@@ -799,7 +793,7 @@ fn spec_bodies_strip_all_implicit_drops_and_reject_explicit_drop() -> anyhow::Re
         pub struct NonCopy(pub i32);
         pub fn err_reified_drop_fn(x: NonCopy) -> NonCopy {
             {
-                internal::entry(0);
+                internal::anchor(0);
                 internal::contract_assert(|| {
                     let f: fn(NonCopy) = drop;
                     f(x);
@@ -817,7 +811,7 @@ fn spec_bodies_strip_all_implicit_drops_and_reject_explicit_drop() -> anyhow::Re
         r#"
         pub fn err_drop_in_place_in_spec(p: *mut i32) {
             {
-                internal::entry(0);
+                internal::entry();
                 internal::precondition(|| {
                     unsafe { core::ptr::drop_in_place(p) };
                     true

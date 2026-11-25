@@ -14,7 +14,8 @@
 //! This module intercepts `mir_promoted` and `check_liveness` via `override_queries`:
 //! - For **host bodies**, `mir_promoted` records each specification closure, its captured places,
 //!   and its promoted-MIR anchor location, then erases the closure construction and helper call
-//!   (`Goto` for function contracts; a zero-capture `entry(anchor_id)` marker for inline assertions).
+//!   (`Goto` for function contracts delimited by `entry()`; a zero-capture `anchor(anchor_id)`
+//!   marker for inline assertions).
 //! - For **specification bodies** (spec closures, transitively nested quantifier closures, and
 //!   `TypeInvariant::invariant` implementations), `mir_promoted` validates pure-spec structural
 //!   rules (no loops, no `&mut` borrows, no projected writes, no explicit `drop` calls), strips all
@@ -57,7 +58,6 @@ use rustc_mir_dataflow::{
     on_all_children_bits,
 };
 use rustc_span::{DUMMY_SP, Span, sym};
-use std::num::NonZeroU32;
 use std::sync::{LazyLock, Mutex};
 
 /// Lifetime-erased handle to a `&'tcx Body<'tcx>` allocated in `tcx.arena` during the active
@@ -187,6 +187,7 @@ pub(crate) struct PreparedSpecMir<'tcx> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum SpecCallKind {
     Entry,
+    Anchor,
     Precondition,
     Postcondition,
     Assert,
@@ -203,12 +204,12 @@ pub(crate) enum HostSpecKind {
     /// Function postcondition (`#[postcondition(...)]`).
     Postcondition,
     /// Inline assertion or assumption (`contract_assert!` / `contract_assume!`) anchored at an
-    /// `internal::entry(anchor_id)` call.
+    /// `internal::anchor(anchor_id)` call.
     InlineAssert {
         /// Assertion vs assumption kind.
         kind: ContractAssertKind,
-        /// 1-based anchor identifier encoded in `internal::entry(anchor_id)`.
-        anchor_id: NonZeroU32,
+        /// 0-based anchor identifier encoded in `internal::anchor(anchor_id)`.
+        anchor_id: u32,
         /// Terminator `Location` of the anchor call in promoted MIR (`facts.body`).
         location: Location,
     },
@@ -367,6 +368,7 @@ fn recognize_spec_call(tcx: TyCtxt<'_>, def_id: DefId) -> Option<SpecCallKind> {
     };
     match fn_sym.as_str() {
         "entry" => Some(SpecCallKind::Entry),
+        "anchor" => Some(SpecCallKind::Anchor),
         "precondition" => Some(SpecCallKind::Precondition),
         "postcondition" => Some(SpecCallKind::Postcondition),
         "contract_assert" => Some(SpecCallKind::Assert),
@@ -594,7 +596,9 @@ fn process_spec_mir_promoted<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             if matches!(
                 operand_spec_call(tcx, body, func),
                 Some(
-                    SpecCallKind::Precondition
+                    SpecCallKind::Entry
+                        | SpecCallKind::Anchor
+                        | SpecCallKind::Precondition
                         | SpecCallKind::Postcondition
                         | SpecCallKind::Assert
                         | SpecCallKind::Assume
@@ -692,7 +696,7 @@ fn process_host_mir_promoted<'tcx>(
         Postcondition,
         InlineAssert {
             kind: ContractAssertKind,
-            anchor_id: NonZeroU32,
+            anchor_id: u32,
             anchor_block: BasicBlock,
         },
     }
@@ -700,28 +704,49 @@ fn process_host_mir_promoted<'tcx>(
     let mut raw_sites = Vec::new();
     let mut spec_closures = Vec::new();
     let mut erased_locals = FxHashSet::default();
-    let mut next_anchor: u32 = 1;
+    let mut next_anchor: u32 = 0;
 
     let num_blocks = body.basic_blocks.len();
     for bb_idx in 0..num_blocks {
         let bb_entry = BasicBlock::from_usize(bb_idx);
-        let Some((entry_dest, bb_spec, entry_span)) = ({
+        let Some((delim_kind, entry_dest, bb_spec, entry_span)) = ({
             let Some(term) = &body.basic_blocks[bb_entry].terminator else {
                 continue;
             };
             let TerminatorKind::Call {
                 func,
                 destination,
-                target: Some(bb_spec),
+                target,
                 ..
             } = &term.kind
             else {
                 continue;
             };
-            if operand_spec_call(tcx, body, func) != Some(SpecCallKind::Entry) {
+            let Some(call_kind) = operand_spec_call(tcx, body, func) else {
+                continue;
+            };
+            if matches!(call_kind, SpecCallKind::ForAll | SpecCallKind::Exists) {
+                tcx.dcx().span_err(
+                    term.source_info.span,
+                    "quantifiers (`forall!` / `exists!`) can only be used inside specifications",
+                );
+                for stmt in &body.basic_blocks[bb_entry].statements {
+                    if let Some((_, Rvalue::Aggregate(agg_kind, _))) = stmt.kind.as_assign()
+                        && let AggregateKind::Closure(cid, _) = &**agg_kind
+                        && let Some(local_cid) = cid.as_local()
+                    {
+                        spec_closures.push(local_cid);
+                    }
+                }
                 continue;
             }
-            Some((*destination, *bb_spec, term.source_info.span))
+            if !matches!(call_kind, SpecCallKind::Entry | SpecCallKind::Anchor) {
+                continue;
+            }
+            let Some(bb_spec) = *target else {
+                continue;
+            };
+            Some((call_kind, *destination, bb_spec, term.source_info.span))
         }) else {
             continue;
         };
@@ -754,23 +779,17 @@ fn process_host_mir_promoted<'tcx>(
             continue;
         };
 
-        if matches!(spec_call_kind, SpecCallKind::ForAll | SpecCallKind::Exists) {
-            tcx.dcx().span_err(
-                spec_span,
-                "quantifiers (`forall!` / `exists!`) can only be used inside specifications",
-            );
-            for stmt in &body.basic_blocks[bb_spec].statements {
-                if let Some((_, Rvalue::Aggregate(agg_kind, _))) = stmt.kind.as_assign()
-                    && let AggregateKind::Closure(cid, _) = &**agg_kind
-                    && let Some(local_cid) = cid.as_local()
-                {
-                    spec_closures.push(local_cid);
-                }
-            }
-            continue;
-        }
-
-        if spec_call_kind == SpecCallKind::Entry {
+        let valid_pair = matches!(
+            (delim_kind, spec_call_kind),
+            (
+                SpecCallKind::Entry,
+                SpecCallKind::Precondition | SpecCallKind::Postcondition
+            ) | (
+                SpecCallKind::Anchor,
+                SpecCallKind::Assert | SpecCallKind::Assume
+            )
+        );
+        if !valid_pair {
             continue;
         }
 
@@ -822,7 +841,7 @@ fn process_host_mir_promoted<'tcx>(
                 RawHostSiteKind::Postcondition
             }
             SpecCallKind::Assert | SpecCallKind::Assume => {
-                let anchor_id = NonZeroU32::new(next_anchor).unwrap();
+                let anchor_id = next_anchor;
                 next_anchor += 1;
                 let kind = if spec_call_kind == SpecCallKind::Assert {
                     ContractAssertKind::Assert
@@ -837,7 +856,7 @@ fn process_host_mir_promoted<'tcx>(
                         span: entry_span,
                         user_ty: None,
                         const_: Const::Val(
-                            ConstValue::Scalar(Scalar::from_u32(anchor_id.get())),
+                            ConstValue::Scalar(Scalar::from_u32(anchor_id)),
                             tcx.types.u32,
                         ),
                     }));
@@ -856,7 +875,10 @@ fn process_host_mir_promoted<'tcx>(
                     anchor_block: bb_entry,
                 }
             }
-            SpecCallKind::Entry | SpecCallKind::ForAll | SpecCallKind::Exists => unreachable!(),
+            SpecCallKind::Entry
+            | SpecCallKind::Anchor
+            | SpecCallKind::ForAll
+            | SpecCallKind::Exists => unreachable!(),
         };
 
         raw_sites.push((

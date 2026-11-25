@@ -33,7 +33,7 @@ pub struct PendingFunSpecs {
     pub preconditions: Vec<PendingSpecClosure>,
     /// Postconditions in MIR entry execution order.
     pub postconditions: Vec<PendingSpecClosure>,
-    /// Inline assertions/assumptions keyed by the non-zero anchor ID in `SpecEntry(anchor_id)`.
+    /// Inline assertions/assumptions keyed by the 0-based anchor ID in `SpecEntry(anchor_id)`.
     pub inline_asserts: HashMap<u32, (ContractAssertKind, PendingSpecClosure)>,
 }
 
@@ -323,12 +323,14 @@ impl Transform {
     }
 
     /// Collects quantifier closures (`forall!` / `exists!`) inside specification bodies directly
-    /// from ULLBC statements, transitively folding compiler-generated capture temporaries while
-    /// preserving any non-capture statements in `statements`.
+    /// from ULLBC statements, transitively folding block-local compiler-generated capture
+    /// temporaries while preserving user bindings and non-capture statements in `statements`.
     fn collect_quantifier_spec_closure(
         &self,
         call_args: Vec<Operand>,
         statements: &mut Vec<Statement>,
+        locals: &crate::ast::Locals,
+        used_outside_block: &HashSet<LocalId>,
         ctx: &mut TransformCtx,
         host_region_count: usize,
     ) -> SpecClosure {
@@ -365,11 +367,18 @@ impl Transform {
         for mut stmt in mem::take(statements) {
             match stmt.kind {
                 StatementKind::Assign(lhs, rhs) => {
-                    let single_local = match lhs.kind {
-                        PlaceKind::Local(lid) if assign_counts.get(&lid) == Some(&1) => Some(lid),
+                    let erasable_temp = match lhs.kind {
+                        PlaceKind::Local(lid)
+                            if lid == closure_local_id
+                                || (assign_counts.get(&lid) == Some(&1)
+                                    && locals[lid].name.is_none()
+                                    && !used_outside_block.contains(&lid)) =>
+                        {
+                            Some(lid)
+                        }
                         _ => None,
                     };
-                    match (single_local, rhs) {
+                    match (erasable_temp, rhs) {
                         (Some(lid), Rvalue::Aggregate(.., env)) if lid == closure_local_id => {
                             closure_env_opt = Some(env);
                         }
@@ -519,66 +528,99 @@ impl Transform {
             .and_then(|b| crate::transform::borrowck::take(ctx, b));
         let body = func_decl.body.as_unstructured_mut().unwrap();
 
-        for block in &mut body.body {
-            let TerminatorKind::Call {
-                call:
-                    Call {
-                        ref func,
-                        ref mut args,
-                        ref dest,
-                    },
-                target,
-                ..
-            } = block.terminator.kind
-            else {
-                continue;
-            };
-            let FnOperand::Regular(func_ptr) = func else {
-                continue;
-            };
-            let FnPtrKind::Fun(FunId::Builtin(builtin_func_id)) = *func_ptr.kind else {
-                continue;
+        let num_blocks = body.body.len();
+        for block_idx in 0..num_blocks {
+            let block_id = BlockId::from_usize(block_idx);
+            let (func_kind, target) = {
+                let TerminatorKind::Call {
+                    call: Call { ref func, .. },
+                    target,
+                    ..
+                } = body.body[block_id].terminator.kind
+                else {
+                    continue;
+                };
+                let FnOperand::Regular(func_ptr) = func else {
+                    continue;
+                };
+                let FnPtrKind::Fun(FunId::Builtin(builtin_func_id)) = *func_ptr.kind else {
+                    continue;
+                };
+                (builtin_func_id, target)
             };
 
-            match builtin_func_id {
+            match func_kind {
                 BuiltinFunId::SpecEntry => {
-                    let anchor_id = extract_entry_anchor_id(args);
-                    if anchor_id != 0
-                        && let Some((kind, pending_spec)) = pending
-                            .as_mut()
-                            .and_then(|p| p.inline_asserts.remove(&anchor_id))
-                    {
-                        let spec_closure = self.build_spec_closure(
-                            ctx,
-                            host_region_count,
-                            pending_spec.closure_type_decl_id,
-                            pending_spec.captures,
-                        );
-                        block.terminator.kind = TerminatorKind::ContractAssert {
-                            kind,
-                            spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
-                            target,
-                        };
-                    } else {
-                        block.terminator.kind = TerminatorKind::Goto { target };
-                    }
+                    let TerminatorKind::Call { ref call, .. } = body.body[block_id].terminator.kind
+                    else {
+                        unreachable!();
+                    };
+                    let anchor_id = extract_anchor_id(&call.args)
+                        .expect("inline spec anchor must carry a u32 constant ID");
+                    let (kind, pending_spec) = pending
+                        .as_mut()
+                        .and_then(|p| p.inline_asserts.remove(&anchor_id))
+                        .expect("missing PendingSpecClosure for inline spec anchor");
+                    let spec_closure = self.build_spec_closure(
+                        ctx,
+                        host_region_count,
+                        pending_spec.closure_type_decl_id,
+                        pending_spec.captures,
+                    );
+                    body.body[block_id].terminator.kind = TerminatorKind::ContractAssert {
+                        kind,
+                        spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
+                        target,
+                    };
                 }
                 BuiltinFunId::SpecForAll | BuiltinFunId::SpecExists => {
-                    let kind = if builtin_func_id == BuiltinFunId::SpecForAll {
+                    let kind = if func_kind == BuiltinFunId::SpecForAll {
                         QuantKind::ForAll
                     } else {
                         QuantKind::Exists
                     };
+                    let (call_args, call_dest) = {
+                        let TerminatorKind::Call { ref mut call, .. } =
+                            body.body[block_id].terminator.kind
+                        else {
+                            unreachable!();
+                        };
+                        (mem::take(&mut call.args), call.dest.clone())
+                    };
+                    let mut used_outside_block = HashSet::new();
+                    call_dest.dyn_visit_in_body(|&lid: &LocalId| {
+                        used_outside_block.insert(lid);
+                    });
+                    for (other_id, other_block) in body.body.iter_enumerated() {
+                        if other_id == block_id {
+                            continue;
+                        }
+                        for stmt in &other_block.statements {
+                            if !matches!(
+                                stmt.kind,
+                                StatementKind::StorageLive(_) | StatementKind::StorageDead(_)
+                            ) {
+                                stmt.dyn_visit_in_body(|&lid: &LocalId| {
+                                    used_outside_block.insert(lid);
+                                });
+                            }
+                        }
+                        other_block.terminator.dyn_visit_in_body(|&lid: &LocalId| {
+                            used_outside_block.insert(lid);
+                        });
+                    }
                     let spec_closure = self.collect_quantifier_spec_closure(
-                        mem::take(args),
-                        &mut block.statements,
+                        call_args,
+                        &mut body.body[block_id].statements,
+                        &body.locals,
+                        &used_outside_block,
                         ctx,
                         host_region_count,
                     );
-                    block.terminator.kind = TerminatorKind::Quant {
+                    body.body[block_id].terminator.kind = TerminatorKind::Quant {
                         kind,
                         spec_closure_id: ctx.translated.spec_closures.push(spec_closure),
-                        dest: dest.clone(),
+                        dest: call_dest,
                         target,
                     };
                 }
@@ -607,17 +649,17 @@ impl UllbcPass for Transform {
     }
 }
 
-/// Extracts the `u32` anchor argument passed to `trust2_contract::internal::entry(anchor_id)`.
-fn extract_entry_anchor_id(args: &[Operand]) -> u32 {
-    let Some(Operand::Const(const_expr)) = args.first() else {
-        return 0;
+/// Extracts the 0-based `u32` anchor argument passed to `trust2_contract::internal::anchor(anchor_id)`.
+fn extract_anchor_id(args: &[Operand]) -> Option<u32> {
+    let Operand::Const(const_expr) = args.first()? else {
+        return None;
     };
     let ConstantExprKind::Literal(Literal::Scalar(ScalarValue::Unsigned(_, val))) =
         &const_expr.kind
     else {
-        return 0;
+        return None;
     };
-    *val as u32
+    Some(*val as u32)
 }
 
 fn unpack_local(

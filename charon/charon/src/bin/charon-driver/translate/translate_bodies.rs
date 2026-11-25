@@ -819,7 +819,7 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
                 } => {
                     pending
                         .inline_asserts
-                        .insert(anchor_id.get(), (kind, pending_closure));
+                        .insert(anchor_id, (kind, pending_closure));
                 }
             }
         }
