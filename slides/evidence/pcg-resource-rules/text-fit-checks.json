@@ -1,0 +1,316 @@
+{
+  "method": "conservative character wrapping with installed monospace and CJK font metrics; not browser rendering",
+  "canvas": [
+    1760,
+    990
+  ],
+  "results": [
+    {
+      "id": "borrow-create",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 191.0,
+      "origin_note_heights": [
+        23,
+        23,
+        23
+      ],
+      "definition_height": 271,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "deref",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 143.6,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 151,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "weaken",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 143.6,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 151,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "borrow-end",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 242.4,
+      "origin_note_heights": [
+        23,
+        23,
+        23
+      ],
+      "definition_height": 151,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "field-open",
+      "rust_font_size": 22,
+      "rust_height": 192.5,
+      "annotation_height": 143.6,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 268,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "field-close",
+      "rust_font_size": 22,
+      "rust_height": 192.5,
+      "annotation_height": 215.4,
+      "origin_note_heights": [
+        23,
+        23,
+        23
+      ],
+      "definition_height": 179,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "reborrow-chain",
+      "rust_font_size": 22,
+      "rust_height": 220.0,
+      "annotation_height": 266.79999999999995,
+      "origin_note_heights": [
+        23,
+        23,
+        23
+      ],
+      "definition_height": 152,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "basic-wand",
+      "rust_font_size": 22,
+      "rust_height": 137.5,
+      "annotation_height": 241.2,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 240,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "call-edge",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 170.6,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 268,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "package",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 239.79999999999998,
+      "origin_note_heights": [
+        23,
+        23,
+        23
+      ],
+      "definition_height": 179,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "apply",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 215.4,
+      "origin_note_heights": [
+        23,
+        23,
+        23
+      ],
+      "definition_height": 241,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "history",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 191.0,
+      "origin_note_heights": [
+        23,
+        23,
+        23
+      ],
+      "definition_height": 184,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "shared",
+      "rust_font_size": 22,
+      "rust_height": 110.0,
+      "annotation_height": 195.0,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 179,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "projection",
+      "rust_font_size": 22,
+      "rust_height": 137.5,
+      "annotation_height": 168.0,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 179,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "flow",
+      "rust_font_size": 22,
+      "rust_height": 82.5,
+      "annotation_height": 168.0,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 151,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "unsize",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 143.6,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 212,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "index",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 170.6,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 207,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "unsize-undo",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 168.0,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 212,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "branch",
+      "rust_font_size": 22,
+      "rust_height": 220.0,
+      "annotation_height": 219.4,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 124,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "loop-invariant",
+      "rust_font_size": 22,
+      "rust_height": 220.0,
+      "annotation_height": 243.79999999999998,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 151,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "loop-wand",
+      "rust_font_size": 22,
+      "rust_height": 275.0,
+      "annotation_height": 241.2,
+      "origin_note_heights": [
+        23,
+        23
+      ],
+      "definition_height": 177,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "remote",
+      "rust_font_size": 19,
+      "rust_height": 285.0,
+      "annotation_height": 169.4,
+      "origin_note_heights": [
+        23
+      ],
+      "definition_height": 240,
+      "summary_height": 30.8,
+      "fits": true
+    },
+    {
+      "id": "inhale-path",
+      "rust_font_size": 22,
+      "rust_height": 165.0,
+      "annotation_height": 214.0,
+      "origin_note_heights": [
+        23,
+        23,
+        23,
+        23
+      ],
+      "definition_height": 179,
+      "summary_height": 30.8,
+      "fits": true
+    }
+  ]
+}

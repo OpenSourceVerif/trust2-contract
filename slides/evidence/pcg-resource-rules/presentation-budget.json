@@ -1,0 +1,193 @@
+{
+  "canvas": [
+    1760,
+    990
+  ],
+  "cases": [
+    {
+      "id": "borrow-create",
+      "rust_lines": 6,
+      "annotation_lines": 5,
+      "origin_notes": 3,
+      "definition_lines": 6,
+      "summary_characters": 40
+    },
+    {
+      "id": "deref",
+      "rust_lines": 6,
+      "annotation_lines": 4,
+      "origin_notes": 2,
+      "definition_lines": 1,
+      "summary_characters": 39
+    },
+    {
+      "id": "weaken",
+      "rust_lines": 6,
+      "annotation_lines": 4,
+      "origin_notes": 2,
+      "definition_lines": 1,
+      "summary_characters": 39
+    },
+    {
+      "id": "borrow-end",
+      "rust_lines": 6,
+      "annotation_lines": 6,
+      "origin_notes": 3,
+      "definition_lines": 1,
+      "summary_characters": 35
+    },
+    {
+      "id": "field-open",
+      "rust_lines": 7,
+      "annotation_lines": 4,
+      "origin_notes": 2,
+      "definition_lines": 4,
+      "summary_characters": 39
+    },
+    {
+      "id": "field-close",
+      "rust_lines": 7,
+      "annotation_lines": 6,
+      "origin_notes": 3,
+      "definition_lines": 2,
+      "summary_characters": 40
+    },
+    {
+      "id": "reborrow-chain",
+      "rust_lines": 8,
+      "annotation_lines": 7,
+      "origin_notes": 3,
+      "definition_lines": 2,
+      "summary_characters": 39
+    },
+    {
+      "id": "basic-wand",
+      "rust_lines": 5,
+      "annotation_lines": 8,
+      "origin_notes": 2,
+      "definition_lines": 3,
+      "summary_characters": 37
+    },
+    {
+      "id": "call-edge",
+      "rust_lines": 6,
+      "annotation_lines": 4,
+      "origin_notes": 2,
+      "definition_lines": 4,
+      "summary_characters": 39
+    },
+    {
+      "id": "package",
+      "rust_lines": 4,
+      "annotation_lines": 7,
+      "origin_notes": 3,
+      "definition_lines": 2,
+      "summary_characters": 56
+    },
+    {
+      "id": "apply",
+      "rust_lines": 6,
+      "annotation_lines": 6,
+      "origin_notes": 3,
+      "definition_lines": 4,
+      "summary_characters": 45
+    },
+    {
+      "id": "history",
+      "rust_lines": 6,
+      "annotation_lines": 5,
+      "origin_notes": 3,
+      "definition_lines": 2,
+      "summary_characters": 40
+    },
+    {
+      "id": "shared",
+      "rust_lines": 4,
+      "annotation_lines": 5,
+      "origin_notes": 2,
+      "definition_lines": 2,
+      "summary_characters": 39
+    },
+    {
+      "id": "projection",
+      "rust_lines": 4,
+      "annotation_lines": 5,
+      "origin_notes": 2,
+      "definition_lines": 2,
+      "summary_characters": 65
+    },
+    {
+      "id": "flow",
+      "rust_lines": 3,
+      "annotation_lines": 5,
+      "origin_notes": 2,
+      "definition_lines": 1,
+      "summary_characters": 49
+    },
+    {
+      "id": "unsize",
+      "rust_lines": 6,
+      "annotation_lines": 4,
+      "origin_notes": 2,
+      "definition_lines": 2,
+      "summary_characters": 43
+    },
+    {
+      "id": "index",
+      "rust_lines": 6,
+      "annotation_lines": 4,
+      "origin_notes": 2,
+      "definition_lines": 3,
+      "summary_characters": 46
+    },
+    {
+      "id": "unsize-undo",
+      "rust_lines": 6,
+      "annotation_lines": 5,
+      "origin_notes": 2,
+      "definition_lines": 2,
+      "summary_characters": 46
+    },
+    {
+      "id": "branch",
+      "rust_lines": 7,
+      "annotation_lines": 6,
+      "origin_notes": 2,
+      "definition_lines": 1,
+      "summary_characters": 31
+    },
+    {
+      "id": "loop-invariant",
+      "rust_lines": 8,
+      "annotation_lines": 7,
+      "origin_notes": 2,
+      "definition_lines": 1,
+      "summary_characters": 46
+    },
+    {
+      "id": "loop-wand",
+      "rust_lines": 10,
+      "annotation_lines": 8,
+      "origin_notes": 2,
+      "definition_lines": 1,
+      "summary_characters": 58
+    },
+    {
+      "id": "remote",
+      "rust_lines": 12,
+      "annotation_lines": 6,
+      "origin_notes": 1,
+      "definition_lines": 3,
+      "summary_characters": 43
+    },
+    {
+      "id": "inhale-path",
+      "rust_lines": 6,
+      "annotation_lines": 5,
+      "origin_notes": 4,
+      "definition_lines": 2,
+      "summary_characters": 41
+    }
+  ],
+  "syntax_highlighting": "embedded token spans; no CDN"
+}

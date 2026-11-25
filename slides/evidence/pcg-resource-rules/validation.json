@@ -1,0 +1,24 @@
+{
+  "errors": [],
+  "cases": 23,
+  "local_links_checked": 3439,
+  "rust_and_viper_hash_pairs_checked": 23,
+  "rust_preserved_after_removing_annotations": true,
+  "deck_sha256": "92ae35597db0469412c4e1957e72eca29015a48e0983504e9850671c6ddf2711",
+  "presentation_cases": 23,
+  "syntax_highlighted_cases": 23,
+  "assertion_and_proof_origin_notes": 54,
+  "all_displayed_assertions_have_origins": true,
+  "semantic_term_definitions": 37,
+  "case_parameter_scopes": 23,
+  "focused_rules": 23,
+  "notation_at_first_card": true,
+  "direct_mut_body_and_annotation_order_checked": true,
+  "canvas": [
+    1760,
+    990
+  ],
+  "rocq_proof_checked": false,
+  "proof_notation": "curated explanatory DSL",
+  "browser_report": "browser-checks.json"
+}

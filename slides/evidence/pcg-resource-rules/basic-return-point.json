@@ -1,0 +1,43 @@
+{
+  "case": "reborrow",
+  "function": "basic",
+  "block": "bb0",
+  "statement_index": 7,
+  "phase": "initial",
+  "mir": {
+    "stmt": "return",
+    "debug_stmt": "return",
+    "span": {
+      "low": {
+        "line": 29,
+        "column": 1
+      },
+      "high": {
+        "line": 29,
+        "column": 1
+      }
+    },
+    "loans_invalidated_start": [],
+    "loans_invalidated_mid": [],
+    "borrows_in_scope_start": [
+      "bw0"
+    ],
+    "borrows_in_scope_mid": [
+      "bw0"
+    ]
+  },
+  "phase_actions": [],
+  "return_unblock_actions": [
+    "borrow: RETURN = &mut  (*_2) before bb0[6]:PreMain",
+    "{_2 before bb0[6]:PreMain} -> {(*_2) before bb0[6]:PreMain}",
+    "borrow: _2 before bb0[6]:PreMain <before bb0[4]:PreOperands> = &mut  (*_3) before bb0[5]:PreMain",
+    "{_3 before bb0[5]:PreMain} -> {(*_3) before bb0[5]:PreMain}",
+    "borrow: _3 before bb0[5]:PreMain <before bb0[3]:PreOperands> = &mut  *num",
+    "{num} -> {*num}",
+    "Remote(_1)↓'?8 -> num↓'?8 before bb0[2]:PreOperands"
+  ],
+  "successors": {},
+  "loop_data": null,
+  "loop_invariant_capabilities": {},
+  "dot": "reborrow/data/basic/bb0_stmt_7_initial.dot"
+}

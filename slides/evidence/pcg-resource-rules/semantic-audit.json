@@ -1,0 +1,559 @@
+{
+  "method": "manual source/evidence review plus static consistency checks; not a Rocq proof or browser rendering",
+  "fixes": [
+    "Focused each definition card on one PCG-to-resource rule; retained full definitions in dialogs.",
+    "Ordered cards as rule, rule notation, explanation, supporting definitions and their notation.",
+    "Removed presentation status badges; preserved run outcomes in evidence and failure explanations.",
+    "Introduced resource aliases visibly on first use, including I/Ref/G and changed predicate arities.",
+    "Placed notation legends in their first card (03 before 04), without duplicate explanations.",
+    "Expanded DirectMut inline; distinguished reference slot, target, metadata and referent resource.",
+    "Separated MIR location from PCG evaluation phase; removed phase metadata from Rust assertions.",
+    "Replaced implicit variable-as-address notation with loc/addr and explicit per-case parameter scopes.",
+    "Replaced generic/concrete logical entailments with resource-transform contracts.",
+    "Used a struct snapshot {f:=4} for T; defined Point pair notation and every G_Point/W parameter.",
+    "Defined shared slot resources separately from opaque target read resources and snapshot constraints.",
+    "Moved expanded-code assertions to the correct sides of their Rust effects without repeating assignments.",
+    "Made Borrow Remove restoration explicit before the field assertion; distinguished MIR cast encoding from extra proof effects.",
+    "Kept history and Remote in node-base interpretation rather than inventing PcgNode constructors.",
+    "Documented frame bounds, conversion/storage assumptions and failed loop obligations.",
+    "Added term dependency lookup, local symbol scopes and relative source/evidence links."
+  ],
+  "cases": [
+    {
+      "id": "borrow-create",
+      "context": "loc(a) 是整数槽，loc(x) 是引用槽；p 泛指目标地址，s 泛指引用槽地址。Ref(s,p) 特化 T=I32、metadata=unit。I/G 中的 v 是整数当前值；类型换成 i64 时需选择 I64 的值字段及对应转换方法。",
+      "focus": {
+        "title": "Borrow 边：区分引用槽与借用目标",
+        "rule": "I(p,v) := cell 1 p i32_val v  // p 处整数值为 v\nG(p,v) := GenericOwn I32 p v  // 抽象目标资源\nRef(s,p) := DirectMut I32 s (p,unit) // 引用槽\nDirectMut T s (p,m) :=\n  cell 1 s ref_addr p ** cell 1 s ref_meta m\n  ** !!(meta_type(m) = Metadata(T))",
+        "reason": "Borrow 边记录借用依赖；Ref 只持有引用槽 s，G 持有目标 p。"
+      },
+      "terms": [
+        "Assertion",
+        "DirectMut",
+        "GenericOwn",
+        "Metadata",
+        "Own",
+        "Snap",
+        "addr",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "loc",
+        "snapshot",
+        "unit"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    },
+    {
+      "id": "deref",
+      "context": "q=addr(x)，v 为转换前的当前整数值。赋值尚未执行，不能把它提前写成 4。",
+      "focus": {
+        "title": "Deref Add：打开目标资源",
+        "rule": "{{G(q,v)}} concrete q {{I(q,v)}}",
+        "reason": "q=addr(x)。PCG 为访问 *x 添加 DerefEdge；Prusti 按 i32 类型选择 make_concrete，将抽象目标资源打开，保持值 v。"
+      },
+      "terms": [
+        "Assertion",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "snapshot"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    },
+    {
+      "id": "weaken",
+      "context": "q=addr(x)，old_value 是写入前的快照。W 是 PCG Write 能力；赋值纪律确保此时旧值资源已交出。",
+      "focus": {
+        "title": "Weaken：交出旧值资源",
+        "rule": "{{I(q,old_value)}} consume {{emp}}",
+        "reason": "Weaken(..., W) 中 W 表示写能力；动作交出旧资源。随后 I(q,4) 中的 4 来自 MIR 写入，不是 PCG 图推导出的数值。"
+      },
+      "terms": [
+        "Assertion",
+        "Snap",
+        "addr",
+        "assign",
+        "cell",
+        "consume",
+        "emp",
+        "snapshot"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    },
+    {
+      "id": "borrow-end",
+      "context": "q=addr(x)=loc(a)；两个地址表达式来自同一次借用建立的关系。恢复的是当前值 4。",
+      "focus": {
+        "title": "Borrow Remove：恢复借出目标",
+        "rule": "{{G(q,v)}} concrete q {{I(q,v)}}",
+        "reason": "PCG 回收叶边后，Prusti 恢复 assigned_ref 的目标。q=addr(x)=loc(a)，因此恢复的是 a；值来自当前状态。"
+      },
+      "terms": [
+        "Assertion",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "loc",
+        "snapshot"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    },
+    {
+      "id": "field-open",
+      "context": "q=addr(x)。T 是官方例子的单字段结构体，s={f:=v} 是结构体快照，v 是字段 u32 快照。",
+      "focus": {
+        "title": "Place expansion：暴露字段资源",
+        "rule": "U(p,v) := cell 1 p u32_val v // u32 字段资源\nOwn_T(q,s) := U(field(q,f),s.f)\nR_T(q) := EX s, Own_T(q,s) // 隐藏字段快照\n{{Own_T(q,s)}} unfold {{U(field(q,f),s.f)}}",
+        "reason": "PCG 展开字段投影时触发 unfold。field(q,f) 是字段的逻辑地址；s.f 是快照 s 中的字段值。"
+      },
+      "terms": [
+        "Assertion",
+        "EX",
+        "Snap",
+        "addr",
+        "cell",
+        "field",
+        "fold",
+        "snapshot"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    },
+    {
+      "id": "field-close",
+      "context": "q=addr(x)。fold 把字段资源重新组成 T，generic 再转换表示；剩余 Borrow 回收后才能读取 a.f。",
+      "focus": {
+        "title": "投影收拢：重建结构体资源",
+        "rule": "{{U(field(q,f),v)}} fold Own_T\n  {{Own_T(q,{f:=v})}}",
+        "reason": "PCG 收拢字段投影时，Prusti 按结构体类型 fold。用当前字段值 v 重建快照 {f:=v}；本例写入后 v=4。"
+      },
+      "terms": [
+        "Assertion",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr",
+        "cell",
+        "concrete",
+        "field",
+        "fold",
+        "generic",
+        "snapshot"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    },
+    {
+      "id": "reborrow-chain",
+      "context": "q=addr(z)=addr(y)=addr(x)=loc(a)。这些表达式表示同一个目标，只有一份目标资源。close 和 return_to 是 generic/concrete 的脚本别名。",
+      "focus": {
+        "title": "回收依赖：先还最内层借用",
+        "rule": "ready(e) := 每个 blocker 均不被剩余边阻塞\nz → y → x → a",
+        "reason": "PCG 按依赖选择可回收边；箭头表示归还顺序。close / return_to 分别指 generic / concrete，普通重借用还经过 pack/remove 更新。"
+      },
+      "terms": [
+        "Assertion",
+        "Own",
+        "Snap",
+        "UnblockGraph",
+        "addr",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "loc",
+        "package",
+        "snapshot"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    },
+    {
+      "id": "basic-wand",
+      "context": "p 固定入口 num 的目标，q 固定返回 result 的目标；R 是存在量化的目标资源。函数头 requires/ensures 与函数内的局部 assert 含义不同。",
+      "focus": {
+        "title": "跨函数依赖：生成归还 wand",
+        "rule": "R(p) := EX v, GenericOwn I32 p v // 隐藏目标值\nW(q,p) := R(q) -* R(p)\n返回资源：R(q) ** W(q,p)",
+        "reason": "输入、输出生命周期投影的依赖决定归还方向：交回结果 q 的资源，才能恢复输入 p。R 是对应目标的抽象资源。"
+      },
+      "terms": [
+        "Assertion",
+        "EX",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr_at",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "package",
+        "snapshot",
+        "snapshot_at"
+      ],
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa"
+    },
+    {
+      "id": "call-edge",
+      "context": "argument 指调用点传入的 &mut pt；p 是输入目标，q 是返回 y 的目标；y0 为调用前 pt.y。Point 快照 (u,v) 是 {x:=u;y:=v} 的缩写。",
+      "focus": {
+        "title": "coupled Add：接收调用契约",
+        "rule": "G_Point(p,s) := GenericOwn Point p s\nP(p) := EX s, G_Point(p,s)\nW(q,p,y0) := ALL z,\n  G(q,z) -* G_Point(p,(z,y0))",
+        "reason": "G_Point 是 Point 的抽象资源，P 隐藏其快照；(z,y0) 是 x、y 的值。coupled Add 实例化调用依赖，返回资源与 W 来自方法后置条件。"
+      },
+      "terms": [
+        "ALL",
+        "Assertion",
+        "EX",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr",
+        "addr_at",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "package",
+        "snapshot",
+        "snapshot_at"
+      ],
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa"
+    },
+    {
+      "id": "package",
+      "context": "p=addr_at(entry,pt)，q=addr_at(return,result)，y0 是入口 pt.y 的值；z 是未来归还时的 x 值。Point 快照 (u,v) 表示 {x:=u;y:=v}，W 的 x/z、y/y0 关系由用户 after_expiry 提供。",
+      "focus": {
+        "title": "UnblockGraph：给出 wand 的恢复计划",
+        "rule": "W(q,p,y0) := ALL z,\n  G(q,z) -* G_Point(p,(z,y0))",
+        "reason": "package 假设将来交回 G(q,z)，按解阻计划恢复 Point；未借出的 y 资源保留在包中。y0 与到期值条件来自方法规约。"
+      },
+      "terms": [
+        "ALL",
+        "Assertion",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "UnblockGraph",
+        "cell",
+        "concrete",
+        "field",
+        "fold",
+        "generic",
+        "package"
+      ],
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa"
+    },
+    {
+      "id": "apply",
+      "context": "p 是原 Point 目标，q=addr(y)，y0 是调用前 pt.y=72；W 来源于调用的后置条件。Point 快照 (u,v) 表示 {x:=u;y:=v}。",
+      "focus": {
+        "title": "coupled Remove：使用归还凭证",
+        "rule": "Point(p,(u,v)) := I(field(p,x),u) **\n                  I(field(p,y),v)\nG(q,72) ** W(q,p,y0)\n  |-- G_Point(p,(72,y0))",
+        "reason": "Point 是展开后的两字段资源。PCG 移除 coupled edge 时，Prusti 经 call_wands 取出 wand 并 apply；72 来自 MIR。"
+      },
+      "terms": [
+        "ALL",
+        "Assertion",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "apply_wand",
+        "cell",
+        "concrete",
+        "field",
+        "generic"
+      ],
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa"
+    },
+    {
+      "id": "history",
+      "context": "p 是旧引用快照中的目标；G_Point/R_Point 隐藏当前字段快照。地址固定不意味着旧字段值复原。",
+      "focus": {
+        "title": "历史节点：选择目标的旧快照",
+        "rule": "addr_at(L,r) := (snapshot_at(L,r)).addr\np := addr_at(_before_0_8, _3)",
+        "reason": "历史基底指定 old 标签，旧引用快照定位目标。G_Point(p) / R_Point(p) 分别表示隐藏字段快照的抽象 / 展开资源；先按类型与 region 计算，再应用 old。"
+      },
+      "terms": [
+        "Assertion",
+        "EX",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr",
+        "addr_at",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "snapshot",
+        "snapshot_at"
+      ],
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa"
+    },
+    {
+      "id": "shared",
+      "context": "程序中的 pt/result 是引用槽；s=snapshot(pt)、r=snapshot(result) 是引用快照，包含 addr/meta/val。公式 Shared(T,slot,snapshot) 的第 2 个参数总是槽地址。GenericRead 的份额 rho_read 不是生命周期 rho。",
+      "focus": {
+        "title": "共享借用：传播读资源",
+        "rule": "Shared(T,slot,r) := RefShared(T,slot,r) **\n  GenericRead(T,r.addr,r.val)",
+        "reason": "共享借用关系导向读资源视图，不产生独占目标资源。RefShared 持有引用槽；GenericRead 描述目标读权限与快照。值等式来自用户 ensures。"
+      },
+      "terms": [
+        "Assertion",
+        "GenericOwn",
+        "GenericRead",
+        "Metadata",
+        "Own",
+        "RefShared",
+        "Shared",
+        "Snap",
+        "addr",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "loc",
+        "snapshot",
+        "unit"
+      ],
+      "source_sha256": "728d21c0b96d03554be420530be3187f293c524fcfed1ca876bfe3278accbe4e",
+      "viper_sha256": "4db0edb0701b76932b6f1d46ce3a1444508caf4939e717e18f74d822dddc4b47"
+    },
+    {
+      "id": "projection",
+      "context": "cs=snapshot(c)，cs.x 是引用字段的快照；rho 是该引用的 region。Indirect 选择属于 rho 的目标资源，不是 c 自身的直接字段资源。",
+      "focus": {
+        "title": "LifetimeProjection：选择 region 的资源",
+        "rule": "Indirect(cs,rho) := EX z,\n  GenericOwn I32 cs.x.addr z",
+        "reason": "cs 是 c 的快照，rho 是 c.x 的生命周期。region 选择归属它的间接资源；本次 lifetime projection 展开分支不输出 fold/unfold。"
+      },
+      "terms": [
+        "Assertion",
+        "EX",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "snapshot"
+      ],
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa"
+    },
+    {
+      "id": "flow",
+      "context": "P 是该动作前已经成立的资源断言；FUTURE 与 BorrowFlow 是分析标签/关系，不能据此定义新堆对象。",
+      "focus": {
+        "title": "BorrowFlow：分析关系不必产生证明语句",
+        "rule": "{{P}} skip {{P}}",
+        "reason": "普通 BorrowFlow 与 FUTURE 记录借用依赖；此编码分支只输出注释，保持已有断言 P。Unsize 由专门分支处理。"
+      },
+      "terms": [
+        "Assertion"
+      ],
+      "source_sha256": "728d21c0b96d03554be420530be3187f293c524fcfed1ca876bfe3278accbe4e",
+      "viper_sha256": "4db0edb0701b76932b6f1d46ce3a1444508caf4939e717e18f74d822dddc4b47"
+    },
+    {
+      "id": "unsize",
+      "context": "base 是数组/切片的元素基位置；vs 是当前元素序列；n=3。Seq/Slice 是规约序列视图，仍需后端表示关系支持。",
+      "focus": {
+        "title": "Unsize：记录视图转换以供归还",
+        "rule": "Seq(p,vs) := SEP i, I(elem(p,i),vs[i])\nSlice(p,n,vs) := !!(length vs = n) ** Seq(p,vs)",
+        "reason": "elem(p,i) 是元素位置，SEP 遍历合法下标；Seq 持有这些元素，Slice 增加长度约束。MIR cast 转换视图，PCG 保存转换信息以供归还。"
+      },
+      "terms": [
+        "Assertion",
+        "SEP",
+        "Snap",
+        "Ty_INV",
+        "cast_array_to_slice",
+        "cell",
+        "elem",
+        "field"
+      ],
+      "source_sha256": "90372244aff09378a4573c2d4d44bdb936141f4f3c1e03b2e26e5277525e90b4",
+      "viper_sha256": "b851c5efec29c140c0430132049ac482186f7e25f303c9e4c92c9ad092a9bbf7"
+    },
+    {
+      "id": "index",
+      "context": "base 和 vs 来自此前切片视图；目标下标 k=1，合法域为 [0,length vs)。Frame 保留除 k 外的资源。",
+      "focus": {
+        "title": "索引 expansion：分离目标元素与 frame",
+        "rule": "Seq(p,vs) |-- I(elem(p,k),vs[k]) **\n  Frame(p,vs,k)\n适用条件：0 <= k < length vs",
+        "reason": "PCG 的索引展开选择要访问的元素；其余元素保留为 Frame。k 与边界条件来自 MIR/类型，不能只靠图边证明。"
+      },
+      "terms": [
+        "Assertion",
+        "SEP",
+        "Snap",
+        "cell",
+        "elem",
+        "field",
+        "open_index"
+      ],
+      "source_sha256": "90372244aff09378a4573c2d4d44bdb936141f4f3c1e03b2e26e5277525e90b4",
+      "viper_sha256": "b851c5efec29c140c0430132049ac482186f7e25f303c9e4c92c9ad092a9bbf7"
+    },
+    {
+      "id": "unsize-undo",
+      "context": "base 不变；原下标 1 的值 37 已被写成 3，undo 后序列仍为 [13;3;72]。",
+      "focus": {
+        "title": "Unsize Remove：恢复数组视图",
+        "rule": "Slice(p,n,vs) := !!(length vs = n) ** Seq(p,vs)\n{{Slice(p,n,vs)}} undo_unsize p n {{Seq(p,vs)}}",
+        "reason": "移除 Unsize BorrowFlow 时触发 undo。PCG 保存的转换信息决定恢复方式；vs 使用当前内容，本例为 [13;3;72]。"
+      },
+      "terms": [
+        "Assertion",
+        "SEP",
+        "Snap",
+        "cell",
+        "elem",
+        "field",
+        "undo_unsize"
+      ],
+      "source_sha256": "90372244aff09378a4573c2d4d44bdb936141f4f3c1e03b2e26e5277525e90b4",
+      "viper_sha256": "b851c5efec29c140c0430132049ac482186f7e25f303c9e4c92c9ad092a9bbf7"
+    },
+    {
+      "id": "branch",
+      "context": "r 在两条互斥执行路径上指向 a 或 b。guard_a/guard_b 由 MIR 路径标志确定，未被借出的另一变量在 frame 中。",
+      "focus": {
+        "title": "路径条件：守卫资源恢复",
+        "rule": "guarded g P := if g then P else emp",
+        "reason": "PCG 边携带的路径条件变成 guard_a / guard_b；只在实际走过的分支恢复对应目标。未借出的变量资源留在 frame。"
+      },
+      "terms": [
+        "Assertion",
+        "Own",
+        "Snap",
+        "UnblockGraph",
+        "addr",
+        "apply_wand",
+        "cell",
+        "concrete",
+        "emp",
+        "field",
+        "loc",
+        "recover",
+        "snapshot"
+      ],
+      "source_sha256": "ca98a74871998c0535531b65336f4f836f68b551bd08763c9f63934d5695f7f1",
+      "viper_sha256": "28ad8bcffdc946dd343a14b1d1c60b0e938d65b84b4c1193c51c5a1894efa253"
+    },
+    {
+      "id": "loop-invariant",
+      "context": "loc(i) 是循环变量槽，n 是切点当前值。切点在循环体用户 body_invariant 所在处；资源项来自活性/初始化/能力分析。",
+      "focus": {
+        "title": "循环资源项：由分析选择需保留的位置",
+        "rule": "I_resource := EX n, I(loc(i),n)",
+        "reason": "used/live/initialized 与 PCG capability 共同决定资源项。n > 2 是用户 body_invariant 提供的值性质，不是 PCG 自动发现的。"
+      },
+      "terms": [
+        "Assertion",
+        "EX",
+        "Snap",
+        "addr",
+        "cell",
+        "loc",
+        "snapshot"
+      ],
+      "source_sha256": "047f144135993067d996c1c7a14c703934e44ad12b7bfeb6b33a7c1652a644bf",
+      "viper_sha256": "dd5ea74b67569c20ebc8c7f4e3e870d7a16223b668482db9bbf9d54d4960fe22"
+    },
+    {
+      "id": "loop-wand",
+      "context": "x 是长期来源，r 是短期 blocker，L 是实际循环边界标签。I_loop/W 是生成的义务，实跑未证明恢复成立。",
+      "focus": {
+        "title": "LoopAbstraction：边界上的归还义务",
+        "rule": "W(L) := G(addr_at(L,r)) -* R(loc(x))",
+        "reason": "本页 G 隐藏抽象目标值，R 表示 x 的具体整数资源。successor actions 仅在 Add 且 edge_to_loop 时 package，Remove 时 apply；实跑 wand.not.found。"
+      },
+      "terms": [
+        "Assertion",
+        "EX",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr",
+        "addr_at",
+        "apply_wand",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "loc",
+        "package",
+        "snapshot",
+        "snapshot_at"
+      ],
+      "source_sha256": "7cc390575ed0eac9e82195596bdb747b03f04b31b604669587aa023aae4d7ef0",
+      "viper_sha256": "602507925ec67117b612eab2bfe57504bb33c9fdc1a70ec16e41237189953350"
+    },
+    {
+      "id": "remote",
+      "context": "List 是 Rust 类型；ListRes 是资源谓词；p_entry 是入口 self 的目标，q 是 outer_package 标签处 current 的目标。实际运行失败。",
+      "focus": {
+        "title": "Remote 基底：归还到函数入口资源",
+        "rule": "ListRes(p) := EX v, GenericOwn List p v\np_entry := addr_at(entry,self)\nW_remote := ListRes(q) -* ListRes(p_entry)",
+        "reason": "ListRes 是链表类型 List 的抽象资源。Remote 基底按入口 old 解释；q 是当前链表位置的历史目标。本例权限不足，未证明归还义务。"
+      },
+      "terms": [
+        "Assertion",
+        "EX",
+        "GenericOwn",
+        "Own",
+        "Snap",
+        "addr_at",
+        "cell",
+        "concrete",
+        "field",
+        "generic",
+        "package",
+        "snapshot",
+        "snapshot_at"
+      ],
+      "source_sha256": "002755a99cf9b9dd0782630f26525323c0aa213798fc6080dfe5a73139724357",
+      "viper_sha256": "b515ef34007e73ba3c2b3ebe98b2ce452af2655491b59a386807d6e8887526b8"
+    },
+    {
+      "id": "inhale-path",
+      "context": "P 表示 panic 分支带路径条件的已有状态；必须先证明 False 再截断路径。这里只描述失败分支，不是在正常路径制造资源。",
+      "focus": {
+        "title": "不可达分支：先证明，再截断",
+        "rule": "{{P}} check False {{P}}，须 P |-- !!False\n{{P}} assume False {{!!False}}",
+        "reason": "这是 MIR panic 控制流的编码，不由 PCG 边生成资源。check 产生不可达证明义务；assume 截断后续路径，不能替代前一步证明。"
+      },
+      "terms": [
+        "Assertion"
+      ],
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3"
+    }
+  ]
+}

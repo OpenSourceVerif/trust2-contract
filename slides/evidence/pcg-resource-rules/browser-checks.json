@@ -1,0 +1,10 @@
+{
+  "status": "unavailable",
+  "checks_completed": false,
+  "reason": [
+    "Windows browser launch failed: WSL UtilAcceptVsock timeout.",
+    "Installed Linux Chromium cannot start: libnspr4.so, libnss3.so and libnssutil3.so are unavailable."
+  ],
+  "dependencies_installed": false,
+  "static_checks": "validation.json"
+}
