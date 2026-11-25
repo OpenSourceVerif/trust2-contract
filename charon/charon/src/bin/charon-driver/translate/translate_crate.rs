@@ -989,6 +989,7 @@ pub fn translate<'tcx>(
         tcx,
         borrowck_bodies: prepared_specs.borrowck_bodies,
         spec_mir_bodies: prepared_specs.spec_mir_bodies,
+        host_spec_sites: prepared_specs.host_sites,
         pending_specs: Default::default(),
         sysroot,
         hax_state,

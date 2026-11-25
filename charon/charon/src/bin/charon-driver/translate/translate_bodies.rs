@@ -752,7 +752,7 @@ impl<'tcx> BodyTransCtx<'tcx, '_, '_> {
         let Some(ItemId::Fun(host_fun_id)) = self.i_ctx.item_id else {
             return Ok(());
         };
-        let Some(sites) = crate::spec_mir::host_spec_sites(host_local_def_id) else {
+        let Some(sites) = self.i_ctx.t_ctx.host_spec_sites.remove(&host_local_def_id) else {
             return Ok(());
         };
 

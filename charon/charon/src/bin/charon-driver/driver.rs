@@ -77,6 +77,7 @@ fn setup_compiler(
     emit_artifacts: bool,
     codegen: bool,
 ) {
+    crate::spec_mir::configure_session(do_translate);
     if do_translate {
         if options.skip_borrowck {
             // We use a static to be able to pass data to `override_queries`.
@@ -366,6 +367,7 @@ impl<'a> Callbacks for CharonCallbacks<'a> {
         if !self.emit_artifacts {
             check_late_rustc_errors(tcx);
         }
+        crate::spec_mir::reset_state();
         Compilation::Continue
     }
 }
@@ -385,6 +387,11 @@ impl Callbacks for RunCompilerNormallyCallbacks {
             true,
             true,
         );
+    }
+
+    fn after_analysis<'tcx>(&mut self, _compiler: &Compiler, _tcx: TyCtxt<'tcx>) -> Compilation {
+        crate::spec_mir::reset_state();
+        Compilation::Continue
     }
 }
 

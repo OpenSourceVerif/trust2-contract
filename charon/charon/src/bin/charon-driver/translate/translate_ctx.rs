@@ -34,6 +34,9 @@ pub struct TranslateCtx<'tcx> {
     >,
     /// Pre-borrowck MIR bodies stashed for specification closures and `TypeInvariant` methods.
     pub spec_mir_bodies: HashMap<rustc_hir::def_id::LocalDefId, rustc_middle::mir::Body<'tcx>>,
+    /// Extracted host specification sites awaiting translation into `PendingFunSpecs`.
+    pub(crate) host_spec_sites:
+        HashMap<rustc_hir::def_id::LocalDefId, Vec<crate::spec_mir::HostSpecSite>>,
     /// Host-level specifications extracted prior to `mir_borrowck`.
     pub pending_specs:
         std::collections::HashMap<FunDeclId, charon_lib::transform::collect_specs::PendingFunSpecs>,

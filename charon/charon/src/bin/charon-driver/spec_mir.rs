@@ -62,18 +62,30 @@ use std::sync::{LazyLock, Mutex};
 /// Global per-driver state shared with `rustc`'s `override_queries` function pointers.
 #[derive(Default)]
 struct GlobalSpecState {
+    /// Whether this compiler invocation translates the crate into ULLBC (`true`) or only erases
+    /// specifications for a normal dependency build (`false`).
+    record_host_sites: bool,
     /// Local definitions whose bodies are pure logical specifications.
     spec_bodies: FxHashSet<LocalDefId>,
-    /// Extracted specification sites per host body owner.
+    /// Extracted specification sites per host body owner, drained by `prepare_crate_specs`.
     host_sites: FxHashMap<LocalDefId, Vec<HostSpecSite>>,
 }
 
 static STATE: LazyLock<Mutex<GlobalSpecState>> =
     LazyLock::new(|| Mutex::new(GlobalSpecState::default()));
 
-/// Clears global specification state at the start of a driver invocation.
+/// Clears global specification state before or after a compiler invocation.
 pub(crate) fn reset_state() {
     let mut state = STATE.lock().unwrap();
+    state.record_host_sites = false;
+    state.spec_bodies.clear();
+    state.host_sites.clear();
+}
+
+/// Configures whether query hooks should retain `HostSpecSite` metadata for Charon translation.
+pub(crate) fn configure_session(record_host_sites: bool) {
+    let mut state = STATE.lock().unwrap();
+    state.record_host_sites = record_host_sites;
     state.spec_bodies.clear();
     state.host_sites.clear();
 }
@@ -85,17 +97,14 @@ pub(crate) fn install_query_overrides(providers: &mut Providers) {
     providers.queries.check_liveness = check_liveness_hook;
 }
 
-/// Returns the recorded host specification sites for `host_def_id`, if any.
-pub(crate) fn host_spec_sites(host_def_id: LocalDefId) -> Option<Vec<HostSpecSite>> {
-    STATE.lock().unwrap().host_sites.get(&host_def_id).cloned()
-}
-
 /// Prepared MIR artifacts extracted before borrow checking and drop elaboration.
 pub(crate) struct PreparedSpecMir<'tcx> {
     /// Pre-borrowck MIR bodies for all specification closures and `TypeInvariant` methods.
     pub spec_mir_bodies: FxHashMap<LocalDefId, Body<'tcx>>,
     /// Cached `BodyWithBorrowckFacts` computed while validating host specification anchors.
     pub borrowck_bodies: FxHashMap<LocalDefId, BodyWithBorrowckFacts<'tcx>>,
+    /// Extracted host specification sites per host body owner.
+    pub host_sites: FxHashMap<LocalDefId, Vec<HostSpecSite>>,
 }
 
 /// Kind of `trust2_contract::internal` helper call.
@@ -784,7 +793,7 @@ fn process_host_mir_built<'tcx>(tcx: TyCtxt<'tcx>, host_def_id: LocalDefId, body
     if !spec_closures.is_empty() || !sites.is_empty() {
         let mut state = STATE.lock().unwrap();
         state.spec_bodies.extend(spec_closures);
-        if !sites.is_empty() {
+        if state.record_host_sites && !sites.is_empty() {
             state.host_sites.insert(host_def_id, sites);
         }
     }
@@ -1047,34 +1056,32 @@ pub(crate) fn prepare_crate_specs<'tcx>(
         return Err(());
     }
 
-    let (spec_ids, host_sites): (Vec<LocalDefId>, Vec<(LocalDefId, Vec<HostSpecSite>)>) = {
-        let state = STATE.lock().unwrap();
+    let (spec_ids, host_sites): (Vec<LocalDefId>, FxHashMap<LocalDefId, Vec<HostSpecSite>>) = {
+        let mut state = STATE.lock().unwrap();
         (
             state.spec_bodies.iter().copied().collect(),
-            state
-                .host_sites
-                .iter()
-                .map(|(&k, v)| (k, v.clone()))
-                .collect(),
+            std::mem::take(&mut state.host_sites),
         )
     };
 
     let mut spec_mir_bodies = FxHashMap::default();
     for spec_id in spec_ids {
         let mir_steal = tcx.mir_built(spec_id);
-        if !mir_steal.is_stolen() {
-            spec_mir_bodies.insert(spec_id, mir_steal.borrow().clone());
-        }
+        assert!(
+            !mir_steal.is_stolen(),
+            "specification `mir_built` for {spec_id:?} was unexpectedly stolen before snapshot"
+        );
+        spec_mir_bodies.insert(spec_id, mir_steal.borrow().clone());
     }
 
     let mut borrowck_bodies: FxHashMap<LocalDefId, BodyWithBorrowckFacts<'tcx>> =
         FxHashMap::default();
     if !options.skip_borrowck {
-        for (host_def_id, sites) in &host_sites {
+        for (&host_def_id, sites) in &host_sites {
             let root = tcx
                 .typeck_root_def_id(host_def_id.to_def_id())
                 .expect_local();
-            if !borrowck_bodies.contains_key(host_def_id) {
+            if !borrowck_bodies.contains_key(&host_def_id) {
                 borrowck_bodies.extend(get_bodies_with_borrowck_facts(
                     tcx,
                     root,
@@ -1087,7 +1094,7 @@ pub(crate) fn prepare_crate_specs<'tcx>(
             if tcx.dcx().has_errors().is_some() {
                 return Err(());
             }
-            if let Some(facts) = borrowck_bodies.get(host_def_id) {
+            if let Some(facts) = borrowck_bodies.get(&host_def_id) {
                 validate_host_sites_at_anchors(tcx, facts, sites);
             }
         }
@@ -1099,6 +1106,7 @@ pub(crate) fn prepare_crate_specs<'tcx>(
     Ok(PreparedSpecMir {
         spec_mir_bodies,
         borrowck_bodies,
+        host_sites,
     })
 }
 
