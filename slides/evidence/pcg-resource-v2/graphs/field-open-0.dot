@@ -1,0 +1,20 @@
+digraph "graph" {
+layout=dot
+rankdir=LR
+ranksep=0.24
+nodesep=0.18
+node [fontsize=18, margin="0.07,0.04"]
+edge [fontsize=13, arrowsize=0.8]
+node [shape=rect]
+"p0" [label="RETURN: W", fontcolor="gray", color="gray", shape="rect", tooltip="()"]
+"p1" [label="a", fontcolor="gray", color="gray", shape="rect", tooltip="T"]
+"p2" [label="x: e", fontcolor="black", color="black", shape="rect", tooltip="&'?4 mut T"]
+"r0" [label="old x↓'?4", fontcolor="blue", color="blue", shape="octagon", tooltip="&'?4 mut T\
+"]
+"p3" [label="*x: E", fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="T"]
+    "p2" -> "p3" [label="", id="edge_0", color="green", edgetooltip=""]
+    "p1" -> "r0" [label="bw0", tooltip="bw0: Default '?2", id="edge_1", color="orange", edgetooltip=""]
+    "p1" -> "p3" [label="", id="edge_2", style="dashed", color="grey"]
+    "r0" -> "p3" [label="", id="edge_3", color="green", edgetooltip=""]
+}
+

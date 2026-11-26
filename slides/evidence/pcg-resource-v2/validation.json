@@ -1,0 +1,69 @@
+{
+  "errors": [],
+  "cases": 7,
+  "local_urls_checked": 795,
+  "evidence_hash_pairs_checked": 7,
+  "graph_frames_checked": 16,
+  "assertion_origins": 17,
+  "deck_sha256": "891f1edf7d3659c428e9fda7c438ae04e49b3847ca08335608919af25f8cebf2",
+  "text_measurement": "Conservative character wrapping with installed fonts; not browser rendering",
+  "layouts": [
+    {
+      "id": "borrow-create",
+      "rust_height": 150.0,
+      "annotation_height": 381,
+      "parameter_bindings_height": 26,
+      "definition_height": 264,
+      "fits": true
+    },
+    {
+      "id": "deref",
+      "rust_height": 150.0,
+      "annotation_height": 228,
+      "parameter_bindings_height": 26,
+      "definition_height": 154,
+      "fits": true
+    },
+    {
+      "id": "field-open",
+      "rust_height": 175.0,
+      "annotation_height": 272,
+      "parameter_bindings_height": 26,
+      "definition_height": 244,
+      "fits": true
+    },
+    {
+      "id": "reborrow-chain",
+      "rust_height": 200.0,
+      "annotation_height": 356,
+      "parameter_bindings_height": 26,
+      "definition_height": 156,
+      "fits": true
+    },
+    {
+      "id": "basic-wand",
+      "rust_height": 150.0,
+      "annotation_height": 363,
+      "parameter_bindings_height": 48,
+      "definition_height": 244,
+      "fits": true
+    },
+    {
+      "id": "call-edge",
+      "rust_height": 175.0,
+      "annotation_height": 250,
+      "parameter_bindings_height": 48,
+      "definition_height": 266,
+      "fits": true
+    },
+    {
+      "id": "apply",
+      "rust_height": 175.0,
+      "annotation_height": 378,
+      "parameter_bindings_height": 48,
+      "definition_height": 219,
+      "fits": true
+    }
+  ],
+  "browser_rendering": "Unavailable: installed Chromium lacks NSS/NSPR libraries"
+}

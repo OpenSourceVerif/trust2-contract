@@ -1,0 +1,99 @@
+{
+  "cases": [
+    {
+      "id": "borrow-create",
+      "case": "mutable",
+      "point": "evidence/pcg-encoding-20261125/points/mutable-test1-bb0-4-post_main.json",
+      "graph": "evidence/pcg-encoding-20261125/mutable/data/test1/bb0_stmt_4_post_main.svg",
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_file": "evidence/pcg-encoding-20261125/mutable/log/viper_program/program-check.vpr",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+      "run_exit_code": 0,
+      "parameter_bindings": [
+        "p=loc(a)，s=loc(x)，addr(x)=p，v=6。"
+      ]
+    },
+    {
+      "id": "deref",
+      "case": "mutable",
+      "point": "evidence/pcg-encoding-20261125/points/mutable-test1-bb0-6-pre_main.json",
+      "graph": "evidence/pcg-encoding-20261125/mutable/data/test1/bb0_stmt_6_pre_main.svg",
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_file": "evidence/pcg-encoding-20261125/mutable/log/viper_program/program-check.vpr",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+      "run_exit_code": 0,
+      "parameter_bindings": [
+        "q=addr(x)=loc(a)；v 是写入 4 之前的目标值。"
+      ]
+    },
+    {
+      "id": "field-open",
+      "case": "mutable",
+      "point": "evidence/pcg-encoding-20261125/points/mutable-test3-bb0-6-pre_main.json",
+      "graph": "evidence/pcg-encoding-20261125/mutable/data/test3/bb0_stmt_6_pre_main.svg",
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_file": "evidence/pcg-encoding-20261125/mutable/log/viper_program/program-check.vpr",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+      "run_exit_code": 0,
+      "parameter_bindings": [
+        "x 借用 a：q=addr(x)=loc(a)，s={f:=v}，field(q,f) 对应 a.f。"
+      ]
+    },
+    {
+      "id": "reborrow-chain",
+      "case": "mutable",
+      "point": "evidence/pcg-encoding-20261125/points/mutable-test2-bb0-13-pre_operands.json",
+      "graph": "evidence/pcg-encoding-20261125/mutable/data/test2/bb0_stmt_13_pre_operands.svg",
+      "source_sha256": "15ff6ed56fe356c110ad648cd9f2c06fc8cf66770c6756793c5b533b23b8bae1",
+      "viper_file": "evidence/pcg-encoding-20261125/mutable/log/viper_program/program-check.vpr",
+      "viper_sha256": "6367c002a9496ee36b5af5de0d6a1d179bf6f2ee47a92ff25b8d4575c074afe3",
+      "run_exit_code": 0,
+      "parameter_bindings": [
+        "q=addr(z)=addr(y)=addr(x)=loc(a)；x、y、z 是引用变量。"
+      ]
+    },
+    {
+      "id": "basic-wand",
+      "case": "reborrow",
+      "point": "evidence/pcg-resource-rules/basic-return-point.json",
+      "graph": "evidence/pcg-resource-rules/basic-return.svg",
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_file": "evidence/pcg-encoding-20261125/reborrow/log/viper_program/program-check.vpr",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+      "run_exit_code": 0,
+      "parameter_bindings": [
+        "p=addr_at(entry,num)，q=addr_at(return,result)=p。",
+        "result 表示返回引用；v 是目标的当前整数值。"
+      ]
+    },
+    {
+      "id": "call-edge",
+      "case": "reborrow",
+      "point": "evidence/pcg-encoding-20261125/points/reborrow-reborrow_user-bb0-8-post_main.json",
+      "graph": "evidence/pcg-encoding-20261125/reborrow/data/reborrow_user/bb0_stmt_8_post_main.svg",
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_file": "evidence/pcg-encoding-20261125/reborrow/log/viper_program/program-check.vpr",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+      "run_exit_code": 0,
+      "parameter_bindings": [
+        "p=loc(pt)，q=addr(y)=field(p,x)；y 是指向 pt.x 的返回引用。",
+        "y0=调用前 pt.y 的值，与变量 y 无关；loc(y) 是引用槽。"
+      ]
+    },
+    {
+      "id": "apply",
+      "case": "reborrow",
+      "point": "evidence/pcg-encoding-20261125/points/reborrow-reborrow_user-bb1-4-pre_operands.json",
+      "graph": "evidence/pcg-encoding-20261125/reborrow/data/reborrow_user/bb1_stmt_4_pre_operands.svg",
+      "source_sha256": "034c54c6fa812e451bd3f35df641b152f195337f3a43a9e1cfa8876d872be3ff",
+      "viper_file": "evidence/pcg-encoding-20261125/reborrow/log/viper_program/program-check.vpr",
+      "viper_sha256": "9f7dede309b546c51e1984f7dc94b5b3164a7aea25a257c7d500941f5400cdaa",
+      "run_exit_code": 0,
+      "parameter_bindings": [
+        "p=loc(pt)，q=addr(y)=field(p,x)。",
+        "y0=调用前 pt.y=72；当前 pt.x=72（由 *y 写入）。"
+      ]
+    }
+  ],
+  "annotation_semantics": "curated resource notation with links to frozen Prusti output"
+}

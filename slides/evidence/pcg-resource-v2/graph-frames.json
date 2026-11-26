@@ -1,0 +1,1232 @@
+{
+  "frames": [
+    {
+      "case": "borrow-create",
+      "index": 0,
+      "title": "借用前",
+      "location": "bb0[4]",
+      "phase": "PreMain",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test1/bb0_stmt_4_pre_main.dot",
+      "source_sha256": "5ec1de79868e8d602901c758dde0989e74d1f4234ba9315b8a323f2296090c44",
+      "display_dot": "evidence/pcg-resource-v2/graphs/borrow-create-0.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/borrow-create-0.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/borrow-create-0-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: W",
+          "display": "x: W"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2"
+        ],
+        "edges": []
+      },
+      "action": null
+    },
+    {
+      "case": "borrow-create",
+      "index": 1,
+      "title": "借用后：建立 Borrow",
+      "location": "bb0[4]",
+      "phase": "PostMain",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test1/bb0_stmt_4_post_main.dot",
+      "source_sha256": "31c26c4626d7947b885f2e3b819bc5a9c64cd3cd23657f1277e222be48923bbc",
+      "display_dot": "evidence/pcg-resource-v2/graphs/borrow-create-1.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/borrow-create-1.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/borrow-create-1-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: E",
+          "display": "x: E"
+        },
+        "r0": {
+          "original": "x↓'?4",
+          "display": "x↓'?4"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "r0"
+        ],
+        "edges": [
+          [
+            "p1",
+            "r0"
+          ]
+        ]
+      },
+      "action": null
+    },
+    {
+      "case": "deref",
+      "index": 0,
+      "title": "Deref Add 前",
+      "location": "bb0[6]",
+      "phase": "PreMain · action 1 后",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test1/bb0_stmt_6_PreMain_action_1.dot",
+      "source_sha256": "31c26c4626d7947b885f2e3b819bc5a9c64cd3cd23657f1277e222be48923bbc",
+      "display_dot": "evidence/pcg-resource-v2/graphs/deref-0.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/deref-0.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/deref-0-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: E",
+          "display": "x: E"
+        },
+        "r0": {
+          "original": "x↓'?4",
+          "display": "x↓'?4"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "r0"
+        ],
+        "edges": [
+          [
+            "p1",
+            "r0"
+          ]
+        ]
+      },
+      "action": {
+        "type": "LabelLifetimeProjection",
+        "data": "Unlabel lifetime projection (exact *x && in_source_nodes && edge_type(BorrowFlow { future_edge_kind: Some(FromExpansion) }))"
+      }
+    },
+    {
+      "case": "deref",
+      "index": 1,
+      "title": "Deref Add 后",
+      "location": "bb0[6]",
+      "phase": "PreMain · action 2 后",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test1/bb0_stmt_6_PreMain_action_2.dot",
+      "source_sha256": "38bfa49e9097bbc27be8595fd113c51d0f0170c283da80ae3ce8086c36bc1af1",
+      "display_dot": "evidence/pcg-resource-v2/graphs/deref-1.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/deref-1.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/deref-1-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: E",
+          "display": "x: E"
+        },
+        "r0": {
+          "original": "x↓'?4",
+          "display": "x↓'?4"
+        },
+        "p3": {
+          "original": "*x",
+          "display": "*x"
+        },
+        "r1": {
+          "original": "x↓'?4 before bb0[6]",
+          "display": "old x↓'?4"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "r0",
+          "r1"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p3"
+          ],
+          [
+            "p1",
+            "r0"
+          ],
+          [
+            "p2",
+            "p3"
+          ],
+          [
+            "r1",
+            "p3"
+          ]
+        ]
+      },
+      "action": {
+        "type": "AddEdge",
+        "data": "Add Edge {x} -> {*x}"
+      }
+    },
+    {
+      "case": "field-open",
+      "index": 0,
+      "title": "字段展开前：已有 *x",
+      "location": "bb0[6]",
+      "phase": "PreMain · action 3 后",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test3/bb0_stmt_6_PreMain_action_3.dot",
+      "source_sha256": "61949e15ae4dff36aee09bc9255f6c9176be070aa368ec7dc2c9d2abaf5a1421",
+      "display_dot": "evidence/pcg-resource-v2/graphs/field-open-0.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/field-open-0.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/field-open-0-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: e",
+          "display": "x: e"
+        },
+        "r0": {
+          "original": "x↓'?4 before bb0[6]",
+          "display": "old x↓'?4"
+        },
+        "p3": {
+          "original": "*x: E",
+          "display": "*x: E"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "r0"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p3"
+          ],
+          [
+            "p1",
+            "r0"
+          ],
+          [
+            "p2",
+            "p3"
+          ],
+          [
+            "r0",
+            "p3"
+          ]
+        ]
+      },
+      "action": {
+        "type": "LabelLifetimeProjection",
+        "data": "Label lifetime projection x↓'?4 with label before bb0[6]"
+      }
+    },
+    {
+      "case": "field-open",
+      "index": 1,
+      "title": "字段展开后：新增 (*x).f",
+      "location": "bb0[6]",
+      "phase": "PreMain · action 4 后",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test3/bb0_stmt_6_PreMain_action_4.dot",
+      "source_sha256": "34e1b1746a4005f3bc55ccd8c67fdc46c4238c10d08a85daff0269c53ee2c9fc",
+      "display_dot": "evidence/pcg-resource-v2/graphs/field-open-1.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/field-open-1.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/field-open-1-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: e",
+          "display": "x: e"
+        },
+        "r0": {
+          "original": "x↓'?4 before bb0[6]",
+          "display": "old x↓'?4"
+        },
+        "p3": {
+          "original": "*x",
+          "display": "*x"
+        },
+        "p4": {
+          "original": "(*x).f: E",
+          "display": "(*x).f: E"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "r0"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p3"
+          ],
+          [
+            "p1",
+            "r0"
+          ],
+          [
+            "p2",
+            "p3"
+          ],
+          [
+            "p3",
+            "p4"
+          ],
+          [
+            "r0",
+            "p3"
+          ]
+        ]
+      },
+      "action": {
+        "type": "AddEdge",
+        "data": "Add Edge {*x} -> {(*x).f}"
+      }
+    },
+    {
+      "case": "reborrow-chain",
+      "index": 0,
+      "title": "回收前",
+      "location": "bb0[13]",
+      "phase": "Initial",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test2/bb0_stmt_13_initial.dot",
+      "source_sha256": "796e759058379ccb0e656934ff7a6a3c0e821f537c21db53c692efcaae126132",
+      "display_dot": "evidence/pcg-resource-v2/graphs/reborrow-chain-0.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-0.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-0-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: e",
+          "display": "x: e"
+        },
+        "p3": {
+          "original": "y: e",
+          "display": "y: e"
+        },
+        "p4": {
+          "original": "z: e",
+          "display": "z: e"
+        },
+        "r0": {
+          "original": "x↓'?6 before bb0[7]",
+          "display": "old x↓'?6"
+        },
+        "p5": {
+          "original": "*x",
+          "display": "*x"
+        },
+        "p6": {
+          "original": "*y",
+          "display": "*y"
+        },
+        "r1": {
+          "original": "y↓'?7 before bb0[10]",
+          "display": "old y↓'?7"
+        },
+        "r2": {
+          "original": "z↓'?8 before bb0[12]",
+          "display": "old z↓'?8"
+        },
+        "p7": {
+          "original": "*z: E",
+          "display": "*z: E"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5",
+          "p6",
+          "p7",
+          "r0",
+          "r1",
+          "r2"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p5"
+          ],
+          [
+            "p1",
+            "r0"
+          ],
+          [
+            "p2",
+            "p5"
+          ],
+          [
+            "p3",
+            "p6"
+          ],
+          [
+            "p4",
+            "p7"
+          ],
+          [
+            "p5",
+            "p6"
+          ],
+          [
+            "p5",
+            "r1"
+          ],
+          [
+            "p6",
+            "p7"
+          ],
+          [
+            "p6",
+            "r2"
+          ],
+          [
+            "r0",
+            "p5"
+          ],
+          [
+            "r1",
+            "p6"
+          ],
+          [
+            "r2",
+            "p7"
+          ]
+        ]
+      },
+      "action": null
+    },
+    {
+      "case": "reborrow-chain",
+      "index": 1,
+      "title": "归还 z，恢复 *y",
+      "location": "bb0[13]",
+      "phase": "PreOperands · action 6 后",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test2/bb0_stmt_13_PreOperands_action_6.dot",
+      "source_sha256": "ed6b1b7313c608367454d1657df4568cb62e65658e5f769bb91e2101ab2ccef2",
+      "display_dot": "evidence/pcg-resource-v2/graphs/reborrow-chain-1.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-1.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-1-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: e",
+          "display": "x: e"
+        },
+        "p3": {
+          "original": "y: e",
+          "display": "y: e"
+        },
+        "p4": {
+          "original": "z: E",
+          "display": "z: E"
+        },
+        "r0": {
+          "original": "z↓'?8",
+          "display": "z↓'?8"
+        },
+        "r1": {
+          "original": "x↓'?6 before bb0[7]",
+          "display": "old x↓'?6"
+        },
+        "p5": {
+          "original": "*x",
+          "display": "*x"
+        },
+        "p6": {
+          "original": "*y: E",
+          "display": "*y: E"
+        },
+        "r2": {
+          "original": "y↓'?7 before bb0[10]",
+          "display": "old y↓'?7"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5",
+          "p6",
+          "r0",
+          "r1",
+          "r2"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p5"
+          ],
+          [
+            "p1",
+            "r1"
+          ],
+          [
+            "p2",
+            "p5"
+          ],
+          [
+            "p3",
+            "p6"
+          ],
+          [
+            "p5",
+            "p6"
+          ],
+          [
+            "p5",
+            "r2"
+          ],
+          [
+            "r1",
+            "p5"
+          ],
+          [
+            "r2",
+            "p6"
+          ]
+        ]
+      },
+      "action": {
+        "type": "Restore",
+        "data": "Restore *y to E"
+      }
+    },
+    {
+      "case": "reborrow-chain",
+      "index": 2,
+      "title": "归还 y，恢复 *x",
+      "location": "bb0[13]",
+      "phase": "PreOperands · action 14 后",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test2/bb0_stmt_13_PreOperands_action_14.dot",
+      "source_sha256": "698310d471f1f9d436c193c1734ca11cb8b863b8af18d53f680e17a561301c31",
+      "display_dot": "evidence/pcg-resource-v2/graphs/reborrow-chain-2.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-2.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-2-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a",
+          "display": "a"
+        },
+        "p2": {
+          "original": "x: e",
+          "display": "x: e"
+        },
+        "p3": {
+          "original": "y: E",
+          "display": "y: E"
+        },
+        "r0": {
+          "original": "y↓'?7",
+          "display": "y↓'?7"
+        },
+        "p4": {
+          "original": "z: W",
+          "display": "z: W"
+        },
+        "r1": {
+          "original": "x↓'?6 before bb0[7]",
+          "display": "old x↓'?6"
+        },
+        "p5": {
+          "original": "*x: E",
+          "display": "*x: E"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5",
+          "r0",
+          "r1"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p5"
+          ],
+          [
+            "p1",
+            "r1"
+          ],
+          [
+            "p2",
+            "p5"
+          ],
+          [
+            "r1",
+            "p5"
+          ]
+        ]
+      },
+      "action": {
+        "type": "Restore",
+        "data": "Restore *x to E"
+      }
+    },
+    {
+      "case": "reborrow-chain",
+      "index": 3,
+      "title": "归还 x，恢复 a",
+      "location": "bb0[13]",
+      "phase": "PreOperands · action 22 后",
+      "source_dot": "evidence/pcg-encoding-20261125/mutable/data/test2/bb0_stmt_13_PreOperands_action_22.dot",
+      "source_sha256": "66a10116290327b9da63b019e20bc03b8106ac19c6fecabcbe0a8d0a32ae673a",
+      "display_dot": "evidence/pcg-resource-v2/graphs/reborrow-chain-3.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-3.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/reborrow-chain-3-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "a: E",
+          "display": "a: E"
+        },
+        "p2": {
+          "original": "x: E",
+          "display": "x: E"
+        },
+        "r0": {
+          "original": "x↓'?6",
+          "display": "x↓'?6"
+        },
+        "p3": {
+          "original": "y: W",
+          "display": "y: W"
+        },
+        "p4": {
+          "original": "z: W",
+          "display": "z: W"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "r0"
+        ],
+        "edges": []
+      },
+      "action": {
+        "type": "RegainLoanedCapability",
+        "data": {
+          "place": "a",
+          "capability": "Exclusive"
+        }
+      }
+    },
+    {
+      "case": "basic-wand",
+      "index": 0,
+      "title": "输入到返回引用的依赖链",
+      "location": "bb0[7]",
+      "phase": "Initial",
+      "source_dot": "evidence/pcg-encoding-20261125/reborrow/data/basic/bb0_stmt_7_initial.dot",
+      "source_sha256": "d7d2054d298ffbae8ab51716e1dcb2679f430d40bf683356a9b56b521707b713",
+      "display_dot": "evidence/pcg-resource-v2/graphs/basic-wand-0.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/basic-wand-0.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/basic-wand-0-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: E",
+          "display": "RETURN: E"
+        },
+        "r0": {
+          "original": "RETURN↓'?7",
+          "display": "RETURN↓'?7"
+        },
+        "p1": {
+          "original": "num: e",
+          "display": "num: e"
+        },
+        "p2": {
+          "original": "(*_3) before bb0[5]",
+          "display": "old (*_3)"
+        },
+        "p3": {
+          "original": "_3 before bb0[5]",
+          "display": "old _3"
+        },
+        "r1": {
+          "original": "_3 before bb0[5]↓'?10 before bb0[3]",
+          "display": "old _3↓'?10"
+        },
+        "p4": {
+          "original": "*num",
+          "display": "*num"
+        },
+        "p5": {
+          "original": "(*_2) before bb0[6]",
+          "display": "old (*_2)"
+        },
+        "p6": {
+          "original": "_2 before bb0[6]",
+          "display": "old _2"
+        },
+        "r2": {
+          "original": "_2 before bb0[6]↓'?9 before bb0[4]",
+          "display": "old _2↓'?9"
+        },
+        "r3": {
+          "original": "num↓'?8 before bb0[2]",
+          "display": "old num↓'?8"
+        },
+        "r4": {
+          "original": "Remote(_1)↓'?8",
+          "display": "Remote(_1)↓'?8"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5",
+          "p6",
+          "r0",
+          "r1",
+          "r2",
+          "r3",
+          "r4"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p4"
+          ],
+          [
+            "p2",
+            "p5"
+          ],
+          [
+            "p2",
+            "r2"
+          ],
+          [
+            "p3",
+            "p2"
+          ],
+          [
+            "p4",
+            "p2"
+          ],
+          [
+            "p4",
+            "r1"
+          ],
+          [
+            "p5",
+            "r0"
+          ],
+          [
+            "p6",
+            "p5"
+          ],
+          [
+            "r1",
+            "p2"
+          ],
+          [
+            "r2",
+            "p5"
+          ],
+          [
+            "r3",
+            "p4"
+          ],
+          [
+            "r4",
+            "r3"
+          ]
+        ]
+      },
+      "action": null
+    },
+    {
+      "case": "call-edge",
+      "index": 0,
+      "title": "coupled Add 前",
+      "location": "bb0[8]",
+      "phase": "PostMain · action 0 后",
+      "source_dot": "evidence/pcg-encoding-20261125/reborrow/data/reborrow_user/bb0_stmt_8_PostMain_action_0.dot",
+      "source_sha256": "21f3bb68903449796d495c43838aeb2982b6edd5b28681af54a6525e9f76b71a",
+      "display_dot": "evidence/pcg-resource-v2/graphs/call-edge-0.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/call-edge-0.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/call-edge-0-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "pt",
+          "display": "pt"
+        },
+        "p2": {
+          "original": "y: E",
+          "display": "y: E"
+        },
+        "r0": {
+          "original": "y↓'?7",
+          "display": "y↓'?7"
+        },
+        "p3": {
+          "original": "_3: W",
+          "display": "_3: W"
+        },
+        "p4": {
+          "original": "_4: e",
+          "display": "_4: e"
+        },
+        "r1": {
+          "original": "_4↓'?9 before bb0[7]",
+          "display": "old _4↓'?9"
+        },
+        "p5": {
+          "original": "(*_4)",
+          "display": "(*_4)"
+        },
+        "r2": {
+          "original": "_3 before bb0[8]↓'?8 before bb0[8]",
+          "display": "old _3↓'?8"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5",
+          "r0",
+          "r1",
+          "r2"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p5"
+          ],
+          [
+            "p1",
+            "r1"
+          ],
+          [
+            "p4",
+            "p5"
+          ],
+          [
+            "p5",
+            "r2"
+          ],
+          [
+            "r1",
+            "p5"
+          ]
+        ]
+      },
+      "action": {
+        "type": "LabelLifetimeProjection",
+        "data": "Label lifetime projection _3 before bb0[8]↓'?8 with label before bb0[8]"
+      }
+    },
+    {
+      "case": "call-edge",
+      "index": 1,
+      "title": "coupled Add 后",
+      "location": "bb0[8]",
+      "phase": "PostMain · action 1 后",
+      "source_dot": "evidence/pcg-encoding-20261125/reborrow/data/reborrow_user/bb0_stmt_8_PostMain_action_1.dot",
+      "source_sha256": "eab7d484b64a8af3c1e01a800657a279b6d51f2842067f243ad32705d9593570",
+      "display_dot": "evidence/pcg-resource-v2/graphs/call-edge-1.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/call-edge-1.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/call-edge-1-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "pt",
+          "display": "pt"
+        },
+        "p2": {
+          "original": "y: E",
+          "display": "y: E"
+        },
+        "r0": {
+          "original": "y↓'?7",
+          "display": "y↓'?7"
+        },
+        "p3": {
+          "original": "_3: W",
+          "display": "_3: W"
+        },
+        "p4": {
+          "original": "_4: e",
+          "display": "_4: e"
+        },
+        "r1": {
+          "original": "_3 before bb0[8]↓'?8 before bb0[8]",
+          "display": "old _3↓'?8"
+        },
+        "p5": {
+          "original": "(*_4)",
+          "display": "(*_4)"
+        },
+        "r2": {
+          "original": "_4↓'?9 before bb0[7]",
+          "display": "old _4↓'?9"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "p5",
+          "r0",
+          "r1",
+          "r2"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p5"
+          ],
+          [
+            "p1",
+            "r2"
+          ],
+          [
+            "p4",
+            "p5"
+          ],
+          [
+            "p5",
+            "r1"
+          ],
+          [
+            "r1",
+            "r0"
+          ],
+          [
+            "r2",
+            "p5"
+          ]
+        ]
+      },
+      "action": {
+        "type": "AddEdge",
+        "data": "Add Edge call get_mut_x at bb0[8]: _3 before bb0[8]↓'?8 before bb0[8] -> y↓'?7"
+      }
+    },
+    {
+      "case": "apply",
+      "index": 0,
+      "title": "coupled edge 尚在",
+      "location": "bb1[4]",
+      "phase": "PreOperands · action 4 后",
+      "source_dot": "evidence/pcg-encoding-20261125/reborrow/data/reborrow_user/bb1_stmt_4_PreOperands_action_4.dot",
+      "source_sha256": "5a4123c2e091b80a5af822af1724e5382baa173b74e55d5b4aa66eada1ecc33d",
+      "display_dot": "evidence/pcg-resource-v2/graphs/apply-0.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/apply-0.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/apply-0-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "pt",
+          "display": "pt"
+        },
+        "p2": {
+          "original": "y: E",
+          "display": "y: E"
+        },
+        "r0": {
+          "original": "y↓'?7",
+          "display": "y↓'?7"
+        },
+        "r1": {
+          "original": "_3 before bb0[8]↓'?8 before bb0[8]",
+          "display": "old _3↓'?8"
+        },
+        "p3": {
+          "original": "(*_4) before bb1[2]",
+          "display": "old (*_4)"
+        },
+        "p4": {
+          "original": "_4 before bb1[2]",
+          "display": "old _4"
+        },
+        "r2": {
+          "original": "_4 before bb1[2]↓'?9 before bb0[7]",
+          "display": "old _4↓'?9"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "r0",
+          "r1",
+          "r2"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p3"
+          ],
+          [
+            "p1",
+            "r2"
+          ],
+          [
+            "p3",
+            "r1"
+          ],
+          [
+            "p4",
+            "p3"
+          ],
+          [
+            "r1",
+            "r0"
+          ],
+          [
+            "r2",
+            "p3"
+          ]
+        ]
+      },
+      "action": {
+        "type": "LabelLifetimeProjection",
+        "data": "Unlabel lifetime projection y↓'?7 FUTURE"
+      }
+    },
+    {
+      "case": "apply",
+      "index": 1,
+      "title": "删除 coupled edge → apply",
+      "location": "bb1[4]",
+      "phase": "PreOperands · action 5 后",
+      "source_dot": "evidence/pcg-encoding-20261125/reborrow/data/reborrow_user/bb1_stmt_4_PreOperands_action_5.dot",
+      "source_sha256": "2110b896fdbb9fb5de0fa46ec93ffc726b2f36a1399e86066d2332ca0043def8",
+      "display_dot": "evidence/pcg-resource-v2/graphs/apply-1.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/apply-1.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/apply-1-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "pt",
+          "display": "pt"
+        },
+        "p2": {
+          "original": "y: E",
+          "display": "y: E"
+        },
+        "r0": {
+          "original": "y↓'?7",
+          "display": "y↓'?7"
+        },
+        "p3": {
+          "original": "(*_4) before bb1[2]",
+          "display": "old (*_4)"
+        },
+        "p4": {
+          "original": "_4 before bb1[2]",
+          "display": "old _4"
+        },
+        "r1": {
+          "original": "_4 before bb1[2]↓'?9 before bb0[7]",
+          "display": "old _4↓'?9"
+        },
+        "r2": {
+          "original": "_3 before bb0[8]↓'?8 before bb0[8]",
+          "display": "old _3↓'?8"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2",
+          "p3",
+          "p4",
+          "r0",
+          "r1",
+          "r2"
+        ],
+        "edges": [
+          [
+            "p1",
+            "p3"
+          ],
+          [
+            "p1",
+            "r1"
+          ],
+          [
+            "p3",
+            "r2"
+          ],
+          [
+            "p4",
+            "p3"
+          ],
+          [
+            "r1",
+            "p3"
+          ]
+        ]
+      },
+      "action": {
+        "type": "RemoveEdge",
+        "data": "Remove Edge call get_mut_x at bb0[8]: _3 before bb0[8]↓'?8 before bb0[8] -> y↓'?7"
+      }
+    },
+    {
+      "case": "apply",
+      "index": 2,
+      "title": "回收其余依赖，恢复 pt",
+      "location": "bb1[4]",
+      "phase": "PreOperands · action 10 后",
+      "source_dot": "evidence/pcg-encoding-20261125/reborrow/data/reborrow_user/bb1_stmt_4_PreOperands_action_10.dot",
+      "source_sha256": "fdb320d897cf530e9be35d135c868c81051ea059383977fd037cbd572943dcc9",
+      "display_dot": "evidence/pcg-resource-v2/graphs/apply-2.dot",
+      "display_svg": "evidence/pcg-resource-v2/graphs/apply-2.svg",
+      "original_svg": "evidence/pcg-resource-v2/graphs/apply-2-original.svg",
+      "labels": {
+        "p0": {
+          "original": "RETURN: W",
+          "display": "RETURN: W"
+        },
+        "p1": {
+          "original": "pt: E",
+          "display": "pt: E"
+        },
+        "p2": {
+          "original": "y: W",
+          "display": "y: W"
+        }
+      },
+      "signature": {
+        "nodes": [
+          "p0",
+          "p1",
+          "p2"
+        ],
+        "edges": []
+      },
+      "action": {
+        "type": "RegainLoanedCapability",
+        "data": {
+          "place": "pt",
+          "capability": "Exclusive"
+        }
+      }
+    }
+  ],
+  "display_policy": "Exact topology and colors; shortened labels, emphasized edges and horizontal layout. Original snapshots available on click."
+}

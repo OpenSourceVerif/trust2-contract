@@ -1,0 +1,43 @@
+digraph "graph" {
+layout=dot
+rankdir=LR
+ranksep=0.24
+nodesep=0.18
+node [fontsize=18, margin="0.07,0.04"]
+edge [fontsize=13, arrowsize=0.8]
+node [shape=rect]
+"p0" [label="RETURN: E", fontcolor="black", color="black", shape="rect", tooltip="&'?7 mut i32"]
+"r0" [label="RETURN↓'?7", fontcolor="blue", color="blue", shape="octagon", tooltip="&'?7 mut i32\
+"]
+"p1" [label="pt: e", fontcolor="black", color="black", shape="rect", tooltip="&'?8 mut Point"]
+"p2" [label="old (*_3)", fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p3" [label="old _3", fontcolor="gray", color="gray", shape="rect", tooltip="&'?10 mut i32"]
+"r1" [label="old _3↓'?10", fontcolor="blue", color="blue", shape="octagon", tooltip="&'?10 mut i32\
+"]
+"r2" [label="old _2↓'?9", fontcolor="blue", color="blue", shape="octagon", tooltip="&'?9 mut i32\
+"]
+"p4" [label="old (*_2)", fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"r3" [label="Remote(_1)↓'?8", fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut Point\
+"]
+"r4" [label="old pt↓'?8", fontcolor="blue", color="blue", shape="octagon", tooltip="&'?8 mut Point\
+"]
+"p5" [label="old _2", fontcolor="gray", color="gray", shape="rect", tooltip="&'?9 mut i32"]
+"p6" [label="*pt", fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="Point"]
+"p7" [label="(*pt).x", fontcolor="gray", color="gray", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+"p8" [label="(*pt).y: E", fontcolor="darkgreen", color="darkgreen", shape="rect", style="rounded", penwidth=1.5, tooltip="i32"]
+    "p7" -> "p2" [label="", id="edge_0", style="dashed", color="grey"]
+    "r3" -> "r4" [label="InitialBorrows", id="edge_1", color="purple"]
+    "p5" -> "p4" [label="", id="edge_2", color="green", edgetooltip=""]
+    "r1" -> "p2" [label="", id="edge_3", color="green", edgetooltip=""]
+    "p2" -> "r2" [label="bw1", tooltip="bw1: Default '?5", id="edge_4", color="orange", edgetooltip="", penwidth=3.5]
+    "p1" -> "p6" [label="", id="edge_5", color="green", edgetooltip=""]
+    "p4" -> "r0" [label="bw2", tooltip="bw2: Default '?6", id="edge_6", color="orange", edgetooltip="", penwidth=3.5]
+    "p2" -> "p4" [label="", id="edge_7", style="dashed", color="grey"]
+    "r4" -> "p6" [label="", id="edge_8", color="green", edgetooltip=""]
+    "p7" -> "r1" [label="bw0", tooltip="bw0: Default '?4", id="edge_9", color="orange", edgetooltip="", penwidth=3.5]
+    "p6" -> "p8" [label="", id="edge_10", color="green", edgetooltip=""]
+    "p3" -> "p2" [label="", id="edge_11", color="green", edgetooltip=""]
+    "r2" -> "p4" [label="", id="edge_12", color="green", edgetooltip=""]
+    "p6" -> "p7" [label="", id="edge_13", color="green", edgetooltip=""]
+}
+

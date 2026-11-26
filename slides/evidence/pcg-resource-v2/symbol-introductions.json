@@ -1,0 +1,936 @@
+{
+  "panels": [
+    {
+      "case": "borrow-create",
+      "part": 3,
+      "entries": [
+        {
+          "key": "integer",
+          "new": true,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        },
+        {
+          "key": "generic",
+          "new": true,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "generic：封装资源",
+          "paragraphs": [
+            "make_generic / generic 按类型把具体资源封装为抽象资源，保持目标值。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "borrow-create",
+      "part": 4,
+      "entries": [
+        {
+          "key": "reference",
+          "new": true,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "Ref / DirectMut：引用槽资源",
+          "paragraphs": [
+            "Ref(s,p) := DirectMut I32 s (p,unit)。",
+            "DirectMut T s (p,m) 持有槽 s 的地址 p 与元数据 m，不含目标资源；unit 是 i32 的空元数据。"
+          ]
+        },
+        {
+          "key": "sep",
+          "new": true,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "**：分离合取",
+          "paragraphs": [
+            "P ** Q：同时持有可分离组合的 P、Q 资源。"
+          ]
+        },
+        {
+          "key": "annotation",
+          "new": true,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "assert / proof：检查 / 操作",
+          "paragraphs": [
+            "assert 检查当前位置的断言；proof 标注编码器安排的资源或证明操作。"
+          ]
+        },
+        {
+          "key": "addresses",
+          "new": true,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "loc / addr：槽 / 目标地址",
+          "paragraphs": [
+            "loc(x) 是变量 x 的槽地址；addr(x) 是引用 x 指向的目标地址，两者不同。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        },
+        {
+          "key": "generic",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "generic：封装资源",
+          "paragraphs": [
+            "make_generic / generic 按类型把具体资源封装为抽象资源，保持目标值。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "deref",
+      "part": 3,
+      "entries": [
+        {
+          "key": "concrete",
+          "new": true,
+          "first": {
+            "page": 2,
+            "case": "deref",
+            "part": 3
+          },
+          "label": "concrete：打开资源",
+          "paragraphs": [
+            "make_concrete / concrete 按目标类型打开 GenericOwn，得到具体资源并保持值。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "deref",
+      "part": 4,
+      "entries": [
+        {
+          "key": "annotation",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "assert / proof：检查 / 操作",
+          "paragraphs": [
+            "assert 检查当前位置的断言；proof 标注编码器安排的资源或证明操作。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        },
+        {
+          "key": "concrete",
+          "new": false,
+          "first": {
+            "page": 2,
+            "case": "deref",
+            "part": 3
+          },
+          "label": "concrete：打开资源",
+          "paragraphs": [
+            "make_concrete / concrete 按目标类型打开 GenericOwn，得到具体资源并保持值。"
+          ]
+        },
+        {
+          "key": "addresses",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "loc / addr：槽 / 目标地址",
+          "paragraphs": [
+            "loc(x) 是变量 x 的槽地址；addr(x) 是引用 x 指向的目标地址，两者不同。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "field-open",
+      "part": 3,
+      "entries": [
+        {
+          "key": "field",
+          "new": true,
+          "first": {
+            "page": 3,
+            "case": "field-open",
+            "part": 3
+          },
+          "label": "U / Own_T / field：字段资源与位置",
+          "paragraphs": [
+            "U(p,v) := cell 1 p u32_val v；Own_T(q,s) := U(field(q,f),s.f)。",
+            "field(q,f) 是字段 f 的逻辑地址；s.f 是结构体快照中的值。"
+          ]
+        },
+        {
+          "key": "unfold",
+          "new": true,
+          "first": {
+            "page": 3,
+            "case": "field-open",
+            "part": 3
+          },
+          "label": "unfold：展开类型资源谓词",
+          "paragraphs": [
+            "unfold Own_T 按谓词定义暴露字段资源；PCG 投影边决定何时需要展开。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "field-open",
+      "part": 4,
+      "entries": [
+        {
+          "key": "exists",
+          "new": true,
+          "first": {
+            "page": 3,
+            "case": "field-open",
+            "part": 4
+          },
+          "label": "EX：存在量化",
+          "paragraphs": [
+            "EX s, P(s) 表示存在某个 s 满足资源断言 P(s)，不预先指定 s 的值。"
+          ]
+        },
+        {
+          "key": "hidden_struct",
+          "new": true,
+          "first": {
+            "page": 3,
+            "case": "field-open",
+            "part": 4
+          },
+          "label": "R_T：隐藏结构体快照",
+          "paragraphs": [
+            "R_T(q) := EX s, Own_T(q,s)；持有结构体资源，但隐藏其当前字段快照。"
+          ]
+        },
+        {
+          "key": "field",
+          "new": false,
+          "first": {
+            "page": 3,
+            "case": "field-open",
+            "part": 3
+          },
+          "label": "U / Own_T / field：字段资源与位置",
+          "paragraphs": [
+            "U(p,v) := cell 1 p u32_val v；Own_T(q,s) := U(field(q,f),s.f)。",
+            "field(q,f) 是字段 f 的逻辑地址；s.f 是结构体快照中的值。"
+          ]
+        },
+        {
+          "key": "unfold",
+          "new": false,
+          "first": {
+            "page": 3,
+            "case": "field-open",
+            "part": 3
+          },
+          "label": "unfold：展开类型资源谓词",
+          "paragraphs": [
+            "unfold Own_T 按谓词定义暴露字段资源；PCG 投影边决定何时需要展开。"
+          ]
+        },
+        {
+          "key": "annotation",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "assert / proof：检查 / 操作",
+          "paragraphs": [
+            "assert 检查当前位置的断言；proof 标注编码器安排的资源或证明操作。"
+          ]
+        },
+        {
+          "key": "addresses",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "loc / addr：槽 / 目标地址",
+          "paragraphs": [
+            "loc(x) 是变量 x 的槽地址；addr(x) 是引用 x 指向的目标地址，两者不同。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "reborrow-chain",
+      "part": 3,
+      "entries": [
+        {
+          "key": "recovery",
+          "new": true,
+          "first": {
+            "page": 4,
+            "case": "reborrow-chain",
+            "part": 3
+          },
+          "label": "ready / blocker：可回收条件",
+          "paragraphs": [
+            "e 是待回收边；blocker 是阻塞节点。ready(e) 要求各 blocker 不再被剩余边阻塞；箭头给出归还顺序。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "reborrow-chain",
+      "part": 4,
+      "entries": [
+        {
+          "key": "pure",
+          "new": true,
+          "first": {
+            "page": 4,
+            "case": "reborrow-chain",
+            "part": 4
+          },
+          "label": "!!：纯断言",
+          "paragraphs": [
+            "!!φ 把不占用堆资源的逻辑事实 φ 放入资源断言；本例记录目标地址相等。"
+          ]
+        },
+        {
+          "key": "close",
+          "new": true,
+          "first": {
+            "page": 4,
+            "case": "reborrow-chain",
+            "part": 4
+          },
+          "label": "close / return_to：回收操作别名",
+          "paragraphs": [
+            "close := make_generic I32；return_to := make_concrete I32；顺序由借用依赖决定。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        },
+        {
+          "key": "sep",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "**：分离合取",
+          "paragraphs": [
+            "P ** Q：同时持有可分离组合的 P、Q 资源。"
+          ]
+        },
+        {
+          "key": "annotation",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "assert / proof：检查 / 操作",
+          "paragraphs": [
+            "assert 检查当前位置的断言；proof 标注编码器安排的资源或证明操作。"
+          ]
+        },
+        {
+          "key": "addresses",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "loc / addr：槽 / 目标地址",
+          "paragraphs": [
+            "loc(x) 是变量 x 的槽地址；addr(x) 是引用 x 指向的目标地址，两者不同。"
+          ]
+        },
+        {
+          "key": "generic",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "generic：封装资源",
+          "paragraphs": [
+            "make_generic / generic 按类型把具体资源封装为抽象资源，保持目标值。"
+          ]
+        },
+        {
+          "key": "concrete",
+          "new": false,
+          "first": {
+            "page": 2,
+            "case": "deref",
+            "part": 3
+          },
+          "label": "concrete：打开资源",
+          "paragraphs": [
+            "make_concrete / concrete 按目标类型打开 GenericOwn，得到具体资源并保持值。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "basic-wand",
+      "part": 3,
+      "entries": [
+        {
+          "key": "wand",
+          "new": true,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 3
+          },
+          "label": "R / -*：目标资源与归还凭证",
+          "paragraphs": [
+            "R(p) := EX v, GenericOwn I32 p v；隐藏当前整数值。",
+            "P -* Q 是 magic wand：以后交回 P，可消耗这份凭证取得 Q；不表示立刻拥有 Q。"
+          ]
+        },
+        {
+          "key": "function_contract",
+          "new": true,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 3
+          },
+          "label": "requires / ensures：函数契约",
+          "paragraphs": [
+            "requires 是入口所需资源；ensures 是返回后保证。'l: 's 表示输入生命周期覆盖返回借用。"
+          ]
+        },
+        {
+          "key": "exists",
+          "new": false,
+          "first": {
+            "page": 3,
+            "case": "field-open",
+            "part": 4
+          },
+          "label": "EX：存在量化",
+          "paragraphs": [
+            "EX s, P(s) 表示存在某个 s 满足资源断言 P(s)，不预先指定 s 的值。"
+          ]
+        },
+        {
+          "key": "sep",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "**：分离合取",
+          "paragraphs": [
+            "P ** Q：同时持有可分离组合的 P、Q 资源。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "basic-wand",
+      "part": 4,
+      "entries": [
+        {
+          "key": "package",
+          "new": true,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 4
+          },
+          "label": "package：证明归还",
+          "paragraphs": [
+            "package 假设将来交回左侧资源，验证恢复右侧的步骤；return_unblock_plan 是返回处解阻计划。"
+          ]
+        },
+        {
+          "key": "old_address",
+          "new": true,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 4
+          },
+          "label": "addr_at：标签处目标",
+          "paragraphs": [
+            "addr_at(L,r) 取标签 L 处引用 r 的目标地址；entry / return 分别是入口 / 返回状态。"
+          ]
+        },
+        {
+          "key": "wand",
+          "new": false,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 3
+          },
+          "label": "R / -*：目标资源与归还凭证",
+          "paragraphs": [
+            "R(p) := EX v, GenericOwn I32 p v；隐藏当前整数值。",
+            "P -* Q 是 magic wand：以后交回 P，可消耗这份凭证取得 Q；不表示立刻拥有 Q。"
+          ]
+        },
+        {
+          "key": "function_contract",
+          "new": false,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 3
+          },
+          "label": "requires / ensures：函数契约",
+          "paragraphs": [
+            "requires 是入口所需资源；ensures 是返回后保证。'l: 's 表示输入生命周期覆盖返回借用。"
+          ]
+        },
+        {
+          "key": "annotation",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "assert / proof：检查 / 操作",
+          "paragraphs": [
+            "assert 检查当前位置的断言；proof 标注编码器安排的资源或证明操作。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "call-edge",
+      "part": 3,
+      "entries": [
+        {
+          "key": "point_wand",
+          "new": true,
+          "first": {
+            "page": 6,
+            "case": "call-edge",
+            "part": 3
+          },
+          "label": "W / G_Point / ALL：归还契约",
+          "paragraphs": [
+            "G_Point(p,s) := GenericOwn Point p s；(z,y0) 是 {x:=z; y:=y0} 的快照缩写。",
+            "W(q,p,y0) := ALL z, G(q,z) -* G_Point(p,(z,y0))；ALL z 覆盖未来归还的任意字段值。"
+          ]
+        },
+        {
+          "key": "input_point",
+          "new": true,
+          "first": {
+            "page": 6,
+            "case": "call-edge",
+            "part": 3
+          },
+          "label": "P：调用前的整体资源",
+          "paragraphs": [
+            "P(p) := EX s, G_Point(p,s)；持有整个 Point，但隐藏字段快照 s。"
+          ]
+        },
+        {
+          "key": "wand",
+          "new": false,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 3
+          },
+          "label": "R / -*：目标资源与归还凭证",
+          "paragraphs": [
+            "R(p) := EX v, GenericOwn I32 p v；隐藏当前整数值。",
+            "P -* Q 是 magic wand：以后交回 P，可消耗这份凭证取得 Q；不表示立刻拥有 Q。"
+          ]
+        },
+        {
+          "key": "sep",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "**：分离合取",
+          "paragraphs": [
+            "P ** Q：同时持有可分离组合的 P、Q 资源。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "call-edge",
+      "part": 4,
+      "entries": [
+        {
+          "key": "input_point",
+          "new": false,
+          "first": {
+            "page": 6,
+            "case": "call-edge",
+            "part": 3
+          },
+          "label": "P：调用前的整体资源",
+          "paragraphs": [
+            "P(p) := EX s, G_Point(p,s)；持有整个 Point，但隐藏字段快照 s。"
+          ]
+        },
+        {
+          "key": "point_wand",
+          "new": false,
+          "first": {
+            "page": 6,
+            "case": "call-edge",
+            "part": 3
+          },
+          "label": "W / G_Point / ALL：归还契约",
+          "paragraphs": [
+            "G_Point(p,s) := GenericOwn Point p s；(z,y0) 是 {x:=z; y:=y0} 的快照缩写。",
+            "W(q,p,y0) := ALL z, G(q,z) -* G_Point(p,(z,y0))；ALL z 覆盖未来归还的任意字段值。"
+          ]
+        },
+        {
+          "key": "wand",
+          "new": false,
+          "first": {
+            "page": 5,
+            "case": "basic-wand",
+            "part": 3
+          },
+          "label": "R / -*：目标资源与归还凭证",
+          "paragraphs": [
+            "R(p) := EX v, GenericOwn I32 p v；隐藏当前整数值。",
+            "P -* Q 是 magic wand：以后交回 P，可消耗这份凭证取得 Q；不表示立刻拥有 Q。"
+          ]
+        },
+        {
+          "key": "annotation",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "assert / proof：检查 / 操作",
+          "paragraphs": [
+            "assert 检查当前位置的断言；proof 标注编码器安排的资源或证明操作。"
+          ]
+        },
+        {
+          "key": "addresses",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "loc / addr：槽 / 目标地址",
+          "paragraphs": [
+            "loc(x) 是变量 x 的槽地址；addr(x) 是引用 x 指向的目标地址，两者不同。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "apply",
+      "part": 3,
+      "entries": [
+        {
+          "key": "apply",
+          "new": true,
+          "first": {
+            "page": 7,
+            "case": "apply",
+            "part": 3
+          },
+          "label": "|--：资源蕴含",
+          "paragraphs": [
+            "A |-- B 表示由 A 可推出 B；本例使用 wand，将字段资源换回整体资源。"
+          ]
+        },
+        {
+          "key": "point_wand",
+          "new": false,
+          "first": {
+            "page": 6,
+            "case": "call-edge",
+            "part": 3
+          },
+          "label": "W / G_Point / ALL：归还契约",
+          "paragraphs": [
+            "G_Point(p,s) := GenericOwn Point p s；(z,y0) 是 {x:=z; y:=y0} 的快照缩写。",
+            "W(q,p,y0) := ALL z, G(q,z) -* G_Point(p,(z,y0))；ALL z 覆盖未来归还的任意字段值。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        },
+        {
+          "key": "sep",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "**：分离合取",
+          "paragraphs": [
+            "P ** Q：同时持有可分离组合的 P、Q 资源。"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "apply",
+      "part": 4,
+      "entries": [
+        {
+          "key": "point",
+          "new": true,
+          "first": {
+            "page": 7,
+            "case": "apply",
+            "part": 4
+          },
+          "label": "Point：展开的结构体资源",
+          "paragraphs": [
+            "Point(p,(u,v)) := I(field(p,x),u) ** I(field(p,y),v)；u、v 分别是两字段当前值。"
+          ]
+        },
+        {
+          "key": "wand_use",
+          "new": true,
+          "first": {
+            "page": 7,
+            "case": "apply",
+            "part": 4
+          },
+          "label": "specialize / apply_wand：实例化并使用凭证",
+          "paragraphs": [
+            "specialize W at 72 选择归还值 z=72；apply_wand 消耗 G(q,72) 与 W，取得整体资源；restore pt 表示恢复对 pt 的访问。"
+          ]
+        },
+        {
+          "key": "point_wand",
+          "new": false,
+          "first": {
+            "page": 6,
+            "case": "call-edge",
+            "part": 3
+          },
+          "label": "W / G_Point / ALL：归还契约",
+          "paragraphs": [
+            "G_Point(p,s) := GenericOwn Point p s；(z,y0) 是 {x:=z; y:=y0} 的快照缩写。",
+            "W(q,p,y0) := ALL z, G(q,z) -* G_Point(p,(z,y0))；ALL z 覆盖未来归还的任意字段值。"
+          ]
+        },
+        {
+          "key": "integer",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "I / G：具体 / 抽象目标资源",
+          "paragraphs": [
+            "I(p,v) := cell 1 p i32_val v；G(p,v) := GenericOwn I32 p v。",
+            "cell sh p f v 持有字段 (p,f) 的份额 sh 与值 v；1 是完整权限。",
+            "GenericOwn T p v 是类型 T 的抽象目标资源，v 是当前快照；I32 表示 i32 类型。"
+          ]
+        },
+        {
+          "key": "generic",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 3
+          },
+          "label": "generic：封装资源",
+          "paragraphs": [
+            "make_generic / generic 按类型把具体资源封装为抽象资源，保持目标值。"
+          ]
+        },
+        {
+          "key": "concrete",
+          "new": false,
+          "first": {
+            "page": 2,
+            "case": "deref",
+            "part": 3
+          },
+          "label": "concrete：打开资源",
+          "paragraphs": [
+            "make_concrete / concrete 按目标类型打开 GenericOwn，得到具体资源并保持值。"
+          ]
+        },
+        {
+          "key": "annotation",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "assert / proof：检查 / 操作",
+          "paragraphs": [
+            "assert 检查当前位置的断言；proof 标注编码器安排的资源或证明操作。"
+          ]
+        },
+        {
+          "key": "addresses",
+          "new": false,
+          "first": {
+            "page": 1,
+            "case": "borrow-create",
+            "part": 4
+          },
+          "label": "loc / addr：槽 / 目标地址",
+          "paragraphs": [
+            "loc(x) 是变量 x 的槽地址；addr(x) 是引用 x 指向的目标地址，两者不同。"
+          ]
+        }
+      ]
+    }
+  ]
+}
